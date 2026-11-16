@@ -16,9 +16,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
@@ -26,7 +26,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -35,21 +35,21 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
-	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	actionprovider "actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -75,8 +75,8 @@ type sourceUnit = workspace.InputFile
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
 	ExecutionEnvironment
-	RemoteActions   actionprovider.Provider
-	RemoteWorkflows workflowinputs.Provider
+	RemoteActions   actions.Provider
+	RemoteWorkflows reusableworkflows.Provider
 	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
@@ -98,7 +98,7 @@ type analysisRequest struct {
 	LoadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	LogWriter            io.Writer
 	LogLevel             LogLevel
-	Processes            *process.ProcessPool
+	Processes            *hostprocess.ProcessPool
 	AllowConfigProcesses bool
 }
 
@@ -193,24 +193,24 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		return nil, errors.New("analysis requires an application-owned process pool")
 	}
 	var extensions []rule.Descriptor
-	for _, registration := range request.Analyzers {
-		if validation.IsNil(registration.Checker) {
+	for _, analyzer := range request.Analyzers {
+		if validation.IsNil(analyzer.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
-		extensions = append(extensions, registration.Checker.Descriptor().Descriptor)
+		extensions = append(extensions, analyzer.Checker.Descriptor().Descriptor)
 	}
 	seenTools := map[string]bool{}
-	for _, registration := range request.Tools {
-		name := registration.Name
+	for _, tool := range request.Tools {
+		name := tool.Name
 		if seenTools[name] {
 			return nil, fmt.Errorf("duplicate script tool %q", name)
 		}
 		seenTools[name] = true
-		if ruleexec.HasRule(name) {
+		if registration.HasRule(name) {
 			return nil, fmt.Errorf("script tool %q conflicts with a built-in analyzer", name)
 		}
 		if _, builtIn := FindRule(name); !builtIn {
-			extensions = append(extensions, registration.Descriptor)
+			extensions = append(extensions, tool.Descriptor)
 		}
 	}
 	if _, err := CombineRuleDeclarations(extensions...); err != nil {
@@ -221,12 +221,12 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if err != nil {
 		return nil, err
 	}
-	for _, registration := range request.Tools {
-		if registration.Build == nil {
-			return nil, fmt.Errorf("tool %q has no adapter", registration.Name)
+	for _, tool := range request.Tools {
+		if tool.Build == nil {
+			return nil, fmt.Errorf("tool %q has no adapter", tool.Name)
 		}
-		if registration.Validate != nil {
-			if err := registration.Validate(); err != nil {
+		if tool.Validate != nil {
+			if err := tool.Validate(); err != nil {
 				return nil, err
 			}
 		}
@@ -378,7 +378,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	documents := &actionDocuments{byPath: map[string]outline.Action{}}
 	session.actionDocuments = documents
 	proc := request.Processes
-	actions := workspaceactions.NewFactory(session.debugWriter())
+	localActionFactory := localactions.NewFactory(session.debugWriter())
 	cwd := request.WorkingDir
 	if cwd == "" {
 		var err error
@@ -392,8 +392,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		root    string
 		mirrors references.MirrorAccess
 	}
-	workflows := map[workflowCacheKey]*workflowinputs.Cache{}
-	remoteWorkflows := make(map[references.MirrorAccess]*workflowinputs.Remote)
+	workflows := map[workflowCacheKey]*reusableworkflows.Cache{}
+	remoteWorkflows := make(map[references.MirrorAccess]*reusableworkflows.Remote)
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
 	for _, source := range request.Sources {
@@ -412,16 +412,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []results.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
-	session.workflowNames = names.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
+	session.workflowNames = nameindex.NewIndex(sourcePaths, reader, func(path string) (names.Declared, error) {
 		captured, err := captures.Read(lifetime, path, sourcepos.YAML)
 		if err != nil {
-			return namemodel.Unknown(), err
+			return names.Unknown(), err
 		}
 		workflow, errs := parser.ParseWorkflow(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
-			return namemodel.Unknown(), nil
+			return names.Unknown(), nil
 		}
-		return namemodel.Declare(workflow.Name), nil
+		return names.Declare(workflow.Name), nil
 	})
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
@@ -430,28 +430,28 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if _, exists := session.remoteActions[mirrors]; !exists {
 			actionProvider := request.RemoteActions
 			if configurable, ok := actionProvider.(interface {
-				WithMetadataMirrors(references.MirrorAccess, []string) actionprovider.Provider
+				WithMetadataMirrors(references.MirrorAccess, []string) actions.Provider
 			}); ok {
 				actionProvider = configurable.WithMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
 			workflowProvider := request.RemoteWorkflows
 			if configurable, ok := workflowProvider.(interface {
-				WithWorkflowMetadataMirrors(references.MirrorAccess, []string) workflowinputs.Provider
+				WithWorkflowMetadataMirrors(references.MirrorAccess, []string) reusableworkflows.Provider
 			}); ok {
 				workflowProvider = configurable.WithWorkflowMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
 			session.remoteActions[mirrors] = remote.New(actionProvider)
-			remoteWorkflows[mirrors] = workflowinputs.NewRemote(workflowProvider)
+			remoteWorkflows[mirrors] = reusableworkflows.NewRemote(workflowProvider)
 		}
 		key := workflowCacheKey{root, mirrors}
 		wc, configured := workflows[key]
 		if !configured {
-			wc = workflowinputs.NewCache(root, session.debugWriter())
+			wc = reusableworkflows.NewCache(root, session.debugWriter())
 			wc.SetRemote(remoteWorkflows[mirrors])
 			workflows[key] = wc
 		}
-		ac := actions.GetCache(lifetime, root)
-		ac.Configure(workspaceactions.Options{
+		ac := localActionFactory.GetCache(lifetime, root)
+		ac.Configure(localactions.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
 			OnDocument: func(captured capture.CapturedDocument, path string, meta *actionmeta.Metadata, parseErr error) {
@@ -478,7 +478,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 		inputs.add(path)
 		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
-		ac, wc := actions.GetCache(lifetime, root), workflows[workflowCacheKey{root, source.Config.MetadataMirrorAccess()}]
+		ac, wc := localActionFactory.GetCache(lifetime, root), workflows[workflowCacheKey{root, source.Config.MetadataMirrorAccess()}]
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/gitwire"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
@@ -68,7 +68,7 @@ func TestBundledCommitishResolvesMetadataWithoutExternalExecutable(t *testing.T)
 				t.Fatal(err)
 			}
 			workflow := fmt.Sprintf("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@%s\n        with: {unlisted-input: true}\n", reference)
-			result, err := CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)}, pluginselection.Sources{})
+			result, err := CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)}, pluginselection.Sources{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -118,7 +118,7 @@ func TestBundledCommitishUnavailableMetadataDoesNotFailAnalysis(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/missing@v1\n")}, pluginselection.Sources{})
+	_, err = CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/missing@v1\n")}, pluginselection.Sources{})
 	if err != nil {
 		t.Fatalf("unavailable optional metadata failed analysis: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestBundledCommitishOfflineDoesNotResolve(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider, Resolver: forbiddenMetadataResolver{t}, SuggestCommitPins: true}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n")}, pluginselection.Sources{})
+			_, err = CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider, Resolver: forbiddenMetadataResolver{t}, SuggestCommitPins: true}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n")}, pluginselection.Sources{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -193,7 +193,7 @@ func TestBundledCommitishListsDifferentRepositoriesConcurrently(t *testing.T) {
 				t.Fatal(err)
 			}
 			workflow := fmt.Sprintf("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/first@%s\n      - uses: example/second@%s\n", tc.ref, tc.ref)
-			result, err := CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)}, pluginselection.Sources{})
+			result, err := CheckWithPlugins(t.Context(), Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: provider}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)}, pluginselection.Sources{})
 			if err != nil {
 				t.Fatal(err)
 			}

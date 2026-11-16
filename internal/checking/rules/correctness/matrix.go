@@ -2,7 +2,7 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrix"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrixcheck"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )

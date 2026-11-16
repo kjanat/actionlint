@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
@@ -26,7 +26,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	}
 
 	if req.ConfigPath != "" {
-		reader := source.New(ctx, nil, streams.Acquisition.Connections)
+		reader := configsource.New(ctx, nil, streams.Acquisition.Connections)
 		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile, nil); err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, configuration.FormatYAML, streams.Acquisition)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Settings) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Options) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 		return err
 	}
 	if asJSON {
-		return commandstreams.WriteJSON(out, map[string]string{"path": path})
+		return commandio.WriteJSON(out, map[string]string{"path": path})
 	}
 	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)

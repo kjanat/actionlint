@@ -5,9 +5,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -24,7 +24,7 @@ type DefaultPluginOptions struct {
 	// Rules supplies already inspected plugin descriptors. Missing descriptors
 	// are read from local or cached provider manifests, never by executing guests.
 	Rules       []rule.Descriptor
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 // DefaultReferences supplies the v2 defaults only when plugins was omitted.
@@ -37,7 +37,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 		return slices.Clone(cfg.Plugins), nil
 	}
 	refs := []pluginreference.Reference{}
-	manifests, err := manifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 // replaces a bundled tool reporting findings in files its scripts source,
 // that the isolated plugin stops following those files.
 func SourceFollowingNotes(refs []pluginreference.Reference) ([]string, error) {
-	manifests, err := manifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return nil, err
 	}

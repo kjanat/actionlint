@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 
@@ -116,7 +116,7 @@ func TestCommandActionInputs(t *testing.T) {
 
 func TestCommandDefaultActionDiscovery(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if out, err := git.Command(t.Context(), "git", ".", "init", "--quiet").CombinedOutput(); err != nil {
+	if out, err := gitcommand.Command(t.Context(), "git", ".", "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"

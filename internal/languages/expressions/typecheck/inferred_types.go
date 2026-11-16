@@ -1,8 +1,8 @@
 package typecheck
 
 import (
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // InferredTypes provides the types inferred during one expression check.

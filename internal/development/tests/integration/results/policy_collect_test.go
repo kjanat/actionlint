@@ -13,26 +13,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	t.Parallel()
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 5}, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
+	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 5}, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
 	var files []policy.Batch
-	for _, change := range []func(*findingmodel.Finding){
-		func(*findingmodel.Finding) {},
-		func(*findingmodel.Finding) {},
-		func(e *findingmodel.Finding) { e.End.Column = 6 },
-		func(e *findingmodel.Finding) { e.Source.Content = []byte("echo $OTHER\n") },
-		func(e *findingmodel.Finding) { e.Message = "another finding" },
-		func(e *findingmodel.Finding) { e.Path = "another/action.yml" },
-		func(e *findingmodel.Finding) { e.Rule = "another-rule" },
+	for _, change := range []func(*finding.Finding){
+		func(*finding.Finding) {},
+		func(*finding.Finding) {},
+		func(e *finding.Finding) { e.End.Column = 6 },
+		func(e *finding.Finding) { e.Source.Content = []byte("echo $OTHER\n") },
+		func(e *finding.Finding) { e.Message = "another finding" },
+		func(e *finding.Finding) { e.Path = "another/action.yml" },
+		func(e *finding.Finding) { e.Rule = "another-rule" },
 	} {
-		finding := base
-		change(&finding)
-		files = append(files, policy.Batch{Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*findingmodel.Finding{&finding}})
+		item := base
+		change(&item)
+		files = append(files, policy.Batch{Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*finding.Finding{&item}})
 	}
 	published := publishBatches(t, files)
 	diagnostics := published.Diagnostics
@@ -43,15 +43,15 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
-	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
-	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*findingmodel.Finding{finding}}}).Diagnostics
+	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
+	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*finding.Finding{item}}}).Diagnostics
 	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
 		t.Fatalf("same-source target not resolved: %+v", reported)
 	}
-	finding.Path = "action.yml"
-	finding.Source.Content = []byte("name: action\nrun: echo hi\n")
-	finding.SuppressionOrigin.Path = "action.yml"
-	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: workflow\n")}, Findings: []*findingmodel.Finding{finding}, Sources: map[string][]byte{"action.yml": finding.Source.Content}}, nil, map[string]*configuration.Config{"action.yml": nil})
+	item.Path = "action.yml"
+	item.Source.Content = []byte("name: action\nrun: echo hi\n")
+	item.SuppressionOrigin.Path = "action.yml"
+	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: workflow\n")}, Findings: []*finding.Finding{item}, Sources: map[string][]byte{"action.yml": item.Source.Content}}, nil, map[string]*configuration.Config{"action.yml": nil})
 	published, err := policy.Publish([]policy.Batch{batch}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -92,11 +92,11 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 	if err := os.Symlink(second, alias); err != nil {
 		t.Fatal(err)
 	}
-	declaration := &findingmodel.Finding{Path: first, Rule: "syntax-check", Message: "invalid manifest"}
-	caller := &findingmodel.Finding{Rule: "action", Message: "cannot parse manifest", MetadataParseSource: captured.Revision()}
+	declaration := &finding.Finding{Path: first, Rule: "syntax-check", Message: "invalid manifest"}
+	caller := &finding.Finding{Rule: "action", Message: "cannot parse manifest", MetadataParseSource: captured.Revision()}
 	files := []policy.Batch{
-		{InputPath: first, Source: captured.Revision(), Action: true, Policy: policy.Policy{Content: content}, Findings: []*findingmodel.Finding{declaration}},
-		{InputPath: "ci.yml", Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*findingmodel.Finding{caller}},
+		{InputPath: first, Source: captured.Revision(), Action: true, Policy: policy.Policy{Content: content}, Findings: []*finding.Finding{declaration}},
+		{InputPath: "ci.yml", Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*finding.Finding{caller}},
 	}
 	published := publishBatches(t, files)
 	diagnostics := published.Diagnostics
@@ -119,18 +119,18 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			finding := &findingmodel.Finding{
+			item := &finding.Finding{
 				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: source.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
 				Reference: &source.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []results.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
 				Source: results.DiagnosticSource{Content: tc.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed)},
 			}
-			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow text")}, Findings: []*findingmodel.Finding{finding}}}).Diagnostics
+			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow text")}, Findings: []*finding.Finding{item}}}).Diagnostics
 			if len(diagnostics) != 1 || diagnostics[0].Reference != nil || len(diagnostics[0].Fixes) != 0 {
 				t.Fatalf("unavailable source gained revision evidence: %+v", diagnostics)
 			}
 			wantEnd := tc.reportedEnd
 			if wantEnd == (source.Position{}) {
-				wantEnd = finding.Start
+				wantEnd = item.Start
 			}
 			if diagnostics[0].End != wantEnd || tc.failed && diagnostics[0].Snippet != "" {
 				t.Fatalf("reread fabricated extent/snippet: %+v", diagnostics[0])
@@ -150,19 +150,19 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 	t.Parallel()
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}}
+	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}}
 	var files []policy.Batch
-	for _, change := range []func(*findingmodel.Finding){
-		func(*findingmodel.Finding) {},
-		func(e *findingmodel.Finding) { e.Code = "SC2086" },
-		func(e *findingmodel.Finding) { e.Severity = "warning" },
-		func(e *findingmodel.Finding) {
+	for _, change := range []func(*finding.Finding){
+		func(*finding.Finding) {},
+		func(e *finding.Finding) { e.Code = "SC2086" },
+		func(e *finding.Finding) { e.Severity = "warning" },
+		func(e *finding.Finding) {
 			e.Fixes = []results.Fix{{Description: "quote", Edits: []results.Edit{{Path: "action.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
-		finding := base
-		change(&finding)
-		files = append(files, policy.Batch{Findings: []*findingmodel.Finding{&finding}}, policy.Batch{Findings: []*findingmodel.Finding{&finding}})
+		item := base
+		change(&item)
+		files = append(files, policy.Batch{Findings: []*finding.Finding{&item}}, policy.Batch{Findings: []*finding.Finding{&item}})
 	}
 	published := publishBatches(t, files)
 	diagnostics := published.Diagnostics
@@ -176,7 +176,7 @@ func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 	t.Parallel()
 	script := []byte("echo $A\necho $B\n")
-	findings := []*findingmodel.Finding{
+	findings := []*finding.Finding{
 		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: source.Position{Line: 1, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: source.Position{Line: 2, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 	}

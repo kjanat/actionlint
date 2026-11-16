@@ -7,24 +7,24 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		source  string
-		demand  exprfunctions.ArgumentDemand
+		demand  functions.ArgumentDemand
 		matched bool
 	}{
-		{"startsWith(true, 't')", exprfunctions.DemandRequired, true},
-		{"startsWith(true)", exprfunctions.DemandRequired, false},
-		{"case(false, startsWith(true, 't'), false)", exprfunctions.DemandSkipped, true},
-		{"case(inputs.flag, startsWith(true, 't'), false)", exprfunctions.DemandConditional, true},
+		{"startsWith(true, 't')", functions.DemandRequired, true},
+		{"startsWith(true)", functions.DemandRequired, false},
+		{"case(false, startsWith(true, 't'), false)", functions.DemandSkipped, true},
+		{"case(inputs.flag, startsWith(true, 't'), false)", functions.DemandConditional, true},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()

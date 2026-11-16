@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -8,7 +9,7 @@ import (
 // field that the rule replaced.
 type policySetting struct {
 	// configure records the setting in the policy field.
-	configure func(*Config, Setting)
+	configure func(*Config, ruleconfig.Setting)
 	// enabled reports whether the policy field enables the rule. Nil leaves
 	// the decision to the rule's level.
 	enabled func(*Config) bool
@@ -79,11 +80,11 @@ func (cfg *Config) CachePolicyEnabled(name string) bool {
 	return !found || !setting.enabledByDefault || setting.enabled(cfg)
 }
 
-func boolRuleOption(field func(*Policy) **bool) func(*Config, Setting) {
-	return func(c *Config, s Setting) { *field(&c.Policy) = new(s.Level() != "off") }
+func boolRuleOption(field func(*Policy) **bool) func(*Config, ruleconfig.Setting) {
+	return func(c *Config, s ruleconfig.Setting) { *field(&c.Policy) = new(s.Level() != "off") }
 }
 
-func configureJobTimeout(c *Config, s Setting) {
+func configureJobTimeout(c *Config, s ruleconfig.Setting) {
 	if s.Level() == "off" {
 		c.Policy.RequireJobTimeout = nil
 		return
@@ -95,7 +96,7 @@ func configureJobTimeout(c *Config, s Setting) {
 	}
 }
 
-func configureSuppressionsPolicy(c *Config, s Setting) {
+func configureSuppressionsPolicy(c *Config, s ruleconfig.Setting) {
 	if s.Level() == "off" {
 		c.Policy.DisallowSuppressions = nil
 		return

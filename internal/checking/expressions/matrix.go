@@ -5,7 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"

@@ -13,13 +13,13 @@ import (
 	"reflect"
 	"strings"
 
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 const (
@@ -72,7 +72,7 @@ type authoringCaseResult struct {
 }
 
 // Run validates the manifest without running its tool.
-func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams, _ pluginacquisition.Settings) (int, error) {
+func (r ValidateOptions) Run(ctx context.Context, streams commandio.Streams, _ pluginacquisition.Options) (int, error) {
 	manifest, programs, err := loadAuthorManifest(ctx, streams, r.Path)
 	if err == nil {
 		err = process.ValidateManifest(manifest, programs)
@@ -82,7 +82,7 @@ func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams
 		report.Error = err.Error()
 	}
 	if r.JSON {
-		if writeErr := commandstreams.WriteJSON(streams.Stdout, report); writeErr != nil {
+		if writeErr := commandio.WriteJSON(streams.Stdout, report); writeErr != nil {
 			return 1, writeErr
 		}
 	} else if !report.Valid {
@@ -99,7 +99,7 @@ func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams
 }
 
 // Run applies the manifest transforms to fixtures without running its tool.
-func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ pluginacquisition.Settings) (int, error) {
+func (r TestOptions) Run(ctx context.Context, streams commandio.Streams, _ pluginacquisition.Options) (int, error) {
 	manifest, programs, fixtures, err := loadAuthorTests(ctx, streams, r.Paths)
 	cases := []authoringCaseResult{}
 	report := authoringReport{SchemaVersion: 1, Valid: true, Cases: &cases}
@@ -124,7 +124,7 @@ func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ 
 			}
 		}
 	}
-	if err := commandstreams.WriteJSON(streams.Stdout, report); err != nil {
+	if err := commandio.WriteJSON(streams.Stdout, report); err != nil {
 		return 1, err
 	}
 	if !report.Valid {
@@ -133,15 +133,15 @@ func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ 
 	return 0, nil
 }
 
-func loadAuthorManifest(ctx context.Context, streams commandstreams.Streams, path string) (manifests.Manifest, manifests.Programs, error) {
+func loadAuthorManifest(ctx context.Context, streams commandio.Streams, path string) (toolmanifest.Manifest, toolmanifest.Programs, error) {
 	if path == "-" {
 		data, err := readBounded(streams.Stdin, authoringManifestLimit)
 		if err != nil {
-			return manifests.Manifest{}, nil, err
+			return toolmanifest.Manifest{}, nil, err
 		}
-		manifest, err := manifests.ParsePluginManifest(data)
+		manifest, err := toolmanifest.ParsePluginManifest(data)
 		if err != nil {
-			return manifests.Manifest{}, nil, err
+			return toolmanifest.Manifest{}, nil, err
 		}
 		return manifest, nil, nil
 	}
@@ -149,7 +149,7 @@ func loadAuthorManifest(ctx context.Context, streams commandstreams.Streams, pat
 		path = "actionlint-provider.json"
 	}
 	reader := boundedAuthoringReader(ctx, path)
-	return manifests.ReadLocal(reader, path)
+	return toolmanifest.ReadLocal(reader, path)
 }
 
 func boundedAuthoringReader(ctx context.Context, manifestPath string) *files.Reader {
@@ -180,44 +180,44 @@ func readReaderBounded(reader *files.Reader, path string, limit int) ([]byte, er
 	return data, errors.Join(readErr, closeErr)
 }
 
-func loadAuthorTests(ctx context.Context, streams commandstreams.Streams, paths []string) (manifests.Manifest, manifests.Programs, []authoringFixture, error) {
+func loadAuthorTests(ctx context.Context, streams commandio.Streams, paths []string) (toolmanifest.Manifest, toolmanifest.Programs, []authoringFixture, error) {
 	if len(paths) == 2 {
 		manifest, programs, err := loadAuthorManifest(ctx, streams, paths[0])
 		if err != nil {
-			return manifests.Manifest{}, nil, nil, err
+			return toolmanifest.Manifest{}, nil, nil, err
 		}
 		file, err := os.Open(paths[1])
 		if err != nil {
-			return manifests.Manifest{}, nil, nil, err
+			return toolmanifest.Manifest{}, nil, nil, err
 		}
 		data, readErr := readBounded(file, authoringInputLimit)
 		closeErr := file.Close()
 		if err := errors.Join(readErr, closeErr); err != nil {
-			return manifests.Manifest{}, nil, nil, err
+			return toolmanifest.Manifest{}, nil, nil, err
 		}
 		fixtures, err := decodeFixtures(data)
 		return manifest, programs, fixtures, err
 	}
 	data, err := readBounded(streams.Stdin, authoringInputLimit)
 	if err != nil {
-		return manifests.Manifest{}, nil, nil, err
+		return toolmanifest.Manifest{}, nil, nil, err
 	}
 	var input struct {
 		Manifest json.RawMessage    `json:"manifest"`
 		Cases    []authoringFixture `json:"cases"`
 	}
 	if err := decodeStrict(data, &input); err != nil {
-		return manifests.Manifest{}, nil, nil, fmt.Errorf("invalid plugin test input: %w", err)
+		return toolmanifest.Manifest{}, nil, nil, fmt.Errorf("invalid plugin test input: %w", err)
 	}
 	if len(input.Manifest) == 0 || len(input.Manifest) > authoringManifestLimit {
-		return manifests.Manifest{}, nil, nil, errors.New("plugin test manifest is missing or exceeds 1 MiB")
+		return toolmanifest.Manifest{}, nil, nil, errors.New("plugin test manifest is missing or exceeds 1 MiB")
 	}
-	manifest, err := manifests.ParsePluginManifest(input.Manifest)
+	manifest, err := toolmanifest.ParsePluginManifest(input.Manifest)
 	if err != nil {
-		return manifests.Manifest{}, nil, nil, err
+		return toolmanifest.Manifest{}, nil, nil, err
 	}
 	if err := validateFixtureExpectations(input.Cases); err != nil {
-		return manifests.Manifest{}, nil, nil, err
+		return toolmanifest.Manifest{}, nil, nil, err
 	}
 	return manifest, nil, input.Cases, nil
 }

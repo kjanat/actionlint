@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 type ruffEchoBackend struct{ *module.Engine }
@@ -23,7 +23,7 @@ func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
 	t.Parallel()
-	engine, err := module.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
+	engine, err := module.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

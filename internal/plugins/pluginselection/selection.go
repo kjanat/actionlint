@@ -11,11 +11,11 @@ import (
 	"slices"
 	"strings"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
@@ -23,7 +23,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -49,7 +49,7 @@ type PluginSelection struct {
 	DisableTools bool
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
-	Acquisition               pluginacquisition.Settings
+	Acquisition               pluginacquisition.Options
 }
 
 // WithTools returns a copy of selection that stores the tool ids
@@ -73,7 +73,7 @@ type Sources struct {
 	RepositoryScoped bool
 	Releases         *pluginregistry.ResolvedPlugins
 	Configurations   []*configuration.Config
-	Artifacts        map[string]*pluginartifact.Artifact
+	Artifacts        map[string]*artifacts.Artifact
 	// NetworkGrants come only from explicit source arguments, never project files.
 	NetworkGrants map[string]acquisitionhttp.Grant
 	Overlays      []configuration.Overlay
@@ -84,10 +84,10 @@ type Sources struct {
 	DisableTools bool
 	// Configured identifies configuration-selected providers that require process opt-in.
 	Configured  bool
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
-func (s PluginSelection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+func (s PluginSelection) Resolve(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
 	s.lazyDefaults = !network.Settings(ctx).WarmCache
 	selected, err := s.Select(ctx, directory, input)
 	if err != nil {
@@ -102,7 +102,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input in
 // ResolveForRules selects declared plugins without validating unrelated lint
 // settings.
 func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) (Sources, error) {
-	selected, err := s.selectSources(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository}, configplugins.PluginDeclarationsOnly)
+	selected, err := s.selectSources(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository}, plugins.PluginDeclarationsOnly)
 	if err != nil {
 		return Sources{}, err
 	}
@@ -114,17 +114,17 @@ func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) 
 
 // Select resolves exact registry metadata without downloading artifacts or
 // running plugin code. Hosts can restore artifacts before Hydrate verifies them.
-func (s PluginSelection) Select(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
-	return s.selectSources(ctx, directory, input, configplugins.CompleteConfiguration)
+func (s PluginSelection) Select(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
+	return s.selectSources(ctx, directory, input, plugins.CompleteConfiguration)
 }
 
 // SelectForCache selects the same declared releases as analysis without fetching
 // artifacts or implicitly migrating project files.
-func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
 	return s.Select(ctx, directory, input)
 }
 
-func (s PluginSelection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s PluginSelection) selectSources(ctx context.Context, directory string, input checkrequest.Request, mode plugins.ReadMode) (Sources, error) {
 	if s.DisableTools {
 		s.DefaultTools = nil
 	}
@@ -133,7 +133,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		return Sources{}, err
 	}
 	if len(s.DefaultTools) != 0 && len(s.Paths) == 0 && len(selected.Configurations) == 0 {
-		project := &installation.Project{Manifest: &configplugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
+		project := &installation.Project{Manifest: &plugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
 		selected, err = s.sourcesFromProject(ctx, project, "")
 		if err != nil {
 			return Sources{}, err
@@ -146,7 +146,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 	return selected, nil
 }
 
-func (s PluginSelection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s PluginSelection) selectDeclared(ctx context.Context, directory string, input checkrequest.Request, mode plugins.ReadMode) (Sources, error) {
 	if len(s.Paths) > 0 {
 		return SourcesFromArguments(s.Paths, s.Acquisition)
 	}
@@ -159,7 +159,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			return Sources{}, err
 		}
 		if !project.Manifest.Exists {
-			if mode == configplugins.PluginDeclarationsOnly {
+			if mode == plugins.PluginDeclarationsOnly {
 				return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 			}
 			return Sources{}, fmt.Errorf("could not read config file %q: %w", project.Manifest.Path, os.ErrNotExist)
@@ -168,13 +168,13 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 	}
 	starts := []string{directory}
 	switch {
-	case input.Kind == inputmodel.Repository && input.Directory != "":
+	case input.Kind == checkrequest.Repository && input.Directory != "":
 		start := input.Directory
 		if !filepath.IsAbs(start) {
 			start = filepath.Join(directory, start)
 		}
 		starts = []string{start}
-	case input.Kind == inputmodel.Files && len(input.Paths) > 0:
+	case input.Kind == checkrequest.Files && len(input.Paths) > 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -182,7 +182,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			}
 			starts = append(starts, RepositorySearchStart(path))
 		}
-	case input.Kind == inputmodel.Stdin:
+	case input.Kind == checkrequest.Stdin:
 		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
 		if input.Name == "" || input.Name == "<stdin>" {
 			return Sources{}, nil
@@ -245,7 +245,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			selected.Paths = append(selected.Paths, source)
 		}
 		if resolved.Config.Plugins == nil && len(s.DefaultTools) != 0 {
-			project := &installation.Project{Manifest: &configplugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
+			project := &installation.Project{Manifest: &plugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
 			return s.sourcesFromProject(ctx, project, "")
 		}
 		return selected, nil
@@ -287,10 +287,10 @@ func (s PluginSelection) prepareProject(project *installation.Project) (*configu
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {
-			if source.IsRemoteAddress(path) {
+			if configsource.IsRemoteAddress(path) {
 				continue
 			}
-			if err := configplugins.ValidateLocalPath(path); err != nil {
+			if err := plugins.ValidateLocalPath(path); err != nil {
 				return nil, err
 			}
 		}
@@ -318,7 +318,7 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *instal
 	if s.lazyDefaults && project.DefaultPlugins {
 		selected.LazySources = map[string]pluginregistry.Pin{}
 		for _, pin := range releases.Plugins {
-			if pin.Metadata != "" && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.Component && strings.HasPrefix(pin.Contract, "kjanat:actionlint/script-engine@")) {
+			if pin.Metadata != "" && (pin.Kind == artifacts.Core || pin.Kind == artifacts.Component && strings.HasPrefix(pin.Contract, "kjanat:actionlint/script-engine@")) {
 				selected.LazySources[pin.Source()] = pin
 			}
 		}
@@ -383,7 +383,7 @@ func (s *Sources) dropDisabledPins() {
 	releases.Plugins = []pluginregistry.Pin{}
 	for _, pin := range s.Releases.Plugins {
 		id := disabledPinTool(pin, s.DisabledTools)
-		if s.DisableTools && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.ProviderManifest) {
+		if s.DisableTools && (pin.Kind == artifacts.Core || pin.Kind == artifacts.ProviderManifest) {
 			id = pin.Name
 		}
 		if id == "" {
@@ -420,12 +420,12 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 	if err := s.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: s.Acquisition}); err != nil {
 		return err
 	}
-	artifacts := make(map[string]*pluginartifact.Artifact, len(s.Releases.Plugins))
+	pluginArtifacts := make(map[string]*artifacts.Artifact, len(s.Releases.Plugins))
 	for _, pin := range s.Releases.Plugins {
 		if _, lazy := s.LazySources[pin.Source()]; lazy {
 			continue
 		}
-		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), s.ArtifactOptions(pin.Source()))
+		artifact, err := artifacts.Resolve(ctx, pin.Source(), s.ArtifactOptions(pin.Source()))
 		if err != nil {
 			if s.DisableTools && network.OnlyOffline(err) {
 				s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
@@ -436,9 +436,9 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 		if err := pin.Verify(artifact.Info); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
-		artifacts[pin.Source()] = artifact
+		pluginArtifacts[pin.Source()] = artifact
 	}
-	s.Artifacts = artifacts
+	s.Artifacts = pluginArtifacts
 	return nil
 }
 
@@ -457,7 +457,7 @@ func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet
 			if root == "" {
 				continue
 			}
-			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", configplugins.CompleteConfiguration, nil)
+			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", plugins.CompleteConfiguration, nil)
 			if err != nil {
 				return err
 			}

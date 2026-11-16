@@ -1,6 +1,6 @@
 package contexts
 
-import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 // builtinSecretProps are the secrets which GitHub Actions always provides to a workflow.
 // ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130).

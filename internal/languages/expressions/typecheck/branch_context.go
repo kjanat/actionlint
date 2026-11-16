@@ -3,8 +3,8 @@ package typecheck
 import (
 	"maps"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // withBranchContext checks a branch using model-supplied context refinements.

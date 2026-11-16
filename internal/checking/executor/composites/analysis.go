@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -45,9 +45,9 @@ type Options struct {
 	// ScriptInputsForScope loads lazily once per immutable config, including nil.
 	ScriptInputsForScope func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
 	Context              context.Context
-	Actions              *workspace.Resolver
+	Actions              *localactions.Resolver
 	Rules                []workflowvisit.Rule
-	Scripts              scripts.Service
+	Scripts              scriptanalysis.Service
 	Paths                execution.Paths
 	Reader               *files.Reader // records reads made while resolving script paths
 
@@ -66,7 +66,7 @@ type Composition struct {
 	IncompleteChecks []report.IncompleteCheck
 	Findings         []*finding.Finding
 	EntrySnapshot    parsing.SourceSnapshot
-	Batch            scripts.Batch
+	Batch            scriptanalysis.Batch
 	// Invocations is available after graph publication even if batch preparation fails.
 	Invocations      invocation.Graph
 	ResolveExecution bool
@@ -105,7 +105,7 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, er
 
 // Action runs one standalone action composition with the caller's collaborators.
 // Options.Join runs exactly once per call.
-func Action(options Options, snapshot parsing.SourceSnapshot, deployment scripts.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
+func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptanalysis.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot.Kind() != parsing.KindAction {
 			return errors.New("action source snapshot is unavailable")
@@ -180,11 +180,11 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Comp
 		graph, publishErr = c.invocations.Publish()
 		err = errors.Join(err, publishErr)
 	}
-	var batch scripts.Batch
+	var batch scriptanalysis.Batch
 	var findings []*finding.Finding
 	if graph.Has(graph.RootID()) {
 		var prepareErr error
-		batch, prepareErr = scripts.NewBatch(graph, scripts.Collection{
+		batch, prepareErr = scriptanalysis.NewBatch(graph, scriptanalysis.Collection{
 			Declarations: c.sourceSnapshots, Scopes: c.scriptScopes, Scripts: c.scripts, Collected: c.collectScripts,
 		})
 		err = errors.Join(err, prepareErr)

@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowvalue "actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
 
 func TestConstantFormatUncertainArguments(t *testing.T) {
@@ -23,11 +23,11 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 	} {
 		t.Run(expression, func(t *testing.T) {
 			t.Parallel()
-			value, known := evaluate.ConditionConstantValue(syntax.ParseAssignedExpression("${{ " + expression + " }}"))
+			contextValue, known := evaluate.ConditionConstantValue(syntax.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
-				t.Fatalf("unexpected constant value %v", value)
+				t.Fatalf("unexpected constant value %v", contextValue)
 			}
-			if _, known := workflowconditions.Condition(workflowvalue.Condition("${{ "+expression+" }}", workflowvalue.Origin{})); known {
+			if _, known := conditions.Condition(value.Condition("${{ "+expression+" }}", value.Origin{})); known {
 				t.Fatal("uncertain format argument made invocation known")
 			}
 		})
@@ -48,7 +48,7 @@ func TestConstantFormatCompositeArguments(t *testing.T) {
 			if got, known := evaluate.ConditionConstantValue(node); !known || got != tc.want {
 				t.Fatalf("got %v/%v, want %s", got, known, tc.want)
 			}
-			if enabled, known := workflowconditions.Condition(workflowvalue.Condition("${{ "+tc.expression+" }}", workflowvalue.Origin{})); !known || !enabled {
+			if enabled, known := conditions.Condition(value.Condition("${{ "+tc.expression+" }}", value.Origin{})); !known || !enabled {
 				t.Fatal("nonempty formatted composite must be truthy")
 			}
 		})

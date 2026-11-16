@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -27,19 +27,19 @@ jobs:
 		t.Fatal(errs)
 	}
 	outline := FromWorkflow("ci.yml", workflow, false)
-	got := map[string]references.UsesReference{}
+	got := map[string]callreferences.UsesReference{}
 	for _, job := range outline.Jobs {
 		got[job.ID] = job.Reference()
 		for _, step := range job.Steps {
 			got[step.Uses] = step.Reference()
 		}
 	}
-	want := map[string]references.UsesReference{
-		"local":                   references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
-		"self":                    references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+	want := map[string]callreferences.UsesReference{
+		"local":                   callreferences.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    callreferences.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
 		"build":                   nil,
-		"./.github/actions/setup": references.WorkspaceReference{Path: ".github/actions/setup"},
-		"$/.github/actions/setup": references.SelfRepositoryReference{Path: ".github/actions/setup"},
+		"./.github/actions/setup": callreferences.WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": callreferences.SelfRepositoryReference{Path: ".github/actions/setup"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)

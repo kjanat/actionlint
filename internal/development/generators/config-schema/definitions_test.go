@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -26,7 +26,7 @@ func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
 	for _, entry := range checking.ConfigurationRules().Rules() {
 		declarations = append(declarations, entry.Descriptor)
 	}
-	expected, err := json.Marshal(schema.RuleNameChoices(declarations))
+	expected, err := json.Marshal(configschema.RuleNameChoices(declarations))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,10 +55,10 @@ func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
 	walk = func(value any) {
 		switch node := value.(type) {
 		case map[string]any:
-			if reflect.DeepEqual(node["enum"], enumValues(rules.Levels())) {
+			if reflect.DeepEqual(node["enum"], enumValues(ruleconfig.Levels())) {
 				levelEnums++
 			}
-			if reflect.DeepEqual(node["enum"], enumValues(rules.Presets())) {
+			if reflect.DeepEqual(node["enum"], enumValues(ruleconfig.Presets())) {
 				presetEnums++
 			}
 			if ref, ok := node["$ref"].(string); ok {

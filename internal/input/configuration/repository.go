@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -84,7 +84,7 @@ func repositoryNames(value any) (repository.Names, error) {
 		return repository.Names{}, errors.New("repository names must be a sequence")
 	}
 	var values []string
-	if err := binding.Decode(value, &values); err != nil {
+	if err := configdecode.Decode(value, &values); err != nil {
 		return repository.Names{}, err
 	}
 	return repository.NewNames(values...)
@@ -116,7 +116,7 @@ func repositoryVariables(value any) (repository.Variables, error) {
 			entry.Value = availability.Available(selected)
 		case nil:
 		default:
-			return repository.Variables{}, binding.At(key, fmt.Errorf("repository variable %q must have a string or null value", key))
+			return repository.Variables{}, configdecode.At(key, fmt.Errorf("repository variable %q must have a string or null value", key))
 		}
 		entries = append(entries, entry)
 	}
@@ -132,7 +132,7 @@ func repositoryEnvironments(value any) (repository.Environments, error) {
 	for name, value := range object {
 		fields, ok := value.(map[string]any)
 		if !ok {
-			return repository.Environments{}, binding.At(name, errors.New("repository environment must be a named mapping"))
+			return repository.Environments{}, configdecode.At(name, errors.New("repository environment must be a named mapping"))
 		}
 		entry := repository.Environment{Name: name}
 		for key, item := range fields {
@@ -140,17 +140,17 @@ func repositoryEnvironments(value any) (repository.Environments, error) {
 			case "variables":
 				fact, err := decodeFact(item, repositoryVariables)
 				if err != nil {
-					return repository.Environments{}, binding.At(name, binding.At(key, err))
+					return repository.Environments{}, configdecode.At(name, configdecode.At(key, err))
 				}
 				entry.Variables = *fact
 			case "secrets":
 				fact, err := decodeFact(item, repositoryNames)
 				if err != nil {
-					return repository.Environments{}, binding.At(name, binding.At(key, err))
+					return repository.Environments{}, configdecode.At(name, configdecode.At(key, err))
 				}
 				entry.Secrets = *fact
 			default:
-				return repository.Environments{}, binding.At(name, binding.At(key, fmt.Errorf("unknown repository environment key %q", key)))
+				return repository.Environments{}, configdecode.At(name, configdecode.At(key, fmt.Errorf("unknown repository environment key %q", key)))
 			}
 		}
 		entries = append(entries, entry)
@@ -190,10 +190,10 @@ func (r *RepositoryConfig) DecodeConfig(value any) error {
 		case "environments":
 			next.environments, err = decodeFact(value, repositoryEnvironments)
 		default:
-			return binding.At(key, fmt.Errorf("unknown repository key %q", key))
+			return configdecode.At(key, fmt.Errorf("unknown repository key %q", key))
 		}
 		if err != nil {
-			return binding.At(key, err)
+			return configdecode.At(key, err)
 		}
 	}
 	*r = next
@@ -270,7 +270,7 @@ func repositoryService(value any) (services.Service, error) {
 		Kind    string `yaml:"kind"`
 		Version string `yaml:"version"`
 	}
-	if err := binding.Decode(value, &selected); err != nil {
+	if err := configdecode.Decode(value, &selected); err != nil {
 		return services.Service{}, err
 	}
 	if selected.Kind != string(services.GitHubEnterpriseServer) {

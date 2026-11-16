@@ -7,15 +7,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
 // filterConfigured applies resolved ignore selectors to the same logical invocation.
-func (processor Processor) filterConfigured(path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config, foreign bool, level func(string) configuration.Level, additional ...string) []*finding.Finding {
+func (processor Processor) filterConfigured(path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config, foreign bool, level func(string) ruleconfig.Level, additional ...string) []*finding.Finding {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -59,7 +60,7 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 				if mode == configuration.ReportSuppression || mode == configuration.ReportAll {
 					policyError := *finding
 					policyError.Rule = "forbidden-suppression"
-					policyError.Binding = bindingmodel.ID{}
+					policyError.Binding = binding.ID{}
 					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.forbidden-suppression", ignore.Rule)
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)
@@ -76,6 +77,6 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 }
 
 // levels projects resolved rule severity lookup without exposing traversal.
-func (processor Processor) levels(cfg *configuration.Config) func(string) configuration.Level {
-	return func(name string) configuration.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
+func (processor Processor) levels(cfg *configuration.Config) func(string) ruleconfig.Level {
+	return func(name string) ruleconfig.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
 }

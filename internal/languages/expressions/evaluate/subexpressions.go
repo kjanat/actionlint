@@ -4,10 +4,10 @@ import (
 	"slices"
 	"strings"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // SubexpressionResults records constant results for one syntax tree. Conditional
@@ -15,14 +15,14 @@ import (
 // proved unused are absent; unknown context values are not substituted.
 type SubexpressionResults struct {
 	root   syntax.Node
-	byNode map[syntax.Node]exprvalues.EvaluationResult
+	byNode map[syntax.Node]values.EvaluationResult
 }
 
 // EvaluateSubexpressions records the root's demanded evaluation first. It then
 // inspects branches whose execution depends on unknown values, following the
 // shared function argument-demand contract. It does not evaluate skipped branches.
 func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
-	results := make(map[syntax.Node]exprvalues.EvaluationResult)
+	results := make(map[syntax.Node]values.EvaluationResult)
 	expressionResult(root, nil, nil, results)
 	skipped := make(map[syntax.Node]bool)
 	syntax.Visit(root, func(node, parent syntax.Node, entering bool) {
@@ -36,7 +36,7 @@ func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
 		if _, found := results[node]; found {
 			return
 		}
-		if results[parent].State != exprvalues.EvaluationUnknown || argumentSkipped(parent, node, results) {
+		if results[parent].State != values.EvaluationUnknown || argumentSkipped(parent, node, results) {
 			skipped[node] = true
 			return
 		}
@@ -45,34 +45,34 @@ func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
 	return SubexpressionResults{root: root, byNode: results}
 }
 
-func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]exprvalues.EvaluationResult) bool {
+func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]values.EvaluationResult) bool {
 	call, ok := parent.(*syntax.FuncCallNode)
 	if !ok {
 		return false
 	}
-	function, found := exprfunctions.Builtins[strings.ToLower(call.Callee)]
+	function, found := functions.Builtins[strings.ToLower(call.Callee)]
 	if !found || len(function.Signatures) == 0 {
 		return false
 	}
-	args := make([]exprfunctions.CallArgument, len(call.Args))
+	args := make([]functions.CallArgument, len(call.Args))
 	for index, child := range call.Args {
-		arg := exprfunctions.CallArgument{Source: exprtypes.AnyType()}
+		arg := functions.CallArgument{Source: exprtypes.AnyType()}
 		switch result := results[child]; result.State {
-		case exprvalues.EvaluationKnown:
-			arg.Source, arg.Value, arg.State = exprtypes.TypeOfJSONValue(result.Value), result.Value, exprfunctions.ArgumentKnown
-		case exprvalues.EvaluationInvalid, exprvalues.EvaluationNotAttempted:
-			arg.State = exprfunctions.ArgumentInvalid
-		case exprvalues.EvaluationUnknown:
+		case values.EvaluationKnown:
+			arg.Source, arg.Value, arg.State = exprtypes.TypeOfJSONValue(result.Value), result.Value, functions.ArgumentKnown
+		case values.EvaluationInvalid, values.EvaluationNotAttempted:
+			arg.State = functions.ArgumentInvalid
+		case values.EvaluationUnknown:
 		}
 		args[index] = arg
 	}
 	index := slices.Index(call.Args, node)
-	return exprfunctions.DemandForArgument(function.Signatures[0].EvaluationPolicy, index, len(args), args) == exprfunctions.DemandSkipped
+	return functions.DemandForArgument(function.Signatures[0].EvaluationPolicy, index, len(args), args) == functions.DemandSkipped
 }
 
 // Result returns a detached value and whether this node has a recorded result. A missing
 // result means the branch was skipped or the node belongs to another tree.
-func (results SubexpressionResults) Result(node syntax.Node) (exprvalues.EvaluationResult, bool) {
+func (results SubexpressionResults) Result(node syntax.Node) (values.EvaluationResult, bool) {
 	result, found := results.byNode[node]
 	return result.Clone(), found
 }

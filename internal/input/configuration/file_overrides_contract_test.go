@@ -7,15 +7,16 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
 	t.Parallel()
-	invalid, err := configuration.NewSetting("bogus", nil)
+	invalid, err := ruleconfig.NewSetting("bogus", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"bad.yml"}, Lint: &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": invalid})}}}}}
+	project := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"bad.yml"}, Lint: &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"inline-suppression": invalid})}}}}}
 	config, err := checking.ConfigurationRules().ForFile(project, "good.yml", "")
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +165,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 	for _, tc := range []struct {
 		name, yaml string
 		lint       *configuration.LintConfig
-		want       configuration.Level
+		want       ruleconfig.Level
 	}{
 		{"enabled", "{enabled: true}", &configuration.LintConfig{Enabled: new(true)}, "off"},
 		{"empty", "{}", &configuration.LintConfig{}, "off"},

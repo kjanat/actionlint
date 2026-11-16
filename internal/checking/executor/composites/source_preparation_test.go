@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -50,7 +50,7 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 	return nil
 }
 
-func (r *preparationObserver) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
+func (r *preparationObserver) ForMetadata(*localactions.Resolver) workflowvisit.MetadataParticipant {
 	return r
 }
 
@@ -62,7 +62,7 @@ func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	}
 	prepared := map[string]bool{}
 	observer := &preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: prepared}
-	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspace.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot, _ []string) error {
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: localactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot, _ []string) error {
 		prepared[snapshot.Reference().Document] = true
 		return nil
 	}}

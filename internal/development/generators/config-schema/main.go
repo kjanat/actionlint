@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
 	"actionlint.kjanat.dev/v2/internal/input/selection"
@@ -49,8 +49,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[configuration.DependencyCategories]():
-		values := make([]any, 0, len(rules.Categories()))
-		for _, category := range rules.Categories() {
+		values := make([]any, 0, len(ruleconfig.Categories()))
+		for _, category := range ruleconfig.Categories() {
 			values = append(values, category)
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
@@ -137,20 +137,20 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}{})
 		mapping.Version, mapping.ID = "", ""
 		return mapping
-	case reflect.TypeFor[configuration.Level]():
+	case reflect.TypeFor[ruleconfig.Level]():
 		return definitionRef("level")
-	case reflect.TypeFor[configuration.Preset]():
+	case reflect.TypeFor[ruleconfig.Preset]():
 		return definitionRef("preset")
 	case reflect.TypeFor[configuration.LintRulesConfig]():
 		mapping := reflectMapping(struct {
-			Preset  configuration.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
-			Disable []string             `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
+			Preset  ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
+			Disable []string          `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
 		disable.Items = definitionRef("rule-name")
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		categories := rules.Categories()
+		categories := ruleconfig.Categories()
 		knownByCategory := make(map[string][]string, len(categories))
 		knownNames := make([]string, 0)
 		for _, rule := range checking.ConfigurationRules().Rules() {
@@ -163,8 +163,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		for _, category := range categories {
 			group := reflectMapping(struct {
-				Preset configuration.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
-				Level  configuration.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
+				Preset ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
+				Level  ruleconfig.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
 			}{})
 			group.Version, group.ID = "", ""
 			group.Extras = map[string]any{"x-tombi-additional-key-label": "rule_name"}
@@ -278,7 +278,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
-	case reflect.TypeFor[rules.CommitHashOptions]():
+	case reflect.TypeFor[ruleconfig.CommitHashOptions]():
 		// The runtime type keeps validated patterns private. Keep this in sync
 		// with CommitHashOptions.UnmarshalYAML.
 		mapping := reflectMapping(struct {
@@ -290,7 +290,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return mapping
-	case reflect.TypeFor[toolconfig.Backend]():
+	case reflect.TypeFor[tools.Backend]():
 		return definitionRef("backend")
 	case reflect.TypeFor[configuration.PermissionLocationList]():
 		values := []any{}

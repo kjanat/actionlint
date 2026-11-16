@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -51,7 +51,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root,
 		Analyzers:  []checkinputs.Registration{{Checker: collector}},
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{outer}})
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ jobs:
 			_, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
 				Analyzers:  []checkinputs.Registration{{Checker: collector}},
-			}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
+			}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)
 			}

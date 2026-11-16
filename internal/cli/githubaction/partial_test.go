@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestPartialResultAnalyzer(t *testing.T) {
@@ -76,7 +76,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		newID: fixedID("DELIM"), timeout: 2 * time.Second,
 		lint: func(req *lintRequest) *lintResult {
 			// The tool's environment is scrubbed; only these variables reach it.
-			req.processes = map[string]*process.CommandOptions{"shellcheck": {
+			req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": {
 				Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 				Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1", "ACTIONLINT_PARTIAL_RESULT_READY=" + ready},
 			}}
@@ -133,7 +133,7 @@ waiting:
 	if len(result.Documents) != 1 {
 		t.Fatalf("timeout discarded parsed outline: %+v", result.Documents)
 	}
-	workflow, ok := result.Documents[0].(outline.Workflow)
+	workflow, ok := result.Documents[0].(outline.WorkflowOutline)
 	if !ok || workflow.DocumentPath() != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
 	}
@@ -180,7 +180,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 				newID: fixedID("DELIM"), timeout: lintTimeout,
 				lint: func(req *lintRequest) *lintResult {
 					// The tool's environment is scrubbed; only this variable reaches it.
-					req.processes = map[string]*process.CommandOptions{"shellcheck": {
+					req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": {
 						Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 						Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1"},
 					}}

@@ -8,13 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // workflowCallVisitor exercises the production adapter with prepared workflow inputs.
-func workflowCallVisitor(tb testing.TB, workflow workflows.Workflow, cache *workflowinputs.Cache, facts repository.Snapshot) workflowvisit.Rule {
+func workflowCallVisitor(tb testing.TB, workflow workflows.Workflow, cache *reusableworkflows.Cache, facts repository.Snapshot) workflowvisit.Rule {
 	tb.Helper()
 	var uses []string
 	for _, job := range workflow.Jobs() {

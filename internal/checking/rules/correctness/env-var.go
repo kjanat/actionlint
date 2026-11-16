@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -58,10 +58,10 @@ func checkJobEnvironment(job workflows.Job) []reporting.StepFinding {
 }
 
 // environmentNameDiagnostics reports resolved environment names that contain '&', '=' or whitespace.
-func environmentNameDiagnostics(entries []mapping.Declaration) []results.Diagnostic {
+func environmentNameDiagnostics(entries []mappings.Declaration) []results.Diagnostic {
 	var findings []results.Diagnostic
 	for _, entry := range entries {
-		if entry.State == mapping.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
+		if entry.State == mappings.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
 			continue
 		}
 		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Origin.Span.Start})

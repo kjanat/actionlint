@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 
 	"actionlint.kjanat.dev/v2/internal/checking/expressions"
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"

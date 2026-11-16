@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -52,7 +52,7 @@ jobs:
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
 		Analyzers:  []checkinputs.Registration{{Checker: observer}},
-	}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
+	}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,12 +99,12 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/action-input.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/component/testdata/plugins/action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

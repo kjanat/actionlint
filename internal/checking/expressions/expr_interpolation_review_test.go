@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
@@ -23,12 +23,12 @@ func TestExpressionFailurePhases(t *testing.T) {
 	for _, tc := range []struct {
 		source string
 		phase  typecheck.FailurePhase
-		state  exprvalues.EvaluationState
+		state  values.EvaluationState
 		kind   exprtypes.TypeKind
 	}{
-		{"${{ startsWith(true) }}", typecheck.FailureStaticValidation, exprvalues.EvaluationNotAttempted, exprtypes.KindBool},
-		{"${{ startsWith(fromJSON(null), 'x') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindBool},
-		{"${{ case(1, 'a', 'b') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindAny},
+		{"${{ startsWith(true) }}", typecheck.FailureStaticValidation, values.EvaluationNotAttempted, exprtypes.KindBool},
+		{"${{ startsWith(fromJSON(null), 'x') }}", typecheck.FailureEvaluation, values.EvaluationInvalid, exprtypes.KindBool},
+		{"${{ case(1, 'a', 'b') }}", typecheck.FailureEvaluation, values.EvaluationInvalid, exprtypes.KindAny},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
@@ -56,11 +56,11 @@ func TestInvalidCallRetainsReturnType(t *testing.T) {
 }
 
 func TestExpressionPreservesCallFacts(t *testing.T) {
-	exprfunctions.Builtins["hosttest"] = exprfunctions.Function{Signatures: []*exprfunctions.FuncSignature{
+	functions.Builtins["hosttest"] = functions.Function{Signatures: []*functions.FuncSignature{
 		{Name: "hosttest", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "hosttest", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
 	}}
-	t.Cleanup(func() { delete(exprfunctions.Builtins, "hosttest") })
+	t.Cleanup(func() { delete(functions.Builtins, "hosttest") })
 	for _, tc := range []struct {
 		source   string
 		declared []exprtypes.TypeKind
@@ -84,14 +84,14 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 			}
 		}
 	}
-	original := exprfunctions.Builtins["startswith"]
+	original := functions.Builtins["startswith"]
 	changed := original
-	changed.Signatures = []*exprfunctions.FuncSignature{{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}
-	exprfunctions.Builtins["startswith"] = changed
-	t.Cleanup(func() { exprfunctions.Builtins["startswith"] = original })
+	changed.Signatures = []*functions.FuncSignature{{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}
+	functions.Builtins["startswith"] = changed
+	t.Cleanup(func() { functions.Builtins["startswith"] = original })
 	rule := newTestChecker()
 	types, valid := rule.checkExprsIn("${{ startsWith('x', 'x') }}", &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")
-	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindNumber || types[0].semantics.Call == nil || types[0].semantics.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue {
+	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindNumber || types[0].semantics.Call == nil || types[0].semantics.Call.ReturnDomain != functions.ReturnDomainExcludesValue {
 		t.Fatalf("contradictory evaluated value replaced return contract: %+v", types)
 	}
 }
@@ -108,7 +108,7 @@ func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 	if len(rule.Findings()) != 1 || rule.Findings()[0].Rule != "coercion" {
 		t.Fatalf("expected coercion advisory: %+v", rule.Findings())
 	}
-	if types[0].semantics.Evaluation.State != exprvalues.EvaluationKnown || types[0].semantics.Evaluation.Value != true {
+	if types[0].semantics.Evaluation.State != values.EvaluationKnown || types[0].semantics.Evaluation.Value != true {
 		t.Fatalf("advisory lost constant evaluation: %+v", types[0].semantics.Evaluation)
 	}
 }

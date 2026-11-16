@@ -9,7 +9,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -52,7 +52,7 @@ func analyzeDocuments(ctx context.Context, options checking.Options, documents m
 		for _, source := range sources {
 			paths = append(paths, source.Path)
 		}
-		return checking.Check(ctx, options, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
+		return checking.Check(ctx, options, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 	})
 }
 

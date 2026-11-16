@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"

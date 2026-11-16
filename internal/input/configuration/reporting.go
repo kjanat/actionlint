@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 )
 
@@ -29,16 +29,16 @@ type OutputConfig struct {
 func (c *OutputConfig) DecodeConfig(value any) error {
 	type plain OutputConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	for i, name := range next.Formats {
 		if !outputformat.Valid(name) {
-			return binding.At("formats", binding.At(strconv.Itoa(i), fmt.Errorf("unknown output format %q", name)))
+			return configdecode.At("formats", configdecode.At(strconv.Itoa(i), fmt.Errorf("unknown output format %q", name)))
 		}
 	}
 	if next.LogLevel != nil && *next.LogLevel != "info" && *next.LogLevel != "debug" && *next.LogLevel != "none" {
-		return binding.At("log-level", fmt.Errorf("invalid log level %q: choose info, debug or none", *next.LogLevel))
+		return configdecode.At("log-level", fmt.Errorf("invalid log level %q: choose info, debug or none", *next.LogLevel))
 	}
 	*c = OutputConfig(next)
 	return nil

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
 
 // ActionOrigin resolves the runner and analysis locations of one composite invocation.
@@ -17,7 +17,7 @@ func ActionOrigin(paths *Paths, context invocation.Context, actionPath string) {
 	if !ok || !effects.HasUses {
 		return
 	}
-	_, paths.ActionIndependent = references.SelfRepositoryLocal(effects.Uses)
+	_, paths.ActionIndependent = callreferences.SelfRepositoryLocal(effects.Uses)
 	if !paths.ActionIndependent {
 		paths.ActionRunnerPath = strings.TrimPrefix(effects.Uses, "./")
 		placement := paths.Placements.Matching(paths.ActionRunnerPath)

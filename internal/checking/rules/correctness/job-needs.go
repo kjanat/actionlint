@@ -40,9 +40,9 @@ func checkJobDependencies(w workflows.Workflow) []reporting.StepFinding {
 		}
 		return left.Column - right.Column
 	})
-	input := make([]jobneeds.Job, 0, len(jobs))
+	input := make([]jobneeds.JobDependencies, 0, len(jobs))
 	for _, job := range jobs {
-		item := jobneeds.Job{ID: jobneeds.Name{Value: job.ID.Text(), Start: source.ZeroIfNil(source.NilUnlessPresent(job.ID.Position()))}}
+		item := jobneeds.JobDependencies{ID: jobneeds.Name{Value: job.ID.Text(), Start: source.ZeroIfNil(source.NilUnlessPresent(job.ID.Position()))}}
 		for _, dep := range job.Needs {
 			item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: source.ZeroIfNil(dep.Pos)})
 		}

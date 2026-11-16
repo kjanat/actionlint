@@ -11,10 +11,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestLocalActionSuppressionSourcesStayWorkflowScoped(t *testing.T) {
@@ -44,13 +44,13 @@ jobs:
 permissions: {}
 `)
 	project := workspace.Identity(root)
-	actions := workspaceactions.NewCache(t.Context(), projectRoot(project), nil)
-	workflows := workflows.NewCache(project.RootDir(), nil)
-	process := process.NewProcessPool(t.Context(), 1)
+	actions := localactions.NewCache(t.Context(), projectRoot(project), nil)
+	workflows := reusableworkflows.NewCache(project.RootDir(), nil)
+	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	var declarations *capturedSnapshots
 	session.snapshots, session.captures, declarations = newCapturedSnapshots(t, root)
-	actions.Configure(workspaceactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
+	actions.Configure(localactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)

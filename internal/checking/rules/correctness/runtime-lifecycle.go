@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -39,7 +39,7 @@ func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 			if !known {
 				return nil
 			}
-			target, valid := references.ParseRepositoryUses(spec)
+			target, valid := callreferences.ParseRepositoryUses(spec)
 			if !valid || !strings.EqualFold(target.Owner, "actions") || !strings.EqualFold(target.Repo, "setup-node") || target.Subpath != "" {
 				return nil
 			}

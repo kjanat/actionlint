@@ -16,10 +16,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
@@ -165,7 +166,7 @@ func TestTombiMetadata(t *testing.T) {
 
 func TestRuleLevelSuggestions(t *testing.T) {
 	t.Parallel()
-	if schema := mapYAMLType(reflect.TypeFor[configuration.Level](), nil); schema.Ref != "#/$defs/level" {
+	if schema := mapYAMLType(reflect.TypeFor[ruleconfig.Level](), nil); schema.Ref != "#/$defs/level" {
 		t.Fatalf("level property does not reference its shared definition: %+v", schema)
 	}
 	schema := levelSchema()
@@ -313,7 +314,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 	read := func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}
-	installed, err := schema.Document(read, []schema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
+	installed, err := configschema.Document(read, []configschema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +501,7 @@ func TestGeneratedSchemaFormatting(t *testing.T) {
 
 func TestBundledProviderSchemas(t *testing.T) {
 	t.Chdir("../../../..")
-	providers, err := manifests.Bundled()
+	providers, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -540,7 +541,7 @@ func TestBundledProviderSchemas(t *testing.T) {
 
 func TestProviderSettingsDoNotRequireHostFields(t *testing.T) {
 	t.Chdir("../../../..")
-	provider := manifests.Manifest{
+	provider := toolmanifest.Manifest{
 		ConfigSchema: json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"new-check-option":{"type":"integer","minimum":7}},"required":["new-check-option"]}`),
 	}
 	provider.Rule.Name = "new-check"

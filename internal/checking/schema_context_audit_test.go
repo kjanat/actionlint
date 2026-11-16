@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -180,7 +180,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow,
 	if err != nil {
 		t.Fatal(err)
 	}
-	runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	runners, err := runneracquisition.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,11 +7,11 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -51,7 +51,7 @@ func WritePath(out io.Writer, req PathOptions) error {
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, map[string]string{"path": path})
+		return commandio.WriteJSON(out, map[string]string{"path": path})
 	}
 	if path != "" {
 		_, err = fmt.Fprintln(out, path)
@@ -59,13 +59,13 @@ func WritePath(out io.Writer, req PathOptions) error {
 	return err
 }
 
-func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Settings) error {
+func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Options) error {
 	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if err != nil {
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, struct {
+		return commandio.WriteJSON(out, struct {
 			Path     string                 `json:"path"`
 			Valid    bool                   `json:"valid"`
 			Warnings []configreport.Warning `json:"warnings,omitempty"`
@@ -91,16 +91,16 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 // WriteSchema writes the configuration JSON schema to out. Beyond the
 // published actionlint.schema.json, it describes tools.<name> for every tool
 // provider that the --plugin flags or the selected configuration install.
-func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Settings) error {
+func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Options) error {
 	manifests, err := checking.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
 		return err
 	}
-	providers := make([]schema.ToolProvider, 0, len(manifests))
+	providers := make([]configschema.ToolProvider, 0, len(manifests))
 	for _, manifest := range manifests {
 		providers = append(providers, manifest.ConfigurationSchemaProvider())
 	}
-	document, err := schema.Document(schema.Schema, providers)
+	document, err := configschema.Document(configschema.Schema, providers)
 	if err != nil {
 		return err
 	}
@@ -108,13 +108,13 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	return err
 }
 
-func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Settings) error {
+func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Options) error {
 	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
 	if err != nil {
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, inspection)
+		return commandio.WriteJSON(out, inspection)
 	}
 	encoder := yaml.NewEncoder(out)
 	encoder.SetIndent(2)
@@ -127,7 +127,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 }
 
 // Run migrates the selected configuration.
-func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
 	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err
@@ -150,7 +150,7 @@ func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Stream
 		}
 	}
 	if req.JSON {
-		err = commandstreams.WriteJSON(streams.Stdout, struct {
+		err = commandio.WriteJSON(streams.Stdout, struct {
 			Path    string   `json:"path"`
 			Changed bool     `json:"changed"`
 			Content string   `json:"content"`

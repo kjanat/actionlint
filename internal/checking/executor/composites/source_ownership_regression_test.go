@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -42,7 +42,7 @@ func (r *sourceMutationRule) VisitOpaqueAction(step workflows.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
+func (r *sourceMutationRule) ForMetadata(*localactions.Resolver) workflowvisit.MetadataParticipant {
 	r.metadata++
 	return r
 }
@@ -212,7 +212,7 @@ func mutateCallInput(t *testing.T, f *invocationFixture, view workflows.Step, te
 	t.Fatal("mutable call input unavailable")
 }
 
-func mutateMetadataScalar(step *actionmeta.Step, key, value string) {
+func mutateMetadataScalar(step *actionmeta.CompositeStep, key, value string) {
 	for i := 0; i+1 < len(step.Node.Content); i += 2 {
 		if step.Node.Content[i].Value == key {
 			step.Node.Content[i+1].Value = value

@@ -25,10 +25,10 @@ func writeEngineConfig(t *testing.T, module string) string {
 
 // The repository backend applies to the default Ruff selection, so these runs omit --ruff.
 func runWithDefaultRuff(input string, args ...string) commandTranscript {
-	return runWithDefaultRuffAndAcquisition(pluginacquisition.Settings{}, input, args...)
+	return runWithDefaultRuffAndAcquisition(pluginacquisition.Options{}, input, args...)
 }
 
-func runWithDefaultRuffAndAcquisition(acquisition pluginacquisition.Settings, input string, args ...string) commandTranscript {
+func runWithDefaultRuffAndAcquisition(acquisition pluginacquisition.Options, input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout, Acquisition: acquisition}
 	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-color", "check", "--summary=false", "--output-format=text"}, args...))

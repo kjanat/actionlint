@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
 
 type ContainerUseKind uint8
@@ -28,13 +28,13 @@ type ContainerUse struct {
 
 // MayRun excludes an alternative only when a condition is provably false.
 // Invalid conditions and unknown runtime values cannot establish exclusion.
-func (target ContainerTarget) MayRun(conditions ...string) bool {
-	for _, condition := range conditions {
+func (target ContainerTarget) MayRun(conditionList ...string) bool {
+	for _, condition := range conditionList {
 		if condition == "" {
 			continue
 		}
 		node, err, _ := syntax.ParseConditionExpression(condition)
-		if err == nil && workflowconditions.NeverRunsWithVariables(node, target.LookupExpressionVariable) {
+		if err == nil && conditions.NeverRunsWithVariables(node, target.LookupExpressionVariable) {
 			return false
 		}
 	}

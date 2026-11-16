@@ -11,10 +11,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -33,7 +33,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			configPath := filepath.Join(root, ".github", "actionlint.yaml")
 			if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			if tc.offline {
 				ctx, _ = network.WithSession(ctx, network.Options{Offline: true})
 			}
-			result, err := checking.CheckProjects(ctx, checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}, selection)
+			result, err := checking.CheckProjects(ctx, checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}, selection)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,13 +82,13 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 
 func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	t.Parallel()
-	component, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
+	component, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", component)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
@@ -109,11 +109,11 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 		{RuleSet: checking.ConfigurationRules(), Paths: []string{filepath.Join(root, "runner.wasm")}, Acquisition: acquisition, DisableTools: true},
 	} {
 		fixturefiles.WriteText(t, filepath.Join(root, "runner.wasm"), string(component))
-		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+		sources, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 		if err != nil {
 			t.Fatal(err)
 		}
-		loaded, err := pluginexec.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
+		loaded, err := pluginexecution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +128,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	if err := os.WriteFile(cachePath, []byte("corrupt"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	_, err = (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 	if err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
 		t.Fatalf("corrupt cached artifact was ignored: %v", err)
 	}

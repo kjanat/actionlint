@@ -42,7 +42,7 @@ func generateFixtures(ctx context.Context) error {
 		if err := os.WriteFile(input, []byte(definition), 0o600); err != nil {
 			return err
 		}
-		output := filepath.Join("../../../../internal/plugins/execution/component/testdata/contracts", variant.name+".wasm")
+		output := filepath.Join("../../../../internal/plugins/pluginexecution/component/testdata/contracts", variant.name+".wasm")
 		if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
 			return err
 		}

@@ -13,27 +13,27 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -45,7 +45,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
-	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,7 +66,7 @@ type analysisSession struct {
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
-	workflowNames        *names.Index
+	workflowNames        *nameindex.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
@@ -78,15 +78,15 @@ type analysisSession struct {
 	actionDocuments *actionDocuments
 	gitModes        *gitModes
 	ignorePats      configuration.IgnorePatterns
-	ignoreSelectors resultpolicy.IgnoreSelectors
+	ignoreSelectors policy.IgnoreSelectors
 	onRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
 	rulePresets     configuration.Presets
 }
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
-) ([]*finding.Finding, outline.Outline, *resultpolicy.Batch, error) {
+	processes *hostprocess.ProcessPool, actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
 	}
@@ -104,8 +104,8 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
-) (findings []*finding.Finding, outline outline.Outline, publication *resultpolicy.Batch, resultErr error) {
+	actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+) (findings []*finding.Finding, outline outline.Outline, publication *policy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
 	if project != nil {
@@ -225,7 +225,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			entryAliases = append(entryAliases, relative)
 		}
 	}
-	resultpolicy.InferReferences(all, sourcePath, references, entryAliases...)
+	policy.InferReferences(all, sourcePath, references, entryAliases...)
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
 	canonicalPaths := map[string]string{root: canonicalRoot, s.workingDir: canonicalWorkingDir}
@@ -251,9 +251,9 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		finding.Binding = scope.Rule(finding.Rule).ID()
 	}
-	policy := resultpolicy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	policy.EnforcedLifecycle = s.environment.EnforcedLifecycle
-	policy.IgnoreSelectors = s.ignoreSelectors
+	resultPolicy := policy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
+	resultPolicy.IgnoreSelectors = s.ignoreSelectors
 	// Suppression findings use paths relative to the working directory. Add those
 	// paths to the source-reference lookup to identify the declaring document.
 	reported := maps.Clone(references)
@@ -264,14 +264,14 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			}
 		}
 	}
-	publication = &resultpolicy.Batch{Processor: resultpolicy.Processor{RuleSet: settings.rules, CanonicalPaths: canonicalPaths}, Policy: policy, Sources: composed.Sources, References: reported, EntryAliases: entryAliases}
+	publication = &policy.Batch{Processor: policy.Processor{RuleSet: settings.rules, CanonicalPaths: canonicalPaths}, Policy: resultPolicy, Sources: composed.Sources, References: reported, EntryAliases: entryAliases}
 	s.log("Collected", len(all), "findings in", time.Since(start).Milliseconds(), "ms for", path)
 	return all, outline, publication, analysisErr
 }
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
+	actions *localactions.Cache, workflows *reusableworkflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -303,7 +303,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if cfg != nil {
 		mappings = cfg.LocalActions
 	}
-	resolvedActions := workspaceactions.NewResolver(actions, mappings)
+	resolvedActions := localactions.NewResolver(actions, mappings)
 	host := s.repositories[projectRoot(project)]
 	facts := configuration.RepositoryFacts(cfg, host)
 	customLabels := runners.LabelSet{}
@@ -314,7 +314,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if runnerOptions.Service == nil {
 		runnerOptions.Service = &facts.Service
 	}
-	runners, runnerErr := runnerinput.PrepareWithLabels(s.ctx, snapshot, customLabels, runnerOptions, root)
+	runners, runnerErr := runneracquisition.PrepareWithLabels(s.ctx, snapshot, customLabels, runnerOptions, root)
 	if report := runners.Report(); report.CacheKey != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
@@ -394,7 +394,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ResolveExecution: selected.resolveExecution || requires[rule.Execution], Join: join, Debug: s.debugWriter(),
 	}
 	if action {
-		deployment, deploymentErr := scripts.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scriptanalysis.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}

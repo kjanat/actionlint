@@ -42,7 +42,7 @@ replaces a deprecated alias. Root keys follow the schema's order when Tombi form
 the file. Arrays are not sorted because settings such as `extends` depend on
 their order. See [Tombi's schema extensions](https://tombi-toml.github.io/tombi/docs/json-schema/).
 
-`internal/input/configuration/rules.Levels()` and `Presets()` supply the accepted value sets
+`internal/input/configuration/ruleconfig.Levels()` and `Presets()` supply the accepted value sets
 to validation and generation. `Categories()` uses the category list from the
 shared rule declarations, so configuration does not introduce another list.
 

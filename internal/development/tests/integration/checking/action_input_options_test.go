@@ -12,13 +12,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 )
 
 type inputOptionsBackend struct {
@@ -68,8 +68,8 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 		name, shell, base, nested string
 		registration              contract.Registration
 	}{
-		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", providerRegistration(t, "ruff", backends.ToolSelection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", backends.ToolSelection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", providerRegistration(t, "ruff", backends.ToolSelection{Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", backends.ToolSelection{Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -90,14 +90,14 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 				}
 			}
 			engine := &inputOptionsBackend{name: tc.name, validated: map[string]int{}}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 			if err != nil {
 				t.Fatal(err)
 			}

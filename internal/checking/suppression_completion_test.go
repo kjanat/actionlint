@@ -9,10 +9,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -96,7 +96,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 			result, err := Analyze(t.Context(), Options{
 				WorkingDir: root,
 				Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {
-					Command: "shellcheck", Process: &process.CommandOptions{Executable: &missing, Optional: true},
+					Command: "shellcheck", Process: &hostprocess.CommandOptions{Executable: &missing, Optional: true},
 				}}),
 			}, []workspace.InputFile{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\npermissions: {}\n")}})
 			if err != nil || result == nil {
@@ -133,9 +133,9 @@ func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
 	result, err := Check(t.Context(), Options{
 		WorkingDir: root,
 		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {
-			Command: "shellcheck", Process: &process.CommandOptions{Executable: &missing, Optional: true},
+			Command: "shellcheck", Process: &hostprocess.CommandOptions{Executable: &missing, Optional: true},
 		}}),
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || result == nil {
 		t.Fatalf("optional tool became a fatal error: %v", err)
 	}

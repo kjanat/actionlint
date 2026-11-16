@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
@@ -72,8 +72,8 @@ permissions: {}
 			t.Fatal(err)
 		}
 	}
-	options := func(tool string) *process.CommandOptions {
-		return &process.CommandOptions{
+	options := func(tool string) *hostprocess.CommandOptions {
+		return &hostprocess.CommandOptions{
 			Executable: &executable,
 			Arguments:  []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", tool},
 		}
@@ -94,7 +94,7 @@ permissions: {}
 					session := checking.Options{WorkingDir: root, ConfigFile: configPath, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Process: options("shellcheck")}})}
 
 					paths := []string{filepath.Join(root, sources[0].Path), filepath.Join(root, sources[1].Path)}
-					result, analysisErr = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
+					result, analysisErr = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 				}
 				if analysisErr == nil || !strings.Contains(analysisErr.Error(), "exited with status 2") {
 					t.Fatalf("missing analyzer process failure: %v", analysisErr)

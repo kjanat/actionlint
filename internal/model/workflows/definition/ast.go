@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
@@ -564,6 +564,25 @@ const (
 	// ExecKindParallel identifies a group of steps that run in parallel.
 	ExecKindParallel
 )
+
+// String returns the name reports use for the kind: uses, run, wait, cancel or
+// parallel. Unknown kinds return "unknown".
+func (k ExecKind) String() string {
+	switch k {
+	case ExecKindAction:
+		return "uses"
+	case ExecKindRun:
+		return "run"
+	case ExecKindWait:
+		return "wait"
+	case ExecKindCancel:
+		return "cancel"
+	case ExecKindParallel:
+		return "parallel"
+	default:
+		return "unknown"
+	}
+}
 
 // Exec identifies how a workflow step is executed.
 type Exec interface {

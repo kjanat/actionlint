@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 // CallInspection describes failures and return-type refinements established from
@@ -130,7 +130,7 @@ func inspectFromJSON(arguments []ParameterMatch, inspection *CallInspection) {
 	}
 }
 
-func inspectJSONMembers(parsed json.ReadResult, inspection *CallInspection) {
+func inspectJSONMembers(parsed runnerjson.ReadResult, inspection *CallInspection) {
 	for _, collision := range parsed.Collisions {
 		inspection.addProblem(JSONMemberCollision{First: collision.First, Second: collision.Second, Offset: collision.Offset}, DemandRequired)
 	}

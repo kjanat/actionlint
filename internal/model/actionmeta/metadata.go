@@ -33,11 +33,11 @@ type KeyValue struct {
 	Value ExprString `json:"value"`
 }
 
-// Step is a step in "steps" section in "runs" section of action.yaml for a
+// CompositeStep is a step in "steps" section in "runs" section of action.yaml for a
 // composite action. The runner only accepts a step which runs a script with "run" and "shell"
 // keys, or a step which runs another action with "uses" key.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runssteps
-type Step struct {
+type CompositeStep struct {
 	// Line is the line where the step starts in action.yaml.
 	Line int `json:"line"`
 	// Column is the column where the step starts in action.yaml.
@@ -92,7 +92,7 @@ func yamlExprString(n *codec.Node) *ExprString {
 	return nil
 }
 
-type actionCompositeSteps []*Step
+type actionCompositeSteps []*CompositeStep
 
 // Runs is "runs" section of action.yaml. It defines how the action is run.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs

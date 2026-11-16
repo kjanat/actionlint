@@ -12,11 +12,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
@@ -63,7 +63,7 @@ func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkU
 		refinement := expressionRefinement{state: value.Dynamic}
 		if result.Valid {
 			refinement = rule.expressionType("${{"+s[:offsetAfter], result.Evaluation)
-			if refinement.state == value.Evaluated && (result.Call == nil || result.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue) {
+			if refinement.state == value.Evaluated && (result.Call == nil || result.Call.ReturnDomain != functions.ReturnDomainExcludesValue) {
 				ty = refinement.ty
 			}
 		} else {

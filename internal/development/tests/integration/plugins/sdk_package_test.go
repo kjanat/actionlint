@@ -14,11 +14,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 // The package is optional for Go-only contributors. This check exercises the
@@ -61,7 +61,7 @@ export default defineProcessProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.ParsePluginManifest(data)
+	manifest, err := toolmanifest.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("SDK output is not a host provider: %v\n%s", err, data)
 	}
@@ -109,7 +109,7 @@ export default defineDocumentProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.ParsePluginManifest(data)
+	manifest, err := toolmanifest.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("callback manifest rejected: %v\n%s", err, data)
 	}

@@ -19,7 +19,7 @@ func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			network := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 			manifest := ociProcessManifest(t, "not-installed-and-must-not-run", "[]")
 			network.SetFile(source, manifest)
 			root := t.TempDir()

@@ -5,8 +5,8 @@ import (
 	"maps"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // configOrigins assigns source locations after inheritance and Action overrides.

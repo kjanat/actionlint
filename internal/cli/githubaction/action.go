@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
@@ -31,7 +31,7 @@ type action struct {
 	newID       func() string
 	timeout     time.Duration
 	result      *lintResult
-	acquisition pluginacquisition.Settings
+	acquisition pluginacquisition.Options
 }
 
 var resultNamesByExitCode = map[int]string{
@@ -99,12 +99,12 @@ func (a *action) execute() (int, error) {
 	outcome, count := lint.lintOutcome, ""
 	var rendered string
 	if in.format == formatJSON || in.format == formatJSONLines {
-		var output bytes.Buffer
+		var jsonOutput bytes.Buffer
 		report := a.checkResult(outcome.code, nil)
-		if err := render.WriteJSON(&output, report, in.format == formatJSONLines); err != nil {
+		if err := output.WriteJSON(&jsonOutput, report, in.format == formatJSONLines); err != nil {
 			return 0, err
 		}
-		rendered = output.String()
+		rendered = jsonOutput.String()
 		if outcome.code == exitcode.ExitSuccessNoProblem || outcome.code == exitcode.ExitSuccessProblemFound {
 			count = strconv.Itoa(len(lint.report.Diagnostics))
 		}

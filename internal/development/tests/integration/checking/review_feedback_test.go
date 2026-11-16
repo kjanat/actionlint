@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -62,12 +62,12 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
-	baseline, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	baseline, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || baseline == nil || len(baseline.Diagnostics) != 1 {
 		t.Fatalf("baseline=%+v err=%v", baseline, err)
 	}
 	options.ConfigOverlays = []configuration.Overlay{overlay}
-	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || result == nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("overlay did not disable lint findings: result=%+v err=%v", result, err)
 	}

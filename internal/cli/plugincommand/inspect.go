@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -22,13 +22,13 @@ type InspectOptions struct {
 }
 
 // Run reads plugin metadata without executing the plugin.
-func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (r InspectOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
 	info, err := inspectSource(ctx, r, acquisition)
 	if err != nil {
 		return 0, err
 	}
 	if r.JSON {
-		return 0, commandstreams.WriteJSON(streams.Stdout, info)
+		return 0, commandio.WriteJSON(streams.Stdout, info)
 	}
 	if _, err := fmt.Fprintf(streams.Stdout, "%s\nKind: %s\nSHA256: %s\nSize: %d bytes (%d decoded)\n", info.Source, info.Kind, info.SHA256, info.Size, info.ModuleSize); err != nil {
 		return 0, err
@@ -42,16 +42,16 @@ func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams,
 		if _, err := fmt.Fprintln(streams.Stdout, "Tool provider manifest:"); err != nil {
 			return 0, err
 		}
-		return 0, commandstreams.WriteJSON(streams.Stdout, info.Metadata)
+		return 0, commandio.WriteJSON(streams.Stdout, info.Metadata)
 	}
 	if info.Metadata == nil {
 		_, err := fmt.Fprintln(streams.Stdout, "No actionlint.plugin custom section.")
 		return 0, err
 	}
-	return 0, commandstreams.WriteJSON(streams.Stdout, info.Metadata)
+	return 0, commandio.WriteJSON(streams.Stdout, info.Metadata)
 }
 
-func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacquisition.Settings) (artifacts.ArtifactProvenance, error) {
+func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacquisition.Options) (artifacts.ArtifactProvenance, error) {
 	_, statErr := os.Stat(r.Source)
 	local := statErr == nil || filepath.IsAbs(r.Source) || strings.HasPrefix(r.Source, ".") || strings.Contains(r.Source, `\`)
 	if local || strings.Contains(r.Source, "://") {

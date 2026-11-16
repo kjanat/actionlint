@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -22,7 +23,7 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 }
 
 type inlineAudit struct {
-	level func(string) configuration.Level
+	level func(string) ruleconfig.Level
 	used  func(source.Position, string)
 }
 

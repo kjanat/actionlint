@@ -90,7 +90,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	network.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-	client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+	client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 				}
 				network.SetFile(url, data)
 			}
-			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,7 +219,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 				}
 			}
 			u := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(root), "/") + "/"}
-			client, err := New(u.String(), pluginacquisition.Settings{UserCacheDir: t.TempDir()})
+			client, err := New(u.String(), pluginacquisition.Options{UserCacheDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

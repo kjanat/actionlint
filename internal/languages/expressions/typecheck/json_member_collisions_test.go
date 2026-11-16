@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 func TestJSONMemberCollisions(t *testing.T) {
@@ -36,7 +36,7 @@ func TestJSONMemberCollisions(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			collisions := json.JSONMemberCollisions(tc.input)
+			collisions := runnerjson.JSONMemberCollisions(tc.input)
 			if len(collisions) != tc.count {
 				t.Fatalf("got %v", collisions)
 			}
@@ -62,7 +62,7 @@ func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			if got := json.JSONMemberCollisions(input); len(got) != 0 {
+			if got := runnerjson.JSONMemberCollisions(input); len(got) != 0 {
 				t.Fatal(got)
 			}
 			expr := syntax.ParseAssignedExpression("${{ fromJSON('" + input + "') }}")
@@ -72,7 +72,7 @@ func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
 			}
 		})
 	}
-	if got := json.JSONMemberCollisions("{\"a\":1,\"A\":2} \n\t"); len(got) != 1 {
+	if got := runnerjson.JSONMemberCollisions("{\"a\":1,\"A\":2} \n\t"); len(got) != 1 {
 		t.Fatal(got)
 	}
 }

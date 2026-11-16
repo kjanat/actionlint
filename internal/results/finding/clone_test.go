@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -67,7 +67,7 @@ func TestClonePreservesAbsentReferences(t *testing.T) {
 
 func TestCloneDetachesLifecycleAndKeepsBindingIdentity(t *testing.T) {
 	t.Parallel()
-	namespace := bindingmodel.NewNamespace()
+	namespace := binding.NewNamespace()
 	original := &Finding{
 		Binding:           namespace.ID(1),
 		Lifecycle:         &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},

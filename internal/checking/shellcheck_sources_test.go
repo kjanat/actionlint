@@ -13,10 +13,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -42,7 +42,7 @@ func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
 	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":1,"column":6,"level":"info","code":2086,"message":"reported source"}]}`, encodedPath), nil
 	}}})}
-	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ jobs:
 permissions: {}
 `)
 			options := checking.Options{WorkingDir: root}
-			optionsTools := registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}
+			optionsTools := registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}}
 			if tc.rc {
 				rc := writeFixture(t, root, ".shellcheckrc", "shell=bash\n")
 				options.ConfigFile = writeFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: '"+filepath.ToSlash(rc)+"'}}\n")
@@ -104,7 +104,7 @@ permissions: {}
 			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -194,10 +194,10 @@ jobs:
           . ./scripts/lib.sh
 permissions: {}
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -230,8 +230,8 @@ func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
 				comment = " # actionlint:ignore shellcheck -- reviewed source"
 			}
 			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: . ./scripts/lib.sh"+comment+"\npermissions: {}\n")
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}

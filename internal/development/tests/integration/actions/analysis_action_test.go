@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -107,7 +107,7 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if len(result.Documents) != 3 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" {
 		t.Fatalf("unexpected mixed result: %+v", result)
 	}
-	if _, ok := result.Documents[0].(outline.Workflow); !ok {
+	if _, ok := result.Documents[0].(outline.WorkflowOutline); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
 	if outline, ok := result.Documents[2].(outline.Action); !ok || outline.ParseStatus != "failed" {
@@ -129,7 +129,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
 			}
-			if _, ok := result.Documents[0].(outline.Workflow); !ok {
+			if _, ok := result.Documents[0].(outline.WorkflowOutline); !ok {
 				t.Fatalf("cwd=%s path=%s: workflow routed to metadata parser: %#v", cwd, path, result.Documents)
 			}
 		}

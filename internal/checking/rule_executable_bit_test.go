@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -21,7 +21,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		t.Helper()
 		root, git := executableFixture(t)
 		link := writeFixture(t, root, "link", "bad.sh")
-		object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+		object, err := gitcommand.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -539,7 +539,7 @@ jobs:
 			session := checking.Options{WorkingDir: root}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -602,7 +602,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh
 `)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -646,7 +646,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh "$UNSET"
 `)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -673,7 +673,7 @@ jobs:
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,7 +730,7 @@ jobs:
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
 			file := writeFixture(t, root, workflowFixturePath(t, "test"), workflow)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -754,7 +754,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh
 `)
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -762,7 +762,7 @@ jobs:
 		t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 	}
 	git("update-index", "--chmod=+x", "bad.sh")
-	result, err = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+	result, err = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 	if err != nil {
 		t.Fatal(err)
 	}

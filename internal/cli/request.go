@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
@@ -23,7 +23,7 @@ type commandRequest interface {
 
 // streamCommand is a command whose package runs it over command streams.
 type streamCommand interface {
-	Run(context.Context, commandstreams.Streams, pluginacquisition.Settings) (int, error)
+	Run(context.Context, commandio.Streams, pluginacquisition.Options) (int, error)
 }
 
 // streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.
@@ -69,8 +69,8 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	}
 	rules, err := checking.RulesWithPlugins(ctx, sources)
 	if err != nil {
-		if _, loadFailure := errors.AsType[*pluginexec.LoadError](err); loadFailure && len(selection.Paths) > 0 {
-			return 0, commandargs.UsageError{Cause: err}
+		if _, loadFailure := errors.AsType[*pluginexecution.LoadError](err); loadFailure && len(selection.Paths) > 0 {
+			return 0, arguments.UsageError{Cause: err}
 		}
 		return 0, err
 	}

@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
@@ -136,11 +136,11 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
 	t.Parallel()
-	checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
-	checker.SetContextTypes(contexts)
+	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+	knownContexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
+	checker.SetContextTypes(knownContexts)
 	checker.SetContextAvailability([]string{"custom"})
-	delete(contexts, "CUSTOM")
+	delete(knownContexts, "CUSTOM")
 	parser := syntax.Parser{}
 	custom, err := parser.ParseExpression(syntax.NewLexer("custom}}"))
 	if err != nil {
@@ -149,7 +149,7 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(custom)); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
-	other := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
+	other := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 	if _, errs := other.Check(evaluate.EvaluateSubexpressions(custom)); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}

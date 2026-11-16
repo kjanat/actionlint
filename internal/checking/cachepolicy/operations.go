@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -41,15 +41,15 @@ func CheckCallOperations(call *definition.WorkflowCall, granted *definition.Cach
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(source.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(source.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cache.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cachemodel.Grant, checked map[cacheModeVisit]bool) {
-	spec, local := references.LocalWorkflow(sourceSpec)
+func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
+	spec, local := callreferences.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
@@ -72,7 +72,7 @@ func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec str
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		own := cachemodel.FromMetadata(job.Mode)
+		own := cache.FromMetadata(job.Mode)
 		mode := granted.Override(own)
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid || known && valid && want&^have != 0 {
@@ -99,11 +99,11 @@ func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagno
 	if !ok || action.Uses == nil {
 		return nil
 	}
-	access, valid := cachemodel.FromDeclaration(mode).Capabilities()
+	access, valid := cache.FromDeclaration(mode).Capabilities()
 	if !valid {
 		return nil
 	}
-	name := references.CacheAction(action.Uses.Value)
+	name := callreferences.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
 		return []results.Diagnostic{report(source.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}

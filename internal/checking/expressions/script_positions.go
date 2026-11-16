@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"mvdan.cc/sh/v3/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	shellsyntax "mvdan.cc/sh/v3/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -41,21 +41,21 @@ func (rule *Checker) scriptShell(step workflows.Step) string {
 	return execution.ResolveShell(workflows.Scalar(run.Shell), jobShell, workflowShell, runnerShell).Name
 }
 
-func scriptShellVariant(shell string) (syntax.LangVariant, bool) {
+func scriptShellVariant(shell string) (shellsyntax.LangVariant, bool) {
 	words := strings.Fields(shell)
 	if len(words) == 0 || strings.Contains(shell, "${{") {
-		return syntax.LangBash, false
+		return shellsyntax.LangBash, false
 	}
 	if len(words) > 1 && !directShellScript(words[1:]) {
-		return syntax.LangBash, false
+		return shellsyntax.LangBash, false
 	}
 	switch path.Base(strings.ReplaceAll(words[0], "\\", "/")) {
 	case "bash", "bash.exe":
-		return syntax.LangBash, true
+		return shellsyntax.LangBash, true
 	case "sh", "sh.exe":
-		return syntax.LangPOSIX, true
+		return shellsyntax.LangPOSIX, true
 	default:
-		return syntax.LangBash, false
+		return shellsyntax.LangBash, false
 	}
 }
 
@@ -113,13 +113,13 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 			break
 		}
 		first := offset + index
-		lexer := exprsyntax.NewLexer(source[first+3:])
-		expression, err := exprsyntax.NewParser().ParseExpression(lexer)
+		lexer := syntax.NewLexer(source[first+3:])
+		expression, err := syntax.NewParser().ParseExpression(lexer)
 		if err != nil {
 			return scriptArgumentProofs{}
 		}
 		last := first + 3 + lexer.Offset()
-		expressions = append(expressions, span{first, last, runners.ContextEnvironmentFor(exprsyntax.StaticReference(expression))})
+		expressions = append(expressions, span{first, last, runners.ContextEnvironmentFor(syntax.StaticReference(expression))})
 		// Numeric masks preserve IO-number tokens before shell redirections.
 		for i := first; i < last; i++ {
 			if masked[i] != '\n' && masked[i] != '\r' {
@@ -131,13 +131,13 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 	if len(expressions) == 0 {
 		return scriptArgumentProofs{}
 	}
-	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(string(masked)), "")
+	file, err := shellsyntax.NewParser(shellsyntax.Variant(variant)).Parse(strings.NewReader(string(masked)), "")
 	if err != nil {
 		return scriptArgumentProofs{}
 	}
 	proofs := scriptArgumentProofs{scalars: map[int]bool{}, wordLists: map[int]bool{}, environment: map[int]scriptEnvironmentReplacement{}}
-	syntax.Walk(file, func(node syntax.Node) bool {
-		call, ok := node.(*syntax.CallExpr)
+	shellsyntax.Walk(file, func(node shellsyntax.Node) bool {
+		call, ok := node.(*shellsyntax.CallExpr)
 		if !ok || len(call.Args) < 2 {
 			return true
 		}
@@ -146,12 +146,12 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 		for _, argument := range call.Args[1:] {
 			if staticCommand && !scriptEvaluatesArguments(command, call.Args[1:]) {
 				for _, part := range argument.Parts {
-					quoted, ok := part.(*syntax.DblQuoted)
+					quoted, ok := part.(*shellsyntax.DblQuoted)
 					if !ok || quoted.Dollar {
 						continue
 					}
 					for _, part := range quoted.Parts {
-						literal, ok := part.(*syntax.Lit)
+						literal, ok := part.(*shellsyntax.Lit)
 						if !ok {
 							continue
 						}
@@ -190,19 +190,19 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 	return proofs
 }
 
-func wholeLiteralArgument(argument *syntax.Word, expressionFirst, expressionLast int) bool {
+func wholeLiteralArgument(argument *shellsyntax.Word, expressionFirst, expressionLast int) bool {
 	if len(argument.Parts) != 1 {
 		return false
 	}
 	first, last := int(argument.Pos().Offset()), int(argument.End().Offset())
 	switch part := argument.Parts[0].(type) {
-	case *syntax.Lit:
-	case *syntax.SglQuoted:
+	case *shellsyntax.Lit:
+	case *shellsyntax.SglQuoted:
 		if part.Dollar {
 			return false
 		}
 		first, last = first+1, last-1
-	case *syntax.DblQuoted:
+	case *shellsyntax.DblQuoted:
 		if part.Dollar || !literalScriptWord(part.Parts) {
 			return false
 		}
@@ -213,15 +213,15 @@ func wholeLiteralArgument(argument *syntax.Word, expressionFirst, expressionLast
 	return first == expressionFirst && last == expressionLast
 }
 
-func literalScriptWord(parts []syntax.WordPart) bool {
+func literalScriptWord(parts []shellsyntax.WordPart) bool {
 	for _, part := range parts {
 		switch part := part.(type) {
-		case *syntax.Lit:
-		case *syntax.SglQuoted:
+		case *shellsyntax.Lit:
+		case *shellsyntax.SglQuoted:
 			if part.Dollar {
 				return false
 			}
-		case *syntax.DblQuoted:
+		case *shellsyntax.DblQuoted:
 			if part.Dollar || !literalScriptWord(part.Parts) {
 				return false
 			}

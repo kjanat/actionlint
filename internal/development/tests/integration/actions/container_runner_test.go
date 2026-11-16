@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
@@ -34,7 +34,7 @@ func TestContainerRunnerNestedComposites(t *testing.T) {
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3"+tc.comment+"\n")
 			source := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: $/outer\n" + tc.guard + "      - uses: $/outer\n" + tc.guard + "\npermissions: {}\n"
 			workflow := fixturefiles.Write(t, root, ".github/workflows/docker.yml", source)
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}

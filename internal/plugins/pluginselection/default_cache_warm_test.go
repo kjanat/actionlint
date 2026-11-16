@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -22,11 +22,11 @@ func TestCacheWarmDownloadsDefaultEnginesWithoutScripts(t *testing.T) {
 	if err := os.WriteFile(config, []byte("{}"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DefaultTools: []string{"ruff"}, Acquisition: pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DefaultTools: []string{"ruff"}, Acquisition: pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
 	ctx, _ := network.WithSession(t.Context(), network.Options{WarmCache: true})
 	for _, version := range []string{"v1.0.0", "v1.0.1"} {
 		registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "example-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"ruff"}, RepositoryID: 99}, version, []byte{0, 97, 115, 109, 1, 0, 0, 0})
-		selected, err := selection.Resolve(ctx, root, inputmodel.Request{Kind: inputmodel.Repository})
+		selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
 		if err != nil {
 			t.Fatal(err)
 		}

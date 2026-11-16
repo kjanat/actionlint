@@ -10,7 +10,7 @@ import (
 
 // SourcesFromArguments copies plugin paths and grants network access to the
 // endpoint of each explicitly supplied remote source.
-func SourcesFromArguments(paths []string, acquisition pluginacquisition.Settings) (Sources, error) {
+func SourcesFromArguments(paths []string, acquisition pluginacquisition.Options) (Sources, error) {
 	sources := Sources{Paths: slices.Clone(paths), NetworkGrants: make(map[string]acquisitionhttp.Grant, len(paths)), Acquisition: acquisition}
 	for _, source := range paths {
 		grant, err := artifacts.ExplicitSource(source)

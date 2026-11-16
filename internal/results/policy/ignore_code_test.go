@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
@@ -27,7 +27,7 @@ func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				finding := &findingmodel.Finding{Rule: "shellcheck", Code: "SC2086", Message: message}
+				item := &finding.Finding{Rule: "shellcheck", Code: "SC2086", Message: message}
 				var policy Policy
 				var paths []configuration.PathConfig
 				if scope == "global" {
@@ -35,9 +35,9 @@ func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
 				} else {
 					paths = []configuration.PathConfig{{Ignore: patterns}}
 				}
-				got := filterErrors(policy, []*findingmodel.Finding{finding}, paths)
-				if (len(got) == 0) != tc.ignored || finding.Code != "SC2086" || finding.Message != message {
-					t.Fatalf("ignore=%q ignored=%t findings=%+v original=%+v", tc.pattern, tc.ignored, got, finding)
+				got := filterErrors(policy, []*finding.Finding{item}, paths)
+				if (len(got) == 0) != tc.ignored || item.Code != "SC2086" || item.Message != message {
+					t.Fatalf("ignore=%q ignored=%t findings=%+v original=%+v", tc.pattern, tc.ignored, got, item)
 				}
 			})
 		}

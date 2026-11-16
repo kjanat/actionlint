@@ -15,19 +15,19 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	gocmp "github.com/google/go-cmp/cmp"
@@ -135,7 +135,7 @@ type recordingRunner struct {
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -174,9 +174,9 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		t.Fatalf("no parity snapshot for %q", key)
 	}
 	want = hostSeverities(t, want)
-	var options *process.CommandOptions
+	var options *hostprocess.CommandOptions
 	if len(arguments) != 0 {
-		options = &process.CommandOptions{Arguments: arguments}
+		options = &hostprocess.CommandOptions{Arguments: arguments}
 	}
 	got := run(registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)
@@ -187,7 +187,7 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 // manifest's severities table, as the manifest route does.
 func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics {
 	t.Helper()
-	manifests, err := manifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +512,7 @@ func TestProviderParityCases(t *testing.T) {
 					t.Fatal(err)
 				}
 				workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: python\n    steps:\n      "+strings.ReplaceAll(tc.steps, "\n", "\n      ")+"\n")
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 				return toolFindings(t, result, err, recorder, map[string]string{root: "<root>"})
 			}
 			snapshots.assertParity(t, tc.name, run, shellcheck, ruff, tc.arguments...)

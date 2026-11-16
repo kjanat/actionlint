@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
@@ -29,13 +29,13 @@ func (f repositoryFile) Filename() string           { return f.filename }
 
 // LookupWorkflow uses workflow reference selection and the same HTTP client,
 // request accounting and immutable cache checks as action metadata.
-func (g *GitHub) LookupWorkflow(ctx context.Context, spec string) (workflows.RemoteFile, error) {
-	if !workflows.IsRemoteReference(spec) {
-		return workflows.RemoteFile{}, nil
+func (g *GitHub) LookupWorkflow(ctx context.Context, spec string) (reusableworkflows.RemoteFile, error) {
+	if !reusableworkflows.IsRemoteReference(spec) {
+		return reusableworkflows.RemoteFile{}, nil
 	}
 	ref, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		return workflows.RemoteFile{}, err
+		return reusableworkflows.RemoteFile{}, err
 	}
 	client := *g
 	if client.cacheDir != "" {
@@ -46,13 +46,13 @@ func (g *GitHub) LookupWorkflow(ctx context.Context, spec string) (workflows.Rem
 		network.CacheFailed(ctx, spec)
 	}
 	if err != nil {
-		return workflows.RemoteFile{}, err
+		return reusableworkflows.RemoteFile{}, err
 	}
 	if !file.Available() {
 		if network.Settings(ctx).Offline && (file.missing.Reason() == availability.OfflineReason || file.missing.Reason() == availability.CacheMissReason) {
 			network.Warn(ctx, "Skipping unavailable metadata for "+spec+" because it is not cached. Run actionlint cache warm while online.")
 		}
-		return workflows.UnavailableRemoteFile(file.missing), nil
+		return reusableworkflows.UnavailableRemoteFile(file.missing), nil
 	}
-	return workflows.NewRemoteFile(spec, file.Identity().Commit(), []byte(file.Content()))
+	return reusableworkflows.NewRemoteFile(spec, file.Identity().Commit(), []byte(file.Content()))
 }

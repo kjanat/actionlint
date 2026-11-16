@@ -2,7 +2,7 @@ package matrix
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // ContextType derives the matrix context from reachable values. rowElementTypes

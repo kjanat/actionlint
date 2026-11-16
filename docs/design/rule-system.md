@@ -49,20 +49,20 @@ with its owning subsystem.
 
 ## Script-tool boundary
 
-`internal/checking/scripts` defines the prepared script batch. Each tool receives the same
-batch type with its own configuration. `internal/checking/scripts/contract` defines
+`internal/checking/scriptanalysis` defines the prepared script batch. Each tool receives the same
+batch type with its own configuration. `internal/checking/scriptanalysis/contract` defines
 registration, the runner interface and findings.
-`internal/checking/scripts/backends` adapts the shared snippet protocol to native processes or
+`internal/checking/scriptanalysis/backends` adapts the shared snippet protocol to native processes or
 an injected WASM backend. Bundled manifests and their jq transforms under
 `internal/model/bundledproviders` define each tool's command and output conversion.
-`internal/checking/scripts/registry` constructs registrations from those manifests.
-`internal/checking/scripts/backends` selects the explicit or repository-configured transport.
+`internal/checking/scriptanalysis/registry` constructs registrations from those manifests.
+`internal/checking/scriptanalysis/backends` selects the explicit or repository-configured transport.
 Tool configuration is a map keyed by provider rule name; each bundled provider manifest under
 `internal/model/bundledproviders` supplies its configuration schema and shorthands, and
 `internal/input/configuration/tools` holds invocation settings. Decoding configuration never imports tool execution.
 The engine and application depend on registrations, not these implementations.
 
-`internal/integrations/process` owns process capacity and completion. CLI and LSP startup
+`internal/integrations/hostprocess` owns process capacity and completion. CLI and LSP startup
 compose artifact loading and registrations; independent core engines advertise
 shell selectors in metadata. Adding a provider requires no engine-name switch.
 Dependency tests enforce both directions, and integration tests exercise an
@@ -138,7 +138,7 @@ check receives workflow defaults and checks each job independently. Permission
 inheritance uses `calls.EffectivePermissions`, which distinguishes absent,
 invalid and explicit declarations and copies repository default maps.
 
-`internal/input/files/names` loads repository workflow names and records whether
+`internal/input/files/nameindex` loads repository workflow names and records whether
 every name was read. `internal/model/workflows/names` owns the immutable inventory
 and workflow-name filter grammar. The workflow-run-names rule produces findings
 under `internal/checking/rules/correctness`; the input loader

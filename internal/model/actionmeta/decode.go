@@ -323,9 +323,9 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 	return steps, nil
 }
 
-func (d manifestDecoder) step(root codec.Entered) (*Step, error) {
+func (d manifestDecoder) step(root codec.Entered) (*CompositeStep, error) {
 	n := root.Node()
-	s := &Step{Line: n.Line, Column: n.Column, Node: n}
+	s := &CompositeStep{Line: n.Line, Column: n.Column, Node: n}
 	if n.Kind != codec.MappingNode {
 		return s, nil
 	}

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -49,7 +49,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 				run  func(checking.Options) error
 			}{
 				{name: "Check", run: func(options checking.Options) error {
-					_, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files})
+					_, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files})
 					return err
 				}},
 				{name: "Analyze", run: func(options checking.Options) error {

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -221,7 +221,7 @@ func TestRunnyConditionExecution(t *testing.T) {
 		if step.If == nil {
 			t.Fatalf("condition missing from step %d", i)
 		}
-		enabled, known := workflowconditions.StepCondition(value.Condition(step.If.Value, value.Origin{}))
+		enabled, known := conditions.StepCondition(value.Condition(step.If.Value, value.Origin{}))
 		if !known || enabled != want[i] {
 			t.Errorf("step %d (%s): enabled=%v known=%v, want %v", i, step.If.Value, enabled, known, want[i])
 		}

@@ -8,11 +8,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -79,7 +79,7 @@ type containerAdapter struct {
 	workflowvisit.Base
 	ctx        context.Context
 	runners    *runners.Knowledge
-	actions    *workspace.PreparedActions
+	actions    *localactions.PreparedActions
 	remote     *remote.ResolvedActions
 	targets    []runners.ContainerTarget
 	guards     []string
@@ -89,7 +89,7 @@ type containerAdapter struct {
 
 // newContainerRunner supplies container facts to the rule and tracks enclosing
 // composite conditions. The composition coordinator acquires action metadata.
-func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runners.Knowledge, actions *workspace.Resolver, remote *remote.ResolvedActions) workflowvisit.Rule {
+func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runners.Knowledge, actions *localactions.Resolver, remote *remote.ResolvedActions) workflowvisit.Rule {
 	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
 }
 
@@ -120,11 +120,11 @@ func (r *containerAdapter) checkStep(step workflows.Step) error {
 		return nil
 	}
 	spec := action.Uses.Text()
-	form := references.FormOf(spec)
-	docker := form == references.FormContainer
-	if !docker && (form == references.FormWorkspace || form == references.FormSelfRepository) {
+	form := callreferences.FormOf(spec)
+	docker := form == callreferences.FormContainer
+	if !docker && (form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository) {
 		result, _ := r.actions.LookupMetadata(spec)
-		docker = result.Status() == workspace.MetadataDockerfileOnly
+		docker = result.Status() == localactions.MetadataDockerfileOnly
 		if meta := result.Metadata(); meta != nil {
 			docker = strings.EqualFold(meta.Runs.Using, "docker")
 		}
@@ -141,7 +141,7 @@ func (r *containerAdapter) checkStep(step workflows.Step) error {
 	return nil
 }
 
-func (r *containerAdapter) ApplyCheckout(actions *workspace.Resolver) {
+func (r *containerAdapter) ApplyCheckout(actions *localactions.Resolver) {
 	r.actions = actions.Prepared()
 }
 

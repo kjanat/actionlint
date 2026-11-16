@@ -6,8 +6,9 @@ import (
 	"maps"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -35,18 +36,18 @@ type LintConfig struct {
 type LintRulesConfig struct {
 	ruleState
 	// Preset selects recommended, all stable, or no rules before explicit settings.
-	Preset Preset `yaml:"preset,omitempty"`
+	Preset ruleconfig.Preset `yaml:"preset,omitempty"`
 	// Concern groups accept a level or a mapping of rule IDs to settings.
-	Correctness Group `yaml:"correctness,omitempty" clone:"shared"`
-	Suspicious  Group `yaml:"suspicious,omitempty" clone:"shared"`
-	Security    Group `yaml:"security,omitempty" clone:"shared"`
-	Conventions Group `yaml:"conventions,omitempty" clone:"shared"`
+	Correctness ruleconfig.Group `yaml:"correctness,omitempty" clone:"shared"`
+	Suspicious  ruleconfig.Group `yaml:"suspicious,omitempty" clone:"shared"`
+	Security    ruleconfig.Group `yaml:"security,omitempty" clone:"shared"`
+	Conventions ruleconfig.Group `yaml:"conventions,omitempty" clone:"shared"`
 	// Legacy groups remain readable until installed metadata permits migration.
-	Style    Group `yaml:"style,omitempty" clone:"shared"`
-	Policy   Group `yaml:"policy,omitempty" clone:"shared"`
-	External Group `yaml:"external,omitempty" clone:"shared"`
-	Plugins  Group `yaml:"plugins,omitempty" clone:"shared"`
-	Nursery  Group `yaml:"nursery,omitempty" clone:"shared"`
+	Style    ruleconfig.Group `yaml:"style,omitempty" clone:"shared"`
+	Policy   ruleconfig.Group `yaml:"policy,omitempty" clone:"shared"`
+	External ruleconfig.Group `yaml:"external,omitempty" clone:"shared"`
+	Plugins  ruleconfig.Group `yaml:"plugins,omitempty" clone:"shared"`
+	Nursery  ruleconfig.Group `yaml:"nursery,omitempty" clone:"shared"`
 	// Disable suppresses named diagnostic rule IDs. Omission or [] disables none.
 	// This applies to every diagnostic severity, including external tool warnings.
 	Disable []string `yaml:"disable" jsonschema:"nullable"`
@@ -66,7 +67,7 @@ type lintState struct {
 // captured rule sources and binding sources are only read after preparation.
 type ruleState struct {
 	ruleSet         RuleSet `clone:"shared"`
-	resolved        map[string]Level
+	resolved        map[string]ruleconfig.Level
 	resolvedFixed   map[string]bool
 	boundCategories map[string]string
 	boundSettings   map[string]boundSetting
@@ -76,7 +77,7 @@ type ruleState struct {
 
 // boundSetting shares an immutable Setting; its options can only be read as copies.
 type boundSetting struct {
-	Setting `clone:"shared"`
+	ruleconfig.Setting `clone:"shared"`
 }
 
 type bindingSource struct {
@@ -103,7 +104,7 @@ func ruleBindingSources(origin string, config *Config, locations ...map[string]d
 // CopyConfig detaches public lint settings and the complete private owner state.
 func (c LintConfig) CopyConfig() (any, error) {
 	type plain LintConfig
-	copied, err := binding.DetachPublicFields(plain(c))
+	copied, err := configdecode.DetachPublicFields(plain(c))
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func (c LintConfig) CopyConfig() (any, error) {
 
 func (c *LintRulesConfig) CopyConfig() (any, error) {
 	type plain LintRulesConfig
-	copied, err := binding.DetachPublicFields(plain(*c))
+	copied, err := configdecode.DetachPublicFields(plain(*c))
 	if err != nil {
 		return nil, err
 	}
@@ -127,15 +128,15 @@ func (c *LintRulesConfig) CopyConfig() (any, error) {
 func (c *LintConfig) DecodeConfig(value any) error {
 	type plain LintConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	for pattern := range next.MessageIgnores {
 		if !doublestar.ValidatePattern(pattern) {
-			return binding.At("message-ignores", binding.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
+			return configdecode.At("message-ignores", configdecode.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
 		}
 	}
-	detached, err := binding.DetachValue(value)
+	detached, err := configdecode.DetachValue(value)
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func (c *LintConfig) DecodeConfig(value any) error {
 func (c *LintRulesConfig) DecodeConfig(value any) error {
 	type plain LintRulesConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	*c = LintRulesConfig(next)
@@ -197,12 +198,12 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 }
 
 func ruleOptionsError(category, name string, err error) error {
-	return binding.Context(fmt.Sprintf("options for rule %q", name), binding.At(category, binding.At(name, binding.At("options", err))))
+	return configdecode.Context(fmt.Sprintf("options for rule %q", name), configdecode.At(category, configdecode.At(name, configdecode.At("options", err))))
 }
 
 // validateOptions checks a rule's JSON Schema or decodes its registered Go type.
 // A rule with neither contract accepts no options.
-func validateOptions(d rule.Declaration, setting Setting) error {
+func validateOptions(d rule.Declaration, setting ruleconfig.Setting) error {
 	if !setting.HasOptions() {
 		return nil
 	}
@@ -217,13 +218,13 @@ func validateOptions(d rule.Declaration, setting Setting) error {
 }
 
 // ResolvedLevel returns the level selected for a rule after presets were applied.
-func (c *LintRulesConfig) ResolvedLevel(name string) (Level, bool) {
+func (c *LintRulesConfig) ResolvedLevel(name string) (ruleconfig.Level, bool) {
 	level, ok := c.resolved[name]
 	return level, ok
 }
 
 // SetResolved records the levels selected after presets were applied.
-func (c *LintRulesConfig) SetResolved(levels map[string]Level) {
+func (c *LintRulesConfig) SetResolved(levels map[string]ruleconfig.Level) {
 	c.resolved = levels
 }
 

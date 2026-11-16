@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // ArgumentValueState distinguishes an unknown value from a rejected conversion.
@@ -59,7 +59,7 @@ func MatchParameter(parameter exprtypes.Type, arg CallArgument, compositeFallbac
 				}
 			}
 			if m.State == ArgumentKnown {
-				if value, ok := exprvalues.FunctionString(m.Value); ok {
+				if value, ok := values.FunctionString(m.Value); ok {
 					m.Value = value
 				} else {
 					m.Value, m.State = nil, ArgumentUnknown

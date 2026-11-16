@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -74,7 +74,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err := os.WriteFile(path, []byte(workflow), 0600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%v err=%v", result, err)
 	}

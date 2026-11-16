@@ -443,7 +443,7 @@ using the engine they started with.
 The host refuses to load a component when it exports an unsupported version of a recognized interface, imports an interface
 the host does not grant, or exports no supported role. Before guest startup it checks each implemented interface's complete
 type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
-graph and enum discriminants are generated with `go generate ./internal/plugins/execution/component`; a test detects stale output.
+graph and enum discriminants are generated with `go generate ./internal/plugins/pluginexecution/component`; a test detects stale output.
 
 ## Limits and capabilities
 
@@ -819,7 +819,7 @@ actionlint check --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
 The host loads the component and registers its declared rules before validating
 configuration and suppression selectors. The internal integration tests also cover
 composite action calls. The Rust crate under
-`internal/plugins/execution/component/testdata/sources/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
+`internal/plugins/pluginexecution/component/testdata/sources/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
 ## Script engines
@@ -1204,7 +1204,7 @@ matching; wildcard selectors are rejected. Duplicate targets, conflicting langua
 rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
 guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
 provide valid input selectors in their root `actionlint.plugin` section. The host's
-[`action-input.metadata.json` test fixture](../internal/plugins/execution/component/testdata/sources/script-engine/action-input.metadata.json)
+[`action-input.metadata.json` test fixture](../internal/plugins/pluginexecution/component/testdata/sources/script-engine/action-input.metadata.json)
 and `mise run plugin:fixture:action-input` exercise metadata at the component root.
 Metadata inside embedded core modules is ignored.
 

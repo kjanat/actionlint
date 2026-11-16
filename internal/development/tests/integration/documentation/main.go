@@ -18,12 +18,12 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -80,7 +80,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		WorkingDir: root,
 		ReadFile:   readDocumentationFile,
 		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
-		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
+		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}}}),
 	}, []workspace.InputFile{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err

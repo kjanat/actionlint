@@ -10,9 +10,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/knownvalues"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
 
 // GlobRule is the single definition of the glob rule.
@@ -50,9 +50,9 @@ func GlobWorkflow(n workflows.Workflow) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkWorkflowNameGlobs(names []*definition.String) {
-	allValid, positive := len(names) != 0, false
-	for _, name := range names {
+func (rule *globCheck) checkWorkflowNameGlobs(workflowNames []*definition.String) {
+	allValid, positive := len(workflowNames) != 0, false
+	for _, name := range workflowNames {
 		if name == nil {
 			allValid = false
 			continue
@@ -64,7 +64,7 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*definition.String) {
 			allValid = false
 			continue
 		}
-		if namemodel.ValidPattern(value) {
+		if names.ValidPattern(value) {
 			positive = positive || !strings.HasPrefix(value, "!")
 			continue
 		}
@@ -84,7 +84,7 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*definition.String) {
 		rule.globErrors(errs, name.Pos, name.Quoted && !evaluated)
 	}
 	if allValid && !positive {
-		rule.Error(names[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
+		rule.Error(workflowNames[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
 	}
 }
 
@@ -94,13 +94,13 @@ func GlobJob(n workflows.Job) []reporting.StepFinding {
 		return rule.Findings
 	}
 	if expression := n.Snapshot.Expression; expression != nil {
-		if value, known := workflowvalues.Constant(expression); known {
+		if value, known := knownvalues.Constant(expression); known {
 			if snapshot, ok := value.(map[string]any); ok {
 				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), expression.Pos)
 			}
 		}
 	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
-		if value, known := workflowvalues.Constant(version); known {
+		if value, known := knownvalues.Constant(version); known {
 			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {

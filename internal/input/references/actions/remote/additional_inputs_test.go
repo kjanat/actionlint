@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func requestActionSource(t *testing.T) string {
@@ -50,12 +50,12 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			host, repository, revision, filename, metadata, repositoryID := test.host, test.repository, test.commit, test.filename, test.content, test.repositoryID
+			host, repo, revision, filename, metadata, repositoryID := test.host, test.repository, test.commit, test.filename, test.content, test.repositoryID
 			if host == "" {
 				host = "github.com"
 			}
-			if repository == "" {
-				repository = "octokit/request-action"
+			if repo == "" {
+				repo = "octokit/request-action"
 			}
 			if revision == "" {
 				revision = commit
@@ -69,19 +69,19 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 			if repositoryID == 0 {
 				repositoryID = 213507602
 			}
-			var id repofacts.ID
+			var id repository.ID
 			if !test.unknownID {
-				known, err := repofacts.KnownID(repositoryID)
+				known, err := repository.KnownID(repositoryID)
 				if err != nil {
 					t.Fatal(err)
 				}
 				id = known
 			}
-			identity, err := actions.NewIdentity(host, repository, id, revision, test.directory)
+			identity, err := actions.NewIdentity(host, repo, id, revision, test.directory)
 			if err != nil {
 				t.Fatal(err)
 			}
-			location := repository
+			location := repo
 			if test.directory != "" {
 				location += "/" + test.directory
 			}

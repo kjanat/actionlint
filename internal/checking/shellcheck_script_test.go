@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
@@ -57,7 +57,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			options := checking.Options{WorkingDir: t.TempDir()}
-			optionsTools := registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
+			optionsTools := registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
 			if tc.config != "" {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}
@@ -72,7 +72,7 @@ jobs:
     steps:
       - run: |
           ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\npermissions: {}\n"
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow), NormalizePath: false, Name: "workflow.yml"})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(workflow), NormalizePath: false, Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -38,7 +38,7 @@ func TestRegistryInspectionCannotGrantPrivateArtifactAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	if _, err := InspectRelease(t.Context(), ref, acquisition); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
 		t.Fatalf("registry-selected private artifact error=%v, want private destination rejection", err)
 	}
@@ -76,7 +76,7 @@ func TestRegistryV2PublicationSources(t *testing.T) {
 				t.Fatal(err)
 			}
 			network.SetFile(url, data)
-			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -207,18 +207,18 @@ permissions: {}
 		} else {
 			result.Error = "could not complete"
 		}
-		var output bytes.Buffer
-		if err := render.WriteJSON(&output, result, false); err != nil {
+		var rendered bytes.Buffer
+		if err := output.WriteJSON(&rendered, result, false); err != nil {
 			t.Fatal(err)
 		}
 		var value map[string]any
-		if err := json.Unmarshal(output.Bytes(), &value); err != nil {
+		if err := json.Unmarshal(rendered.Bytes(), &value); err != nil {
 			t.Fatal(err)
 		}
 		// Future additive metadata is accepted without losing the status constraints.
 		value["future"] = map[string]any{"jobs": []string{"test"}}
 		if err := schema.Validate(value); err != nil {
-			t.Fatalf("exit %d: %v\n%s", code, err, &output)
+			t.Fatalf("exit %d: %v\n%s", code, err, &rendered)
 		}
 		value["completed"] = !result.Completed
 		if err := schema.Validate(value); err == nil {
@@ -253,7 +253,7 @@ permissions: {}
 	result := exitcode.NewCheckResult(1)
 	result.Diagnostics = []results.Diagnostic{diagnostic, diagnostic}
 	var lines bytes.Buffer
-	if err := render.WriteJSON(&lines, result, true); err != nil {
+	if err := output.WriteJSON(&lines, result, true); err != nil {
 		t.Fatal(err)
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(lines.String()), "\n") {

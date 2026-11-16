@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
@@ -26,7 +26,7 @@ type remoteDocument struct {
 	metadataFindings []*finding.Finding
 }
 
-func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *rulebinding.Scope, actions *workspace.Resolver) error {
+func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *rulebinding.Scope, actions *localactions.Resolver) error {
 	document, remote := analysis.remoteDocuments[address]
 	if !remote {
 		return nil
@@ -154,16 +154,16 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 	return metadata, address, outcome, err
 }
 
-func (analysis *compositeAnalyzer) repositorySource(identity actions.Identity) func(string) (workspace.RepositoryDocument, error) {
-	return func(local string) (workspace.RepositoryDocument, error) {
+func (analysis *compositeAnalyzer) repositorySource(identity actions.Identity) func(string) (localactions.RepositoryDocument, error) {
+	return func(local string) (localactions.RepositoryDocument, error) {
 		spec := identity.Repository() + "/" + strings.TrimPrefix(local, "./") + "@" + identity.Commit()
 		_, address, _, err := analysis.resolveRemoteAction(spec)
 		if err != nil {
-			return workspace.RepositoryDocument{}, err
+			return localactions.RepositoryDocument{}, err
 		}
 		if document, found := analysis.remoteDocuments[address]; found {
-			return workspace.RepositoryDocument{Parsed: document.document, Captured: document.Capture(), Valid: document.valid}, nil
+			return localactions.RepositoryDocument{Parsed: document.document, Captured: document.Capture(), Valid: document.valid}, nil
 		}
-		return workspace.RepositoryDocument{}, nil
+		return localactions.RepositoryDocument{}, nil
 	}
 }

@@ -7,11 +7,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-func resolveInsertedMapping(node *codec.Node) mapping.Mapping {
-	return mapping.Resolve(mappingInputsFromYAML(node))
+func resolveInsertedMapping(node *codec.Node) mappings.Mapping {
+	return mappings.Resolve(mappingInputsFromYAML(node))
 }
 
 func emptyResolvedMappingKey(key value.Value) bool {
@@ -25,21 +25,21 @@ func emptyResolvedMappingKey(key value.Value) bool {
 	return stringValue && name == ""
 }
 
-func mappingInputsFromYAML(node *codec.Node) *mapping.DeclaredMapping {
+func mappingInputsFromYAML(node *codec.Node) *mappings.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
 	if node.Kind == codec.ScalarNode {
 		text := newString(node)
 		if text != nil && text.ContainsExpression() {
-			return &mapping.DeclaredMapping{Expression: definition.SemanticValue(text)}
+			return &mappings.DeclaredMapping{Expression: definition.SemanticValue(text)}
 		}
 		return nil
 	}
 	if node.Kind != codec.MappingNode {
 		return nil
 	}
-	result := &mapping.DeclaredMapping{Values: map[string]mapping.DeclaredEntry{}}
+	result := &mappings.DeclaredMapping{Values: map[string]mappings.DeclaredEntry{}}
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		keyNode, valueNode := node.Content[i], node.Content[i+1]
 		key := newString(keyNode)
@@ -50,14 +50,14 @@ func mappingInputsFromYAML(node *codec.Node) *mapping.DeclaredMapping {
 			result.Insertions = append(result.Insertions, mappingInputsFromYAML(valueNode))
 			continue
 		}
-		result.Values[key.Value] = mapping.DeclaredEntry{Name: definition.SemanticValue(key), Source: key.Value}
+		result.Values[key.Value] = mappings.DeclaredEntry{Name: definition.SemanticValue(key), Source: key.Value}
 	}
 	return result
 }
 
 func knownMappingKey(key *definition.String) (*definition.String, bool) {
-	name, state := mapping.ResolveKey(definition.SemanticValue(key))
-	if state != mapping.KnownKey {
+	name, state := mappings.ResolveKey(definition.SemanticValue(key))
+	if state != mappings.KnownKey {
 		return nil, false
 	}
 	result := *key

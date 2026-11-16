@@ -75,7 +75,7 @@ test('mise follows workspace dependencies and isolates the standalone reference 
 	for (
 		const file of [
 			'schemas.go',
-			'internal/plugins/execution/component/testdata/plugins/test-change.wasm',
+			'internal/plugins/pluginexecution/component/testdata/plugins/test-change.wasm',
 			'internal/checking/test_change.go',
 			'schemas/test-change.json',
 		]
@@ -630,7 +630,7 @@ test('native Rust tests run once before component builds, with separate writable
 			'mise run --force plugins',
 		]
 	) assert.ok(late.includes(command), command);
-	assert.ok(late.some(command => command.includes('go test -count=1 -v ./internal/plugins/execution/component')));
+	assert.ok(late.some(command => command.includes('go test -count=1 -v ./internal/plugins/pluginexecution/component')));
 	/** @param {Record<string, unknown>} job */
 	const cache = job => {
 		assert.ok(Array.isArray(job.steps));

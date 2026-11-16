@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -41,7 +41,7 @@ func admitRelated(locations []results.Related, captures *capture.Store, rows map
 			withheld++
 			continue
 		}
-		if _, _, err := sourceposition.Range(snapshot.Bytes(), location.Coordinates, location.Start, location.End); err != nil {
+		if _, _, err := position.Range(snapshot.Bytes(), location.Coordinates, location.Start, location.End); err != nil {
 			withheld++
 			continue
 		}

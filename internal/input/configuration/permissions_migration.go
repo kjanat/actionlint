@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 // permissionsRule replaced three retired rules and policy.require-permissions.
@@ -89,7 +89,7 @@ func (ruleSet RuleSet) migratePermissionsRule(root any) (any, bool, error) {
 			}
 			setting, err := migratePermissionsSetting(name, originalSetting)
 			if err != nil {
-				return nil, false, binding.At("lint", binding.At("rules", binding.At(category, binding.At(name, binding.At("options", err)))))
+				return nil, false, configdecode.At("lint", configdecode.At("rules", configdecode.At(category, configdecode.At(name, configdecode.At("options", err)))))
 			}
 			removeField(group, name)
 			setField(rules, category, group)
@@ -106,7 +106,7 @@ func (ruleSet RuleSet) migratePermissionsRule(root any) (any, bool, error) {
 	if policy := field(root, "policy"); policy != nil && isMapping(policy) {
 		if selected := field(policy, "require-permissions"); selected != nil {
 			if !isMapping(selected) && !isBool(selected) && !isNull(selected) {
-				return nil, false, binding.At("policy", binding.At("require-permissions", errors.New("policy.require-permissions must be a boolean or a scope mapping")))
+				return nil, false, configdecode.At("policy", configdecode.At("require-permissions", errors.New("policy.require-permissions must be a boolean or a scope mapping")))
 			}
 			level := "default"
 			if isBool(selected) {
@@ -123,7 +123,7 @@ func (ruleSet RuleSet) migratePermissionsRule(root any) (any, bool, error) {
 				var err error
 				setting, err = migratePermissionsSetting("require-permissions", setting)
 				if err != nil {
-					return nil, false, binding.At("policy", binding.At("require-permissions", err))
+					return nil, false, configdecode.At("policy", configdecode.At("require-permissions", err))
 				}
 			}
 

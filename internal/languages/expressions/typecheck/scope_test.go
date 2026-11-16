@@ -9,17 +9,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 type suppliedScope struct {
 	variables    map[string]exprtypes.Type
 	names        []string
-	availability map[string]exprfunctions.Availability
-	overloads    map[string][]*exprfunctions.FuncSignature
+	availability map[string]functions.Availability
+	overloads    map[string][]*functions.FuncSignature
 }
 
 func (scope suppliedScope) NarrowContext(syntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
@@ -70,11 +70,11 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 
 func (scope suppliedScope) ContextTypes() map[string]exprtypes.Type { return scope.variables }
 func (scope suppliedScope) ContextNames() []string                  { return scope.names }
-func (scope suppliedScope) FunctionAvailability() map[string]exprfunctions.Availability {
+func (scope suppliedScope) FunctionAvailability() map[string]functions.Availability {
 	return scope.availability
 }
 
-func (scope suppliedScope) FunctionOverloads() map[string][]*exprfunctions.FuncSignature {
+func (scope suppliedScope) FunctionOverloads() map[string][]*functions.FuncSignature {
 	return scope.overloads
 }
 
@@ -83,8 +83,8 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 	scope := suppliedScope{
 		variables:    map[string]exprtypes.Type{"counter": exprtypes.NumberType()},
 		names:        []string{"counter"},
-		availability: map[string]exprfunctions.Availability{"always": {AvailableAt: []string{"caller-selected location"}}},
-		overloads: map[string][]*exprfunctions.FuncSignature{
+		availability: map[string]functions.Availability{"always": {AvailableAt: []string{"caller-selected location"}}},
+		overloads: map[string][]*functions.FuncSignature{
 			"shape": {{Name: "shape", Ret: exprtypes.NumberType()}},
 			"echo":  {{Name: "echo", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType()}}},
 		},
@@ -96,7 +96,7 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 	scope.variables["counter"] = exprtypes.BoolType()
 	scope.names[0] = "other"
 	scope.availability["always"].AvailableAt[0] = "changed location"
-	scope.availability["always"] = exprfunctions.Availability{Allowed: true}
+	scope.availability["always"] = functions.Availability{Allowed: true}
 	scope.overloads["shape"][0].Ret = exprtypes.BoolType()
 	scope.overloads["shape"][0].Params = []exprtypes.Type{exprtypes.StringType()}
 	scope.overloads["echo"][0].Params[0] = exprtypes.BoolType()

@@ -15,8 +15,8 @@ flowchart TD
     Checking --> Decode[internal/model/parsing]
     Checking --> Rules[internal/checking/selection]
     Checking --> Calls[internal/checking/executor/composites]
-    Checking --> Plugins[internal/plugins/execution]
-    Checking --> Processes[internal/integrations/process]
+    Checking --> Plugins[internal/plugins/pluginexecution]
+    Checking --> Processes[internal/integrations/hostprocess]
     Checking --> Results[internal/results/report]
     CLI --> Output[internal/output]
     Output --> Results

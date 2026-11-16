@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -46,7 +46,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 					return repository.Snapshot{RunnerLabels: labels}
 				}
 
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 				if err != nil {
 					t.Fatal(err)
 				}

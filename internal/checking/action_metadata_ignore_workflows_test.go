@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
@@ -35,7 +35,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 			session := checking.Options{WorkingDir: root}
 
 			for attempt := range 3 {
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -63,7 +63,7 @@ func TestMetadataDedupKeepsInvocationErrorsAcrossWorkflows(t *testing.T) {
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestMetadataDedupKeepsDistinctSuppressionViolations(t *testing.T) {
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}

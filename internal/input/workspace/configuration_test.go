@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {

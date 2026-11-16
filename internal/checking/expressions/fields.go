@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
@@ -21,7 +21,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
@@ -119,9 +119,9 @@ func (rule *Checker) checkActionInputs(action *definition.ExecAction, uses *defi
 			if input.Name == nil {
 				name = value.YAMLScalar(id, definition.YamlTagStr, value.Origin{})
 			}
-			canonical, state := mapping.ResolveKey(name)
+			canonical, state := mappings.ResolveKey(name)
 			isScriptAction := strings.HasPrefix(actionSpec, "actions/github-script@")
-			if isScriptAction && (state == mapping.UnknownKey || state == mapping.KnownKey && strings.EqualFold(canonical, "script")) {
+			if isScriptAction && (state == mappings.UnknownKey || state == mappings.KnownKey && strings.EqualFold(canonical, "script")) {
 				rule.checkScriptString(input.Value, key)
 			} else {
 				rule.checkString(input.Value, key)

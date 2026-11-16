@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestReusableIgnoreCompositeJob(t *testing.T) {
@@ -48,7 +48,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 				}
 				source.WriteString("permissions: {}\n")
 				path := fixturefiles.Write(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}, []workspace.InputFile{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})}, []workspace.InputFile{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -11,7 +11,7 @@ import (
 // actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func actionStep(metadata *actionmeta.Step, parser *parser.Parser) *definition.Step {
+func actionStep(metadata *actionmeta.CompositeStep, parser *parser.Parser) *definition.Step {
 	pos := &source.Position{Line: metadata.Line, Column: metadata.Column}
 	opaque := &definition.Step{Pos: pos, Exec: &definition.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {

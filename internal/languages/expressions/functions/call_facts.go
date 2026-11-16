@@ -3,8 +3,8 @@ package functions
 import (
 	"slices"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // ArgumentDemand distinguishes certain evaluation from possible or skipped evaluation.
@@ -29,13 +29,13 @@ const (
 // argument's source type, conversion and demand when its call is evaluated.
 type FunctionArgumentFacts struct {
 	Source      exprtypes.Type
-	SourceValue exprvalues.EvaluationResult
+	SourceValue values.EvaluationResult
 	Accepted    bool
 	Demand      ArgumentDemand
 	Parameter   exprtypes.Type
 	Converted   exprtypes.Type
 	Conversion  ArgumentConversion
-	Value       exprvalues.EvaluationResult
+	Value       values.EvaluationResult
 }
 
 // ReturnDomainState reports whether a known result fits a declared return.

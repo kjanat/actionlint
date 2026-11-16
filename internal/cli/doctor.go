@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 type doctorTool struct {
@@ -29,7 +29,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition pluginacquisition.Settings) error {
+func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition pluginacquisition.Options) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 	type doctorItem struct {
 		name, command string
 		options       *hostprocess.CommandOptions
-		manifest      *pluginmanifests.Manifest
+		manifest      *toolmanifest.Manifest
 	}
 	items := make([]doctorItem, 0, len(manifests)+1)
 	for i := range manifests {
@@ -93,7 +93,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 		report.Tools = append(report.Tools, tool)
 	}
 	if req.JSON {
-		err = commandstreams.WriteJSON(out, report)
+		err = commandio.WriteJSON(out, report)
 	} else {
 		file, terminal := terminalFile(out)
 		links := req.Hyperlinks.enabled(terminal, os.Getenv)
@@ -129,7 +129,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 
 // checkDoctorTools rejects tool ids named by --tool or --no-tool that no
 // bundled provider has. Doctor loads no plugins, so only bundled tools count.
-func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) error {
+func checkDoctorTools(manifests []toolmanifest.Manifest, named []string) error {
 	known := make([]string, len(manifests))
 	for i, manifest := range manifests {
 		known[i] = manifest.Rule.Name
@@ -143,13 +143,13 @@ func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) erro
 	if len(unknown) == 0 {
 		return nil
 	}
-	return commandargs.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
+	return arguments.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
 }
 
 // probeDoctorVersion runs the manifest's version probe against command, as
 // analysis does before it uses an automatically discovered tool. A provider
 // without a version probe passes.
-func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, command string, options *hostprocess.CommandOptions) error {
+func probeDoctorVersion(ctx context.Context, manifest toolmanifest.Manifest, command string, options *hostprocess.CommandOptions) error {
 	if manifest.Process == nil || manifest.Process.Version == nil {
 		return nil
 	}

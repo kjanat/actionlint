@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestShellcheckWorkflowPathValidation(t *testing.T) {
@@ -42,7 +42,7 @@ jobs:
 					session := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 					var err error
 
-					_, err = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+					_, err = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 					if err == nil || !strings.Contains(err.Error(), selection.message) {
 						t.Fatalf("ordinary workflow accepted invalid configuration: %v", err)
 					}
@@ -80,7 +80,7 @@ permissions: {}
 		session := checking.Options{WorkingDir: repository, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 		var err error
 
-		result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+		result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("interpolated config did not apply: %+v, %v", result, err)
 		}

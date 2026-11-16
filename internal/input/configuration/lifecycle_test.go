@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -23,7 +23,7 @@ func TestLifecycleMergeByID(t *testing.T) {
 	}
 	merged := document.Merge(document.Capture(doc(policy("a", "original"), policy("b", "retained")), nil), document.Capture(doc(policy("a", "replacement"), policy("c", "added")), nil), MergePlan()).Value()
 	var cfg Config
-	if err := binding.Decode(merged, &cfg); err != nil {
+	if err := configdecode.Decode(merged, &cfg); err != nil {
 		t.Fatal(err)
 	}
 	got, err := cfg.LifecyclePolicies()

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
@@ -25,7 +25,7 @@ func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
 	}}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("excluded workflow affected analysis: %+v, %v", result, err)
 	}

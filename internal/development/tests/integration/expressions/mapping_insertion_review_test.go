@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
@@ -22,11 +22,11 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 	for _, nested := range []bool{false, true} {
 		t.Run(strconv.FormatBool(nested), func(t *testing.T) {
 			t.Parallel()
-			matrix := "os: [not-a-runner, not-a-runner]\n        exclude: [{extra: 1}]\n        ${{ insert }}: ${{ fromJSON(vars.EXTRA) }}"
+			matrixValue := "os: [not-a-runner, not-a-runner]\n        exclude: [{extra: 1}]\n        ${{ insert }}: ${{ fromJSON(vars.EXTRA) }}"
 			if nested {
-				matrix = "${{ insert }}:\n          " + strings.ReplaceAll(matrix, "\n        ", "\n          ")
+				matrixValue = "${{ insert }}:\n          " + strings.ReplaceAll(matrixValue, "\n        ", "\n          ")
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
+			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        " + matrixValue + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 			errs := lintMatrixWithKnownRunnerLabels(t, source)
 			counts := map[string]int{}
 			for _, err := range errs {
@@ -39,7 +39,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			if _, known := matrixmodel.Resolve(workflow.Jobs["test"].Strategy).Combinations(256); known {
+			if _, known := matrix.Resolve(workflow.Jobs["test"].Strategy).Combinations(256); known {
 				t.Fatal("opaque insertion produced complete combinations")
 			}
 		})
@@ -224,11 +224,11 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 		for _, key := range []string{"${{ 'os' }}", "${{ 'OS' }}", "${{ format('{0}', 'os') }}"} {
 			t.Run(fmt.Sprintf("depth=%d/%s", depth, key), func(t *testing.T) {
 				t.Parallel()
-				matrix := fmt.Sprintf("{%q: [ubuntu-latest]}", key)
+				matrixValue := fmt.Sprintf("{%q: [ubuntu-latest]}", key)
 				for range depth {
-					matrix = "{'${{ insert }}': " + matrix + "}"
+					matrixValue = "{'${{ insert }}': " + matrixValue + "}"
 				}
-				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
+				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrixValue + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 				if errs := lintMatrixWithKnownRunnerLabels(t, source); len(errs) != 0 {
 					t.Fatalf("resolved axis rejected: %v", errs)
 				}
@@ -312,11 +312,11 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 			for depth := range 3 {
 				t.Run(fmt.Sprintf("%s/%s/depth=%d", tc.key, value, depth), func(t *testing.T) {
 					t.Parallel()
-					matrix := fmt.Sprintf("{%q: %s}", tc.key, value)
+					matrixValue := fmt.Sprintf("{%q: %s}", tc.key, value)
 					for range depth {
-						matrix = "{'${{ insert }}': " + matrix + "}"
+						matrixValue = "{'${{ insert }}': " + matrixValue + "}"
 					}
-					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
+					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + matrixValue + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 					errs := lintCredentialsExpressionTest(t, source)
 					if tc.want == "" {
 						if len(errs) != 0 {

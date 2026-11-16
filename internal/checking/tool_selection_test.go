@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -32,11 +32,11 @@ overrides:
 	}
 	// Exclusions must apply before trying to read this nonexistent input.
 	path := filepath.Join(root, "skip.yml")
-	result, err := checking.Check(t.Context(), options, inputmodel.FromFiles(workspace.FileSelection{Files: []workspace.File{{Path: path}}}))
+	result, err := checking.Check(t.Context(), options, checkrequest.FromFiles(workspace.FileSelection{Files: []workspace.File{{Path: path}}}))
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("excluded file: %+v, %v", result, err)
 	}
-	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}}); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}}); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("literal file did not override the discovery filter: %v", err)
 	}
 }

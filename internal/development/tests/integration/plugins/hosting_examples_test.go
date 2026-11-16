@@ -8,15 +8,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()
-	component, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), component.Options{})
+	component, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -40,7 +40,7 @@ func Example_componentLoading() {
 
 func Example_moduleLoading() {
 	ctx := context.Background()
-	engine, err := module.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
+	engine, err := module.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -63,7 +63,7 @@ func Example_moduleLoading() {
 
 func Example_componentScriptEngine() {
 	ctx := context.Background()
-	engine, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), component.Options{})
+	engine, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "script-engine.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return

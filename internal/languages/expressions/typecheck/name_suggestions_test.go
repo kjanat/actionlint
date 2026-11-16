@@ -9,11 +9,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestCloseExpressionNames(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAmbiguousExpressionNames(t *testing.T) {
 		input := "githab.ref"
 		if function {
 			checker.funcs = maps.Clone(checker.funcs)
-			checker.funcs["startswhth"] = []*exprfunctions.FuncSignature{{Name: "startsWhth", Ret: exprtypes.BoolType()}}
+			checker.funcs["startswhth"] = []*functions.FuncSignature{{Name: "startsWhth", Ret: exprtypes.BoolType()}}
 			input = "startsWath()"
 		} else {
 			checker.vars["githob"] = exprtypes.NewEmptyStrictObjectType().Type()

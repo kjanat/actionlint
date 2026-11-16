@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 func MergeWarnings(groups ...[]configreport.Warning) []configreport.Warning {

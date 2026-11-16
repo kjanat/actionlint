@@ -66,12 +66,12 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 }
 
 func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", wasm)
 	registry.Add(t, "v1.1.0", wasm)

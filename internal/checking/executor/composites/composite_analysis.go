@@ -10,15 +10,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
@@ -28,12 +28,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -47,8 +47,8 @@ type compositionSession struct {
 	scriptCatalogues       map[*rulebinding.Scope][]checkinputs.ScriptInput
 	runners                *runners.Knowledge
 	resolveScriptExecution bool
-	scripts                []scripts.ScriptRequest
-	scriptScopes           []*scripts.Scope
+	scripts                []scriptanalysis.ScriptRequest
+	scriptScopes           []*scriptanalysis.Scope
 	scriptPaths            execution.Paths
 	reader                 *files.Reader
 	collectScripts         bool
@@ -76,19 +76,19 @@ type compositionSession struct {
 type compositeAnalyzer struct {
 	*compositionSession
 	bindings                          *rulebinding.Scope
-	actions                           *workspace.Resolver
+	actions                           *localactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
-	scriptScope                       *scripts.Scope
+	scriptScope                       *scriptanalysis.Scope
 	scriptConfig                      *configuration.Config
 	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
 	scriptWorkflowDir, scriptJobDir   execution.Directory
 	workflowScriptShell               *string
 	jobScriptShell                    *string
-	workflowEnv                       mapping.Mapping
+	workflowEnv                       mappings.Mapping
 	workflowShell                     value.Value
 	jobID                             string
-	environmentLayers                 []scriptmodel.EnvironmentLayer
+	environmentLayers                 []scripts.EnvironmentLayer
 	operatingSystems                  []runnerapi.OS
 }
 
@@ -103,31 +103,31 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow)
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	analysis.beginEntryScope(scripts.Deployment{})
+	analysis.beginEntryScope(scriptanalysis.Deployment{})
 	defaults := workflows.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults)
 	analysis.workflowEnv = workflows.Environment(declaration.Env)
-	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv)}
+	analysis.environmentLayers = []scripts.EnvironmentLayer{scripts.DeclaredEnvironment(scripts.EnvironmentWorkflow, analysis.workflowEnv)}
 	analysis.workflowShell = execution.DefaultShell(defaults)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginAction(deployment scripts.Deployment) error {
+func (analysis *compositeAnalyzer) beginAction(deployment scriptanalysis.Deployment) error {
 	if analysis.sourceSnapshot.Kind() != parsing.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
-	validated, err := scripts.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
+	validated, err := scriptanalysis.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
 	if err != nil || validated != deployment {
-		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scripts.ErrInvalidBatch)
+		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptanalysis.ErrInvalidBatch)
 	}
 	analysis.beginEntryScope(deployment)
-	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentCaller, UnknownNames: true}}
+	analysis.environmentLayers = []scripts.EnvironmentLayer{{Scope: scripts.EnvironmentCaller, UnknownNames: true}}
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginEntryScope(deployment scripts.Deployment) {
-	analysis.scriptScope = &scripts.Scope{
+func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptanalysis.Deployment) {
+	analysis.scriptScope = &scriptanalysis.Scope{
 		Bindings: analysis.bindings,
 		Paths:    analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
 		Deployment: deployment, Context: analysis.context,
@@ -146,17 +146,17 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflows.Job) error {
 	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
 	knowledge := analysis.runners.Job(declaration)
 	analysis.operatingSystems = knowledge.OperatingSystems()
-	if container := scriptmodel.ContainerShell(workflows.Container(declaration.Container)); container.State() != value.Missing {
+	if container := scripts.ContainerShell(workflows.Container(declaration.Container)); container.State() != value.Missing {
 		analysis.operatingSystems = []runnerapi.OS{runnerapi.UnknownOS}
 		if container.Known() {
 			analysis.operatingSystems = []runnerapi.OS{runnerapi.Linux}
 		}
 	}
-	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{
-		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv),
-		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, workflows.Environment(declaration.Env)),
+	analysis.environmentLayers = []scripts.EnvironmentLayer{
+		scripts.DeclaredEnvironment(scripts.EnvironmentWorkflow, analysis.workflowEnv),
+		scripts.DeclaredEnvironment(scripts.EnvironmentJob, workflows.Environment(declaration.Env)),
 	}
-	analysis.scriptRunnerShell = scriptmodel.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
+	analysis.scriptRunnerShell = scripts.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
 	analysis.jobID = ""
 	if id := declaration.ID; id != nil {
 		analysis.jobID = id.Value
@@ -185,13 +185,13 @@ func (analysis *compositeAnalyzer) visitStep(step workflows.Step) error {
 	if _, action := declaration.Action(); !action {
 		return analysis.visitStepPasses(step)
 	}
-	var scripts []workflowvisit.InvocationParticipant
+	var scriptParticipants []workflowvisit.InvocationParticipant
 	for _, pass := range analysis.passes {
 		if participant, ok := pass.(workflowvisit.InvocationParticipant); ok {
-			scripts = append(scripts, participant)
+			scriptParticipants = append(scriptParticipants, participant)
 		}
 	}
-	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
+	return analysis.visitActionScripts(step, scriptParticipants, func() error { return analysis.visitStepPasses(step) })
 }
 
 func (analysis *compositeAnalyzer) visitStepPasses(step workflows.Step) error {

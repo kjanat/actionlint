@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -67,7 +67,7 @@ func (s *PathSelection) DecodeConfig(value any) error {
 		return nil
 	}
 	var next selectionDocument
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	if err := validatePatterns(next.Includes, next.Excludes); err != nil {

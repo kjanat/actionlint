@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -27,7 +27,7 @@ import (
 
 func loadRunnerFixture(t *testing.T) *component.Plugin {
 	t.Helper()
-	p, err := component.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", component.Options{ReservedRules: checking.BuiltinRuleNames()})
+	p, err := component.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm", component.Options{ReservedRules: checking.BuiltinRuleNames()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 		}
 		want.Answers = append(want.Answers, v)
 	}
-	artifact, err := filepath.Abs("../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
+	artifact, err := filepath.Abs("../../../../../internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

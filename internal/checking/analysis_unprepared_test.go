@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -46,7 +46,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 				t.Fatal("fixture did not reproduce a recovered parse")
 			}
 			input, err := composites.CheckInput(composites.Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
-			if !errors.Is(err, scripts.ErrInvalidBatch) {
+			if !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
 				t.Fatalf("missing preparation error: %v", err)
 			}
 			var used []rule.Descriptor

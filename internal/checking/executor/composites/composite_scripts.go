@@ -11,17 +11,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -61,7 +61,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflows.Step, paren
 	}
 	callFrame := *analysis
 	callFrame.context = callContext
-	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentCaller, workflows.Environment(call.Env)))
+	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scripts.DeclaredEnvironment(scripts.EnvironmentCaller, workflows.Environment(call.Env)))
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)
@@ -189,12 +189,12 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if bindings != nil {
 		scriptConfig = bindings.Composite()
 	}
-	deployment, err := scripts.NewDeployment(analysis.sourceSnapshots, snapshot, address, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptanalysis.NewDeployment(analysis.sourceSnapshots, snapshot, address, meta.Path(), meta.SourceMapped)
 	if err != nil {
 		return err
 	}
 	parentScope := analysis.scriptScope
-	scope := &scripts.Scope{Bindings: bindings, Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, ConfigProvenance: analysis.configProvenance, Deployment: deployment, Composite: true, Context: callContext}
+	scope := &scriptanalysis.Scope{Bindings: bindings, Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, ConfigProvenance: analysis.configProvenance, Deployment: deployment, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
@@ -282,7 +282,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflows.Step, con
 	return nil
 }
 
-func compositeCheckoutPaths(rule workflowvisit.Pass, actions *workspace.Resolver) {
+func compositeCheckoutPaths(rule workflowvisit.Pass, actions *localactions.Resolver) {
 	participant, ok := rule.(workflowvisit.CheckoutParticipant)
 	if !ok {
 		return

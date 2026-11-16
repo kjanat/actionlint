@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -27,7 +27,7 @@ func (p mirrorProvider) WithMetadataMirrors(access references.MirrorAccess, _ []
 	return p
 }
 
-func (p mirrorProvider) WithWorkflowMetadataMirrors(access references.MirrorAccess, _ []string) workflows.Provider {
+func (p mirrorProvider) WithWorkflowMetadataMirrors(access references.MirrorAccess, _ []string) reusableworkflows.Provider {
 	p.access = access
 	return p
 }
@@ -39,11 +39,11 @@ func (p mirrorProvider) Lookup(context.Context, actions.Reference) (actions.Mani
 	return actions.UnavailableManifest(availability.Inaccessible()), nil
 }
 
-func (p mirrorProvider) LookupWorkflow(context.Context, string) (workflows.RemoteFile, error) {
+func (p mirrorProvider) LookupWorkflow(context.Context, string) (reusableworkflows.RemoteFile, error) {
 	p.requests.Lock()
 	defer p.requests.Unlock()
 	p.requests.workflows[p.access]++
-	return workflows.UnavailableRemoteFile(availability.Inaccessible()), nil
+	return reusableworkflows.UnavailableRemoteFile(availability.Inaccessible()), nil
 }
 
 func TestMetadataMirrorConfigurationSeparatesLookupCaches(t *testing.T) {

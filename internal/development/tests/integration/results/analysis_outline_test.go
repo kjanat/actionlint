@@ -11,19 +11,20 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -76,7 +77,7 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference(), references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference(), callreferences.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference())
 	}
 	if partial.DocumentPath() != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
@@ -85,24 +86,24 @@ jobs:
 	if broken.DocumentPath() != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
-	renderer, err := render.New(outputformat.JSON, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(outputformat.JSON, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var output bytes.Buffer
-	presentation := render.FromAnalysis(*analysis)
+	var rendered bytes.Buffer
+	presentation := output.FromAnalysis(*analysis)
 	presentation.CheckResult = exitcode.AnalysisResult(*analysis)
-	if err := renderer.Render(&output, presentation); err != nil {
+	if err := renderer.Render(&rendered, presentation); err != nil {
 		t.Fatal(err)
 	}
 	var report report.CheckResult
-	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+	if err := json.Unmarshal(rendered.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(report.Documents, analysis.Documents) {
-		t.Fatalf("JSON lost outlines: %s", &output)
+		t.Fatalf("JSON lost outlines: %s", &rendered)
 	}
-	if strings.Contains(output.String(), "echo hi") {
+	if strings.Contains(rendered.String(), "echo hi") {
 		t.Fatal("outline unexpectedly includes script bodies")
 	}
 }
@@ -231,9 +232,9 @@ permissions: {}
 	}
 }
 
-func requireWorkflowOutline(t *testing.T, document outline.Outline) outline.Workflow {
+func requireWorkflowOutline(t *testing.T, document outline.Outline) outline.WorkflowOutline {
 	t.Helper()
-	workflow, ok := document.(outline.Workflow)
+	workflow, ok := document.(outline.WorkflowOutline)
 	if !ok {
 		t.Fatalf("expected workflow, got %T", document)
 	}
@@ -253,11 +254,11 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
-			setting, err := configuration.NewSetting("bogus", nil)
+			setting, err := ruleconfig.NewSetting("bogus", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"inline-suppression": setting})}}
 			config := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
 			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
 			if err == nil || !strings.Contains(err.Error(), "rule level") {
@@ -289,11 +290,11 @@ jobs:
 permissions: {}
 `
 	bogus := func(include string) *configuration.Config {
-		setting, err := configuration.NewSetting("bogus", nil)
+		setting, err := ruleconfig.NewSetting("bogus", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"inline-suppression": setting})}}
 		return &configuration.Config{Overrides: []configuration.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"
@@ -328,7 +329,7 @@ permissions: {}
 			got := make([]string, 0, len(analysis.Documents))
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
-				case outline.Workflow:
+				case outline.WorkflowOutline:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
 				case outline.Action:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)

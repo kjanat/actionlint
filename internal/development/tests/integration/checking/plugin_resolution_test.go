@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -22,7 +22,7 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,13 +36,13 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil || len(sources.Paths) != 1 {
 		t.Fatalf("exact config required a lockfile: %+v, %v", sources, err)
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err != nil {
+	if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != 0 {
@@ -62,7 +62,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
 	registry.SetAliases("community-check")
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

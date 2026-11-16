@@ -21,18 +21,19 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -447,13 +448,13 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-		contexts := map[string]exprtypes.Type{}
+		checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+		knownContexts := map[string]exprtypes.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprtypes.AnyType()
+			knownContexts[strings.ToLower(name)] = exprtypes.AnyType()
 		}
-		checker.SetContextTypes(contexts)
-		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
+		checker.SetContextTypes(knownContexts)
+		checker.SetContextAvailability(slices.Sorted(maps.Keys(knownContexts)))
 		var diagnostics []*typecheck.Error
 		// GitHub's parser checks symbols and arity, but leaves coercion and evaluation to its evaluator.
 		syntax.Visit(node, func(n, _ syntax.Node, entering bool) {
@@ -465,10 +466,10 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				_, errs := checker.Check(evaluate.EvaluateSubexpressions(n))
 				diagnostics = append(diagnostics, errs...)
 			case *syntax.FuncCallNode:
-				callChecker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
+				callChecker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 				callChecker.SetContextTypes(map[string]exprtypes.Type{"argument": exprtypes.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
-				callChecker.SetFunctionAvailability(contextspec.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
+				callChecker.SetFunctionAvailability(contexts.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
 				args := make([]syntax.Node, len(n.Args))
 				for i := range args {
 					parsed, err := parser.ParseExpression(syntax.NewLexer("argument}}"))
@@ -502,8 +503,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		config := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
 			Preset:      "none",
-			Correctness: configuration.NewGroup("recommended", "", nil),
-			Suspicious:  configuration.NewGroup("recommended", "", nil),
+			Correctness: ruleconfig.NewGroup("recommended", "", nil),
+			Suspicious:  ruleconfig.NewGroup("recommended", "", nil),
 		}}}
 		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runnerapi.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {

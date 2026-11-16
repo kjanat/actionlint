@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // Item describes a property replacement in expression source byte offsets.

@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -34,7 +34,7 @@ type ExecutableChecker struct {
 	paths                               execution.Paths
 	unix                                bool
 	workflowEnv, jobEnv                 bool
-	workflowGitEnv                      mapping.Mapping
+	workflowGitEnv                      mappings.Mapping
 	jobGitEnv                           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
@@ -118,7 +118,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflows.Job) error {
 		hasNeeds = true
 		break
 	}
-	if enabled, known := workflowconditions.JobCondition(workflows.Condition(declaration.If), hasNeeds); known && !enabled {
+	if enabled, known := conditions.JobCondition(workflows.Condition(declaration.If), hasNeeds); known && !enabled {
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knowledge.Ephemeral, rule.callerRepositoryUnknown)
@@ -133,14 +133,14 @@ func (rule *ExecutableChecker) VisitStep(declaration workflows.Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
-	enabled, conditionKnown := workflowconditions.Condition(declaration.Condition())
+	enabled, conditionKnown := conditions.Condition(declaration.Condition())
 	if conditionKnown && !enabled {
 		return nil
 	}
-	if workflowconditions.CanRunAfterFailure(declaration.Condition()) {
+	if conditions.CanRunAfterFailure(declaration.Condition()) {
 		rule.afterPossibleFailure()
 	}
-	if workflowconditions.BoolMayBeTrue(workflows.Bool(declaration.Background)) {
+	if conditions.BoolMayBeTrue(workflows.Bool(declaration.Background)) {
 		rule.afterConcurrentExecution()
 		return nil
 	}
@@ -162,7 +162,7 @@ func (rule *ExecutableChecker) VisitStep(declaration workflows.Step) error {
 		} else if name, _, versioned := strings.Cut(action.Uses.Text(), "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
 			rule.actionPristine = false
 		}
-		rule.checkout(action, !conditionKnown || workflowconditions.BoolMayBeTrue(workflows.Bool(declaration.ContinueOnError)))
+		rule.checkout(action, !conditionKnown || conditions.BoolMayBeTrue(workflows.Bool(declaration.ContinueOnError)))
 	case definition.ExecKindRun:
 		runView, ok := declaration.Run()
 		if !ok {
@@ -235,7 +235,7 @@ func (rule *ExecutableChecker) checkout(action *definition.ExecAction, mayNotCom
 	rule.afterKnownCheckout(checkout, rule.caseInsensitive)
 }
 
-func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {
+func checkoutInput(inputs mappings.Mapping, name string) (string, bool) {
 	item := inputs.Lookup(name)
 	if item.State() == value.Missing {
 		return "", true

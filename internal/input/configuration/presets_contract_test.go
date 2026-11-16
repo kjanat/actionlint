@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -14,7 +15,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 	for _, category := range rule.Categories() {
 		for _, tc := range []struct {
 			settings string
-			want     configuration.Level
+			want     ruleconfig.Level
 		}{
 			{"{}", "on"},
 			{"{preset: all}", "on"},
@@ -47,7 +48,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 	for _, tc := range []struct {
 		rules   string
 		presets configuration.Presets
-		want    configuration.Level
+		want    ruleconfig.Level
 	}{
 		{"{}", configuration.Presets{}, "off"},
 		{"{preset: all}", configuration.Presets{}, "off"},

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 // ConfigFileSelection selects an explicit file, repository discovery, or no configuration.

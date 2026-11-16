@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
 
 func TestConstantFormatNumericArguments(t *testing.T) {
@@ -42,7 +42,7 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 				t.Fatalf("value=%v known=%v, want %q", constant, known, tc.want)
 			}
 			for _, condition := range []string{tc.expression, "${{ " + tc.expression + " }}"} {
-				if enabled, known := workflowconditions.Condition(value.Condition(condition, value.Origin{})); !known || enabled != (tc.want != "") {
+				if enabled, known := conditions.Condition(value.Condition(condition, value.Origin{})); !known || enabled != (tc.want != "") {
 					t.Fatalf("invocation=%v known=%v, want %v", enabled, known, tc.want != "")
 				}
 			}

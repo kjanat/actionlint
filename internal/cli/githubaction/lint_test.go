@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"github.com/kjanat/go-yaml/v4"
@@ -29,7 +29,7 @@ func TestOptionalNativeShellcheckWithoutExecutable(t *testing.T) {
 	if result := runLinter(req); result.code != 0 {
 		t.Fatalf("optional native ShellCheck was required: %s", result.stderr)
 	}
-	req.processes = map[string]*process.CommandOptions{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
+	req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
 	if result := runLinter(req); result.code != exitcode.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
 		t.Fatalf("explicit missing executable was ignored: code=%d %s", result.code, result.stderr)
 	}

@@ -16,11 +16,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // NodeKindName describes the kind of a YAML node.
@@ -493,13 +493,13 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 				insertedKeys := map[string]*definition.String{}
 				for declaration := range inserted.Declarations() {
 					switch declaration.State {
-					case mapping.KnownKey:
+					case mappings.KnownKey:
 						origin := declaration.Origin.Span.Start
 						insertedKeys[strings.ToLower(declaration.Name)] = &definition.String{
 							Value: declaration.Name,
 							Pos:   &source.Position{Line: origin.Line, Column: origin.Column},
 						}
-					case mapping.InvalidKey:
+					case mappings.InvalidKey:
 						if n.Content[i+1].Kind == codec.ScalarNode && emptyResolvedMappingKey(declaration.Key) {
 							origin := declaration.Origin.Span.Start
 							pos := &source.Position{Line: origin.Line, Column: origin.Column}
@@ -508,7 +508,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 							}
 							p.errorAt(pos, CodeEmptyValue, "string should not be empty")
 						}
-					case mapping.UnknownKey:
+					case mappings.UnknownKey:
 					}
 				}
 				for _, name := range slices.Sorted(maps.Keys(insertedKeys)) {
@@ -1748,7 +1748,7 @@ func (p *Parser) ParseStep(n *codec.Node) *definition.Step {
 				declaredUses = newString(e.val)
 				declaredUses.Value = uses
 			}
-			if references.FormOf(uses) == references.FormContainer {
+			if callreferences.FormOf(uses) == callreferences.FormContainer {
 				kind = isDocker
 			} else {
 				kind = isAction

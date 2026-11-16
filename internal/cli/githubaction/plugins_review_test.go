@@ -9,16 +9,16 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 	t.Parallel()
-	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 }
 
 func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
-	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
-			plan, err := provisioningRequest(lookup, pluginacquisition.Settings{})
+			plan, err := provisioningRequest(lookup, pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,17 +142,17 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 	executable := "explicit-native-command"
 	for _, tc := range []struct {
 		name    string
-		options *process.CommandOptions
+		options *hostprocess.CommandOptions
 	}{
 		{"defaults", nil},
-		{"native", &process.CommandOptions{Executable: &executable}},
-		{"ignore-config", &process.CommandOptions{IgnoreConfig: true}},
-		{"optional", &process.CommandOptions{Optional: true}},
-		{"wasm", &process.CommandOptions{AllowWasm: true}},
+		{"native", &hostprocess.CommandOptions{Executable: &executable}},
+		{"ignore-config", &hostprocess.CommandOptions{IgnoreConfig: true}},
+		{"optional", &hostprocess.CommandOptions{Optional: true}},
+		{"wasm", &hostprocess.CommandOptions{AllowWasm: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			want := process.CommandOptions{Optional: true}
+			want := hostprocess.CommandOptions{Optional: true}
 			if tc.options != nil {
 				want = *tc.options
 			}
@@ -160,7 +160,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 			want.WorkingDir = "action-directory"
 			req := &lintRequest{workingDir: want.WorkingDir}
 			if tc.options != nil {
-				req.processes = map[string]*process.CommandOptions{"shellcheck": tc.options}
+				req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": tc.options}
 			}
 			got := req.toolSelections()["shellcheck"].Process
 			if !reflect.DeepEqual(*got, want) {
@@ -175,7 +175,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 
 func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}

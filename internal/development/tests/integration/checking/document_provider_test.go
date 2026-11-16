@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -47,22 +47,22 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 	os.Exit(0)
 }
 
-func nativeDocumentManifest(t *testing.T) manifests.Manifest {
+func nativeDocumentManifest(t *testing.T) toolmanifest.Manifest {
 	t.Helper()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return manifests.Manifest{
-		SchemaVersion: 1, ID: "document-fixture", Version: "1.0.0", Role: manifests.RoleDocument, Scope: manifests.ScopeSource, Transport: manifests.TransportProcess, Preparation: "generic",
+	return toolmanifest.Manifest{
+		SchemaVersion: 1, ID: "document-fixture", Version: "1.0.0", Role: toolmanifest.RoleDocument, Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess, Preparation: "generic",
 		Rule:         rule.Descriptor{Name: "document-fixture", Description: "Whole document fixture", Category: "correctness", Subcategory: "workflow", Maturity: "stable", Provider: "document-fixture", DocumentationURL: "https://example.com/document-fixture"},
-		Capabilities: manifests.Capabilities{Fixes: true},
-		Selectors:    manifests.Selectors{Documents: []string{"workflow"}},
-		Process:      &manifests.ProcessSpec{Entry: executable, Args: []string{"-test.run=^TestDocumentPluginProcessHelper$"}, Stdin: manifests.StdinRequest, Env: map[string]string{"ACTIONLINT_DOCUMENT_HELPER": "1"}, Config: manifests.ConfigRendering{Render: manifests.RenderNone}, Output: manifests.Output{Format: manifests.FormatEnvelope}},
+		Capabilities: toolmanifest.Capabilities{Fixes: true},
+		Selectors:    toolmanifest.Selectors{Documents: []string{"workflow"}},
+		Process:      &toolmanifest.ProcessSpec{Entry: executable, Args: []string{"-test.run=^TestDocumentPluginProcessHelper$"}, Stdin: toolmanifest.StdinRequest, Env: map[string]string{"ACTIONLINT_DOCUMENT_HELPER": "1"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
 	}
 }
 
-func documentPluginSources(t *testing.T, manifest manifests.Manifest) pluginselection.Sources {
+func documentPluginSources(t *testing.T, manifest toolmanifest.Manifest) pluginselection.Sources {
 	t.Helper()
 	data, err := json.Marshal(manifest)
 	if err != nil {
@@ -78,8 +78,8 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 	t.Parallel()
 	manifest := nativeDocumentManifest(t)
 	sources := documentPluginSources(t, manifest)
-	input := func() inputmodel.Request {
-		return inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}
+	input := func() checkrequest.Request {
+		return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 	}
 	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources)
 	if err != nil {

@@ -71,7 +71,7 @@ func TestResolvedRegistryOverride(t *testing.T) {
 func TestRegistryURLRequiresHostname(t *testing.T) {
 	t.Parallel()
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
-		if _, err := pluginregistry.New(registry, pluginacquisition.Settings{}); err == nil {
+		if _, err := pluginregistry.New(registry, pluginacquisition.Options{}); err == nil {
 			t.Errorf("accepted hostname-less endpoint %q", registry)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -163,9 +163,9 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 				var result *report.Analysis
 				var err error
 				if repository {
-					result, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})
+					result, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 				} else {
-					result, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
+					result, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
 				}
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || result.FileCount != 1 {
 					t.Fatalf("result=%+v err=%v", result, err)

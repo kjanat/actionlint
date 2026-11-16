@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -25,7 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -46,7 +46,7 @@ type lintRequest struct {
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
-	processes    map[string]*process.CommandOptions
+	processes    map[string]*hostprocess.CommandOptions
 	workingDir   string
 	workspaceDir string
 	configFile   string
@@ -56,7 +56,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
-	acquisition  pluginacquisition.Settings
+	acquisition  pluginacquisition.Options
 }
 
 type lintOutcome struct {
@@ -140,7 +140,7 @@ func runLinter(req *lintRequest) *lintResult {
 	var analysis *report.Analysis
 	var err error
 	inputNames := make(map[string]string, len(req.files))
-	input := inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
+	input := checkrequest.Request{Kind: checkrequest.Repository, Directory: req.workingDir}
 	if len(req.files) != 0 {
 		paths := make([]string, len(req.files))
 		for i, path := range req.files {
@@ -150,7 +150,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 			paths[i] = path
 		}
-		input = inputmodel.Request{Kind: inputmodel.Files, Paths: paths}
+		input = checkrequest.Request{Kind: checkrequest.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
 	analysis, err = checking.CheckProjects(ctx, opts, input, selection)
@@ -285,7 +285,7 @@ func (req *lintRequest) toolSelections() registry.ToolSelections {
 			selections[id] = backends.ToolSelection{}
 			continue
 		}
-		options := process.CommandOptions{Optional: true}
+		options := hostprocess.CommandOptions{Optional: true}
 		if replaced := req.processes[id]; replaced != nil {
 			options = *replaced
 		}

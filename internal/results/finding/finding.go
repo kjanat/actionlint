@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -14,7 +14,7 @@ import (
 // producers and plugins share Diagnostic; policy changes it in place.
 type Finding struct {
 	results.Diagnostic
-	Binding           bindingmodel.ID `clone:"shared"`
+	Binding           binding.ID `clone:"shared"`
 	LifecycleEvidence *lifecycle.Evidence
 	// inferredReference is traversal provenance, not a distinct analyzer finding.
 	InferredReference bool

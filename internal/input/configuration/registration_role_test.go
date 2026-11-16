@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -80,7 +81,7 @@ func TestExperimentalToolRegistrationUsesExperimentalSelection(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		presets Presets
-		want    Level
+		want    ruleconfig.Level
 	}{
 		{"default", Presets{}, "off"},
 		{"strict", Presets{Strict: true}, "off"},

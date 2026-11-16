@@ -6,12 +6,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -57,7 +57,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := workflows.NewCache(root, nil)
+			cache := reusableworkflows.NewCache(root, nil)
 			cache.SetSources(t.Context(), store, root)
 			visit := func(snapshot parsing.SourceSnapshot) (int, int) {
 				t.Helper()
@@ -65,7 +65,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				if !available {
 					t.Fatal("workflow is unavailable")
 				}
-				runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+				runners, err := runneracquisition.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 				if err != nil {
 					t.Fatal(err)
 				}

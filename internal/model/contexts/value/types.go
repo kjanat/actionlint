@@ -1,6 +1,6 @@
 package value
 
-import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 // TypeWithFallback derives a type from known values. Unknown values use inferred;
 // unknown object properties and array elements use its corresponding child type.

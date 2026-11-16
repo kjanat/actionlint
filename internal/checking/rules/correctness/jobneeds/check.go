@@ -16,7 +16,7 @@ type Name struct {
 	Value string
 	Start source.Position
 }
-type Job struct {
+type JobDependencies struct {
 	ID    Name
 	Needs []Name
 }
@@ -28,7 +28,7 @@ type node struct {
 
 // Check resolves all declarations before finding cycles. The supplied jobs are
 // source ordered; graph walks use sorted IDs for deterministic cycle selection.
-func Check(jobs []Job) []results.Diagnostic {
+func Check(jobs []JobDependencies) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(pos source.Position, message string) {
 		findings = append(findings, results.Diagnostic{Start: pos, Message: message})

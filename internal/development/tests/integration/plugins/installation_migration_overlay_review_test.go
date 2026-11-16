@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -39,7 +39,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if explicit {
 					selection.ConfigFile = path
 				}
-				if err := configmigration.MigrateSelection(t.Context(), selection, root, inputmodel.Request{Kind: inputmodel.Repository}, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+				if err := configmigration.MigrateSelection(t.Context(), selection, root, checkrequest.Request{Kind: checkrequest.Repository}, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 					t.Fatal(err)
 				}
 				if len(registry.Requests()) != 0 {

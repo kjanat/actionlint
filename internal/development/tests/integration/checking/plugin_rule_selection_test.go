@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -20,7 +20,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		if !found {
 			t.Fatal("inherited plugin rule missing")
 		}
-		if _, err := selection.Select(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil {
+		if _, err := selection.Select(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err == nil {
 			t.Fatal("ordinary checking ignored invalid config")
 		}
 	}

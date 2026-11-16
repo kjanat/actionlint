@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // declarationSet collects the mappings and dependencies one document declares.
@@ -78,7 +78,7 @@ func (d *declarationSet) dependency(value *definition.String, kind string, ref s
 	d.dependencies = append(d.dependencies, facts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
 }
 
-func (d *declarationSet) mapping(scope string, owner source.Reference, values mapping.Mapping) {
+func (d *declarationSet) mapping(scope string, owner source.Reference, values mappings.Mapping) {
 	d.mappings = append(d.mappings, facts.Mapping{
 		Scope: scope, Reference: owner, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
 	})

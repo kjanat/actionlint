@@ -5,11 +5,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	shellsyntax "mvdan.cc/sh/v3/syntax"
 )
@@ -180,7 +180,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 		return scalarArgument
 	case *syntax.LogicalOpNode:
 		if value, known := evaluate.ConditionConstantValue(n.Left); known {
-			if exprvalues.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
+			if values.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 				return safeScriptExpression(n.Right, scalarArgument, safeReference)
 			}
 			return safeScriptExpression(n.Left, scalarArgument, safeReference)
@@ -190,7 +190,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 		}
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
 	case *syntax.FuncCallNode:
-		if exprfunctions.IsStringPredicate(n.Callee) {
+		if functions.IsStringPredicate(n.Callee) {
 			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "hashFiles") {
@@ -209,7 +209,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 		if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
 			for i := 0; i < len(n.Args)-1; i += 2 {
 				if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
-					if !exprvalues.ExpressionTruthy(value) {
+					if !values.ExpressionTruthy(value) {
 						continue
 					}
 					return safeScriptExpression(n.Args[i+1], scalarArgument, safeReference)
@@ -226,7 +226,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 
 func safeTruthyScriptResult(expr syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
 	if value, known := evaluate.ConditionConstantValue(expr); known {
-		if !exprvalues.ExpressionTruthy(value) {
+		if !values.ExpressionTruthy(value) {
 			return true
 		}
 		return safeScriptExpression(expr, scalarArgument, safeReference)
@@ -251,7 +251,7 @@ func safeFalsyScriptResult(expr syntax.Node, scalarArgument bool, safeReference 
 		return true
 	}
 	if value, known := evaluate.ConditionConstantValue(expr); known {
-		if exprvalues.ExpressionTruthy(value) {
+		if values.ExpressionTruthy(value) {
 			return true
 		}
 		return safeScriptExpression(expr, scalarArgument, safeReference)

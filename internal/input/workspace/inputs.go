@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
@@ -27,7 +27,7 @@ func (f *InputFiles) Add(path string) {
 	if f.paths == nil {
 		f.paths = map[string]struct{}{}
 	}
-	if !source.IsRemoteAddress(path) {
+	if !configsource.IsRemoteAddress(path) {
 		path = absPath(path)
 	}
 	f.paths[path] = struct{}{}

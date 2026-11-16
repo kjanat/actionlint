@@ -7,25 +7,25 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
-	ctx = source.WithReadCache(ctx)
+func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition pluginacquisition.Options) (inspection configreport.Inspection, err error) {
+	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
@@ -38,11 +38,11 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexecution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}
@@ -62,7 +62,7 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 			return inspection, fmt.Errorf("provider %s: %w", manifest.ID, scopeErr)
 		}
 		registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}, ToolSettings: new(manifest.Settings())}
-		if manifest.Role == pluginmanifests.RoleScript {
+		if manifest.Role == toolmanifest.RoleScript {
 			registration.ReplacesTool = manifest.Rule.Name
 		}
 		rules = append(rules, registration)
@@ -70,7 +70,7 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	reader := source.New(ctx, nil, acquisition.Connections)
+	reader := configsource.New(ctx, nil, acquisition.Connections)
 	policy, err := configuration.LoadNetworkPolicy(ctx, acquisition.Connections)
 	if err != nil {
 		return inspection, err
@@ -82,19 +82,19 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition pluginacquisition.Settings) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition pluginacquisition.Options) ([]toolmanifest.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return nil, err
 	}
-	var manifests []pluginmanifests.Manifest
+	var manifests []toolmanifest.Manifest
 	for _, path := range sources.Paths {
-		if pluginmanifests.IsLocalManifest(path) {
-			manifest, programs, err := pluginmanifests.ReadLocal(files.New(ctx, nil, nil), path)
+		if toolmanifest.IsLocalManifest(path) {
+			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, err
 			}

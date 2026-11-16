@@ -7,12 +7,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestDeclaredEnvironmentPreservesSourceOrderAndCase(t *testing.T) {
 	t.Parallel()
-	declarations := mapping.Resolve(&mapping.DeclaredMapping{Values: map[string]mapping.DeclaredEntry{
+	declarations := mappings.Resolve(&mappings.DeclaredMapping{Values: map[string]mappings.DeclaredEntry{
 		"foo": {Name: value.YAMLScalar("foo", "!!str", value.Origin{Span: value.Span{Start: source.Position{Line: 2, Column: 3}}})},
 		"FOO": {Name: value.YAMLScalar("FOO", "!!str", value.Origin{Span: value.Span{Start: source.Position{Line: 3, Column: 3}}})},
 	}})

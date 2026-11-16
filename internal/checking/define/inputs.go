@@ -8,16 +8,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 // RuleInputs supplies captured sources, resolved settings and model facts to rule constructors.
@@ -36,12 +36,12 @@ type RuleInputs struct {
 	Path, WorkingDir, ProjectRoot string
 	Config                        *configuration.Config
 	Repository                    repository.Snapshot
-	Actions                       *workspace.Resolver
+	Actions                       *localactions.Resolver
 	RemoteActions                 *remote.ResolvedActions
-	WorkflowSources               *workflows.Cache
-	Workflows                     *workflows.ResolvedWorkflows
-	WorkflowNames                 *names.Index
-	WorkflowNameInventory         namemodel.Inventory
+	WorkflowSources               *reusableworkflows.Cache
+	Workflows                     *reusableworkflows.ResolvedWorkflows
+	WorkflowNames                 *nameindex.Index
+	WorkflowNameInventory         names.Inventory
 	Reader                        *files.Reader
 	Index                         func(context.Context, string) *execution.IndexSnapshot
 	ExecutableIndex               *execution.IndexSnapshot
@@ -62,12 +62,12 @@ func (c RuleInputs) InProjectWorkflows() bool {
 	if c.ProjectRoot == "" || c.WorkflowNames == nil {
 		return false
 	}
-	return names.SamePath(filepath.Dir(c.DocumentPath()), filepath.Join(c.projectRoot(), ".github", "workflows"))
+	return nameindex.SamePath(filepath.Dir(c.DocumentPath()), filepath.Join(c.projectRoot(), ".github", "workflows"))
 }
 
 // ProjectWorkflowNames returns the inventory of the project's workflow names.
 // Call it only when [RuleInputs.InProjectWorkflows] reports true.
-func (c RuleInputs) ProjectWorkflowNames() (namemodel.Inventory, error) {
+func (c RuleInputs) ProjectWorkflowNames() (names.Inventory, error) {
 	return c.WorkflowNames.ForRoot(c.projectRoot())
 }
 

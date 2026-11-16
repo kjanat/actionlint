@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -161,7 +161,7 @@ jobs:
 permissions: {}
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
-		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{flag}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &command, Arguments: []string{flag}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
 			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
 		}

@@ -12,7 +12,7 @@ import (
 )
 
 func TestRunnerProviderCLI(t *testing.T) {
-	artifact, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
+	artifact, err := filepath.Abs("internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

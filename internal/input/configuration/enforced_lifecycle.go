@@ -6,7 +6,7 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 )
@@ -57,7 +57,7 @@ func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, er
 				delete(object, "$schema")
 			}
 			var file enforcedLifecycleFile
-			if err := binding.Decode(object, &file); err != nil {
+			if err := configdecode.Decode(object, &file); err != nil {
 				return source, sourceError(err, source.Origins())
 			}
 			return document.Capture(object, source.Origins()), nil
@@ -66,7 +66,7 @@ func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, er
 			return nil, err
 		}
 		var file enforcedLifecycleFile
-		if err := binding.Decode(loaded.Root.Value(), &file); err != nil {
+		if err := configdecode.Decode(loaded.Root.Value(), &file); err != nil {
 			return nil, fmt.Errorf("enforced lifecycle policy %q: %w", path, err)
 		}
 		if len(file.Lint.Lifecycle.Policies) == 0 {

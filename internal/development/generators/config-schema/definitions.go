@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"github.com/invopop/jsonschema"
@@ -36,7 +35,7 @@ func enumValues[T ~string](values []T) []any {
 func levelSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
-			{Type: "string", Enum: enumValues(rules.Levels())},
+			{Type: "string", Enum: enumValues(ruleconfig.Levels())},
 			{Type: "boolean"},
 			{Type: "null", Extras: map[string]any{"doNotSuggest": true}},
 		},
@@ -45,8 +44,8 @@ func levelSchema() *jsonschema.Schema {
 
 func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.Definitions, error) {
 	setting := reflectMapping(struct {
-		Level   configuration.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule."`
-		Options map[string]any      `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
+		Level   ruleconfig.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule."`
+		Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
 	}{})
 	options, _ := setting.Properties.Get("options")
 	options.AdditionalProperties = jsonschema.TrueSchema
@@ -56,7 +55,7 @@ func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.
 	for _, entry := range configuredRules {
 		descriptors = append(descriptors, entry.Descriptor)
 	}
-	choices, err := json.Marshal(schema.RuleNameChoices(descriptors))
+	choices, err := json.Marshal(configschema.RuleNameChoices(descriptors))
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +84,7 @@ func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.
 		"group-level": {AnyOf: []*jsonschema.Schema{
 			definitionRef("level"), {Type: "string", Enum: []any{"all"}},
 		}},
-		"preset":         {Type: "string", Enum: enumValues(rules.Presets()), Description: "Baseline rule selection: recommended, all stable rules, or none."},
+		"preset":         {Type: "string", Enum: enumValues(ruleconfig.Presets()), Description: "Baseline rule selection: recommended, all stable rules, or none."},
 		"plugin-setting": {OneOf: []*jsonschema.Schema{definitionRef("level"), setting}},
 		"rule-setting":   plain,
 		"backend":        backendSchema(reflectMapping),

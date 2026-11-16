@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -51,15 +51,15 @@ permissions: {}
 					if modern {
 						args = append(args, "check")
 					}
-					report := filepath.Join(reports, "report.json")
+					reportPath := filepath.Join(reports, "report.json")
 					if outputFile {
 						if err := os.Mkdir(reports, 0o700); err != nil {
 							t.Fatal(err)
 						}
-						if err := os.WriteFile(report, []byte("previous report"), 0600); err != nil {
+						if err := os.WriteFile(reportPath, []byte("previous report"), 0600); err != nil {
 							t.Fatal(err)
 						}
-						args = append(args, "--yes", "--output-file", report)
+						args = append(args, "--yes", "--output-file", reportPath)
 					}
 					paths := []string{"successful.yml", "failing.yml"}
 					if failingFirst {
@@ -68,7 +68,7 @@ permissions: {}
 					var stdout, stderr bytes.Buffer
 					command := cli.Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 					status := command.Main(append(args, paths...))
-					var result resultreport.CheckResult
+					var result report.CheckResult
 					if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 						t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 					}
@@ -93,7 +93,7 @@ permissions: {}
 						t.Errorf("selected configuration lost: %v", result.Configs)
 					}
 					if outputFile {
-						data, err := os.ReadFile(report)
+						data, err := os.ReadFile(reportPath)
 						if err != nil || string(data) != "previous report" {
 							t.Fatalf("failed analysis replaced report: %q (%v)", data, err)
 						}
@@ -130,7 +130,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 			status := command.Main(append(args, "failing.yml"))
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
@@ -143,7 +143,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
 			}
-			workflow, ok := result.Documents[0].(outline.Workflow)
+			workflow, ok := result.Documents[0].(outline.WorkflowOutline)
 			if !ok || workflow.DocumentPath() != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
 			}
@@ -171,7 +171,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 			status := command.Main(append(args, workflow))
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
@@ -181,7 +181,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
-			document, ok := result.Documents[0].(outline.Workflow)
+			document, ok := result.Documents[0].(outline.WorkflowOutline)
 			if !ok || document.DocumentPath() != workingDirectoryPath(t, workflow) || document.ParseStatus != "complete" || len(document.Jobs) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}

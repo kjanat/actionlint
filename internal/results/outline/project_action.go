@@ -5,6 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -123,25 +124,25 @@ func actionRunsOutline(node *codec.Node) ActionRuns {
 	return UnknownRuns{Using: using}
 }
 
-func actionStepOutlines(node *codec.Node) []Step {
-	steps := []Step{}
+func actionStepOutlines(node *codec.Node) []StepOutline {
+	steps := []StepOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != codec.SequenceNode {
 		return steps
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := Step{
+		step := StepOutline{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
-			Start: outlinePosition(parser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
+			Start: outlinePosition(parser.PosAt(node)), Kind: unknownStepKind, Uses: actionOutlineString(fields["uses"]),
 		}
 		_, hasRun := fields["run"]
 		_, hasUses := fields["uses"]
 		switch {
 		case hasRun && !hasUses:
-			step.Kind = "run"
+			step.Kind = definition.ExecKindRun.String()
 		case hasUses && !hasRun:
-			step.Kind = "uses"
+			step.Kind = definition.ExecKindAction.String()
 		}
 		steps = append(steps, step)
 	}

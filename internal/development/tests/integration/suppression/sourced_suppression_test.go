@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
@@ -72,7 +72,7 @@ runs:
     `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+					result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 					manifest := map[string]source.Position{}
 					if composite && tc.name == "split-anchor" {
 						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = source.Position{Line: 9, Column: 9}
@@ -154,7 +154,7 @@ runs:
 `)
 					steps = "- uses: ./outer"
 				}
-				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 				want := 1
 				if both {
 					want = 0
@@ -181,7 +181,7 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 - shell: bash
   working-directory: .
   run: *script`
-	result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+	result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 	if len(result.Diagnostics) != 2 {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
 	}
@@ -235,7 +235,7 @@ runs:
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 			var sourced, policy int
 			for _, diagnostic := range result.Diagnostics {
 				switch diagnostic.Rule {
@@ -294,7 +294,7 @@ runs:
       run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+					result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 					if len(result.Diagnostics) != 1 {
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}

@@ -16,7 +16,7 @@ import (
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	t.Parallel()
-	cwd := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
+	cwd := filepath.Join("..", "..", "..", "..", "input", "references", "reusableworkflows", "testdata", "reusable-workflows")
 	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{

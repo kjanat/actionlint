@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestRuffPythonScripts(t *testing.T) {
@@ -157,7 +157,7 @@ func TestRuffCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
-	options := &process.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
+	options := &hostprocess.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
 	src := `on: push
 jobs:
   test:
@@ -197,7 +197,7 @@ func TestRuffMissingExecutable(t *testing.T) {
 			_, err = checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: t.TempDir(),
 
-				Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &process.CommandOptions{Executable: &missing, Optional: tc.optional}}}),
+				Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &missing, Optional: tc.optional}}}),
 			}, []workspace.InputFile{{Path: "ci.yml", Config: config, Content: []byte(`on: push
 jobs:
   test:
@@ -327,7 +327,7 @@ func TestRuffProcessFailures(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			options := &process.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
+			options := &hostprocess.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
 			src := `on: push
 jobs:
   test:
@@ -354,7 +354,7 @@ func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		t.Run(strconv.FormatBool(legacy), func(t *testing.T) {
 			t.Parallel()
-			options := &process.CommandOptions{
+			options := &hostprocess.CommandOptions{
 				Executable:  &executable,
 				Arguments:   []string{"--preview", "--exclude", "vendor/**"},
 				Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_FLAGS=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "RUFF_OUTPUT_FILE=explicit-output.json"},
@@ -395,7 +395,7 @@ jobs:
         run: 'if:'
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +425,7 @@ jobs:
 permissions: {}
 `
 	for _, language := range []string{"ipynb", "pyi"} {
-		options := &process.CommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
+		options := &hostprocess.CommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
 		result, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: options}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)

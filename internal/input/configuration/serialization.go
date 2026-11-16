@@ -1,7 +1,7 @@
 package configuration
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
@@ -34,7 +34,7 @@ func (ruleSet RuleSet) decodeValue(value any, dst *Config, bindProviders bool) e
 		return err
 	}
 	var decoded Config
-	if err := binding.DecodeKnown(rawValue(normalized), &decoded); err != nil {
+	if err := configdecode.DecodeKnown(rawValue(normalized), &decoded); err != nil {
 		return err
 	}
 	if repository := field(normalized, "repository"); repository != nil && isNull(repository) {
@@ -50,7 +50,7 @@ func (ruleSet RuleSet) EncodeValue(cfg *Config) (any, error) {
 	if cfg == nil {
 		return nil, nil
 	}
-	encoded, err := binding.Encode(*cfg)
+	encoded, err := configdecode.Encode(*cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +67,13 @@ func (ruleSet RuleSet) EncodeValue(cfg *Config) (any, error) {
 		return ok
 	}
 	if cfg.Lint.MessageIgnores == nil && cfg.Paths != nil {
-		paths, err := binding.Encode(cfg.Paths)
+		paths, err := configdecode.Encode(cfg.Paths)
 		if err != nil {
 			return nil, err
 		}
 		root["paths"] = paths
 	}
-	policy, err := binding.Encode(cfg.Policy)
+	policy, err := configdecode.Encode(cfg.Policy)
 	if err != nil {
 		return nil, err
 	}

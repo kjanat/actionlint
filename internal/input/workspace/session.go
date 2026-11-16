@@ -11,9 +11,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
@@ -95,7 +95,7 @@ func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	if policyErr != nil {
 		return nil, policyErr
 	}
-	a := &InputPreparer{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: source.New(ctx, opts.ReadFile, opts.ConfigConnections).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
+	a := &InputPreparer{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile, opts.ConfigConnections).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	a.defaultConfigProvenance = opts.ConfigProvenance
 	a.networkPolicy = policy
 	a.noIgnore = opts.NoIgnore
@@ -124,7 +124,7 @@ func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	}
 	if opts.ConfigFile != "" {
 		path := opts.ConfigFile
-		if !source.IsRemoteAddress(path) && !filepath.IsAbs(path) {
+		if !configsource.IsRemoteAddress(path) && !filepath.IsAbs(path) {
 			path = filepath.Join(a.cwd, path)
 		}
 		source, err := a.rules.ReadContext(ctx, path, a.readFile, opts.ConfigSources, a.ruleNames...)

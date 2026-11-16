@@ -4,15 +4,16 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -132,7 +133,7 @@ func (r *ruleExpression) VisitJobPost(view workflows.Job) error {
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
-func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspace.ActionMetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
+func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache localactions.ActionMetadataLookup, workflowCache *reusableworkflows.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Checker = New(Dependencies{
 		Runners:  runners,
@@ -175,7 +176,7 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		config = scope.Composite()
 	}
 	facts := configuration.RepositoryFacts(config, host)
-	level := func(name string) configuration.Level {
+	level := func(name string) ruleconfig.Level {
 		selected := config
 		if scope != nil {
 			selected = scope.Rule(name).Config()

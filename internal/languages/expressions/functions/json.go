@@ -5,16 +5,16 @@ import (
 	"strconv"
 	"strings"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
-func evaluateFromJSON(context EvaluationContext) exprvalues.EvaluationResult {
+func evaluateFromJSON(context EvaluationContext) values.EvaluationResult {
 	argument := context.Argument(0)
-	if argument.State != exprvalues.EvaluationKnown {
+	if argument.State != values.EvaluationKnown {
 		return argument
 	}
-	text, known := exprvalues.FunctionString(argument.Value)
+	text, known := values.FunctionString(argument.Value)
 	if !known {
 		return unknownValue()
 	}
@@ -37,24 +37,24 @@ func evaluateFromJSON(context EvaluationContext) exprvalues.EvaluationResult {
 //sumtype:decl
 type functionJSONRead interface{ functionJSONRead() }
 
-type decodedFunctionJSON struct{ parsed json.ReadResult }
+type decodedFunctionJSON struct{ parsed runnerjson.ReadResult }
 
 func (decodedFunctionJSON) functionJSONRead() {}
 
-type unsupportedFunctionJSON struct{ parsed json.ReadResult }
+type unsupportedFunctionJSON struct{ parsed runnerjson.ReadResult }
 
 func (unsupportedFunctionJSON) functionJSONRead() {}
 
 func (InvalidJSON) functionJSONRead() {}
 
 func readFunctionJSON(text string) functionJSONRead {
-	parsed, err := json.ParseJSON(text)
-	if errors.Is(err, json.ErrUnsupportedValue) {
+	parsed, err := runnerjson.ParseJSON(text)
+	if errors.Is(err, runnerjson.ErrUnsupportedValue) {
 		return unsupportedFunctionJSON{parsed: parsed}
 	}
 	if err != nil {
 		failure := InvalidJSON{Message: err.Error()}
-		if syntax, ok := errors.AsType[*json.ReadError](err); ok {
+		if syntax, ok := errors.AsType[*runnerjson.ReadError](err); ok {
 			failure.Offset = &syntax.Offset
 		}
 		return failure
@@ -62,9 +62,9 @@ func readFunctionJSON(text string) functionJSONRead {
 	return decodedFunctionJSON{parsed: parsed}
 }
 
-func evaluateToJSON(context EvaluationContext) exprvalues.EvaluationResult {
+func evaluateToJSON(context EvaluationContext) values.EvaluationResult {
 	argument := context.Argument(0)
-	if argument.State != exprvalues.EvaluationKnown {
+	if argument.State != values.EvaluationKnown {
 		return argument
 	}
 	switch value := argument.Value.(type) {

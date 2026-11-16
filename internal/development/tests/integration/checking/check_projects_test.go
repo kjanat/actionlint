@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -46,7 +46,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		fixturefiles.WriteText(t, filepath.Join(root, ".github", "workflows", "ci.yml"), ociProviderInput)
 	}
 	for _, paths := range [][]string{{parent}, {filepath.Join(parent, "*"), parent}} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"first", "second"} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Repository, Directory: name}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Repository, Directory: name}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,6 +91,6 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 	}
 }
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
-	return pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Options {
+	return pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

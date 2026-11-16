@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {

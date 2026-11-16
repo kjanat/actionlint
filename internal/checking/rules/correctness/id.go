@@ -27,7 +27,7 @@ func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
 	name := func(value *definition.String) identifier.Name {
 		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: source.ZeroIfNil(value.Pos)}
 	}
-	input := identifier.Job{}
+	input := identifier.JobIdentifiers{}
 	if job.ID != nil {
 		input.ID = new(name(job.ID))
 	}

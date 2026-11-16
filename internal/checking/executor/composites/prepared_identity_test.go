@@ -11,17 +11,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -119,13 +119,13 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
+	scopes, batchScripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Deployment.ActionPath() == "" || !scopes[0].Composite {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptexecution.NewBatch(result.Batch.CallGraph, scriptexecution.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
-	if !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
+	_, err = scriptanalysis.NewBatch(result.Batch.CallGraph, scriptanalysis.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(batchScripts), Collected: true})
+	if !errors.Is(err, scriptanalysis.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
 }
@@ -169,13 +169,13 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
-	if len(scopes) != 3 || len(scripts) != 2 {
+	scopes, batchScripts := result.Batch.Scopes, result.Batch.Scripts
+	if len(scopes) != 3 || len(batchScripts) != 2 {
 		t.Fatal("fixture did not expand both calls")
 	}
 	graph := result.Batch.CallGraph
 	configByOwner := map[invocation.ID]*configuration.Config{}
-	for i, script := range scripts {
+	for i, script := range batchScripts {
 		record, exists := graph.Script(script.Occurrence)
 		if !exists {
 			t.Fatal("fixture script is absent from the graph")
@@ -191,19 +191,19 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 			t.Fatal("fixture calls did not have distinct owners")
 		}
 	}
-	requests := requestsFromUnits(scripts)
+	requests := requestsFromUnits(batchScripts)
 	executionByOccurrence := make(map[invocation.ID]string, len(requests))
 	for i := range requests {
 		name := "bash"
 		if i == 1 {
 			name = "pwsh"
 		}
-		requests[i].Execution = &scriptmodel.Execution{Shell: name, ShellKnown: true}
+		requests[i].Execution = &scripts.Execution{Shell: name, ShellKnown: true}
 		executionByOccurrence[requests[i].Occurrence] = name
 	}
 	requests[0], requests[1] = requests[1], requests[0]
 	scopes[1], scopes[2] = scopes[2], scopes[1]
-	rebuilt, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{
+	rebuilt, err := scriptanalysis.NewBatch(graph, scriptanalysis.Collection{
 		Declarations: f.registry, Scopes: scopes, Scripts: requests, Collected: true,
 	})
 	if err != nil {
@@ -235,7 +235,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 					t.Fatal(err)
 				}
 				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspace.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
+				options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: localactions.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
 				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
@@ -275,7 +275,7 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	options := Options{
 		Bindings: testBindings(nil),
-		Context:  t.Context(), Actions: workspace.NewResolver(nil, nil), SourceSnapshots: registry,
+		Context:  t.Context(), Actions: localactions.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
 	}
@@ -306,7 +306,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 		t.Run(change, func(t *testing.T) {
 			t.Parallel()
 			shared, units := first.Batch.Scopes, first.Batch.Scripts
-			scopes := make([]*scriptexecution.Scope, len(shared))
+			scopes := make([]*scriptanalysis.Scope, len(shared))
 			for i, scope := range shared {
 				scopes[i] = new(*scope)
 			}
@@ -324,7 +324,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 				scopes[1].Paths.ActionIndependent = !scopes[1].Paths.ActionIndependent
 				want = "action paths disagree"
 			}
-			if _, err := scriptexecution.NewBatch(first.Batch.CallGraph, scriptexecution.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
+			if _, err := scriptanalysis.NewBatch(first.Batch.CallGraph, scriptanalysis.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptanalysis.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
 				t.Fatalf("%s accepted: %v", change, err)
 			}
 		})

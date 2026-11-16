@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 )
@@ -43,11 +43,11 @@ func (c *IgnoreConfigs) DecodeConfig(value any) error {
 	next := make(IgnoreConfigs, 0, len(list))
 	for i, entry := range list {
 		if _, ok := entry.(map[string]any); !ok {
-			return binding.At(strconv.Itoa(i), errors.New("ignores entries must be selector mappings"))
+			return configdecode.At(strconv.Itoa(i), errors.New("ignores entries must be selector mappings"))
 		}
 		var selected IgnoreConfig
 		if err := selected.DecodeConfig(entry); err != nil {
-			return binding.At(strconv.Itoa(i), err)
+			return configdecode.At(strconv.Itoa(i), err)
 		}
 		next = append(next, selected)
 	}
@@ -63,13 +63,13 @@ func (c *IgnoreConfig) DecodeConfig(value any) error {
 	}
 	type plain IgnoreConfig
 	var next plain
-	if err := binding.Decode(object, &next); err != nil {
+	if err := configdecode.Decode(object, &next); err != nil {
 		return err
 	}
 	for key, value := range object {
 		selected, ok := value.(string)
 		if !ok || strings.TrimSpace(selected) == "" {
-			return binding.At(key, errors.New("ignore selector must be a nonempty string"))
+			return configdecode.At(key, errors.New("ignore selector must be a nonempty string"))
 		}
 	}
 	if err := IgnoreConfig(next).validateStructure(); err != nil {

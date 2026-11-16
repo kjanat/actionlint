@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/lsp"
 )
 
@@ -20,7 +20,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	for _, warning := range c.Deprecations {
 		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+warning)
 	}
-	plugins, err := c.pluginSelection(streams.Acquisition).Resolve(ctx, cwd, inputmodel.Request{Kind: inputmodel.Repository})
+	plugins, err := c.pluginSelection(streams.Acquisition).Resolve(ctx, cwd, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return 0, err
 	}
