@@ -3,8 +3,10 @@ on:
     inputs:
       my_input_1:
         required: true
+        type: string
       my_input_2:
         required: true
+        type: string
     outputs:
       my_output_1:
         value: ...

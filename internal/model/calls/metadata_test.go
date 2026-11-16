@@ -65,9 +65,9 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			    secrets:
 			`,
 			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
+				Inputs:  Inputs{},
+				Outputs: Outputs{},
+				Secrets: Secrets{},
 			},
 		},
 		{
@@ -82,7 +82,6 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			        type: number
 			      c:
 			        type: boolean
-			      d:
 			      e:
 			        type: string
 			        required: false
@@ -96,7 +95,9 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			        type: string
 			        default: abc
 			        required: true
-			      i:
+			      j:
+			        type: string
+			        default:
 			        required: true
 			`,
 			want: &Metadata{
@@ -104,12 +105,11 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 					"a": {"a", false, workflowlang.WorkflowCallEventInputTypeString},
 					"b": {"b", false, workflowlang.WorkflowCallEventInputTypeNumber},
 					"c": {"c", false, workflowlang.WorkflowCallEventInputTypeBoolean},
-					"d": {"d", false, workflowlang.WorkflowCallEventInputTypeInvalid},
 					"e": {"e", false, workflowlang.WorkflowCallEventInputTypeString},
 					"f": {"f", true, workflowlang.WorkflowCallEventInputTypeString},
 					"g": {"g", false, workflowlang.WorkflowCallEventInputTypeString},
 					"h": {"h", false, workflowlang.WorkflowCallEventInputTypeString},
-					"i": {"i", true, workflowlang.WorkflowCallEventInputTypeInvalid},
+					"j": {"j", true, workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: nil,
 				Secrets: nil,
@@ -277,7 +277,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			on: push
 			`,
 			line: 1,
-			col:  5,
+			col:  1,
 		},
 		{
 			what: "sequence",
@@ -285,7 +285,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			on: [push, pull_request]
 			`,
 			line: 1,
-			col:  5,
+			col:  1,
 		},
 		{
 			what: "empty sequence",
@@ -293,7 +293,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			on: []
 			`,
 			line: 1,
-			col:  5,
+			col:  1,
 		},
 		{
 			what: "mapping",
@@ -302,8 +302,8 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			  push:
 			  pull_request:
 			`,
-			line: 2,
-			col:  3,
+			line: 1,
+			col:  1,
 		},
 		{
 			what: "empty mapping",
@@ -311,7 +311,16 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			on: {}
 			`,
 			line: 1,
-			col:  5,
+			col:  1,
+		},
+		{
+			what: "after another key",
+			src: `
+			name: n
+			on: push
+			`,
+			line: 2,
+			col:  1,
 		},
 		{
 			what: "null",
@@ -319,7 +328,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 			on:
 			`,
 			line: 1,
-			col:  4,
+			col:  1,
 		},
 	}
 
