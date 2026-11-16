@@ -5,17 +5,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/cli/githubaction"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	_ "time/tzdata"
 )
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-github-action-plugins" {
-		os.Exit(githubaction.PluginPlan(os.Getenv, os.Stdout, os.Stderr, plugininstall.Acquisition{}))
+		os.Exit(githubaction.PluginPlan(os.Getenv, os.Stdout, os.Stderr, pluginacquisition.Settings{}))
 	}
 	if len(os.Args) > 1 && os.Args[1] == "-github-action" {
-		os.Exit(githubaction.Main(os.Getenv, os.Stdout, plugininstall.Acquisition{}))
+		os.Exit(githubaction.Main(os.Getenv, os.Stdout, pluginacquisition.Settings{}))
 	}
 	cmd := cli.Command{
 		Stdin:  os.Stdin,

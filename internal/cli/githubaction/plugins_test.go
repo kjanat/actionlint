@@ -13,7 +13,9 @@ import (
 
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func pluginCacheDirectory(userCacheDir string) string {
@@ -36,10 +38,10 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			directory := pluginCacheDirectory(registry.UserCacheDir())
 			registry.Add(t, "v1.0.0", wasm)
-			client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+			client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +69,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 			if code := PluginPlan(lookup, &stdout, &stderr, acquisition); code != 0 {
 				t.Fatalf("plugin plan %d: %s", code, &stderr)
 			}
-			var plan plugininstall.CachePlan
+			var plan pluginselection.CachePlan
 			if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +116,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 func TestActionConfiguredWasm(t *testing.T) {
 	for _, fixture := range []string{"../../plugins/execution/module/testdata/engines/echo.wasm", "../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
-			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 			module, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
@@ -197,10 +199,10 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			if err := json.NewDecoder(bytes.NewReader(module[start:])).Decode(&metadata); err != nil {
 				t.Fatal(err)
 			}
-			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: plugininstall.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: pluginregistry.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
-			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
+			req, err := provisioningRequest(func(key string) string { return env[key] }, pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -218,7 +220,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 
 func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	t.Parallel()
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 	directory := pluginCacheDirectory(acquisition.UserCacheDir)
 	digest := strings.Repeat("a", 64)
 	workspace := workspaceWith(t, map[string]string{
@@ -229,7 +231,7 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 0 {
 		t.Fatalf("plan failed: %d %s", code, &stderr)
 	}
-	var plan plugininstall.CachePlan
+	var plan pluginselection.CachePlan
 	if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +249,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 	url := "https://plugins.example/no-sudo.wasm"
 	digest := fmt.Sprintf("%x", sha256.Sum256(wasm))
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetFile(url, wasm)
 	workspace := workspaceWith(t, map[string]string{
 		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",

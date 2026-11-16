@@ -7,15 +7,16 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
 // RulesWithPluginPaths discovers selected providers without analyzing a document.
-func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition plugininstall.Acquisition) (result []rule.Descriptor, err error) {
-	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
+func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition pluginacquisition.Settings) (result []rule.Descriptor, err error) {
+	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +25,7 @@ func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition plugi
 
 // RulesWithPlugins lists managed document replacements under their existing tool
 // rule. Explicit standalone components keep their independently declared rule.
-func RulesWithPlugins(ctx context.Context, sources plugininstall.Sources) (result []rule.Descriptor, err error) {
+func RulesWithPlugins(ctx context.Context, sources pluginselection.Sources) (result []rule.Descriptor, err error) {
 	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err

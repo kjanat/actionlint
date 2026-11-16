@@ -30,7 +30,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	render "actionlint.kjanat.dev/v2/internal/output"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 const lintTimeout = 300 * time.Second
@@ -55,7 +55,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
-	acquisition  plugininstall.Acquisition
+	acquisition  pluginacquisition.Settings
 	service      services.Service
 }
 

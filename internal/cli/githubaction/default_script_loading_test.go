@@ -11,7 +11,8 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
@@ -45,7 +46,7 @@ func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
 			root := workspaceWith(t, files)
 			registry := fixtureregistry.NewPluginRegistry(t)
 			addRuffFixture(t, registry)
-			acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 			if err != nil {
@@ -97,7 +98,7 @@ func addRuffFixture(t *testing.T, registry *fixtureregistry.PluginRegistry) {
 	if err := json.NewDecoder(bytes.NewReader(module[start:])).Decode(&metadata); err != nil {
 		t.Fatal(err)
 	}
-	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: plugininstall.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
+	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: pluginregistry.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
 	if strings.Contains(string(metadata), "template-effects") {
 		t.Fatal("fixture unexpectedly declares template support")
 	}
@@ -123,12 +124,12 @@ func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: plugininstall.DefaultURL, Name: "github.com/publisher/ruff", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v1.0.0", module)
+	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/ruff", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v1.0.0", module)
 	root := workspaceWith(t, map[string]string{
 		".git": "", "bash.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
 		"input.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing()\n",
 	})
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "bash.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 	req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 	if err != nil {

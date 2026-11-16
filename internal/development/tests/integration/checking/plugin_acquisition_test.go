@@ -20,8 +20,11 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
@@ -32,7 +35,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		return nil, errors.New("private endpoint dialed")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	const endpoint = "https://127.0.0.1:8443/plugin.wasm"
 	source := endpoint + "#sha256=" + strings.Repeat("a", 64)
 	root := repositoryfixture.Directory(t)
@@ -41,7 +44,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
-	for _, selection := range []plugininstall.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
+	for _, selection := range []pluginselection.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
 		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 		if err != nil {
 			t.Fatal(err)
@@ -59,7 +62,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	project.Manifest.References = []pluginreference.Reference{ref}
-	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "public destination") {
+	if _, err := project.SelectedPlugins(t.Context(), project.Manifest.References); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("project private registry acquired: %v", err)
 	}
 	if _, err := pluginexec.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
@@ -73,7 +76,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 func TestExplicitPluginSelectionCarriesOnlyItsOwnSourceGrant(t *testing.T) {
 	t.Parallel()
 	source := "https://127.0.0.1:8443/plugin.wasm#sha256=" + strings.Repeat("a", 64)
-	sources, err := (plugininstall.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (pluginselection.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

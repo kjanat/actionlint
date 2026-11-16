@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
@@ -17,7 +17,7 @@ import (
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 	t.Parallel()
 	metadata := testRunCommand("", "rules", "--no-config", "--json")
-	want, err := checking.RulesWithPlugins(t.Context(), plugininstall.Sources{})
+	want, err := checking.RulesWithPlugins(t.Context(), pluginselection.Sources{})
 	if err != nil {
 		t.Fatal(err)
 	}

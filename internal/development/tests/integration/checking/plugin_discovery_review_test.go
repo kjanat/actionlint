@@ -12,6 +12,7 @@ import (
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
@@ -26,7 +27,7 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 	}
 	path := filepath.Join(directory, "actionlint.yml")
 	fixturefiles.WriteText(t, path, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

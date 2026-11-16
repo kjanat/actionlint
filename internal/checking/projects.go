@@ -9,7 +9,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -17,7 +17,7 @@ import (
 // CheckProjects discovers inputs once, then loads each repository's plugins in
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
-func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection plugininstall.Selection) (*Result, error) {
+func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 // Registry installation must preserve the process boundary: install without
@@ -75,7 +76,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (plugininstall.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
