@@ -64,7 +64,7 @@ type parsedExprNode interface {
 
 // node sets n's range from start through the last consumed token.
 func (p *Parser) node(n parsedExprNode, start *Token) parsedExprNode {
-	n.location().Range = Span{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column}
+	n.location().Range = Span{start.Offset, p.last.Offset + len(p.last.Value), start.Position}
 	return n
 }
 

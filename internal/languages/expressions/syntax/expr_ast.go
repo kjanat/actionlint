@@ -1,5 +1,7 @@
 package syntax
 
+import "actionlint.kjanat.dev/v2/internal/input/source"
+
 // Node is a Node of expression syntax tree. To know the syntax, see
 // https://docs.github.com/en/actions/learn-github-actions/expressions
 //
@@ -12,10 +14,10 @@ type Node interface {
 }
 
 // Span is a half-open byte range in the expression's decoded source.
-// Line and Column identify Start using one-based coordinates.
+// Position locates Start; a zero Position means the span is unknown.
 type Span struct {
-	Start, End   int
-	Line, Column int
+	Start, End int
+	Position   source.Position
 }
 
 // Location places a node in the expression it was parsed from. Every node
@@ -25,7 +27,7 @@ type Location struct {
 	// first token of their leftmost operand.
 	First Token
 	// Range covers the node in source, including enclosing parentheses. A
-	// zero Line means the range is unknown.
+	// zero Position means the range is unknown.
 	Range Span
 }
 
@@ -43,12 +45,12 @@ func (l *Location) location() *Location { return l }
 // when the node carries no range.
 func ExpressionSpan(node Node) Span {
 	if n, ok := node.(interface{ Span() Span }); ok {
-		if span := n.Span(); span.Line != 0 {
+		if span := n.Span(); span.Position.Line != 0 {
 			return span
 		}
 	}
 	t := node.Token()
-	return Span{t.Offset, t.Offset + len(t.Value), t.Line, t.Column}
+	return Span{t.Offset, t.Offset + len(t.Value), t.Position}
 }
 
 // Variable

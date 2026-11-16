@@ -263,8 +263,8 @@ func TestExprInsecureDetectUntrustedValue(t *testing.T) {
 				if !strings.Contains(err.Message, want) {
 					t.Errorf("%q is not contained in error message: %v", want, err)
 				}
-				if err.Line != 1 {
-					t.Error("line should be 1 but got", err.Line)
+				if err.Position.Line != 1 {
+					t.Error("line should be 1 but got", err.Position.Line)
 				}
 			}
 		})
@@ -297,13 +297,13 @@ func TestExprInsecureAllUntrustedValuesAtOnce(t *testing.T) {
 		if !strings.Contains(arg, "[0]") && !strings.Contains(err.Message, arg) {
 			t.Errorf("%q is not contained in error: %v", arg, err)
 		}
-		if err.Line != 1 {
-			t.Error("line should be 1 but got", err.Line)
+		if err.Position.Line != 1 {
+			t.Error("line should be 1 but got", err.Position.Line)
 		}
-		if err.Column <= col {
-			t.Errorf("column should be greater than %d but got %d", col, err.Column)
+		if err.Position.Column <= col {
+			t.Errorf("column should be greater than %d but got %d", col, err.Position.Column)
 		}
-		col = err.Column
+		col = err.Position.Column
 	}
 }
 

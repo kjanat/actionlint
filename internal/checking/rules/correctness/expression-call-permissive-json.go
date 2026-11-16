@@ -32,7 +32,7 @@ func PermissiveJSONCalls(expr syntax.Node) []*typecheck.Error {
 			span := syntax.ExpressionSpan(call.Args[0])
 			findings = append(findings, &typecheck.Error{
 				Rule: "expression-call", Code: "permissive-json", Message: "you naughty boy, I see you",
-				Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
+				Offset: span.Start, EndOffset: span.End, Position: span.Position,
 			})
 		}
 	})

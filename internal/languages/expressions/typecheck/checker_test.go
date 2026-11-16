@@ -166,7 +166,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 				if len(errs) != 1 || !strings.HasPrefix(errs[0].Message, tc.want) {
 					t.Fatalf("got %v, want %q", errs, tc.want)
 				}
-				if errs[0].Line != 1 || errs[0].Column != 1 {
+				if errs[0].Position.Line != 1 || errs[0].Position.Column != 1 {
 					t.Fatalf("unexpected position: %+v", errs[0])
 				}
 			})

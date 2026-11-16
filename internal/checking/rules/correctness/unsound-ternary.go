@@ -45,7 +45,7 @@ func UnsoundTernary(expr syntax.Node) []*typecheck.Error {
 		err := &typecheck.Error{
 			Rule: "unsound-ternary", Code: "falsy-middle-operand",
 			Message: "falsy middle operand in a && b || c always selects the fallback; this expression cannot select the middle value",
-			Offset:  span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
+			Offset:  span.Start, EndOffset: span.End, Position: span.Position,
 		}
 		findings = append(findings, err)
 	})

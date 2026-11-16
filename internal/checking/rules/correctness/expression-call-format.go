@@ -35,7 +35,7 @@ func UnusedFormatArguments(root syntax.Node, calls typecheck.CheckedCalls) []*ty
 				continue
 			}
 			token := call.Token()
-			findings = append(findings, &typecheck.Error{Rule: "expression-call", Code: "format-placeholder", Message: fmt.Sprintf("format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, index), Offset: token.Offset, EndOffset: token.Offset + len(token.Value), Line: token.Line, Column: token.Column, Advisory: true})
+			findings = append(findings, &typecheck.Error{Rule: "expression-call", Code: "format-placeholder", Message: fmt.Sprintf("format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, index), Offset: token.Offset, EndOffset: token.Offset + len(token.Value), Position: token.Position, Advisory: true})
 		}
 	})
 	return findings

@@ -7,5 +7,5 @@ import (
 
 func expressionFinding(node syntax.Node, name, message string) *typecheck.Error {
 	span := syntax.ExpressionSpan(node)
-	return &typecheck.Error{Rule: name, Code: name, Message: message, Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column, Advisory: true}
+	return &typecheck.Error{Rule: name, Code: name, Message: message, Offset: span.Start, EndOffset: span.End, Position: span.Position, Advisory: true}
 }

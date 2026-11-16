@@ -321,5 +321,5 @@ func safeScriptStatusReference(node syntax.Node, scalarArgument bool, safeRefere
 
 func interpolationIssue(node syntax.Node, message string) *typecheck.Error {
 	span := syntax.ExpressionSpan(node)
-	return &typecheck.Error{Rule: "script-interpolation", Code: "unknown-script-value", Message: message, Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column}
+	return &typecheck.Error{Rule: "script-interpolation", Code: "unknown-script-value", Message: message, Offset: span.Start, EndOffset: span.End, Position: span.Position}
 }

@@ -567,7 +567,7 @@ func (u *UntrustedInputChecker) Init() {
 
 func scriptInjectionIssuef(code string, node syntax.Node, format string, args ...any) *typecheck.Error {
 	span := syntax.ExpressionSpan(node)
-	return &typecheck.Error{Rule: "script-injection", Code: code, Message: fmt.Sprintf(format, args...), Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column}
+	return &typecheck.Error{Rule: "script-injection", Code: code, Message: fmt.Sprintf(format, args...), Offset: span.Start, EndOffset: span.End, Position: span.Position}
 }
 
 func checkUntrustedInputs(expr syntax.Node) []*typecheck.Error {

@@ -79,8 +79,7 @@ func errorAtExpr(kind findingKind, e syntax.Node, msg string) *Error {
 		Rule:    kind.rule, Code: kind.code,
 		Offset:    span.Start,
 		EndOffset: span.End,
-		Line:      span.Line,
-		Column:    span.Column,
+		Position:  span.Position,
 	}
 }
 

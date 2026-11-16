@@ -35,7 +35,7 @@ func checkSecretInterpolations(expr syntax.Node, semanticErrors []*typecheck.Err
 				findings = append(findings, &typecheck.Error{
 					Rule: "script-injection", Code: "secret-interpolation",
 					Message: fmt.Sprintf("secret %q is interpolated directly into script text; pass it through an environment variable and read that variable as data instead", name),
-					Offset:  span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
+					Offset:  span.Start, EndOffset: span.End, Position: span.Position,
 				})
 			}
 			return

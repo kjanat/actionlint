@@ -85,8 +85,8 @@ func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkU
 func (rule *Checker) syntaxError(issue *syntax.SyntaxError, lineBase, colBase int) {
 	rule.exprError(&typecheck.Error{
 		Message: issue.Message, Offset: issue.Offset, EndOffset: issue.EndOffset,
-		Line: issue.Line, Column: issue.Column,
-		Rule: "expression-syntax", Code: "invalid-syntax",
+		Position: issue.Position,
+		Rule:     "expression-syntax", Code: "invalid-syntax",
 	}, lineBase, colBase)
 }
 
@@ -102,7 +102,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, lineBase, colBase int, se
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)}
+	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: convertExprLineColToPos(err.Position.Line, err.Position.Column, lineBase, colBase)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {

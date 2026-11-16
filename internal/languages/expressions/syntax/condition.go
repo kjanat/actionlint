@@ -30,8 +30,8 @@ func ParseConditionExpression(source string) (Node, *SyntaxError, int) {
 			if err.Offset > err.EndOffset {
 				body := folded[:err.EndOffset]
 				err.Offset = err.EndOffset
-				err.Line = strings.Count(body, "\n") + 1
-				err.Column = utf8.RuneCountInString(body[strings.LastIndexByte(body, '\n')+1:]) + 1
+				err.Position.Line = strings.Count(body, "\n") + 1
+				err.Position.Column = utf8.RuneCountInString(body[strings.LastIndexByte(body, '\n')+1:]) + 1
 			}
 		}
 		if err == nil && lex.Offset() != len(folded) {
