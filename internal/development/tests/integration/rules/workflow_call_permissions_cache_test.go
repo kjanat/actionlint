@@ -22,8 +22,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 	"github.com/google/go-cmp/cmp"
 )
 

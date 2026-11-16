@@ -15,8 +15,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 type runnerOSCompat uint

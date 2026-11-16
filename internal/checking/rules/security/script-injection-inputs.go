@@ -13,7 +13,7 @@ import (
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // UntrustedInputMap is a node in a tree of untrusted input paths. Roots name

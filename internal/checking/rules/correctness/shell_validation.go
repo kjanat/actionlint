@@ -8,10 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // checkShell validates builtin names and accepts custom shell templates.

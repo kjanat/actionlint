@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // parseFormatFuncSpecifiers returns references from a syntactically valid template.

@@ -19,8 +19,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // NodeKindName describes the kind of a YAML node.

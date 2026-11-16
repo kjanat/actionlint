@@ -7,7 +7,7 @@ import (
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // validateReferences checks context names, availability and function signatures

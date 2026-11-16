@@ -23,8 +23,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 type validator struct {

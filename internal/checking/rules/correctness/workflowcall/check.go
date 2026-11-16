@@ -6,10 +6,10 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 func callFinding(pos source.Position, format string, args ...any) results.Diagnostic {

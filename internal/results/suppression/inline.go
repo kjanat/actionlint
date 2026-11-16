@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // Directive is a validated inline exception over a physical source range.

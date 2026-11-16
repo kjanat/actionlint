@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // Parser parses expression syntax. For the language reference, see

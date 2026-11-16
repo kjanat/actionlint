@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 

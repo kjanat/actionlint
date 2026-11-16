@@ -3,7 +3,7 @@ package typecheck
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
