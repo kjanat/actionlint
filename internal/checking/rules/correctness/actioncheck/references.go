@@ -103,7 +103,7 @@ func (rule *validator) runtimeFinding(pos *sourcetext.Position, problem actionme
 }
 
 func (rule *validator) checkRepositoryReference(spec string, pos *sourcetext.Position) bool {
-	problem := callreferences.ActionReferenceProblem(spec)
+	_, problem := callreferences.ParseRepositoryAction(spec)
 	if problem != "" {
 		rule.invalidActionFormat(pos, spec, problem)
 		return false

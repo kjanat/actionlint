@@ -11,7 +11,8 @@ func TestActionUsesRepoRefByForm(t *testing.T) {
 	}{
 		{"o/r@v", "v", true},
 		{"o/r/p@v", "v", true},
-		{"o/r@v@w", "v@w", true},
+		{"o/r@v@w", "", false},
+		{"o//r@v", "v", true},
 		{"o/r@v ${{ x }}", "v ${{ x }}", true},
 		{"builtin:o/r@v", "v", true},
 		{"self:o/r@v", "v", true},

@@ -24,22 +24,24 @@ func ParseReference(host, spec string) (Reference, error) {
 	if err != nil || u.Host != host || u.Path != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || host == "" {
 		return Reference{}, fmt.Errorf("invalid action host %q", host)
 	}
-	location, ref, ok := strings.Cut(spec, "@")
-	if !ok || ref == "" {
+	if _, ref, _ := strings.Cut(spec, "@"); ref == "" {
 		return Reference{}, errors.New("action ref is missing")
 	}
-	parts := strings.SplitN(location, "/", 3)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" || isLocalForm(spec) {
+	if strings.Count(spec, "@") > 1 {
+		return Reference{}, errors.New(`action reference contains more than one "@"`)
+	}
+	if strings.Count(spec, "@") > 1 {
+		return Reference{}, errors.New(`action reference contains more than one "@"`)
+	}
+	target, problem := callreferences.ParseRepositoryAction(spec)
+	if problem != "" || isLocalForm(spec) {
 		return Reference{}, errors.New("action needs an owner and repository")
 	}
-	directory := ""
-	if len(parts) == 3 {
-		directory = parts[2]
-	}
-	if directory != "" && (path.Clean(directory) != directory || strings.HasPrefix(directory, "../") || directory == ".." || strings.HasPrefix(directory, "/") || strings.Contains(directory, "\\")) {
+	directory := target.Subpath
+	if directory != "" && (path.Clean(directory) != directory || strings.HasPrefix(directory, "../") || directory == "..") {
 		return Reference{}, fmt.Errorf("invalid action directory %q", directory)
 	}
-	return Reference{host: strings.ToLower(host), repository: parts[0] + "/" + parts[1], directory: directory, ref: ref}, nil
+	return Reference{host: strings.ToLower(host), repository: target.Owner + "/" + target.Repo, directory: directory, ref: target.Ref}, nil
 }
 
 // isLocalForm reports whether spec spells a workspace or self-repository path,

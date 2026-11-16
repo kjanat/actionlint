@@ -141,12 +141,15 @@ func (rule *commitHashCheck) checkJob(n workflows.BoundJob) {
 // second return value is false when the specification has another form. The "action" rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
-	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository {
+	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository || form == callreferences.FormContainer {
 		return "", false
 	}
-	owner, repo, ref, problem := callreferences.SplitAction(spec)
-	if problem != "" || owner == "" || repo == "" || ref == "" {
+	if _, hosted := callreferences.ParseRepositoryURL(spec); hosted {
 		return "", false
 	}
-	return ref, true
+	target, problem := callreferences.ParseRepositoryAction(spec)
+	if problem != "" {
+		return "", false
+	}
+	return target.Ref, true
 }

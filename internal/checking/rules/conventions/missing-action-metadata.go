@@ -47,7 +47,7 @@ func missingActionMetadata(step workflows.BoundStep, remote *remote.ResolvedActi
 		return nil
 	case callreferences.FormRepository, callreferences.FormBuiltin:
 	}
-	if callreferences.ActionReferenceProblem(spec) != "" {
+	if _, problem := callreferences.ParseRepositoryAction(spec); problem != "" {
 		return nil
 	}
 	result := remote.Inspect(spec)

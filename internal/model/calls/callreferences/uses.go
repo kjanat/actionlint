@@ -7,45 +7,28 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// SplitAction splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification into its owner, repository and ref.
-// The problem is empty when the specification has one of those shapes, in which case any of the three parts may still be empty.
-
-func SplitAction(spec string) (owner, repo, ref, problem string) {
-	s := spec
-	idx := strings.IndexRune(s, '@')
-	if idx == -1 {
-		return "", "", "", "ref is missing"
+// ParseRepositoryAction parses a step's {owner}/{repo}[/{path}]@{ref} action
+// reference the way the runner does: spec must contain exactly one "@", the
+// part before it splits on slashes and backslashes with empty segments dropped, and the
+// owner, repository and ref must not be empty. Segments after the repository
+// form Subpath, joined with "/". problem says why spec has another shape; it
+// is empty when spec parses.
+// https://github.com/actions/runner/blob/main/src/Sdk/DTPipelines/Pipelines/ObjectTemplating/PipelineTemplateConverter.cs
+func ParseRepositoryAction(spec string) (target RepositoryTarget, problem string) {
+	location, ref, found := strings.Cut(spec, "@")
+	switch {
+	case !found:
+		return RepositoryTarget{}, "ref is missing"
+	case strings.Contains(ref, "@"):
+		return RepositoryTarget{}, "\"@\" appears more than once"
+	case !strings.ContainsAny(location, "/\\"):
+		return RepositoryTarget{}, "owner is missing"
 	}
-	ref = s[idx+1:]
-	s = s[:idx] // remove {ref}
-
-	idx = strings.IndexRune(s, '/')
-	if idx == -1 {
-		return "", "", "", "owner is missing"
+	segments := strings.FieldsFunc(location, func(r rune) bool { return r == '/' || r == '\\' })
+	if len(segments) < 2 || ref == "" {
+		return RepositoryTarget{}, "owner and repo and ref should not be empty"
 	}
-
-	owner = s[:idx]
-	s = s[idx+1:] // eat {owner}
-
-	repo = s
-	if idx := strings.IndexRune(s, '/'); idx >= 0 {
-		repo = s[:idx]
-	}
-
-	return owner, repo, ref, ""
-}
-
-// ActionReferenceProblem validates repository-action syntax without acquiring
-// metadata. An empty result means the owner, repository and ref are present.
-func ActionReferenceProblem(spec string) string {
-	owner, repo, ref, problem := SplitAction(spec)
-	if problem != "" {
-		return problem
-	}
-	if owner == "" || repo == "" || ref == "" {
-		return "owner and repo and ref should not be empty"
-	}
-	return ""
+	return RepositoryTarget{Owner: segments[0], Repo: segments[1], Subpath: strings.Join(segments[2:], "/"), Ref: ref}, ""
 }
 
 func SelfRepositoryLocal(spec string) (string, bool) {

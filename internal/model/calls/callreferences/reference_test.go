@@ -4,29 +4,6 @@ import (
 	"testing"
 )
 
-func TestActionReferenceProblem(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct{ spec, problem string }{
-		{"owner/repo@v1", ""},
-		{"owner/repo/path/to/action@refs/heads/master", ""},
-		{"owner/repo", "ref is missing"},
-		{"repo@v1", "owner is missing"},
-		{"/repo@v1", "owner and repo and ref should not be empty"},
-		{"owner/@v1", "owner and repo and ref should not be empty"},
-		{"owner/repo@", "owner and repo and ref should not be empty"},
-		{"owner//path@v1", "owner and repo and ref should not be empty"},
-		{"./a", "ref is missing"},
-		{"docker://x@sha256:ab", "owner and repo and ref should not be empty"},
-	} {
-		t.Run(tc.spec, func(t *testing.T) {
-			t.Parallel()
-			if got := ActionReferenceProblem(tc.spec); got != tc.problem {
-				t.Fatalf("problem=%q, want %q", got, tc.problem)
-			}
-		})
-	}
-}
-
 func TestParseRepositoryUses(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
