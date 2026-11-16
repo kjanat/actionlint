@@ -123,17 +123,7 @@ func (p *Parser) scalarSource(key source.Position, value string) *workflowlang.S
 	scriptSource.ContentStart = decoded.Start
 	scriptSource.ScalarEnd = decoded.End
 	scriptSource.Comments = p.scalarComments[key].comments(p.sourceLines, scriptSource)
-	for _, span := range decoded.Spans {
-		endColumn := 0
-		if span.Width != 0 {
-			endColumn = span.Column + span.Width
-		}
-		endLine := 0
-		if span.LineBreak {
-			endLine, endColumn = span.Line+1, 1
-		}
-		scriptSource.Spans = append(scriptSource.Spans, workflowlang.ScriptSourceSpan{Start: span.Start, End: span.End, YamlLine: span.Line, YamlColumn: span.Column, YamlEndColumn: endColumn, YamlEndLine: endLine})
-	}
+	scriptSource.Spans = decoded.Spans
 	p.scalarSources[key] = scriptSource
 	return scriptSource
 }

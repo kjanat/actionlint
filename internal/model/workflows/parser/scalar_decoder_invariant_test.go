@@ -148,29 +148,29 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 			t.Fatalf("unordered or out-of-bounds decoded span: %+v in %q", span, source.Value)
 		}
 		previousEnd = span.End
-		if span.YamlLine < 1 || span.YamlLine > len(lines) {
+		if span.Document.Line < 1 || span.Document.Line > len(lines) {
 			t.Fatalf("span outside source lines: %+v", span)
 		}
-		rawLine := lines[span.YamlLine-1]
-		start, ok := inputsource.ByteOffsetAtColumn(rawLine, span.YamlColumn)
+		rawLine := lines[span.Document.Line-1]
+		start, ok := inputsource.ByteOffsetAtColumn(rawLine, span.Document.Column)
 		if !ok {
 			t.Fatalf("span starts outside source line: %+v", span)
 		}
 		value := source.Value[span.Start:span.End]
 		switch {
-		case span.YamlEndLine != 0 && span.YamlEndLine != span.YamlLine:
-			if span.YamlColumn != utf8.RuneCountInString(rawLine)+1 || span.YamlEndLine != span.YamlLine+1 || span.YamlEndColumn != 1 {
+		case span.DocumentEnd.Line != 0 && span.DocumentEnd.Line != span.Document.Line:
+			if span.Document.Column != utf8.RuneCountInString(rawLine)+1 || span.DocumentEnd.Line != span.Document.Line+1 || span.DocumentEnd.Column != 1 {
 				t.Fatalf("invalid physical linebreak span: %+v", span)
 			}
-			if _, ending := document.Line(span.YamlLine - 1); value != ending {
+			if _, ending := document.Line(span.Document.Line - 1); value != ending {
 				t.Fatalf("preserved linebreak %+v differs from source: %q", span, value)
 			}
-		case span.YamlEndColumn == 0:
+		case span.DocumentEnd.Line == 0:
 			if !strings.HasPrefix(rawLine[start:], value) {
 				t.Fatalf("copied span %+v decodes to %q, source is %q", span, value, rawLine[start:])
 			}
 		default:
-			end, ok := inputsource.ByteOffsetAtColumn(rawLine, span.YamlEndColumn)
+			end, ok := inputsource.ByteOffsetAtColumn(rawLine, span.DocumentEnd.Column)
 			if !ok || end < start {
 				t.Fatalf("escape ends outside source line: %+v", span)
 			}

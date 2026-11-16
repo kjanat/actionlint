@@ -15,6 +15,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
@@ -32,7 +33,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 		Mappings:     []workflowfacts.Mapping{{Scope: "original", Entries: []workflowfacts.Entry{{Name: "original"}}}},
 		Dependencies: []workflowfacts.Dependency{{Uses: "original"}}, Files: []checkinputs.FileSystem{{Path: "/original", FS: fstest.MapFS{}}},
 		SourceRoots: []checkinputs.SourceRoot{{Host: "/host", Guest: "/original"}},
-		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []scriptmodel.Span{{Line: 1, End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "# original"}}, Runtime: &scriptmodel.Execution{Shell: "bash"}}},
+		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []sourcemap.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "# original"}}, Runtime: &scriptmodel.Execution{Shell: "bash"}}},
 	}
 	registration := checkinputs.Registration{Options: options, Checker: testAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "single", Explanation: "explain", Help: "help", DocumentationURL: "https://example.invalid/rule"}},
@@ -298,8 +299,8 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	runID, inputID, entry := occurrences[0].ID, occurrences[1].ID, graph.Entry().Reference
 	input := checkinputs.AnalyzerInput{
 		Reference: entry, CallGraph: graph, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, SelectedScripts: []invocation.ID{runID, inputID},
-		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []scriptmodel.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scriptmodel.Execution{Shell: "bash"}}},
-		ActionInputs: []checkinputs.ActionInput{{Reference: occurrences[1].Declaration, Text: "original", Spans: []scriptmodel.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[1], Site: checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
+		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scriptmodel.Execution{Shell: "bash"}}},
+		ActionInputs: []checkinputs.ActionInput{{Reference: occurrences[1].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[1], Site: checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}
 	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "mutator"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		supplied.SelectedScripts[0] = "changed"

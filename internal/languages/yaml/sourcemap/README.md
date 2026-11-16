@@ -14,6 +14,12 @@ to the complete escape sequence in the source. Whitespace created by folding or
 line-break normalization has no token position. Unicode line separators (LS) and
 paragraph separators (PS) map across source lines.
 
+`Span` is the only representation of this mapping. The workflow parser stores
+the decoder's spans unchanged, and script declarations copy them. `Locate` maps
+a byte offset of the decoded value to the source. `LineSpans` splits spans at
+line feeds for readers that address text by line and column, such as analyzer
+plugins.
+
 The actionlint adapter compares the complete result with `syntax.Node.Value` before
 using a map. Workflow expressions, metadata expressions, and external script
 checkers use that map. Inline suppressions use the scalar extent from the same

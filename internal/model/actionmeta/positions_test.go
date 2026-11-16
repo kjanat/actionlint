@@ -61,7 +61,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 		result.Value = "changed"
 		result.ContentStart.Line = 99
 		result.Lines[0].Start = 99
-		result.Spans[0].YamlColumn = 99
+		result.Spans[0].Document.Column = 99
 		result.Comments[0].Text = "changed"
 		if got := meta.Provenance.source(value); !reflect.DeepEqual(got, want) {
 			t.Fatalf("metadata cache shares mutable source results: got %+v, want %+v", got, want)

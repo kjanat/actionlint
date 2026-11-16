@@ -50,7 +50,7 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			result.Value = "changed"
 			result.Literal = !result.Literal
 			result.Lines[0].Start = 99
-			result.Spans[0].YamlColumn = 99
+			result.Spans[0].Document.Column = 99
 			result.Comments[0].Text = "changed"
 			if got := get(parser); !reflect.DeepEqual(got, want) {
 				t.Fatalf("caller mutation corrupted the cached source: got %+v, want %+v", got, want)

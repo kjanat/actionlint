@@ -217,7 +217,7 @@ func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.Sc
 		}
 		if script.Source != nil {
 			for _, span := range script.Source.Spans {
-				origin.Last = max(origin.Last, span.YamlLine)
+				origin.Last = max(origin.Last, span.Document.Line)
 			}
 		}
 		finding.Suppression = origin

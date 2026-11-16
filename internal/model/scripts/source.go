@@ -1,6 +1,8 @@
 package scripts
 
 import (
+	"slices"
+
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -29,14 +31,12 @@ func fromSource(text *workflowlang.String, source *workflowlang.ScriptSource) De
 	if position, present := text.Position(); present {
 		declaration.Start = sourcepos.ZeroIfNil(&position)
 	}
-	for _, span := range source.LineSpans() {
-		declaration.Spans = append(declaration.Spans, Span{
-			Line: span.Line, Start: span.Start, End: span.End,
-			Document:    sourcepos.Position{Line: span.YamlLine, Column: span.YamlColumn},
-			DocumentEnd: sourcepos.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
-		})
-	}
 	if source != nil {
+		// Spans index the decoded value; a value replaced after a parse error
+		// has no source mapping.
+		if source.Value == declaration.Text {
+			declaration.Spans = slices.Clone(source.Spans)
+		}
 		declaration.Comments = workflowfacts.SourceComments(source.Comments)
 	}
 	return declaration

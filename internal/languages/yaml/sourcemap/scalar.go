@@ -11,15 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
-// Span associates decoded bytes with one source token. Width is nonzero for an
-// escape; copied text has the same rune width in the source and decoded value.
-type Span struct {
-	Start, End int
-	source.Position
-	Width     int
-	LineBreak bool
-}
-
 // Scalar is the result of a single token scan. Folding and line normalization
 // generate whitespace without a source token, so those bytes have no Span.
 type Scalar struct {
@@ -167,16 +158,17 @@ func (d *decoder) properties() (source.Position, bool) {
 }
 
 // emit is the sole writer of decoded bytes and their corresponding provenance.
-func (d *decoder) emit(value string, pos source.Position, width int) {
+// end is zero for copied text and the exclusive source end of a decoded token.
+func (d *decoder) emit(value string, pos, end source.Position) {
 	start := d.value.Len()
 	d.value.WriteString(value)
 	if value == "" || pos.Line == 0 {
 		return
 	}
-	span := Span{Start: start, End: d.value.Len(), Position: pos, Width: width}
-	if n := len(d.result.Spans); n > 0 && width == 0 {
+	span := Span{Start: start, End: d.value.Len(), Document: pos, DocumentEnd: end}
+	if n := len(d.result.Spans); n > 0 && end.Line == 0 {
 		last := &d.result.Spans[n-1]
-		if last.Width == 0 && last.End == start && last.Line == pos.Line && d.lastColumn == pos.Column {
+		if last.DocumentEnd.Line == 0 && last.End == start && last.Document.Line == pos.Line && d.lastColumn == pos.Column {
 			last.End = span.End
 			d.lastColumn = pos.Column + utf8.RuneCountInString(value)
 			return
@@ -188,7 +180,7 @@ func (d *decoder) emit(value string, pos source.Position, width int) {
 
 func (d *decoder) copyRune() {
 	_, size := utf8.DecodeRuneInString(d.lines[d.row][d.col:])
-	d.emit(d.lines[d.row][d.col:d.col+size], d.position(), 0)
+	d.emit(d.lines[d.row][d.col:d.col+size], d.position(), source.Position{})
 	d.col += size
 }
 
@@ -203,7 +195,8 @@ func (d *decoder) flow(quote byte) error {
 		c := d.peek()
 		if quote != 0 && c == quote {
 			if quote == '\'' && strings.HasPrefix(d.lines[d.row][d.col:], "''") {
-				d.emit("'", d.position(), 2)
+				pos := d.position()
+				d.emit("'", pos, source.Position{Line: pos.Line, Column: pos.Column + 2})
 				d.col += 2
 				continue
 			}
@@ -280,7 +273,7 @@ func (d *decoder) whitespace(quote byte, continued bool) bool {
 		if quote == 0 && d.plainEnd() {
 			return false
 		}
-		d.emit(d.lines[d.row][start:d.col], pos, 0)
+		d.emit(d.lines[d.row][start:d.col], pos, source.Position{})
 		d.result.End = d.position()
 		return true
 	}
@@ -316,12 +309,11 @@ func (d *decoder) emitBreaks(rows []int, fold bool) {
 		value := d.document.breaks[row]
 		switch {
 		case value == "\u2028" || value == "\u2029":
-			d.emit(value, source.Position{Line: row + 1, Column: utf8.RuneCountInString(d.lines[row]) + 1}, 1)
-			d.result.Spans[len(d.result.Spans)-1].LineBreak = true
+			d.emit(value, source.Position{Line: row + 1, Column: utf8.RuneCountInString(d.lines[row]) + 1}, source.Position{Line: row + 2, Column: 1})
 		case i != 0 || !fold:
-			d.emit("\n", source.Position{}, 0)
+			d.emit("\n", source.Position{}, source.Position{})
 		case len(rows) == 1:
-			d.emit(" ", source.Position{}, 0)
+			d.emit(" ", source.Position{}, source.Position{})
 		}
 	}
 }
@@ -349,7 +341,7 @@ func (d *decoder) escape() error {
 		value = string(rune(r))
 		d.col += width
 	}
-	d.emit(value, pos, d.col-start)
+	d.emit(value, pos, source.Position{Line: pos.Line, Column: pos.Column + d.col - start})
 	d.result.End = d.position()
 	return nil
 }

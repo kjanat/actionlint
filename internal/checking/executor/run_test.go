@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -131,7 +131,7 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	declaration := occurrence.Declaration
 	input := checkinputs.AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
 		Reference: declaration,
-		Spans:     []scriptmodel.Span{{Line: 1, Start: 1, End: 8}}, Occurrence: occurrence,
+		Spans:     []sourcemap.Span{{End: 8}}, Occurrence: occurrence,
 		Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
