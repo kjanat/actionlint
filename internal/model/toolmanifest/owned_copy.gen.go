@@ -17,16 +17,16 @@ func copyOwnedManifest(in Manifest) Manifest {
 	out.Metadata = slices.Clone(in.Metadata)
 	out.Rule = copyOwnedDescriptor_eae599b39e4b637f54ee03ef33ce14c0(in.Rule)
 	out.Artifacts = slices.Clone(in.Artifacts)
-	out.Selectors = copyOwnedSelectors_7a6c97ba947906602a985d0f29e3ef40(in.Selectors)
-	out.Capabilities = copyOwnedCapabilities_6eb154e5deeafcb655d1cfc3564ab0da(in.Capabilities)
+	out.Selectors = copyOwnedSelectors_36add5817e5d01092d040ba80270d559(in.Selectors)
+	out.Capabilities = copyOwnedCapabilities_3d55c8a7e7de405bac3d3bf43570f265(in.Capabilities)
 	out.ConfigSchema = slices.Clone(in.ConfigSchema)
-	out.ConfigurationTransform = copyOwnedValue_f52ecd47a6964e99f124baf851226705(in.ConfigurationTransform)
-	out.PreparationTransform = copyOwnedValue_f52ecd47a6964e99f124baf851226705(in.PreparationTransform)
+	out.ConfigurationTransform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.ConfigurationTransform)
+	out.PreparationTransform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.PreparationTransform)
 	out.ConfigurationPaths = slices.Clone(in.ConfigurationPaths)
-	out.ConfigShorthands = copyOwnedValue_f60edd2eba96b90f13a54ddc4588da5d(in.ConfigShorthands)
-	out.Process = copyOwnedValue_b097102058f56736c7ea6500b29e87da(in.Process)
-	out.Integration = copyOwnedValue_1e7757e8dc8991623d4ba79fc2de7f13(in.Integration)
-	out.DeprecatedFlags = copyOwnedValue_8c8318e6646d266a54dfb4a16fb2dafb(in.DeprecatedFlags)
+	out.ConfigShorthands = copyOwnedValue_c25b4926e4b5aed854bb2725c299c964(in.ConfigShorthands)
+	out.Process = copyOwnedValue_0df6c5b433b0095d5c5fbad84e349bc8(in.Process)
+	out.Integration = copyOwnedValue_473a548b1255f1e9aad85edff119fa6d(in.Integration)
+	out.DeprecatedFlags = copyOwnedValue_3708090e414b6818241d2ba331dc12a0(in.DeprecatedFlags)
 	return out
 }
 
@@ -51,7 +51,7 @@ func copyOwnedDescriptor_eae599b39e4b637f54ee03ef33ce14c0(in rule.Descriptor) ru
 	return out
 }
 
-func copyOwnedSelectors_7a6c97ba947906602a985d0f29e3ef40(in Selectors) Selectors {
+func copyOwnedSelectors_36add5817e5d01092d040ba80270d559(in Selectors) Selectors {
 	out := in
 	out.Documents = slices.Clone(in.Documents)
 	out.Shells = slices.Clone(in.Shells)
@@ -59,14 +59,14 @@ func copyOwnedSelectors_7a6c97ba947906602a985d0f29e3ef40(in Selectors) Selectors
 	return out
 }
 
-func copyOwnedCapabilities_6eb154e5deeafcb655d1cfc3564ab0da(in Capabilities) Capabilities {
+func copyOwnedCapabilities_3d55c8a7e7de405bac3d3bf43570f265(in Capabilities) Capabilities {
 	out := in
 	out.Resources = slices.Clone(in.Resources)
 	out.Severities = maps.Clone(in.Severities)
 	return out
 }
 
-func copyOwnedValue_f52ecd47a6964e99f124baf851226705(in *Transform) *Transform {
+func copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in *Transform) *Transform {
 	if in == nil {
 		return nil
 	}
@@ -74,7 +74,7 @@ func copyOwnedValue_f52ecd47a6964e99f124baf851226705(in *Transform) *Transform {
 	return (*Transform)(&out)
 }
 
-func copyOwnedValue_f60edd2eba96b90f13a54ddc4588da5d(in map[string]ConfigShorthand) map[string]ConfigShorthand {
+func copyOwnedValue_c25b4926e4b5aed854bb2725c299c964(in map[string]ConfigShorthand) map[string]ConfigShorthand {
 	if in == nil {
 		return nil
 	}
@@ -85,15 +85,15 @@ func copyOwnedValue_f60edd2eba96b90f13a54ddc4588da5d(in map[string]ConfigShortha
 	return out
 }
 
-func copyOwnedValue_b097102058f56736c7ea6500b29e87da(in *ProcessSpec) *ProcessSpec {
+func copyOwnedValue_0df6c5b433b0095d5c5fbad84e349bc8(in *ProcessSpec) *ProcessSpec {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedProcessSpec_e525dbb0e22c5c570b5dc6ddc280f7cc(*in)
+	out := copyOwnedProcessSpec_66ae21ad388d36a307a1bd08be3f2330(*in)
 	return (*ProcessSpec)(&out)
 }
 
-func copyOwnedValue_1e7757e8dc8991623d4ba79fc2de7f13(in *Integration) *Integration {
+func copyOwnedValue_473a548b1255f1e9aad85edff119fa6d(in *Integration) *Integration {
 	if in == nil {
 		return nil
 	}
@@ -101,13 +101,13 @@ func copyOwnedValue_1e7757e8dc8991623d4ba79fc2de7f13(in *Integration) *Integrati
 	return (*Integration)(&out)
 }
 
-func copyOwnedValue_8c8318e6646d266a54dfb4a16fb2dafb(in []DeprecatedFlag) []DeprecatedFlag {
+func copyOwnedValue_3708090e414b6818241d2ba331dc12a0(in []DeprecatedFlag) []DeprecatedFlag {
 	if in == nil {
 		return nil
 	}
 	out := make([]DeprecatedFlag, len(in))
 	for i := range in {
-		out[i] = copyOwnedDeprecatedFlag_7cfa3edfe336b5f48c5895687ba1a8cd(in[i])
+		out[i] = copyOwnedDeprecatedFlag_2565dde066a0d12e34d82c7d344f410d(in[i])
 	}
 	return out
 }
@@ -136,25 +136,25 @@ func copyOwnedShorthand_d7363070bedd5a3162054e434cd212c5(in toolsettings.Shortha
 	return out
 }
 
-func copyOwnedProcessSpec_e525dbb0e22c5c570b5dc6ddc280f7cc(in ProcessSpec) ProcessSpec {
+func copyOwnedProcessSpec_66ae21ad388d36a307a1bd08be3f2330(in ProcessSpec) ProcessSpec {
 	out := in
-	out.Program = copyOwnedValue_546b867f5de2a3ef555e9ce49e4a9a76(in.Program)
+	out.Program = copyOwnedValue_3a9089f839888b086e2fe8c6d93a4d17(in.Program)
 	out.Args = slices.Clone(in.Args)
 	out.Env = maps.Clone(in.Env)
 	out.EnvPassthrough = slices.Clone(in.EnvPassthrough)
 	out.EnvUnset = slices.Clone(in.EnvUnset)
 	out.ExitCodes = slices.Clone(in.ExitCodes)
-	out.Config = copyOwnedConfigRendering_8f7c0cbc0bb9fd42d86edb3748ad0b91(in.Config)
-	out.ConfigFiles = copyOwnedValue_25b3ba6d22bfcb5a51bce181558223a5(in.ConfigFiles)
+	out.Config = copyOwnedConfigRendering_38e3970184e1d56059f250febcafcf63(in.Config)
+	out.ConfigFiles = copyOwnedValue_2e6ea462b80c8bf810878a3de8bc5ce7(in.ConfigFiles)
 	out.ConfigSchema = slices.Clone(in.ConfigSchema)
-	out.Version = copyOwnedValue_75f9eb5c5e1b25c697c0af437c4408c8(in.Version)
-	out.Output = copyOwnedOutput_56f919d943350fe2df7d0269fdb1b15d(in.Output)
+	out.Version = copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in.Version)
+	out.Output = copyOwnedOutput_dabc2f5e2a7752c1e8c7ae16585d3ffe(in.Output)
 	out.TemplateEffects = maps.Clone(in.TemplateEffects)
-	out.UserArgs = copyOwnedValue_fc13981acd272967fdd235000053fdca(in.UserArgs)
+	out.UserArgs = copyOwnedValue_c52d180501bebfd34d2758414b011180(in.UserArgs)
 	return out
 }
 
-func copyOwnedDeprecatedFlag_7cfa3edfe336b5f48c5895687ba1a8cd(in DeprecatedFlag) DeprecatedFlag {
+func copyOwnedDeprecatedFlag_2565dde066a0d12e34d82c7d344f410d(in DeprecatedFlag) DeprecatedFlag {
 	out := in
 	out.Arguments = slices.Clone(in.Arguments)
 	return out
@@ -171,7 +171,7 @@ func copyOwnedValue_f8816292f2c693f9baa89b7f9a8336ed(in []commands.Option) []com
 	return out
 }
 
-func copyOwnedValue_546b867f5de2a3ef555e9ce49e4a9a76(in *InlineProgram) *InlineProgram {
+func copyOwnedValue_3a9089f839888b086e2fe8c6d93a4d17(in *InlineProgram) *InlineProgram {
 	if in == nil {
 		return nil
 	}
@@ -179,41 +179,41 @@ func copyOwnedValue_546b867f5de2a3ef555e9ce49e4a9a76(in *InlineProgram) *InlineP
 	return (*InlineProgram)(&out)
 }
 
-func copyOwnedConfigRendering_8f7c0cbc0bb9fd42d86edb3748ad0b91(in ConfigRendering) ConfigRendering {
+func copyOwnedConfigRendering_38e3970184e1d56059f250febcafcf63(in ConfigRendering) ConfigRendering {
 	out := in
-	out.Transform = copyOwnedValue_f52ecd47a6964e99f124baf851226705(in.Transform)
+	out.Transform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.Transform)
 	out.Forbidden = slices.Clone(in.Forbidden)
 	return out
 }
 
-func copyOwnedValue_25b3ba6d22bfcb5a51bce181558223a5(in *ConfigFiles) *ConfigFiles {
+func copyOwnedValue_2e6ea462b80c8bf810878a3de8bc5ce7(in *ConfigFiles) *ConfigFiles {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedConfigFiles_24cea59aef5dbbffa76c288dcec32f21(*in)
+	out := copyOwnedConfigFiles_f7e690385486dfb553242bb8db83b152(*in)
 	return (*ConfigFiles)(&out)
 }
 
-func copyOwnedValue_75f9eb5c5e1b25c697c0af437c4408c8(in *VersionProbe) *VersionProbe {
+func copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in *VersionProbe) *VersionProbe {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedVersionProbe_37f2455d5788188ae1d69c6060b9a7af(*in)
+	out := copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(*in)
 	return (*VersionProbe)(&out)
 }
 
-func copyOwnedOutput_56f919d943350fe2df7d0269fdb1b15d(in Output) Output {
+func copyOwnedOutput_dabc2f5e2a7752c1e8c7ae16585d3ffe(in Output) Output {
 	out := in
-	out.Transform = copyOwnedValue_f52ecd47a6964e99f124baf851226705(in.Transform)
-	out.Coordinates = copyOwnedValue_6ad1b7c57b2e6a68eea644b8075acb89(in.Coordinates)
+	out.Transform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.Transform)
+	out.Coordinates = copyOwnedValue_aefa3c5b0d4720ea6e1fcdfb8b9c2021(in.Coordinates)
 	return out
 }
 
-func copyOwnedValue_fc13981acd272967fdd235000053fdca(in *UserArgs) *UserArgs {
+func copyOwnedValue_c52d180501bebfd34d2758414b011180(in *UserArgs) *UserArgs {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedUserArgs_add4a6da634137ee67c0387576cabf1b(*in)
+	out := copyOwnedUserArgs_ed9c417830e190ae96159f976303642a(*in)
 	return (*UserArgs)(&out)
 }
 
@@ -223,20 +223,20 @@ func copyOwnedOption_eeb7e42c7290f35988fc456324ceb61c(in commands.Option) comman
 	return out
 }
 
-func copyOwnedConfigFiles_24cea59aef5dbbffa76c288dcec32f21(in ConfigFiles) ConfigFiles {
+func copyOwnedConfigFiles_f7e690385486dfb553242bb8db83b152(in ConfigFiles) ConfigFiles {
 	out := in
 	out.Names = slices.Clone(in.Names)
 	out.Search = slices.Clone(in.Search)
 	return out
 }
 
-func copyOwnedVersionProbe_37f2455d5788188ae1d69c6060b9a7af(in VersionProbe) VersionProbe {
+func copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(in VersionProbe) VersionProbe {
 	out := in
 	out.Args = slices.Clone(in.Args)
 	return out
 }
 
-func copyOwnedValue_6ad1b7c57b2e6a68eea644b8075acb89(in *Coordinates) *Coordinates {
+func copyOwnedValue_aefa3c5b0d4720ea6e1fcdfb8b9c2021(in *Coordinates) *Coordinates {
 	if in == nil {
 		return nil
 	}
@@ -244,35 +244,35 @@ func copyOwnedValue_6ad1b7c57b2e6a68eea644b8075acb89(in *Coordinates) *Coordinat
 	return (*Coordinates)(&out)
 }
 
-func copyOwnedUserArgs_add4a6da634137ee67c0387576cabf1b(in UserArgs) UserArgs {
+func copyOwnedUserArgs_ed9c417830e190ae96159f976303642a(in UserArgs) UserArgs {
 	out := in
 	out.ValueOptions = slices.Clone(in.ValueOptions)
 	out.InlineOptions = slices.Clone(in.InlineOptions)
 	out.Forbidden = slices.Clone(in.Forbidden)
 	out.Overrides = slices.Clone(in.Overrides)
 	out.EnvOptions = slices.Clone(in.EnvOptions)
-	out.Launchers = copyOwnedValue_10b41531cdc850bdb7126dc44e88be6a(in.Launchers)
+	out.Launchers = copyOwnedValue_ce95ee23a0937ac4827b257534b512d1(in.Launchers)
 	return out
 }
 
-func copyOwnedValue_10b41531cdc850bdb7126dc44e88be6a(in []Launcher) []Launcher {
+func copyOwnedValue_ce95ee23a0937ac4827b257534b512d1(in []Launcher) []Launcher {
 	if in == nil {
 		return nil
 	}
 	out := make([]Launcher, len(in))
 	for i := range in {
-		out[i] = copyOwnedLauncher_2ddda975aa254901216b6c591faa9591(in[i])
+		out[i] = copyOwnedLauncher_5586a1ad61f658f931a68d9a0c10a3ac(in[i])
 	}
 	return out
 }
 
-func copyOwnedLauncher_2ddda975aa254901216b6c591faa9591(in Launcher) Launcher {
+func copyOwnedLauncher_5586a1ad61f658f931a68d9a0c10a3ac(in Launcher) Launcher {
 	out := in
 	out.Flags = slices.Clone(in.Flags)
 	out.ValueOptions = slices.Clone(in.ValueOptions)
 	out.Choices = copyOwnedValue_c493bdb8ef40df6416c930135e0424da(in.Choices)
 	out.Protected = slices.Clone(in.Protected)
-	out.Module = copyOwnedValue_f0b968271b7a29921d323883fa5577c0(in.Module)
+	out.Module = copyOwnedValue_7615787db1c2a8f0e4bb166267b9992a(in.Module)
 	return out
 }
 
@@ -287,7 +287,7 @@ func copyOwnedValue_c493bdb8ef40df6416c930135e0424da(in map[string][]string) map
 	return out
 }
 
-func copyOwnedValue_f0b968271b7a29921d323883fa5577c0(in *LauncherModule) *LauncherModule {
+func copyOwnedValue_7615787db1c2a8f0e4bb166267b9992a(in *LauncherModule) *LauncherModule {
 	if in == nil {
 		return nil
 	}
