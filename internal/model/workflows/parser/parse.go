@@ -114,6 +114,9 @@ type Parser struct {
 	scalarSources      map[workflowlang.Pos]*workflowlang.ScriptSource
 	scalarComments     map[workflowlang.Pos]scalarCommentNodes
 	scalarDeclarations map[workflowlang.Pos]scalarCommentNodes
+	// workflowCallFindings holds the findings reported while reading the
+	// declarations of an on.workflow_call event.
+	workflowCallFindings []*SyntaxError
 }
 
 func NewSourceParser(source []byte) *Parser {
@@ -807,6 +810,8 @@ func (p *Parser) parseWorkflowCallEventOutput(name *workflowlang.String, n *code
 // - https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
 func (p *Parser) parseWorkflowCallEvent(pos *workflowlang.Pos, n *codec.Node) *workflowlang.WorkflowCallEvent {
 	ret := &workflowlang.WorkflowCallEvent{Pos: pos}
+	reported := len(p.errs)
+	defer func() { p.workflowCallFindings = append(p.workflowCallFindings, p.errs[reported:]...) }()
 
 	for e := range p.parseSectionMapping("workflow_call", n, true, true) {
 		switch e.id {
@@ -2145,6 +2150,19 @@ func Parse(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
 	return workflow, append(documentFindings(b), findings...)
 }
 
+// ParseReusableWorkflow is Parse for a workflow read as the callee of a
+// reusable-workflow call. workflowCallFindings is the subset of findings
+// reported while reading the declarations of the on.workflow_call event;
+// GitHub refuses to call a workflow when any of them exists.
+func ParseReusableWorkflow(b []byte) (workflow *workflowlang.Workflow, findings, workflowCallFindings []*SyntaxError) {
+	n, err := codec.Parse(b)
+	if err != nil {
+		return nil, HandleYAMLUnmarshalError(err), nil
+	}
+	workflow, p := runDocumentParser(b, n)
+	return workflow, append(documentFindings(b), p.errs...), p.workflowCallFindings
+}
+
 // documentFindings reports stream-level input GitHub's workflow reader rejects.
 // Action manifests use other loaders, which strip a byte order mark.
 func documentFindings(b []byte) []*SyntaxError {
@@ -2160,6 +2178,13 @@ func documentFindings(b []byte) []*SyntaxError {
 
 // parseDocument owns one parser and one projection for the complete physical source.
 func parseDocument(source []byte, root *codec.Node) (*workflowlang.Workflow, []*SyntaxError) {
+	workflow, p := runDocumentParser(source, root)
+	return workflow, p.errs
+}
+
+// runDocumentParser parses the complete physical source and returns the parser
+// that holds its findings.
+func runDocumentParser(source []byte, root *codec.Node) (*workflowlang.Workflow, *Parser) {
 	p := NewSourceParser(source)
 	p.IndexScalarSources(root)
 	p.checkFlowMappingNulls(root, false)
@@ -2167,12 +2192,13 @@ func parseDocument(source []byte, root *codec.Node) (*workflowlang.Workflow, []*
 		p.error(node, CodeAlias, message)
 	})
 	if err := admitYAMLAliasUses(root, uses); err != nil {
-		return nil, append(p.errs, HandleYAMLUnmarshalError(err)...)
+		p.errs = append(p.errs, HandleYAMLUnmarshalError(err)...)
+		return nil, p
 	}
 	projected, aliases := projectYAMLAliases(root, uses)
 	p.aliases = aliases
 	workflow := p.parse(projected)
 	workflow.ExpressionSources = p.ExpressionSources(projected)
 	p.IndexDependencySpans(workflow)
-	return workflow, p.errs
+	return workflow, p
 }
