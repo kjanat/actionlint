@@ -89,7 +89,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 				}
 				processes := hostprocess.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
-				request := analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{unit}, Analyzers: []checkinputs.Registration{{Analyzer: probe}}, Processes: processes}
+				request := analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{unit}, Checks: testChecks(t, []checkinputs.Registration{{Analyzer: probe}}, nil), Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
 					func(ctx context.Context, overlays []capture.Overlay, reader capture.Reader) (*capture.Store, error) {
 						var initErr error

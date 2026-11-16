@@ -136,7 +136,7 @@ func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: t.TempDir(),
 		Sources:    []workspace.InputFile{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
-		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Checks:     testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}})),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -196,7 +196,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
 		Sources:    []workspace.InputFile{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
-		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Checks:     testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}})),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")

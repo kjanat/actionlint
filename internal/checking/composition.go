@@ -33,7 +33,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptanalysis.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
 		selected.resolveExecution = selected.resolveExecution || execution
 	}
-	for _, registration := range s.tools {
+	for _, registration := range s.checks.tools {
 		toolContext.Config = context.Bindings.Rule(registration.Descriptor.Name).Config()
 		owned, err := toolContext.Detached()
 		if err != nil {

@@ -6,19 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
-
-// toolNames lists the rule names of registered tool providers. Unlike the
-// rule names configuration loading binds, it holds no document analyzer, so
-// tools.<name> entries bind to tool providers only.
-func toolNames(registrations []contract.Registration) []string {
-	names := make([]string, 0, len(registrations))
-	for _, registration := range registrations {
-		names = append(names, registration.Name)
-	}
-	return names
-}
 
 // RequiredTools resolves configuration without parsing sources or loading runtimes.
 func RequiredTools(ctx context.Context, options Options, paths []string) (workspace.ExternalToolRequirements, error) {
@@ -29,25 +17,15 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (worksp
 	if _, err := configuration.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
 		return workspace.ExternalToolRequirements{}, err
 	}
-	var names []string
-	registrations := ConfigurationRegistrations(options.Analyzers, options.Tools)
-	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
-			names = append(names, registration.Analyzer.Descriptor().Name)
-		}
-	}
-	for _, registration := range options.Tools {
-		names = append(names, registration.Name)
-	}
-	rules, err := ConfigurationRules().WithRegisteredRules(registrations...)
+	checks, err := registerChecks(options.Analyzers, options.Tools)
 	if err != nil {
 		return nil, err
 	}
-	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, ConfigConnections: options.ConfigConnections, RuleNames: names, Rules: rules})
+	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, ConfigConnections: options.ConfigConnections, RuleNames: checks.names, Rules: checks.rules})
 	if err != nil {
 		return workspace.ExternalToolRequirements{}, err
 	}
-	providers := toolNames(options.Tools)
+	providers := checks.toolNames()
 	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Required: func(cfg, project *configuration.Config) ([]string, error) {
 		if err := configuration.ValidateToolNames(project, providers...); err != nil {
 			return nil, err

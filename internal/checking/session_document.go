@@ -61,10 +61,7 @@ type analysisSession struct {
 	runnerReports   []runnerapi.Report
 	environment     ExecutionEnvironment
 
-	ruleRegistrations    []configuration.RuleRegistration
-	rules                configuration.RuleSet
-	tools                []contract.Registration
-	analyzers            []checkinputs.Registration
+	checks               *registeredChecks
 	loadScriptEngine     func(context.Context, string) (scriptengine.Backend, error)
 	allowConfigProcesses bool
 	workflowNames        *nameindex.Index
@@ -120,7 +117,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, nil, err
 	}
-	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules)
+	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.checks.rules)
 	var cfg *configuration.Config
 	if action {
 		cfg, err = settings.action(sourcePath)
@@ -131,17 +128,14 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		return nil, outline, nil, err
 	}
 	entryBinding := settings.bindEntry(sourcePath, cfg)
-	names := selection.RuleNames(s.analyzers)
-	for _, registration := range s.ruleRegistrations {
-		names = append(names, registration.Declaration.Name)
-	}
+	names := s.checks.registeredNames()
 	if err := settings.rules.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, nil, err
 	}
-	if err := configuration.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
+	if err := configuration.ValidateToolNames(projectConfig, s.checks.toolNames()...); err != nil {
 		return nil, nil, nil, err
 	}
-	registrations, err := selection.ConfigureAnalyzers(entryBinding, s.analyzers)
+	registrations, err := selection.ConfigureAnalyzers(entryBinding, s.checks.analyzers)
 	if err != nil {
 		return nil, nil, nil, err
 	}

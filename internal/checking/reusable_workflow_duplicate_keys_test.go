@@ -92,7 +92,7 @@ jobs:
 			if diff := cmp.Diff(fromAST.JobPermissions, fromFile.JobPermissions); diff != "" {
 				t.Fatal(diff)
 			}
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
+			request := analysisRequest{WorkingDir: root, Checks: testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}}))}
 
 			check := func(errs []*finding.Finding, want int) {
 				t.Helper()
