@@ -129,7 +129,7 @@ func lintConfigValue(config LintConfig) (any, error) {
 // ForFile gives each checked file its own effective settings.
 func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, error) {
 	var err error
-	config, err = ruleSet.capturedRuleConfig(config)
+	config, err = ruleSet.bindRuleSettings(config)
 	if err != nil || config == nil {
 		return config, err
 	}

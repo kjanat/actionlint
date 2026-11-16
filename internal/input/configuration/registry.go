@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -18,6 +19,23 @@ type RuleSet struct {
 	registered      map[string]bool
 	optionOverrides map[string]json.RawMessage
 	providers       map[string]toolProvider
+	// signature identifies the declarations that configuration normalization
+	// and decoding read. Two rule sets with the same signature normalize and
+	// decode rule settings identically, so settings bound by one need no
+	// binding again by the other. The zero value has an empty signature.
+	signature string
+}
+
+// withSignature returns ruleSet with its signature computed. Constructors call
+// it once; rule sets do not change after construction.
+func (ruleSet RuleSet) withSignature() RuleSet {
+	var signature strings.Builder
+	for _, entry := range ruleSet.entries {
+		_, provider := ruleSet.providers[entry.Name]
+		_, _ = fmt.Fprintf(&signature, "%q %q %q %q %q %d %t %t %t %q %q\n", entry.Name, fmt.Sprint(entry.Aliases), entry.Category, entry.LegacyGroup, entry.Policy, entry.Scope, entry.SupportsActions, ruleSet.registered[entry.Name], provider, entry.OptionsSchema, ruleSet.optionOverrides[entry.Name])
+	}
+	ruleSet.signature = signature.String()
+	return ruleSet
 }
 
 // Names returns the read-only index of current names and declared aliases.
@@ -64,7 +82,7 @@ func NewRuleSet(declarations []rule.Declaration) (RuleSet, error) {
 	for i, declaration := range declarations {
 		result.entries[i] = declaration.Clone()
 	}
-	return result, nil
+	return result.withSignature(), nil
 }
 
 // WithDefaults returns metadata annotated with the host's default rule selection.

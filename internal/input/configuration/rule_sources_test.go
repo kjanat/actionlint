@@ -67,3 +67,57 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 		})
 	}
 }
+
+// A configuration loaded with the rule set that later resolves it was merged
+// once, by the load. Resolving it with that rule set must not merge it again;
+// a rule set with rules the load did not know must.
+func TestRuleSettingsMergeOnceWhenLoadedWithFinalRules(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	files := map[string]string{
+		"base.yml": "lint: {rules: {external: {shellcheck: off}}}",
+		"leaf.yml": "extends: [base.yml]\nlint: {rules: {plugins: {shellcheck: on}}}",
+	}
+	read := func(path string) ([]byte, error) {
+		content, ok := files[filepath.Base(path)]
+		if !ok {
+			return nil, os.ErrNotExist
+		}
+		return []byte(content), nil
+	}
+	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}, ReplacesTool: "shellcheck"}
+	registered, err := checking.ConfigurationRules().WithRegisteredRules(registration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		loadRules  configuration.RuleSet
+		wantMerged bool
+	}{
+		{"loaded with final rules", registered, false},
+		{"loaded before plugins", checking.ConfigurationRules(), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			loaded, err := tc.loadRules.Read(filepath.Join(directory, "leaf.yml"), read)
+			if err != nil {
+				t.Fatal(err)
+			}
+			selected, err := registered.ForFile(loaded.Config, "ci.yml", directory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if merged := selected != loaded.Config; merged != tc.wantMerged {
+				t.Fatalf("rule settings merged again = %t, want %t", merged, tc.wantMerged)
+			}
+			resolved, err := checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, selected, registration)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := resolved.RuleSet().DiagnosticLevel(resolved, "shellcheck"); got != "on" {
+				t.Fatalf("level=%s, want on", got)
+			}
+		})
+	}
+}

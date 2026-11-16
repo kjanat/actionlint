@@ -520,9 +520,11 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 	return ruleSet.readContext(ctx, path, readFile, files, true, additional...)
 }
 
-// ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
-func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, nil, false)
+// ReadBeforePluginsContext loads inherited configuration before plugin rule
+// descriptors are available. files keeps the parsed sources for later loads in
+// the same run, such as plugin selection and the analysis session; it may be nil.
+func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files) (*LoadedFile, error) {
+	return ruleSet.readContext(ctx, path, readFile, files, false)
 }
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
@@ -559,7 +561,13 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
-	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
+	sources := &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
+	if bindRules {
+		// The load normalized and merged every file's rule settings with
+		// ruleSet, so binding with the same declarations repeats nothing.
+		sources.boundTo = ruleSet.signature
+	}
+	resolved.Config.Lint.Rules.sources = sources
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])

@@ -6,20 +6,36 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 )
 
 // applyConfiguredOutput uses the invoking directory's configuration for the
 // whole command. Configurations in scanned repositories only affect their checks.
+// The parsed files are kept for the check, so plugin selection and the analysis
+// session do not parse them again. Local files are read with plugin selection's
+// reader, whose size and file-type limits then cover every shared file. HTTPS
+// sources bypass the read cache here: the loader's reader already caches them,
+// and a nested cached read of the same address would wait for itself.
 func (a *commandApp) applyConfiguredOutput() error {
-	if a.inv.Operation != operationCheck || a.inv.Check.Config.Disabled {
+	if a.inv.Operation != operationCheck {
+		return nil
+	}
+	a.inv.Check.ConfigSources = document.NewFiles()
+	if a.inv.Check.Config.Disabled {
 		return nil
 	}
 	path, err := configuration.SelectedPath(a.inv.Check.Config)
 	if err != nil || path == "" {
 		return err
 	}
-	reader := configsource.New(a.ctx, nil, a.streams.Acquisition.Connections)
-	loaded, err := checking.ConfigurationRules().ReadBeforePluginsContext(a.ctx, path, reader.ReadFile)
+	remote := configsource.New(a.ctx, nil, a.streams.Acquisition.Connections)
+	loaded, err := checking.ConfigurationRules().ReadBeforePluginsContext(a.ctx, path, func(name string) ([]byte, error) {
+		if configsource.IsRemoteAddress(name) {
+			return remote.ReadFile(name)
+		}
+		return plugins.ReadSource(a.ctx, name, a.streams.Acquisition.Connections)
+	}, a.inv.Check.ConfigSources)
 	if err != nil {
 		return err
 	}

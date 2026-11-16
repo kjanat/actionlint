@@ -8,22 +8,29 @@ import (
 )
 
 // ruleSources keeps the extends and lint settings of every loaded file, the
-// encoded base configuration and the command-line overlays, so lint settings
-// can be merged again once plugin rules are registered. Rule settings are
-// normalized per file before merging, and a plugin rule's category is unknown
-// until its plugin loads, so the merged tree alone cannot be rebound. root
-// names the selected file; files holds each file's rule settings by
-// normalized address, for document.Load to merge without reading.
+// encoded base configuration and the command-line overlays, so a rule set that
+// declares rules the loader did not know, such as plugin rules, can bind the
+// lint settings. Rule settings are normalized per file before merging, and a
+// plugin rule's category is unknown until its plugin loads, so the merged tree
+// alone cannot be rebound. root names the selected file; files holds each
+// file's rule settings by normalized address, for document.Load to merge
+// without reading. boundTo is the signature of the rule set that already
+// normalized and merged these settings; it is empty when overlays or a load
+// before plugins left them unbound.
 type ruleSources struct {
 	root     string
 	files    *document.Files
 	base     any
 	overlays []any
+	boundTo  string
 }
 
+// withOverlay adds overlay settings. Overlays are parsed before plugins load,
+// so the result is unbound.
 func (s *ruleSources) withOverlay(value any) *ruleSources {
 	next := *s
 	next.overlays = append(slices.Clone(s.overlays), value)
+	next.boundTo = ""
 	return &next
 }
 
@@ -55,12 +62,17 @@ func (ruleSet RuleSet) normalizeRuleDocument(value any) (any, error) {
 	return next, nil
 }
 
-// capturedRuleConfig decodes the lint settings again with ruleSet, which
-// includes the rules of loaded plugins. It merges the captured files with
-// document.Load, the loader that merged them first. A decoded result holds no
-// rule sources, so binding it again returns it unchanged.
-func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
+// bindRuleSettings returns config with its lint settings bound to ruleSet.
+// Settings that ruleSet's declarations already merged are returned unchanged,
+// so a configuration loaded after its plugins is merged once. Otherwise the
+// captured files are merged again with document.Load, the loader that merged
+// them first. A decoded result holds no rule sources, so binding it again
+// returns it unchanged.
+func (ruleSet RuleSet) bindRuleSettings(config *Config) (*Config, error) {
 	if config == nil || config.Lint.Rules.sources == nil {
+		return config, nil
+	}
+	if bound := config.Lint.Rules.sources.boundTo; bound != "" && bound == ruleSet.signature {
 		return config, nil
 	}
 	sources := config.Lint.Rules.sources

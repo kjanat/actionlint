@@ -24,7 +24,7 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := rules.ReadBeforePluginsContext(context.Background(), child, nil)
+	loaded, err := rules.ReadBeforePluginsContext(context.Background(), child, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

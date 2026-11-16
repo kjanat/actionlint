@@ -64,9 +64,12 @@ type Options struct {
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
-	// configSources holds the configuration files plugin selection parsed for
-	// this run, so the session merges them without reading them again.
-	configSources     *document.Files
+	// ConfigSources holds the configuration files already parsed in this run,
+	// such as those the command read for its output settings. Plugin selection
+	// and the session merge them without reading or parsing them again. Nil
+	// makes CheckProjects start one set per check. It is ignored when ReadFile
+	// or SourceOverlays supply other bytes than the files on disk.
+	ConfigSources     *document.Files
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
@@ -86,6 +89,16 @@ type Options struct {
 	LegacyErrors                 bool
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
+}
+
+// sharedConfigSources returns the parsed configuration files this check may
+// use. A session that reads through ReadFile or SourceOverlays reads other bytes
+// than the files on disk, so it shares nothing.
+func (options Options) sharedConfigSources() *document.Files {
+	if options.ReadFile != nil || len(options.SourceOverlays) != 0 {
+		return nil
+	}
+	return options.ConfigSources
 }
 
 // SourceOverlay supplies bytes without selecting the document as an entry.
@@ -275,7 +288,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	session, err := workspace.New(ctx, workspace.Options{
 		Rules:      rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
-		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.configSources, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
+		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.sharedConfigSources(), OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})

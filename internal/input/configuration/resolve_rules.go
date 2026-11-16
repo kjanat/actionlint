@@ -209,7 +209,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 		return nil, err
 	}
 	ruleSet = registered.rules
-	config, err = ruleSet.capturedRuleConfig(config)
+	config, err = ruleSet.bindRuleSettings(config)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	if err != nil {
 		return nil, err
 	}
-	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}, seen: seen, options: optionOverrides}, nil
+	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}.withSignature(), seen: seen, options: optionOverrides}, nil
 }
 
 func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declaration, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {

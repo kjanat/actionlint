@@ -52,8 +52,9 @@ type Options struct {
 	ConfigProvenance  configuration.Provenance
 	ConfigOverlays    []configuration.Overlay
 	// ConfigSources holds configuration files already parsed in this run,
-	// such as by plugin selection. Configuration loads use them without
-	// reading them again and keep the files they read. Nil disables sharing.
+	// such as for the command's output settings or by plugin selection.
+	// Configuration loads use them without reading them again and keep the
+	// files they read. Nil disables sharing.
 	ConfigSources     *document.Files
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool
