@@ -17,27 +17,27 @@ import (
 
 type testAnalyzer struct {
 	descriptor checkinputs.Descriptor
-	run        func(context.Context, checkinputs.Input) ([]results.Diagnostic, error)
+	run        func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error)
 }
 
 func (a testAnalyzer) Descriptor() checkinputs.Descriptor { return a.descriptor }
-func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return a.run(ctx, input)
 }
 
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("incomplete")
-	input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []workflowfacts.Entry{{Name: "original"}}}}}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []workflowfacts.Entry{{Name: "original"}}}}}
 	changed := make(chan struct{})
 	input.SourceRoots = []checkinputs.SourceRoot{{Host: "/source", Guest: "/workspace"}}
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.Mappings[0].Entries[0].Name = "changed"
 		in.SourceRoots[0].Guest = "/changed"
 		close(changed)
 		return []results.Diagnostic{{Message: "partial"}}, failure
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		<-changed
 		if in.Mappings[0].Entries[0].Name != "original" {
 			t.Error("shared mutable facts")
@@ -62,18 +62,18 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 func TestRunRequirementsAndCancellation(t *testing.T) {
 	t.Parallel()
 	for _, requirement := range []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution, "future"} {
-		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rulemeta.InputKind{requirement}}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rulemeta.InputKind{requirement}}, func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
-		_, err := Run(t.Context(), checkinputs.Input{}, []checkinputs.Registration{{Checker: a}})
+		_, err := Run(t.Context(), checkinputs.AnalyzerInput{}, []checkinputs.Registration{{Checker: a}})
 		if err == nil || !strings.Contains(err.Error(), string(requirement)) {
 			t.Fatal(err)
 		}
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err := Run(ctx, checkinputs.Input{}, []checkinputs.Registration{{}})
+	_, err := Run(ctx, checkinputs.AnalyzerInput{}, []checkinputs.Registration{{}})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
@@ -82,18 +82,18 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("second lookup failed")
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies},
 		Dependencies:         []workflowfacts.Dependency{{Uses: "original/repo@v1"}},
 		ResolvedDependencies: []workflowfacts.ResolvedDependency{{Commit: "original"}},
 	}
-	checker := testAnalyzer{checkinputs.Descriptor{Name: "prepared", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}, func(_ context.Context, supplied checkinputs.Input) ([]results.Diagnostic, error) {
+	checker := testAnalyzer{checkinputs.Descriptor{Name: "prepared", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}, func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		if supplied.Dependencies[0].Uses != "prepared/repo@v1" || supplied.ResolvedDependencies[0].Commit != "resolved" {
 			t.Fatal("checker ran without prepared facts")
 		}
 		return []results.Diagnostic{{Message: "resolved first dependency"}}, nil
 	}}
-	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, supplied checkinputs.Input) (checkinputs.Input, error) {
+	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, supplied checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 		supplied.Dependencies[0].Uses = "prepared/repo@v1"
 		supplied.ResolvedDependencies[0].Commit = "resolved"
 		return supplied, failure
@@ -111,15 +111,15 @@ func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	checker := testAnalyzer{checkinputs.Descriptor{Name: "cancelled"}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+	checker := testAnalyzer{checkinputs.Descriptor{Name: "cancelled"}, func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		t.Fatal("checker started after preparation was canceled")
 		return nil, nil
 	}}
-	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, input checkinputs.Input) (checkinputs.Input, error) {
+	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 		cancel()
 		return input, nil
 	}}
-	if _, err := Run(ctx, checkinputs.Input{}, []checkinputs.Registration{registration}); !errors.Is(err, context.Canceled) {
+	if _, err := Run(ctx, checkinputs.AnalyzerInput{}, []checkinputs.Registration{registration}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation changed: %v", err)
 	}
 }
@@ -129,20 +129,20 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script", Input: "script"})
 	occurrence := graph.Scripts()[0]
 	declaration := occurrence.Declaration
-	input := checkinputs.Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
+	input := checkinputs.AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
 		Reference: declaration,
 		Spans:     []scriptmodel.Span{{Line: 1, Start: 1, End: 8}}, Occurrence: occurrence,
 		Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
 		in.ActionInputs[0].Occurrence.Owner = "changed"
 		close(changed)
 		return nil, nil
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
 		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence != occurrence {

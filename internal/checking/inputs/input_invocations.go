@@ -24,7 +24,7 @@ func ValidateOccurrence(graph invocation.Graph, actual invocation.Script) error 
 }
 
 // ValidateInvocations checks supplied facts against the captured occurrence graph.
-func (input Input) ValidateInvocations() error {
+func (input AnalyzerInput) ValidateInvocations() error {
 	available := slices.Contains(input.AvailableInputs, rulemeta.Invocations)
 	if available != input.CallGraph.Valid() {
 		return invalidGraph("invocations availability disagrees with graph presence")

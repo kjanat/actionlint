@@ -20,7 +20,7 @@ func (selectedToolGuest) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: "stable"}
 }
 
-func (selectedToolGuest) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (selectedToolGuest) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 

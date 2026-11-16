@@ -36,7 +36,7 @@ func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 			guest := &negotiationObserver{}
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 			}
 			_, err := runner.Analyze(t.Context(), batch)
 			if !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
@@ -56,7 +56,7 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 	wrong.Revision = "wrong"
 	for _, reference := range []source.Reference{{}, wrong} {
 		guest := &negotiationObserver{}
-		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.Input{Reference: reference}}}
+		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: reference}}}
 		_, err := runner.Analyze(t.Context(), batch)
 		if !errors.Is(err, checkinputs.ErrInvalidCallGraph) || guest.calls != 0 {
 			t.Fatalf("mismatched or absent header reached negotiation: calls=%d err=%v", guest.calls, err)

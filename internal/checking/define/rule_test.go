@@ -59,7 +59,7 @@ func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 	base := Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s"}
 	checks := func(Inputs) Checks { return Checks{} }
 	walker := func(Inputs, workflowvisit.Base) workflowvisit.Rule { return nil }
-	script := func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) { return nil, nil }
+	script := func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return nil, nil }
 	tests := map[string]struct {
 		edit    func(*Rule)
 		wantErr string
@@ -94,7 +94,7 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 	t.Parallel()
 	native := &Rule{
 		Name: "example", Description: "d", Category: "c", Subcategory: "s",
-		Script: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+		Script: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			return []results.Diagnostic{{Message: "unnamed"}, {Rule: "other", Message: "named"}}, nil
 		},
 	}
@@ -102,7 +102,7 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 	if registration.Build != nil || registration.Script == nil {
 		t.Fatalf("script rule registered as %+v", registration)
 	}
-	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.Input{})
+	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.AnalyzerInput{})
 	if err != nil {
 		t.Fatal(err)
 	}

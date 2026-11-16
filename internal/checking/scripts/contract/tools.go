@@ -33,7 +33,7 @@ type Context struct {
 	Skipped func(string)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
-	Document             checkinputs.Input
+	Document             checkinputs.AnalyzerInput
 }
 
 // Registration owns a tool's selection and construction policy. The host only

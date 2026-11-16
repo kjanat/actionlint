@@ -22,7 +22,7 @@ func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" {
 		return nil, nil
 	}

@@ -194,7 +194,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 
 func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]results.Diagnostic, error) {
 	t.Helper()
-	return plugin.CheckDocument(t.Context(), checkinputs.Input{Path: "ci.yml", Options: json.RawMessage(options)})
+	return plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage(options)})
 }
 
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
@@ -254,12 +254,12 @@ func TestCancelledContextStopsAnalysis(t *testing.T) {
 		cancel()
 	}()
 	start := time.Now()
-	_, err := plugin.CheckDocument(ctx, checkinputs.Input{Path: "ci.yml", Options: json.RawMessage("hang")})
+	_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage("hang")})
 	if err == nil || !errors.Is(err, context.Canceled) || time.Since(start) > 5*time.Second {
 		t.Fatalf("err=%v after %s", err, time.Since(start))
 	}
 	cancel()
-	if _, err := plugin.CheckDocument(ctx, checkinputs.Input{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
+	if _, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
 	}
 }

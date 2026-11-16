@@ -23,7 +23,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-func documentInput(t *testing.T, content string) checkinputs.Input {
+func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
 	t.Helper()
 	directory := t.TempDir()
 	path := filepath.Join(directory, "workflow.yml")
@@ -35,7 +35,7 @@ func documentInput(t *testing.T, content string) checkinputs.Input {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return checkinputs.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}}
+	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}}
 }
 
 func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {

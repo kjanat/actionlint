@@ -104,7 +104,7 @@ func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Execution}}
 }
 
-func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.scripts = append(o.scripts, input.Scripts...)
 	return nil, nil
 }

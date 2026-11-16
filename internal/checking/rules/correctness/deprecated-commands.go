@@ -29,7 +29,7 @@ var DeprecatedCommandsRule = &define.Rule{
 // checkDeprecatedCommands reports deprecated workflow commands in declared and invoked scripts.
 // It maps each command to its declaring document. A command whose text
 // has no source position is reported at the script start without a range.
-func checkDeprecatedCommands(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func checkDeprecatedCommands(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {

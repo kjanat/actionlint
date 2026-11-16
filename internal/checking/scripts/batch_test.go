@@ -343,7 +343,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 			t.Fatal("action input declaration is not an action")
 		}
 		inputs, _ := workflowdecl.InputNames(action)
-		var input *workflowlang.Input
+		var input *workflowlang.ActionArgument
 		var inputExists bool
 		for name, candidate := range inputs {
 			if name == record.Input {
@@ -359,7 +359,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 	}
 }
 
-func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, workflow *workflowlang.Workflow) (*workflowlang.ExecRun, *workflowlang.Input) {
+func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, workflow *workflowlang.Workflow) (*workflowlang.ExecRun, *workflowlang.ActionArgument) {
 	t.Helper()
 	snapshot, found := collection.Declarations.Lookup(graph.Entry().Reference)
 	if !found {
@@ -420,7 +420,7 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 			projected.Run, projected.Input = run, nil
 		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
 			inputs, _ := workflowdecl.InputNames(input)
-			var found *workflowlang.Input
+			var found *workflowlang.ActionArgument
 			for name, candidate := range inputs {
 				if name == unit.Input.Site.Input {
 					found = candidate

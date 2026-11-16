@@ -38,7 +38,7 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 				Text: "echo ${{ inputs.name }}", Shell: "bash",
 				Occurrence: invocation.Script{ID: "run", Kind: invocation.ScriptRun},
 			}
-			input := checkinputs.Input{}
+			input := checkinputs.AnalyzerInput{}
 			if invoked {
 				input.Invoked = []checkinputs.Script{script}
 			} else {
@@ -65,7 +65,7 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
 	t.Parallel()
 	script := checkinputs.Script{Occurrence: invocation.Script{ID: "run", Kind: invocation.ScriptRun}}
-	input := checkinputs.Input{Scripts: []checkinputs.Script{script}, BuildShellScriptInput: func(context.Context, invocation.ID, *string) (*checkinputs.ShellScriptInput, error) {
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{script}, BuildShellScriptInput: func(context.Context, invocation.ID, *string) (*checkinputs.ShellScriptInput, error) {
 		return &checkinputs.ShellScriptInput{Text: "custom input"}, nil
 	}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, newShellScriptInputScope(input))
@@ -81,7 +81,7 @@ func TestPreparationScopeExcludesUnselectedAndNonRunOccurrences(t *testing.T) {
 	selected := checkinputs.Script{Occurrence: invocation.Script{ID: "selected", Kind: invocation.ScriptRun}}
 	action := checkinputs.ActionInput{Occurrence: invocation.Script{ID: "action-input", Kind: invocation.ScriptActionInput}}
 	calls := 0
-	input := checkinputs.Input{Scripts: []checkinputs.Script{selected}, ActionInputs: []checkinputs.ActionInput{action}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{selected}, ActionInputs: []checkinputs.ActionInput{action}}
 	scope := shellScriptInputScope{occurrences: suppliedOccurrences(input), prepare: func(_ context.Context, id invocation.ID, _ *string) (*checkinputs.ShellScriptInput, error) {
 		calls++
 		if id != selected.Occurrence.ID {

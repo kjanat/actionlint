@@ -22,7 +22,7 @@ func (*settingsAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 }
 
-func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]diagmodel.Diagnostic, error) {
+func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]diagmodel.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
 	return []diagmodel.Diagnostic{{Message: "custom finding", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil

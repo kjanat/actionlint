@@ -33,7 +33,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 		}
 	})
 	occurrence, _ := graph.Script(scripts[0])
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations},
 		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
 		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcepos.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
@@ -62,7 +62,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 		t.Fatal("some(empty) selection changed at guest boundary")
 	}
 	logs = nil
-	if _, err := guest.CheckDocument(t.Context(), checkinputs.Input{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
+	if _, err := guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
 		t.Fatalf("graph leaked into following call: %v", err)
 	}
 	if len(logs) != 0 {
@@ -73,7 +73,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 	t.Parallel()
 	for _, selected := range [][]invocation.ID{nil, {}, {"chosen"}} {
-		value := lowerInput(checkinputs.Input{SelectedScripts: selected})
+		value := lowerInput(checkinputs.AnalyzerInput{SelectedScripts: selected})
 		option, ok := value.Field("selected-scripts").(*wacogo.ValOption)
 		if !ok || option.IsNone() != (selected == nil) {
 			t.Fatalf("selection changed: %v", selected)
@@ -86,7 +86,7 @@ func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 		}
 	}
 	input := checkinputs.ActionInput{Occurrence: invocation.Script{ID: "chosen"}, Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}}
-	value := lowerInput(checkinputs.Input{ActionInputs: []checkinputs.ActionInput{input}})
+	value := lowerInput(checkinputs.AnalyzerInput{ActionInputs: []checkinputs.ActionInput{input}})
 	list, err := liftList(value.Field("action-inputs"), "action inputs")
 	if err != nil || list.Len() != 1 {
 		t.Fatalf("action input omitted: %v", err)

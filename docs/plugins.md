@@ -476,7 +476,7 @@ The host grants these imports and nothing else:
 
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
 
-Go embedders can supply `analyzer.Input.Files` for one `Analyze` call. Each entry
+Go embedders can supply `inputs.AnalyzerInput.Files` for one `Analyze` call. Each entry
 maps a caller-owned read-only filesystem to an absolute guest path. The caller
 keeps it open until analysis returns and supplies directory-relative read
 operations. A later call inherits no grants. Ordinary standalone analyzers receive

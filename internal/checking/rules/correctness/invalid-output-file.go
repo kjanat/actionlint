@@ -38,7 +38,7 @@ var InvalidOutputFileRule = &define.Rule{
 }
 
 // checkInvalidOutputFile checks output files whose contents can be determined from the script.
-func checkInvalidOutputFile(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {

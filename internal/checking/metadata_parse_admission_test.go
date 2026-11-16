@@ -41,7 +41,7 @@ func (metadataAdmissionAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if a.inspect != nil {
 		if err := a.inspect(); err != nil {
 			return nil, err

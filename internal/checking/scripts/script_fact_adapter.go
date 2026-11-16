@@ -83,7 +83,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			failures = append(failures, fmt.Errorf("%w: script fact %d is unavailable", ErrInvalidBatch, index))
 			break
 		}
-		input := checkinputs.Input{
+		input := checkinputs.AnalyzerInput{
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			AvailableInputs: available,

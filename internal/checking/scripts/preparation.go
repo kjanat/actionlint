@@ -134,7 +134,7 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 	case invocation.ScriptActionInput:
 		site := request.Input
 		action, hasAction := declaration.Action()
-		var input *workflowlang.Input
+		var input *workflowlang.ActionArgument
 		inputs, _ := workflowdecl.InputNames(action)
 		for name, candidate := range inputs {
 			if name == record.Input {

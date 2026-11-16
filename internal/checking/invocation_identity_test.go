@@ -30,7 +30,7 @@ func (*invocationCollector) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
-func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}

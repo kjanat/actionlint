@@ -117,7 +117,7 @@ func (relatedAdmissionProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	point := sourcepos.Position{Line: 1, Column: 1}
 	valid := results.Related{Path: input.Path, Start: point, End: point}
 	foreign := valid

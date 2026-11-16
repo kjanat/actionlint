@@ -81,7 +81,7 @@ type Definition struct {
 	using           string
 	inputContract   inputContract
 	outputsComplete bool
-	inputs          map[string]Input
+	inputs          map[string]ActionInputMetadata
 	outputs         []string
 }
 
@@ -90,7 +90,7 @@ func NewDefinition(metadata *Metadata) Definition {
 	if metadata == nil {
 		return Definition{}
 	}
-	inputs := make(map[string]Input, len(metadata.Inputs))
+	inputs := make(map[string]ActionInputMetadata, len(metadata.Inputs))
 	for name, input := range metadata.Inputs {
 		if input == nil {
 			return Definition{}
@@ -107,10 +107,13 @@ func NewDefinition(metadata *Metadata) Definition {
 	return Definition{present: true, using: metadata.Runs.Using, inputContract: declaredInputs, outputsComplete: complete, inputs: inputs, outputs: outputs}
 }
 
-func (d Definition) Present() bool                   { return d.present }
-func (d Definition) Using() string                   { return d.using }
-func (d Definition) OutputsComplete() bool           { return d.outputsComplete }
-func (d Definition) Input(name string) (Input, bool) { input, ok := d.inputs[name]; return input, ok }
+func (d Definition) Present() bool         { return d.present }
+func (d Definition) Using() string         { return d.using }
+func (d Definition) OutputsComplete() bool { return d.outputsComplete }
+func (d Definition) Input(name string) (ActionInputMetadata, bool) {
+	input, ok := d.inputs[name]
+	return input, ok
+}
 
 // AllowsAdditionalInputs reports implementation-backed support for parameters
 // beyond the manifest declarations. Declared inputs retain their requirements.

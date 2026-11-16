@@ -653,9 +653,9 @@ func (e *ExecRun) Kind() ExecKind {
 	return ExecKindRun
 }
 
-// Input describes an input passed to an action.
+// ActionArgument describes an input passed to an action.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepswith
-type Input struct {
+type ActionArgument struct {
 	// Name is the input name.
 	Name *String
 	// Value is the input value.
@@ -667,7 +667,7 @@ type Input struct {
 // ActionInputMapping is a literal or expression-valued action input mapping.
 type ActionInputMapping struct {
 	// Inputs contains named input values.
-	Inputs     map[string]*Input
+	Inputs     map[string]*ActionArgument
 	Expression *String
 	// Insertions contains nested mapping directives.
 	Insertions []*ActionInputMapping
@@ -680,7 +680,7 @@ type ExecAction struct {
 	// Uses is nil when its value could not be parsed as a nonempty string.
 	Uses *String
 	// Inputs maps lowercase names to action inputs from 'with'. Names are case insensitive.
-	Inputs map[string]*Input
+	Inputs map[string]*ActionArgument
 	// InputsExpression supplies the complete action inputs mapping.
 	InputsExpression *String
 	// InputInsertions supplies additional action inputs through mapping directives.

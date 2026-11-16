@@ -20,7 +20,7 @@ func TestInputDetachedKeepsCapabilitiesAndIsolatesData(t *testing.T) {
 	}
 	environment := scripts.EnvironmentAlternatives("bash", []runner.OS{runner.Linux}, scripts.EnvironmentLayer{Names: []string{"ORIGINAL"}})
 	calls := 0
-	input := Input{
+	input := AnalyzerInput{
 		Scripts:               []Script{{Spans: []scripts.Span{{End: 7}}, Runtime: &scripts.Execution{Shell: "bash"}, Environment: environment, Interpreters: registry}},
 		Mappings:              []facts.Mapping{{Entries: []facts.Entry{{Name: "original"}}}},
 		Files:                 []FileSystem{{Path: "/original", FS: fstest.MapFS{"file": &fstest.MapFile{Data: []byte("content")}}}},

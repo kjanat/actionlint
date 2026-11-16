@@ -144,7 +144,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 				if _, exists := md[id]; exists {
 					sectionErr = d.session.Wrap(n, fmt.Errorf("input %q is duplicated", name))
 				} else {
-					md[id] = &Input{Name: name}
+					md[id] = &ActionInputMetadata{Name: name}
 				}
 			}
 			continue
@@ -215,7 +215,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 			sectionErr = d.session.Wrap(n, fmt.Errorf("input %q is duplicated", name))
 			continue
 		}
-		md[id] = &Input{name, required && defaultValue == nil, deprecated, strings.TrimSpace(deprecation)}
+		md[id] = &ActionInputMetadata{name, required && defaultValue == nil, deprecated, strings.TrimSpace(deprecation)}
 	}
 	if sectionErr != nil {
 		return nil, defaults, sectionErr

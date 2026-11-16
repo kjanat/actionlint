@@ -35,7 +35,7 @@ func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
 			plugin := loadPlugin(t, "misbehave", component.Options{})
 			for call := range 2 {
 				files := &countedFiles{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte("echo hello")}}, closeErr: tc.err}
-				_, err := plugin.CheckDocument(t.Context(), checkinputs.Input{
+				_, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{
 					Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 					Files: []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 				})
@@ -71,7 +71,7 @@ func TestCallPreservesHostCloseFailureAfterCancellation(t *testing.T) {
 			}
 		},
 	}
-	_, err := plugin.CheckDocument(ctx, checkinputs.Input{
+	_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{
 		Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 		Files: []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 	})
@@ -132,7 +132,7 @@ func TestFileGrantsAreReadOnlyAndInvocationScoped(t *testing.T) {
 		{"second", "read-file", "file contents: second", true},
 		{"original", "write-file", "write denied", true},
 	} {
-		input := checkinputs.Input{Content: "/workspace/source.sh", Options: json.RawMessage(tc.operation)}
+		input := checkinputs.AnalyzerInput{Content: "/workspace/source.sh", Options: json.RawMessage(tc.operation)}
 		if tc.grant {
 			input.Files = []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte(tc.content)}}}}}
 		}
@@ -164,7 +164,7 @@ func TestFileGrantPreservesSymlinkParentTraversal(t *testing.T) {
 	}
 	defer files.Close()
 	guest := loadPlugin(t, "misbehave", component.Options{})
-	_, err = guest.CheckDocument(t.Context(), checkinputs.Input{
+	_, err = guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{
 		Content: "/workspace/link/../helper.sh", Options: json.RawMessage("read-file"),
 		Files: []checkinputs.FileSystem{{Path: "/workspace", FS: files}},
 	})

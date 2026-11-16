@@ -27,7 +27,7 @@ func (a suppressionAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
-func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, results.Diagnostic{Path: input.Path, Rule: a.name, Start: script.Start, Message: "plugin finding"})

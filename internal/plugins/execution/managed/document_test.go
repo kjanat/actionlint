@@ -40,7 +40,7 @@ func shellcheckRegistration(selection scripts.Selection) tools.Registration {
 }
 
 type documentGuest struct {
-	inputs []checkinputs.Input
+	inputs []checkinputs.AnalyzerInput
 	fail   bool
 }
 
@@ -53,7 +53,7 @@ func (g *sourceProbeGuest) NegotiateTool(_ context.Context, data, _ json.RawMess
 	return &checkinputs.ToolNegotiation{Options: data, Resources: []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}, {Kind: checkinputs.ToolDirectory, Path: g.directory}}}, nil
 }
 
-func (g *sourceProbeGuest) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (g *sourceProbeGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	content, err := fs.ReadFile(input.Files[len(input.Files)-1].FS, g.file)
 	if err != nil {
@@ -190,7 +190,7 @@ func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 	return &checkinputs.ToolNegotiation{Options: data}, nil
 }
 
-func (g *documentGuest) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (g *documentGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	start, _ := input.Scripts[0].Position(1, 6, false)
 	end, _ := input.Scripts[0].Position(1, 12, true)

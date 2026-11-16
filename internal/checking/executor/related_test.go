@@ -21,7 +21,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 	for _, mixed := range []string{"valid", "revision only", "coordinates only", "invalid coordinates"} {
 		t.Run(mixed, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.Input{Path: "ci.yml", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: revision.Document(), Revision: revision.Digest()}}
+			input := checkinputs.AnalyzerInput{Path: "ci.yml", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: revision.Document(), Revision: revision.Digest()}}
 			switch mixed {
 			case "revision only":
 				input.Coordinates = ""
@@ -31,7 +31,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				input.Coordinates = "invalid"
 			}
 			locations := []results.Related{{Path: "ci.yml"}, {Path: "./ci.yml"}, {Path: "foreign.yml"}}
-			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemetadata.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied checkinputs.Input) ([]results.Diagnostic, error) {
+			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemetadata.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				if supplied.Revision != input.Revision || supplied.Coordinates != input.Coordinates {
 					t.Fatal("request evidence projection changed")
 				}

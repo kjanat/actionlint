@@ -217,13 +217,13 @@ func environmentInputs(node *workflowlang.Env) *mapping.Inputs {
 		return nil
 	}
 	inputs := &mapping.Inputs{
-		Values: make(map[string]mapping.Input, len(node.Vars)), Expression: mappingScalar(node.Expression),
+		Values: make(map[string]mapping.DeclaredEntry, len(node.Vars)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Vars {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.Input{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, environmentInputs(insertion))
@@ -236,13 +236,13 @@ func actionInputs(node *workflowlang.ExecAction) *mapping.Inputs {
 		return nil
 	}
 	inputs := &mapping.Inputs{
-		Values: make(map[string]mapping.Input, len(node.Inputs)), Expression: mappingScalar(node.InputsExpression),
+		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.InputsExpression),
 	}
 	for key, entry := range node.Inputs {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.Input{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.InputInsertions {
 		inputs.Insertions = append(inputs.Insertions, actionMappingInputs(insertion))
@@ -255,13 +255,13 @@ func actionMappingInputs(node *workflowlang.ActionInputMapping) *mapping.Inputs 
 		return nil
 	}
 	inputs := &mapping.Inputs{
-		Values: make(map[string]mapping.Input, len(node.Inputs)), Expression: mappingScalar(node.Expression),
+		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Inputs {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.Input{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, actionMappingInputs(insertion))
@@ -281,7 +281,7 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
 		return nil
 	}
 	inputs := &mapping.Inputs{
-		Values: make(map[string]mapping.Input, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
+		Values: make(map[string]mapping.DeclaredEntry, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
 	}
 	for key, row := range node.Rows {
 		var name value.Value
@@ -295,7 +295,7 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
 		} else {
 			name = value.YAMLScalar(key, workflowlang.YamlTagStr, value.Origin{})
 		}
-		inputs.Values[key] = mapping.Input{Name: name, Source: source, Evaluated: row.Evaluated}
+		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: row.Evaluated}
 	}
 	for key, filters := range map[string]*workflowlang.MatrixCombinations{"include": node.Include, "exclude": node.Exclude} {
 		if filters == nil {
@@ -306,7 +306,7 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
 		if filters.Evaluated && filters.Name != nil {
 			name = value.YAMLScalar(filters.Name.Value, workflowlang.YamlTagStr, origin(filters.Name.Pos, true))
 		}
-		inputs.Values[key] = mapping.Input{Name: name, Source: source, Evaluated: filters.Evaluated}
+		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: filters.Evaluated}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, matrixMappingInputs(insertion))

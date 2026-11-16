@@ -20,7 +20,7 @@ const (
 
 // ScriptCheck analyzes the scripts of one document. It reports findings with
 // an empty Rule; the rule's name is attached to them.
-type ScriptCheck func(context.Context, checkinputs.Input) ([]results.Diagnostic, error)
+type ScriptCheck func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error)
 
 // Rule is the single definition of a native rule.
 //
@@ -225,7 +225,7 @@ func (c scriptChecker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Descriptor: c.declaration.Clone(), Scope: c.declaration.Scope, SupportsActions: c.declaration.SupportsActions}
 }
 
-func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	diagnostics, err := c.check(ctx, input)
 	for i := range diagnostics {
 		if diagnostics[i].Rule == "" {

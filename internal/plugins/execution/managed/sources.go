@@ -280,7 +280,7 @@ func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, re
 	return files, nil
 }
 
-func (f *pluginSourceFiles) configure(input *checkinputs.Input) {
+func (f *pluginSourceFiles) configure(input *checkinputs.AnalyzerInput) {
 	if len(f.mounts) == 0 {
 		return
 	}

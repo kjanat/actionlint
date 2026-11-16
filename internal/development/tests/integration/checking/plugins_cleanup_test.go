@@ -27,7 +27,7 @@ func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 	if err := loaded.Close(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plugin.CheckDocument(t.Context(), checkinputs.Input{}); err == nil || !strings.Contains(err.Error(), "closed") {
+	if _, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{}); err == nil || !strings.Contains(err.Error(), "closed") {
 		t.Fatalf("component remains usable after canceled command cleanup: %v", err)
 	}
 	if len(loaded.Components) != 0 {

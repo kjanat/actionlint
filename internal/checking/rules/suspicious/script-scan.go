@@ -14,7 +14,7 @@ import (
 // shell is known and which the shell would execute. Findings carry the source
 // range scan reports; a script without a mappable range yields no finding.
 func scanRuntimeScripts(
-	ctx context.Context, input checkinputs.Input,
+	ctx context.Context, input checkinputs.AnalyzerInput,
 	scan func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)),
 ) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic

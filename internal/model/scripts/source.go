@@ -17,7 +17,7 @@ func FromRun(run *workflowlang.ExecRun) Declaration {
 }
 
 // FromInput extracts script text supplied as an action input. It declares no shell.
-func FromInput(input *workflowlang.Input) Declaration {
+func FromInput(input *workflowlang.ActionArgument) Declaration {
 	if input == nil {
 		return Declaration{}
 	}

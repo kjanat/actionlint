@@ -121,13 +121,15 @@ func TestRemoteCompositeContainerRunner(t *testing.T) {
 	}
 }
 
-type remoteGraphChecker struct{ inspect func(checkinputs.Input) error }
+type remoteGraphChecker struct {
+	inspect func(checkinputs.AnalyzerInput) error
+}
 
 func (remoteGraphChecker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}}
 }
 
-func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -141,7 +143,7 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 		"example/inner": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n",
 	})
 	checked := false
-	checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+	checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
 		checked = true
 		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 4 {
 			return fmt.Errorf("want two scripts in four calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())
@@ -195,7 +197,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 			}
 			provider, requests := remoteCompositeProvider(t, manifests)
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
 				checked = true
 				calls := input.CallGraph.Calls()
 				if len(calls) == 0 {
@@ -234,7 +236,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	}
 	provider, requests := remoteCompositeProvider(t, manifests)
 	checked := false
-	checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+	checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
 		checked = true
 		calls := input.CallGraph.Calls()
 		if len(calls) != limit+1 {
@@ -357,7 +359,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 				t.Fatal(err)
 			}
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
 				checked = true
 				if len(input.Invoked) != 1 {
 					return fmt.Errorf("want one script, got %+v", input.CallGraph.Calls())
@@ -413,7 +415,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 				return provider.Lookup(ctx, ref)
 			})
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
 				checked = true
 				if len(input.Invoked) != 1 || input.CallGraph.CallCount() != 3 {
 					return fmt.Errorf("want one script across three calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())

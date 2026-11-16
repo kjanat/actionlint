@@ -78,11 +78,11 @@ func actionMappingValues(source *ActionInputMapping) *mapping.Inputs {
 	}
 	result := &mapping.Inputs{
 		Expression: semanticMappingValue(source.Expression),
-		Values:     make(map[string]mapping.Input, len(source.Inputs)),
+		Values:     make(map[string]mapping.DeclaredEntry, len(source.Inputs)),
 	}
 	for name, input := range source.Inputs {
 		if input != nil {
-			result.Values[name] = mapping.Input{
+			result.Values[name] = mapping.DeclaredEntry{
 				Name: SemanticValue(input.Name), Value: semanticMappingValue(input.Value),
 				Source: mappingSourceText(input.Name),
 			}

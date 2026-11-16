@@ -177,7 +177,7 @@ func (*cancellingEditorAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.Input) ([]results.Diagnostic, error) {
+func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	close(a.started)
 	<-ctx.Done()
 	return nil, ctx.Err()

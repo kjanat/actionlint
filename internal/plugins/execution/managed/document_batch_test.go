@@ -25,7 +25,7 @@ func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			// Nil callbacks prove invalid batches cannot reach negotiation or analysis.
-			runner := documentRunner{documentRoute: shellcheckRoute, context: tools.Context{Document: checkinputs.Input{Reference: valid.CallGraph.Entry().Reference}}}
+			runner := documentRunner{documentRoute: shellcheckRoute, context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: valid.CallGraph.Entry().Reference}}}
 			_, err := runner.Analyze(t.Context(), batch)
 			if !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 				t.Fatalf("invalid batch accepted: %v", err)

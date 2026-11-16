@@ -22,7 +22,7 @@ func (interpreterProvider) Descriptor() checkinputs.Descriptor {
 	}}
 }
 
-func (interpreterProvider) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (interpreterProvider) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 

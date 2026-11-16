@@ -16,7 +16,7 @@ func (sourceScopedChecker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rulemeta.SourceConfiguration, SupportsActions: true, RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}}
 }
 
-func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {

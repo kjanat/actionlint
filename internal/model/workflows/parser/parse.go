@@ -1446,14 +1446,14 @@ func (p *Parser) parseActionInputMapping(n *codec.Node, allowEmpty bool, docker 
 		p.parseDockerInputExpression(n, expression, docker)
 		return &workflowlang.ActionInputMapping{Expression: expression}
 	}
-	mapping := &workflowlang.ActionInputMapping{Inputs: map[string]*workflowlang.Input{}}
+	mapping := &workflowlang.ActionInputMapping{Inputs: map[string]*workflowlang.ActionArgument{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "with"), n, allowEmpty, false, true) {
 		switch {
 		case exprsyntax.IsMappingInsertion(e.key.Value):
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case p.parseDockerInput(e, docker):
 		default:
-			mapping.Inputs[e.id] = &workflowlang.Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+			mapping.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 		}
 	}
 	return mapping
@@ -1531,7 +1531,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 				}
 				continue
 			}
-			ret.Inputs = map[string]*workflowlang.Input{}
+			ret.Inputs = map[string]*workflowlang.ActionArgument{}
 			with := p.parseMappingEntries(sprintf("%q section", "with"), e.val, false, false, true)
 			if isDocker {
 				for e := range with {
@@ -1540,7 +1540,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						continue
 					}
 					if !p.parseDockerInput(e, ret) {
-						ret.Inputs[e.id] = &workflowlang.Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+						ret.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 					}
 				}
 			} else {
@@ -1549,7 +1549,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
 						continue
 					}
-					ret.Inputs[e.id] = &workflowlang.Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+					ret.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 				}
 			}
 		case "id", "if", "name", "env", "continue-on-error", "timeout-minutes", "background":

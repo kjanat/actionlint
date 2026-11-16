@@ -25,7 +25,7 @@ func (unrelatedPathAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Path: a.path, Message: "foreign observation", Start: sourcepos.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
 }
 

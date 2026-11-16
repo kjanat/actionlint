@@ -19,7 +19,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	invoked := sourcepos.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
 	actionInput := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
 	inputScript := checkinputs.Script{Reference: actionInput, Comments: []workflowfacts.SourceComment{{Text: "# action input", Start: sourcepos.Position{Line: 12, Column: 7}}}}
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Scripts:      []checkinputs.Script{{Reference: root, Comments: []workflowfacts.SourceComment{{Text: "# root", Start: sourcepos.Position{Line: 1, Column: 3}}}}},
 		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []workflowfacts.SourceComment{{Text: "# invoked", Start: sourcepos.Position{Line: 9, Column: 5}, Placement: workflowfacts.TrailingComment}}}},
 		ActionInputs: []checkinputs.ActionInput{{Script: inputScript}},
@@ -63,7 +63,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	for _, scope := range []struct {
 		ctx context.Context
 		ref sourcepos.Reference
-	}{{ctx, sourcepos.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.Input{})), root}} {
+	}{{ctx, sourcepos.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.AnalyzerInput{})), root}} {
 		if got := query(scope.ctx, scope.ref); len(got) != 0 {
 			t.Fatalf("unauthorized comments=%+v", got)
 		}
@@ -74,7 +74,7 @@ func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 	t.Parallel()
 	comment := workflowfacts.SourceComment{Text: "# unidentified", Start: sourcepos.Position{Line: 1, Column: 1}}
 	unidentified := checkinputs.Script{Comments: []workflowfacts.SourceComment{comment}}
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Scripts:      []checkinputs.Script{unidentified},
 		Invoked:      []checkinputs.Script{unidentified},
 		ActionInputs: []checkinputs.ActionInput{{Script: unidentified}},
@@ -108,7 +108,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.Input{Scripts: []checkinputs.Script{{
+			input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{
 				Reference: ref,
 				Comments:  []workflowfacts.SourceComment{valid, {Text: test.text, Start: test.start, Placement: test.placement}},
 			}}}
@@ -119,7 +119,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 			}
 		})
 	}
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Reference: ref, Comments: []workflowfacts.SourceComment{valid, {Text: "#", Start: sourcepos.Position{Line: 4, Column: 1}, Placement: workflowfacts.TrailingComment}}}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Reference: ref, Comments: []workflowfacts.SourceComment{valid, {Text: "#", Start: sourcepos.Position{Line: 4, Column: 1}, Placement: workflowfacts.TrailingComment}}}}}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
 	got, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 	want := []annotationsbind.Comment{

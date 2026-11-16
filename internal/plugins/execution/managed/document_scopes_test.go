@@ -79,7 +79,7 @@ func TestDocumentPluginRetainsScriptsBesideScopeFailure(t *testing.T) {
 	guest := &partialGuest{failAt: 1, failure: failure}
 	r := documentRunner{
 		documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-		context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml"}},
+		context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml"}},
 	}
 	findings, err := r.Analyze(t.Context(), batch)
 	if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Script != 0 {

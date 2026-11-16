@@ -140,7 +140,7 @@ export default defineDocumentProvider({
 		t.Fatal(err)
 	}
 	dependency := workflowfacts.Dependency{Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 6, Column: 30}}
-	input := checkinputs.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcepos.YAML, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
+	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcepos.YAML, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
 	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)

@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
-// Input is one declared mapping entry. A missing Name uses its map key.
-type Input struct {
+// DeclaredEntry is one declared mapping entry. A missing Name uses its map key.
+type DeclaredEntry struct {
 	Name      value.Value
 	Value     value.Value
 	Source    string
@@ -20,7 +20,7 @@ type Input struct {
 
 // Inputs is the source declaration consumed at the syntax ownership boundary.
 type Inputs struct {
-	Values     map[string]Input
+	Values     map[string]DeclaredEntry
 	Expression value.Value
 	Insertions []*Inputs
 }

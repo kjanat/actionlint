@@ -69,7 +69,7 @@ func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
 	return d.descriptor.Detached()
 }
 
-func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" && input.Kind != "action" {
 		return nil, fmt.Errorf("unsupported document kind %q", input.Kind)
 	}
@@ -122,7 +122,7 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.I
 
 // A directory-capable process can read the file instead of stdin. Refuse stale
 // disk content before running it and before binding its output to this capture.
-func currentDocument(ctx context.Context, input checkinputs.Input) (err error) {
+func currentDocument(ctx context.Context, input checkinputs.AnalyzerInput) (err error) {
 	path := input.Revision.Document()
 	file, err := files.New(ctx, nil, nil).Open(path)
 	if err != nil {
@@ -181,7 +181,7 @@ func sameDocument(name, filename, directory string) bool {
 	return candidate == expected
 }
 
-func (d *DocumentChecker) finding(input checkinputs.Input, entry checkinputs.ScriptDiagnostic) (results.Diagnostic, error) {
+func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry checkinputs.ScriptDiagnostic) (results.Diagnostic, error) {
 	if len(entry.Fixes) != 0 && !d.backend.capabilities.Fixes {
 		return results.Diagnostic{}, errors.New("document provider returned undeclared fixes")
 	}
@@ -234,7 +234,7 @@ func (d *DocumentChecker) finding(input checkinputs.Input, entry checkinputs.Scr
 
 // Process decoders normalize positions to LF/scalar coordinates. Resolve their
 // exact byte offset, then map it to the captured document's coordinate model.
-func documentPosition(input checkinputs.Input, p checkinputs.ScriptPosition) (sourcepos.Position, error) {
+func documentPosition(input checkinputs.AnalyzerInput, p checkinputs.ScriptPosition) (sourcepos.Position, error) {
 	point := sourcepos.Position{Line: p.Row, Column: p.Column}
 	offset, err := sourceposition.Offset([]byte(input.Content), sourcepos.RawLF, point)
 	if err != nil {

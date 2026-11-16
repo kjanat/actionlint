@@ -19,7 +19,7 @@ func (sourceOnlyProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Content != p.content || len(input.AvailableInputs) != 1 {
 		return nil, errors.New("source-only input changed")
 	}

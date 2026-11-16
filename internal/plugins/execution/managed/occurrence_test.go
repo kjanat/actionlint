@@ -24,18 +24,18 @@ import (
 
 type occurrenceGuest struct{ documentGuest }
 
-func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	return nil, nil
 }
 
-type occurrenceObserver struct{ input checkinputs.Input }
+type occurrenceObserver struct{ input checkinputs.AnalyzerInput }
 
 func (*occurrenceObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
-func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	observer.input = input
 	return nil, nil
 }

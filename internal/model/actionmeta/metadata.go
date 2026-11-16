@@ -17,9 +17,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-// Input is input metadata in "inputs" section in action.yml metadata file.
+// ActionInputMetadata is input metadata in "inputs" section in action.yml metadata file.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
-type Input struct {
+type ActionInputMetadata struct {
 	// Name is a name of this input.
 	Name string `json:"name"`
 	// Required is true when this input is mandatory to run the action.
@@ -33,7 +33,7 @@ type Input struct {
 // Inputs is a map from input ID to its metadata. Keys are in lower case since input
 // names are case-insensitive.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
-type Inputs map[string]*Input
+type Inputs map[string]*ActionInputMetadata
 
 // Output is output metadata in "outputs" section in action.yml metadata file.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-composite-actions

@@ -27,7 +27,7 @@ func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }

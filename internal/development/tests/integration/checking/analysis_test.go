@@ -32,7 +32,7 @@ func (scriptAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
-func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, results.Diagnostic{Message: "observed script", Start: script.Start})

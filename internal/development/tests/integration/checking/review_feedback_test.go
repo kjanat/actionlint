@@ -21,7 +21,7 @@ func (a namedFindingAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: string(a), Category: "correctness"}
 }
 
-func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Message: "same observation", Start: sourcepos.Position{Line: 6, Column: 14}}}, nil
 }
 

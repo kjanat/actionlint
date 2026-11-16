@@ -11,7 +11,7 @@ import (
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-func copyOwnedInput(in Input) Input {
+func copyOwnedInput(in AnalyzerInput) AnalyzerInput {
 	out := in
 	out.AvailableInputs = slices.Clone(in.AvailableInputs)
 	out.Options = slices.Clone(in.Options)

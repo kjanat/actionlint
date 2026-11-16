@@ -15,7 +15,7 @@ import (
 
 type sourceCommentsKey struct{}
 
-func suppliedComments(input checkinputs.Input) map[source.Reference][]workflowfacts.SourceComment {
+func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]workflowfacts.SourceComment {
 	comments := make(map[source.Reference][]workflowfacts.SourceComment)
 	add := func(script checkinputs.Script) {
 		if script.Reference != (source.Reference{}) {

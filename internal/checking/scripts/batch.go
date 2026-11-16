@@ -43,7 +43,7 @@ type Unit struct {
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value *workflowlang.Input
+	Value *workflowlang.ActionArgument
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.

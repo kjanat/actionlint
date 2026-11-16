@@ -24,7 +24,7 @@ func (suppressionCompletionProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Path == "failing.yml" {
 		return nil, probe.failure
 	}

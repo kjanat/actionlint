@@ -31,7 +31,7 @@ func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 				"empty":    {Name: &workflowlang.String{Value: "empty"}, Value: &workflowlang.String{Value: ""}},
 			},
 		},
-		Steps: []*workflowlang.Step{{If: condition, Exec: &workflowlang.ExecAction{Inputs: map[string]*workflowlang.Input{
+		Steps: []*workflowlang.Step{{If: condition, Exec: &workflowlang.ExecAction{Inputs: map[string]*workflowlang.ActionArgument{
 			"greeting": {Name: &workflowlang.String{Value: "greeting"}, Value: &workflowlang.String{Value: "hello"}},
 		}}}},
 	}
@@ -321,7 +321,7 @@ jobs:
 	if len(actions) != 2 {
 		t.Fatalf("action count = %d; want 2", len(actions))
 	}
-	var literalInput *workflowlang.Input
+	var literalInput *workflowlang.ActionArgument
 	literalNames, _ := InputNames(actions[0])
 	for name, candidate := range literalNames {
 		if name == "script" {
@@ -331,7 +331,7 @@ jobs:
 	if literalInput == nil || literalInput.Source == nil {
 		t.Fatal("literal key expression lost its declared source handle")
 	}
-	var derivedInput *workflowlang.Input
+	var derivedInput *workflowlang.ActionArgument
 	derivedNames, _ := InputNames(actions[1])
 	for name, candidate := range derivedNames {
 		if name == "script" {

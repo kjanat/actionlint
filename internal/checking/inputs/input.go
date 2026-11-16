@@ -31,7 +31,7 @@ type Descriptor struct {
 // Descriptor and CheckDocument must not panic; the host does not recover checker panics.
 type Checker interface {
 	Descriptor() Descriptor
-	CheckDocument(context.Context, Input) ([]results.Diagnostic, error)
+	CheckDocument(context.Context, AnalyzerInput) ([]results.Diagnostic, error)
 }
 
 // Registration supplies analyzer-specific configuration without exposing the
@@ -41,14 +41,14 @@ type Registration struct {
 	Options json.RawMessage
 	// Prepare acquires additional facts before checking. On failure it returns
 	// the usable partial input, so completed observations can still yield findings.
-	Prepare func(context.Context, Input) (Input, error)
+	Prepare func(context.Context, AnalyzerInput) (AnalyzerInput, error)
 }
 
-// Input is one document and its shared analysis facts. Each analyzer receives
+// AnalyzerInput is one document and its shared analysis facts. Each analyzer receives
 // its own slices; Content and script text are immutable strings. Scripts are
 // declared by the document itself. Invoked scripts belong to composite actions
 // the document calls and name their own Path.
-type Input struct {
+type AnalyzerInput struct {
 	// Revision and Coordinates bind this request's own Path to captured bytes.
 	// They are independent of the invocation graph's entry Reference.
 	Revision    source.Revision
@@ -98,8 +98,8 @@ type ActionInput struct {
 }
 
 // Script supplies a declaration and its invocation context to a check.
-// An empty declaration Path means Input.Path. With the Invocations input,
-// Occurrence identifies the execution in Input.CallGraph. Runtime is supplied
+// An empty declaration Path means AnalyzerInput.Path. With the Invocations input,
+// Occurrence identifies the execution in AnalyzerInput.CallGraph. Runtime is supplied
 // with the Execution input.
 type Script struct {
 	scriptmodel.Declaration

@@ -138,7 +138,7 @@ func lowerMappings(mappings []workflowfacts.Mapping) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerInput(input checkinputs.Input) *wacogo.ValRecord {
+func lowerInput(input checkinputs.AnalyzerInput) *wacogo.ValRecord {
 	selected := wacogo.ValOptionNone()
 	if input.SelectedScripts != nil {
 		ids := make([]wacogo.Val, 0, len(input.SelectedScripts))
@@ -421,7 +421,7 @@ func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {
 	return liftAnalysisForInput(v, nil)
 }
 
-func liftAnalysisForInput(v wacogo.Val, input *checkinputs.Input) ([]results.Diagnostic, error) {
+func liftAnalysisForInput(v wacogo.Val, input *checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	result, err := liftRecord(v, "analysis outcome")
 	if err != nil {
 		return nil, err

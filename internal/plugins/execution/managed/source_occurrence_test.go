@@ -13,7 +13,7 @@ import (
 
 type capturedScriptGuest struct{ fallbackGuest }
 
-func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Scripts[0].Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Message: "captured script"}}, nil
 }
@@ -26,7 +26,7 @@ func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
 	guest := &capturedScriptGuest{}
 	runner := documentRunner{
 		documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-		context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+		context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 	}
 	findings, err := runner.Analyze(t.Context(), batch)
 	if err != nil || len(findings) != 1 {
@@ -42,7 +42,7 @@ func TestSourceGrantsTranslateScriptsAndInvokedRuntimeWithoutMutatingFacts(t *te
 	t.Parallel()
 	scriptRuntime := &scriptmodel.Execution{Directory: "script-host", DirectoryKnown: true}
 	invokedRuntime := &scriptmodel.Execution{Directory: "invoked-host", DirectoryKnown: true}
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Scripts: []checkinputs.Script{{Runtime: scriptRuntime}, {}},
 		Invoked: []checkinputs.Script{{Runtime: invokedRuntime}, {}},
 	}

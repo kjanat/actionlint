@@ -13,7 +13,7 @@ import (
 
 // CheckInput projects a composition result onto the check input of its
 // entry document. A batch that disagrees with the entry snapshot is rejected.
-func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.Input, error) {
+func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.AnalyzerInput, error) {
 	units := result.Batch.Scripts()
 	refs := references[pathAbs]
 	input := executor.SourceInput(document, path, content, refs.Document)

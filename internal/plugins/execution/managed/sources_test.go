@@ -68,7 +68,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer sources.close()
-	input := checkinputs.Input{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}}}}
+	input := checkinputs.AnalyzerInput{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}}}}
 	sources.configure(&input)
 	if input.Scripts[0].Runtime.Directory != "/workspace" || len(input.Files) != 2 {
 		t.Fatalf("wrong grants: %+v", input)
@@ -173,7 +173,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer sources.close()
-			input := checkinputs.Input{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}}}}
+			input := checkinputs.AnalyzerInput{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}}}}
 			sources.configure(&input)
 			if input.Scripts[0].Runtime.Directory != "/sources/2" || len(input.Files) != 2 {
 				t.Fatalf("working directory not granted: %s", input.Scripts[0].Runtime.Directory)

@@ -142,7 +142,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		resolutions := references.NewResolutionSession(options.Resolver)
 		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
 			Checker: security.NewResolvedReferenceCheck(),
-			Prepare: func(ctx context.Context, input checkinputs.Input) (checkinputs.Input, error) {
+			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err

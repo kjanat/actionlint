@@ -79,7 +79,7 @@ func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workfl
 	if event.Inputs != nil {
 		metadata.Inputs = make(Inputs, len(event.Inputs))
 		for _, input := range event.Inputs {
-			metadata.Inputs[input.ID] = Input{
+			metadata.Inputs[input.ID] = ReusableWorkflowInput{
 				Name:     input.Name.Value,
 				Required: input.IsRequired() && !hasDefault(input),
 				Type:     input.Type,
@@ -102,8 +102,8 @@ func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workfl
 	return metadata
 }
 
-// Input describes an input declared by a local reusable workflow.
-type Input struct {
+// ReusableWorkflowInput describes an input declared by a local reusable workflow.
+type ReusableWorkflowInput struct {
 	// Name is a name of the input defined in the reusable workflow.
 	Name string
 	// Required is true when 'required' field of the input is set to true and no default value is set.
@@ -116,7 +116,7 @@ type Input struct {
 
 // Inputs maps lowercase input names to reusable workflow input metadata.
 // Workflow call input names are case insensitive.
-type Inputs map[string]Input
+type Inputs map[string]ReusableWorkflowInput
 
 // Secret describes a secret declared by a local reusable workflow.
 type Secret struct {

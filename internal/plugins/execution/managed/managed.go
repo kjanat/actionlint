@@ -385,7 +385,7 @@ func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
 	return nil
 }
 
-func (r documentRunner) input(script tools.Script, graph invocation.Graph) checkinputs.Input {
+func (r documentRunner) input(script tools.Script, graph invocation.Graph) checkinputs.AnalyzerInput {
 	input := r.context.Document
 	input.AvailableInputs = []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}
 	input.CallGraph = graph

@@ -10,7 +10,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Registration, input checkinputs.Input, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
+func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Registration, input checkinputs.AnalyzerInput, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
 	var all []*findingmodel.Finding
 	var analysisErr error
 	if len(registrations) != 0 {

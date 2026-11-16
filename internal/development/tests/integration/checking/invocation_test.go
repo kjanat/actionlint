@@ -20,14 +20,14 @@ import (
 
 type invocationAnalyzer struct {
 	mu     sync.Mutex
-	inputs []checkinputs.Input
+	inputs []checkinputs.AnalyzerInput
 }
 
 func (*invocationAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
-func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
