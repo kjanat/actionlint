@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -182,7 +183,7 @@ config-variable: [TYPO]
 			if code := Main(func(key string) string { return env[key] }, &out, pluginacquisition.Options{}); code != 0 {
 				t.Fatalf("exit %d: %s", code, &out)
 			}
-			want := commandEscape(filepath.Join(workspace, "base.yml") + ":2:1:")
+			want := output.EscapeGitHubCommandData(filepath.Join(workspace, "base.yml") + ":2:1:")
 			if !strings.Contains(out.String(), "::warning title=Check configuration::"+want) {
 				t.Fatalf("warning attributed to leaf config: %s", &out)
 			}

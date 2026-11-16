@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func analysisForRender(t *testing.T, prefix string) *report.Analysis {
@@ -91,8 +92,8 @@ func TestCommandEscape(t *testing.T) {
 		{"a:b,c", "a:b,c"},
 		{"%0A", "%250A"},
 	} {
-		if got := commandEscape(tc.in); got != tc.want {
-			t.Errorf("commandEscape(%q) = %q, wanted %q", tc.in, got, tc.want)
+		if got := output.EscapeGitHubCommandData(tc.in); got != tc.want {
+			t.Errorf("output.EscapeGitHubCommandData(%q) = %q, wanted %q", tc.in, got, tc.want)
 		}
 	}
 }
