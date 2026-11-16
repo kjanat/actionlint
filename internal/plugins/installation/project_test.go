@@ -15,14 +15,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
-	return pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Options {
+	return pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 }
 
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 
 func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	t.Parallel()
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, repositoryfixture.Directory(t), "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.Publish(t, "v1.0.0")
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 	root := repositoryfixture.Directory(t)
 	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {

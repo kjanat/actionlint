@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
@@ -253,11 +254,11 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
-			setting, err := configuration.NewSetting("bogus", nil)
+			setting, err := ruleconfig.NewSetting("bogus", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"inline-suppression": setting})}}
 			config := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
 			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
 			if err == nil || !strings.Contains(err.Error(), "rule level") {
@@ -289,11 +290,11 @@ jobs:
 permissions: {}
 `
 	bogus := func(include string) *configuration.Config {
-		setting, err := configuration.NewSetting("bogus", nil)
+		setting, err := ruleconfig.NewSetting("bogus", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"inline-suppression": setting})}}
 		return &configuration.Config{Overrides: []configuration.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"

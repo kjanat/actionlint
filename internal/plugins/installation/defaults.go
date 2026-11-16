@@ -24,7 +24,7 @@ type DefaultPluginOptions struct {
 	// Rules supplies already inspected plugin descriptors. Missing descriptors
 	// are read from local or cached provider manifests, never by executing guests.
 	Rules       []rule.Descriptor
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 // DefaultReferences supplies the v2 defaults only when plugins was omitted.

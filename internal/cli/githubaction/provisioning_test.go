@@ -82,7 +82,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			}
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, files)}
 			maps.Copy(env, tc.inputs)
-			req, err := provisioningRequest(func(key string) string { return env[key] }, pluginacquisition.Settings{})
+			req, err := provisioningRequest(func(key string) string { return env[key] }, pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 			})}
 			maps.Copy(env, tc.inputs)
 			var stdout, stderr strings.Builder
-			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, pluginacquisition.Settings{}); code != tc.code {
+			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, pluginacquisition.Options{}); code != tc.code {
 				t.Fatalf("got status %d; want %d: %s", code, tc.code, &stderr)
 			}
 			if stdout.Len() != 0 || stderr.Len() == 0 {

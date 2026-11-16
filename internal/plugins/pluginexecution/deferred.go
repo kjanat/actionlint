@@ -30,7 +30,7 @@ type deferredScriptEngine struct {
 	gate        chan struct{}
 	descriptor  checkinputs.ScriptEngineDescriptor
 	pin         pluginregistry.Pin
-	acquisition pluginacquisition.Settings
+	acquisition pluginacquisition.Options
 	backend     deferredBackend
 	failure     error
 	retryAfter  time.Time
@@ -38,7 +38,7 @@ type deferredScriptEngine struct {
 	closed      bool
 }
 
-func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Settings, reserved rule.Names) (*deferredScriptEngine, error) {
+func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Options, reserved rule.Names) (*deferredScriptEngine, error) {
 	var descriptor checkinputs.ScriptEngineDescriptor
 	if pin.Kind == artifacts.Component {
 		var err error

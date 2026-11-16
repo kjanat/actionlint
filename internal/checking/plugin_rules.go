@@ -15,7 +15,7 @@ import (
 )
 
 // RulesWithPluginPaths discovers selected providers without analyzing a document.
-func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition pluginacquisition.Settings) (result []rule.Descriptor, err error) {
+func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition pluginacquisition.Options) (result []rule.Descriptor, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err

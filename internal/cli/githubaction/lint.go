@@ -55,7 +55,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
-	acquisition  pluginacquisition.Settings
+	acquisition  pluginacquisition.Options
 	service      services.Service
 }
 

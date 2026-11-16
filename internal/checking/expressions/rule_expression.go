@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -175,7 +176,7 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		config = scope.Composite()
 	}
 	facts := configuration.RepositoryFacts(config, host)
-	level := func(name string) configuration.Level {
+	level := func(name string) ruleconfig.Level {
 		selected := config
 		if scope != nil {
 			selected = scope.Rule(name).Config()

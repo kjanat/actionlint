@@ -33,7 +33,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			configPath := filepath.Join(root, ".github", "actionlint.yaml")
 			if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
 				t.Fatal(err)
@@ -88,7 +88,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", component)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)

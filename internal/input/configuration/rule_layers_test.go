@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
@@ -77,7 +78,7 @@ overrides:
 	}
 	for _, tc := range []struct {
 		path    string
-		level   configuration.Level
+		level   ruleconfig.Level
 		minimum float64
 	}{{"target.yml", "error", 0}, {"options.yml", "warn", 10}} {
 		t.Run(tc.path, func(t *testing.T) {

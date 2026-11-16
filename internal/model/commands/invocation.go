@@ -41,7 +41,7 @@ type Issue struct {
 	End      int    `json:"end"`
 }
 
-type Setting struct {
+type OptionSetting struct {
 	Group   string `json:"group"`
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
@@ -91,7 +91,7 @@ type Invocation struct {
 	Reason       string    `json:"reason,omitempty"`
 	Language     string    `json:"language,omitempty"`
 	Input        string    `json:"input"`
-	Settings     []Setting `json:"settings,omitempty"`
+	Settings     []OptionSetting `json:"settings,omitempty"`
 	Issues       []Issue   `json:"issues,omitempty"`
 }
 
@@ -404,7 +404,7 @@ func (r *Registry) analyze(result Invocation, id string, args []Token, chain []s
 				input = option.Input
 			}
 			if option.Group != "" {
-				result.Settings = append(result.Settings, Setting{Group: option.Group, Name: value, Enabled: enabled})
+				result.Settings = append(result.Settings, OptionSetting{Group: option.Group, Name: value, Enabled: enabled})
 			}
 			if option.Warning != "" {
 				result.Issues = append(result.Issues, Issue{Code: "interpreter-option", Message: option.Warning, Severity: "warning", Start: token.Start, End: token.End})

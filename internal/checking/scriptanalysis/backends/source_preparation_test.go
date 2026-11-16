@@ -62,7 +62,7 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, err = applySourcePreparation(t.Context(), transform, script, prepared, integrationconfig.Settings{}, routeEngine)
+	prepared, err = applySourcePreparation(t.Context(), transform, script, prepared, integrationconfig.ResolvedSettings{}, routeEngine)
 	if err != nil {
 		t.Fatal(err)
 	}

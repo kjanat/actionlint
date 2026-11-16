@@ -121,7 +121,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err := os.Symlink(other, filepath.Join(third, ".github")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, third, ""); err == nil {
+	if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, third, ""); err == nil {
 		t.Fatal("installation followed .github into another repository")
 	}
 	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), third, input); err == nil {
@@ -136,7 +136,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", wasm)
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {

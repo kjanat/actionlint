@@ -22,7 +22,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	}
 	const source = fixtureregistry.FixtureRegistryURL + "engine.wasm"
 	registry.SetFile(source, data)
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}

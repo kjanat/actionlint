@@ -30,7 +30,7 @@ type editorPluginHost struct {
 	sources pluginselection.Sources
 }
 
-func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition pluginacquisition.Settings) (*editorPluginHost, error) {
+func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition pluginacquisition.Options) (*editorPluginHost, error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ type editorEngines struct {
 	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
 	log         io.Writer
 	debug       bool
-	acquisition pluginacquisition.Settings
+	acquisition pluginacquisition.Options
 }
 
 func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {

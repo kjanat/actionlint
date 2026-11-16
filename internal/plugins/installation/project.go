@@ -76,7 +76,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 	return plugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err

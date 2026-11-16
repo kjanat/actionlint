@@ -17,7 +17,7 @@ import (
 // the blobs needed by this host; inspect reads the package without running it;
 // sync restores it offline from the store.
 func TestPluginInstallAndInspectOCI(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -79,7 +79,7 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 // config schema adds tools.<rule.name> for a provider the --plugin flag
 // installs, without downloading its executable.
 func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "1")
@@ -118,7 +118,7 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 // plugin install refuses an OCI package whose provider manifest layer is not
 // a valid tool provider manifest, and declares nothing.
 func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -139,7 +139,7 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 }
 
 func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -176,7 +176,7 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 }
 
 func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")

@@ -55,7 +55,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, configuration.FormatYAML, streams.Acquisition)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Settings) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Options) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err

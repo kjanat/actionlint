@@ -157,7 +157,7 @@ func (p genericPreparation) input(ctx context.Context, script scriptanalysis.Uni
 		return prepared, err
 	}
 	if !p.resolvesSettings {
-		return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
+		return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, p.route)
 	}
 	settings, err := p.settingsResolver.Resolve(ctx, prepared.Config, "", PathContext(script.Scope).Expand)
 	if err != nil {
@@ -174,7 +174,7 @@ func (p genericPreparation) input(ctx context.Context, script scriptanalysis.Uni
 		mapped := shell.Prepare(prepared.Source, settings.Prefix, "")
 		prepared.Source, prepared.LineMap = mapped.Text(), mapped.Line
 	}
-	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
+	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, p.route)
 }
 
 // pythonPreparation binds the Python profile.
@@ -227,7 +227,7 @@ func (p pythonPreparation) batch(context.Context, scriptanalysis.Batch) (func(co
 				return preparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 			}
 		}
-		return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
+		return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, p.route)
 	}, nil
 }
 
@@ -243,7 +243,7 @@ func (p pythonPreparation) input(ctx context.Context, script scriptanalysis.Unit
 	if prepared.Config, err = python.EngineConfig(settings, nil); err != nil {
 		return preparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}
-	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.Settings{Options: prepared.Config}, routeEngine)
+	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, routeEngine)
 }
 
 // shellPreparation binds the shell profile: inline settings become
@@ -260,7 +260,7 @@ type shellPreparation struct {
 
 // scopeSettings are a scope's resolved shell settings.
 type scopeSettings struct {
-	settings   *integrationconfig.Settings
+	settings   *integrationconfig.ResolvedSettings
 	configFile string
 	// failed marks a scope whose settings were reported as an error.
 	failed bool

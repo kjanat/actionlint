@@ -21,7 +21,7 @@ func moduleRoot(name string) ([]byte, error) { return fs.ReadFile(os.DirFS("../.
 func installed(configFiles bool) ToolProvider {
 	return ToolProvider{
 		Rule: rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},
-		Settings: toolsettings.Settings{
+		Settings: toolsettings.Spec{
 			Schema:     json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"level":{"enum":["low","high"]}},"additionalProperties":false}`),
 			ReadsFiles: configFiles,
 		},

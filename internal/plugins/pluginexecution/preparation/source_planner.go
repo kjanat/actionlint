@@ -20,7 +20,7 @@ type SourcePlanInput struct {
 	Startup            string                     `json:"startup"`
 	EnvironmentStartup string                     `json:"environment_startup"`
 	EnvironmentKnown   bool                       `json:"environment_known"`
-	Settings           integrationconfig.Settings `json:"settings"`
+	Settings           integrationconfig.ResolvedSettings `json:"settings"`
 	ConfigFile         string                     `json:"config_file"`
 	Filesystem         bool                       `json:"filesystem"`
 	Engine             bool                       `json:"engine"`

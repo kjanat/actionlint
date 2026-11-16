@@ -3,6 +3,7 @@ package configuration
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -15,14 +16,14 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			wantDefault := Level(declared)
+			wantDefault := ruleconfig.Level(declared)
 			if declared == "" {
 				wantDefault = "on"
 			}
 			for _, test := range []struct {
 				name, yaml string
 				presets    Presets
-				want       Level
+				want       ruleconfig.Level
 			}{
 				{"default", "{}", Presets{}, wantDefault},
 				{"rule on", "lint: {rules: {correctness: {example: on}}}", Presets{}, wantDefault},

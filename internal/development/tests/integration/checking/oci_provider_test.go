@@ -88,7 +88,7 @@ func ociFindings(t *testing.T, result *report.Analysis) []results.Diagnostic {
 // the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	check := func() *report.Analysis {
 		t.Helper()
@@ -125,7 +125,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
 			t.Parallel()
-			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 			pkg := publishOCIProvider(t)
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -165,7 +165,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 // OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
 	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)

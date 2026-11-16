@@ -25,9 +25,9 @@ type ReadAccess struct {
 	Directories []string `json:"directories,omitempty"`
 }
 
-// Settings contains the tool options, generated comments and read-access
+// ResolvedSettings contains the tool options, generated comments and read-access
 // requests returned by an integration.
-type Settings struct {
+type ResolvedSettings struct {
 	Options    json.RawMessage `json:"options"`
 	Prefix     string          `json:"source_prefix,omitempty"`
 	Language   *string         `json:"language,omitempty"`
@@ -74,51 +74,51 @@ func New(m toolmanifest.Manifest, programs toolmanifest.Programs) (*SettingsReso
 // Resolve validates settings and expands the path options declared in the
 // manifest. The configuration_transform program receives config and
 // config_file.
-func (t *SettingsResolver) Resolve(ctx context.Context, inline json.RawMessage, file string, expand func(string) (string, error)) (Settings, error) {
+func (t *SettingsResolver) Resolve(ctx context.Context, inline json.RawMessage, file string, expand func(string) (string, error)) (ResolvedSettings, error) {
 	if err := ctx.Err(); err != nil {
-		return Settings{}, err
+		return ResolvedSettings{}, err
 	}
 	if len(inline) == 0 {
 		inline = json.RawMessage(`{}`)
 	}
 	if t.schema != nil {
 		if err := t.schema.Validate(inline); err != nil {
-			return Settings{}, err
+			return ResolvedSettings{}, err
 		}
 	}
 	var value any
 	decoder := json.NewDecoder(bytes.NewReader(inline))
 	decoder.UseNumber()
 	if err := decoder.Decode(&value); err != nil {
-		return Settings{}, err
+		return ResolvedSettings{}, err
 	}
 	if expand != nil {
 		for _, pointer := range t.paths {
 			if err := expandOption(value, pointer, expand); err != nil {
-				return Settings{}, err
+				return ResolvedSettings{}, err
 			}
 		}
 	}
 	if t.program == nil {
 		data, err := json.Marshal(value)
-		return Settings{Options: data}, err
+		return ResolvedSettings{Options: data}, err
 	}
 	data, err := t.program.Apply(ctx, map[string]any{"config": value, "config_file": file}, map[string]any{})
 	if err != nil {
-		return Settings{}, err
+		return ResolvedSettings{}, err
 	}
-	var settings Settings
+	var settings ResolvedSettings
 	decoder = json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&settings); err != nil {
-		return Settings{}, fmt.Errorf("configuration transform: %w", err)
+		return ResolvedSettings{}, fmt.Errorf("configuration transform: %w", err)
 	}
 	var options map[string]any
 	if err := json.Unmarshal(settings.Options, &options); err != nil || options == nil {
-		return Settings{}, errors.New("configuration transform must return an options object")
+		return ResolvedSettings{}, errors.New("configuration transform must return an options object")
 	}
 	if settings.Prefix != "" && !strings.HasSuffix(settings.Prefix, "\n") {
-		return Settings{}, errors.New("configuration transform source_prefix must end with a newline")
+		return ResolvedSettings{}, errors.New("configuration transform source_prefix must end with a newline")
 	}
 	return settings, nil
 }

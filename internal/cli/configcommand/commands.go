@@ -59,7 +59,7 @@ func WritePath(out io.Writer, req PathOptions) error {
 	return err
 }
 
-func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Settings) error {
+func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Options) error {
 	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 // WriteSchema writes the configuration JSON schema to out. Beyond the
 // published actionlint.schema.json, it describes tools.<name> for every tool
 // provider that the --plugin flags or the selected configuration install.
-func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Settings) error {
+func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Options) error {
 	manifests, err := checking.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	return err
 }
 
-func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Settings) error {
+func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Options) error {
 	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 }
 
 // Run migrates the selected configuration.
-func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
 	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err

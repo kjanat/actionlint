@@ -49,7 +49,7 @@ type Selection struct {
 	DisableTools bool
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
-	Acquisition               pluginacquisition.Settings
+	Acquisition               pluginacquisition.Options
 }
 
 // WithTools returns a copy of selection that stores the tool ids
@@ -84,7 +84,7 @@ type Sources struct {
 	DisableTools bool
 	// Configured identifies configuration-selected providers that require process opt-in.
 	Configured  bool
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 func (s Selection) Resolve(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {

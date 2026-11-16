@@ -167,7 +167,7 @@ func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Co
 	data, err := json.Marshal(struct {
 		Enabled bool                       `json:"enabled"`
 		Backend bool                       `json:"backend"`
-		Options integrationconfig.Settings `json:"options"`
+		Options integrationconfig.ResolvedSettings `json:"options"`
 		Plugin  any                        `json:"plugin"`
 	}{enabled, cfg != nil && cfg.Tools[r.name].Backend != nil, options, pluginOptions})
 	return string(data), err
@@ -175,7 +175,7 @@ func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Co
 
 // options validates configuration through the integration's schema and transforms
 // it without interpreting tool-specific property names.
-func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, expand func(string) (string, error)) (integrationconfig.Settings, error) {
+func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, expand func(string) (string, error)) (integrationconfig.ResolvedSettings, error) {
 	var inline json.RawMessage
 	file := ""
 	if cfg != nil {
@@ -185,13 +185,13 @@ func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, e
 			var err error
 			inline, err = json.Marshal(values)
 			if err != nil {
-				return integrationconfig.Settings{}, err
+				return integrationconfig.ResolvedSettings{}, err
 			}
 		}
 	}
 	options, err := r.settingsResolver.Resolve(ctx, inline, file, expand)
 	if err != nil {
-		return integrationconfig.Settings{}, fmt.Errorf("tools.%s.config: %w", r.name, err)
+		return integrationconfig.ResolvedSettings{}, fmt.Errorf("tools.%s.config: %w", r.name, err)
 	}
 	return options, nil
 }

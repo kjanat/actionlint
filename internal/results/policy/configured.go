@@ -7,6 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 
@@ -15,7 +16,7 @@ import (
 )
 
 // filterConfigured applies resolved ignore selectors to the same logical invocation.
-func (processor Processor) filterConfigured(path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config, foreign bool, level func(string) configuration.Level, additional ...string) []*finding.Finding {
+func (processor Processor) filterConfigured(path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config, foreign bool, level func(string) ruleconfig.Level, additional ...string) []*finding.Finding {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -76,6 +77,6 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 }
 
 // levels projects resolved rule severity lookup without exposing traversal.
-func (processor Processor) levels(cfg *configuration.Config) func(string) configuration.Level {
-	return func(name string) configuration.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
+func (processor Processor) levels(cfg *configuration.Config) func(string) ruleconfig.Level {
+	return func(name string) ruleconfig.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
 }

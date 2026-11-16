@@ -29,7 +29,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition pluginacquisition.Settings) error {
+func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition pluginacquisition.Options) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

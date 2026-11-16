@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -158,7 +159,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 		group := cloneMapping(field(rules, descriptor.Category))
 		if !isMapping(group) {
 			// Expand a valid group shorthand without dropping its baseline.
-			var decoded Group
+			var decoded ruleconfig.Group
 			if err := decodeValue(group, &decoded); err != nil {
 				return err
 			}
@@ -287,7 +288,7 @@ func mergeMigration(current, legacy any, path, origin string) (any, error) {
 		current = wrapped
 	}
 	if strings.HasSuffix(path, ".level") {
-		var a, b Level
+		var a, b ruleconfig.Level
 		if err := decodeValue(current, &a); err != nil {
 			return nil, err
 		}

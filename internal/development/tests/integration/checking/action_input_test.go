@@ -104,7 +104,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

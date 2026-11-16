@@ -71,7 +71,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", wasm)
 	registry.Add(t, "v1.1.0", wasm)

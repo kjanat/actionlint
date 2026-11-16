@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -104,7 +105,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 		sourcePath, isMetadata := foreignSources[group.path]
 		source := metadataSources[sourcePath]
 		scope := group.binding
-		diagnosticLevel := func(kind string) configuration.Level {
+		diagnosticLevel := func(kind string) ruleconfig.Level {
 			return scope.DiagnosticLevel(kind)
 		}
 		if isMetadata && source != nil {
@@ -172,7 +173,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 	return all, nil
 }
 
-func (p Policy) inlineAudit(path string, level func(string) configuration.Level) *inlineAudit {
+func (p Policy) inlineAudit(path string, level func(string) ruleconfig.Level) *inlineAudit {
 	return &inlineAudit{level: level, used: func(position sourcepos.Position, rule string) {
 		if p.usedSuppression != nil {
 			p.usedSuppression(path, position, rule)

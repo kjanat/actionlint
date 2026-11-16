@@ -23,7 +23,7 @@ type commandRequest interface {
 
 // streamCommand is a command whose package runs it over command streams.
 type streamCommand interface {
-	Run(context.Context, commandio.Streams, pluginacquisition.Settings) (int, error)
+	Run(context.Context, commandio.Streams, pluginacquisition.Options) (int, error)
 }
 
 // streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.

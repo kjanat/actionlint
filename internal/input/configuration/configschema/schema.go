@@ -41,7 +41,7 @@ type ToolProvider struct {
 	Rule rule.Descriptor
 	// Settings holds the provider's config_schema, its shorthands and
 	// whether tools.<name>.config may name a configuration file.
-	Settings toolsettings.Settings
+	Settings toolsettings.Spec
 	// ProcessSchema is a process provider's process.config_schema. It is
 	// empty when the provider declares none.
 	ProcessSchema json.RawMessage

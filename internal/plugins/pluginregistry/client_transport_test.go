@@ -33,7 +33,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, err := New("https://example.org/catalogue/", pluginacquisition.Settings{})
+			c, err := New("https://example.org/catalogue/", pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -50,7 +50,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 			}
 		})
 	}
-	c, err := New(DefaultURL, pluginacquisition.Settings{})
+	c, err := New(DefaultURL, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 			if base == "" {
 				base = "https://EXAMPLE.ORG:8443/catalogue/"
 			}
-			client, err := New(base, pluginacquisition.Settings{})
+			client, err := New(base, pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -22,7 +22,7 @@ type InspectOptions struct {
 }
 
 // Run reads plugin metadata without executing the plugin.
-func (r InspectOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (r InspectOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
 	info, err := inspectSource(ctx, r, acquisition)
 	if err != nil {
 		return 0, err
@@ -51,7 +51,7 @@ func (r InspectOptions) Run(ctx context.Context, streams commandio.Streams, acqu
 	return 0, commandio.WriteJSON(streams.Stdout, info.Metadata)
 }
 
-func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacquisition.Settings) (artifacts.ArtifactProvenance, error) {
+func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacquisition.Options) (artifacts.ArtifactProvenance, error) {
 	_, statErr := os.Stat(r.Source)
 	local := statErr == nil || filepath.IsAbs(r.Source) || strings.HasPrefix(r.Source, ".") || strings.Contains(r.Source, `\`)
 	if local || strings.Contains(r.Source, "://") {

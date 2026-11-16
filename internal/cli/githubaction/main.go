@@ -9,7 +9,7 @@ import (
 )
 
 // Main runs the GitHub Action adapter using the action's input environment.
-func Main(env func(string) string, stdout io.Writer, acquisition pluginacquisition.Settings) int {
+func Main(env func(string) string, stdout io.Writer, acquisition pluginacquisition.Options) int {
 	a := &action{
 		args:        environmentArgs(env),
 		stdout:      stdout,

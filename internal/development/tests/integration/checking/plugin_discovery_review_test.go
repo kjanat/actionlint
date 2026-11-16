@@ -27,7 +27,7 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 	}
 	path := filepath.Join(directory, "actionlint.yml")
 	fixturefiles.WriteText(t, path, "plugins: []\n")
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

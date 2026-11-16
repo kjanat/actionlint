@@ -55,7 +55,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings) pluginselection.Selection {
+func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Options) pluginselection.Selection {
 	// A tool disabled by --no-tool is not run by plugins either.
 	return pluginselection.WithTools(pluginselection.Selection{
 		RuleSet: checking.ConfigurationRules(),

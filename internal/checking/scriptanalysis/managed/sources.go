@@ -68,7 +68,7 @@ func closeSourceAuthorities(authorities []sourceAuthority) error {
 	return failure
 }
 
-func sourceAuthorities(script scriptanalysis.Unit, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
+func sourceAuthorities(script scriptanalysis.Unit, settings integrationconfig.ResolvedSettings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
 	if script.Config() == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}

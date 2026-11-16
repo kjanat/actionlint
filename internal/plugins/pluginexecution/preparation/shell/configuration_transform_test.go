@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 )
 
-func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Settings, error) {
+func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.ResolvedSettings, error) {
 	t.Helper()
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {
@@ -28,7 +28,7 @@ func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Set
 		return transform.Resolve(t.Context(), inline, "", nil)
 	}
 	t.Fatal("no ShellCheck integration")
-	return integrationconfig.Settings{}, nil
+	return integrationconfig.ResolvedSettings{}, nil
 }
 
 func quotedDirectivePath(t *testing.T, path string) (string, error) {

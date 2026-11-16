@@ -37,7 +37,7 @@ func TestPrepareMapsGeneratedLines(t *testing.T) {
 
 func TestInputKeepsDeclaredLanguageAndDirectiveCoordinates(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "sh", Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n")
+	prepared, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "sh", Settings: &integrationconfig.ResolvedSettings{Prefix: "# shellcheck disable=SC2086\n"}}, "#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n")
 	if err != nil {
 		t.Fatal(err)
 	}

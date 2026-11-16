@@ -31,7 +31,7 @@ type action struct {
 	newID       func() string
 	timeout     time.Duration
 	result      *lintResult
-	acquisition pluginacquisition.Settings
+	acquisition pluginacquisition.Options
 }
 
 var resultNamesByExitCode = map[int]string{

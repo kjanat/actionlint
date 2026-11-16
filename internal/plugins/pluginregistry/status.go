@@ -57,7 +57,7 @@ type StatusOptions struct {
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir    string
 	Warning     func(string)
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 func (o StatusOptions) warn(message string) {

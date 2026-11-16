@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-func pluginCommandTest(t *testing.T, acquisition pluginacquisition.Settings, want int, args ...string) string {
+func pluginCommandTest(t *testing.T, acquisition pluginacquisition.Options, want int, args ...string) string {
 	t.Helper()
 	var output bytes.Buffer
 	command := Command{Stdin: strings.NewReader(""), Stdout: &output, Stderr: &output, Acquisition: acquisition}
@@ -30,7 +30,7 @@ func pluginCommandTest(t *testing.T, acquisition pluginacquisition.Settings, wan
 }
 
 func TestRegistryCLI(t *testing.T) {
-	help := pluginCommandTest(t, pluginacquisition.Settings{}, 0, "plugin", "install", "--help")
+	help := pluginCommandTest(t, pluginacquisition.Options{}, 0, "plugin", "install", "--help")
 	for _, flag := range []string{"--version", "--registry", "--config"} {
 		if !strings.Contains(help, flag) {
 			t.Fatalf("help lacks %s: %s", flag, help)
@@ -41,7 +41,7 @@ func TestRegistryCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.9.0", wasm)
 	r.Add(t, "v1.10.0", wasm)
 	root := t.TempDir()
@@ -179,7 +179,7 @@ func TestRegistryCLI(t *testing.T) {
 
 func TestRegistryManifestInstallAndMissingConfiguration(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
@@ -234,7 +234,7 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 		{"search", "--registry", "http://example.com"},
 		{"versions", "publisher/plugin", "--registry", "http://example.com"},
 	} {
-		pluginCommandTest(t, pluginacquisition.Settings{}, 2, append([]string{"plugin"}, args...)...)
+		pluginCommandTest(t, pluginacquisition.Options{}, 2, append([]string{"plugin"}, args...)...)
 	}
 }
 
@@ -262,7 +262,7 @@ func TestRequestedPlugin(t *testing.T) {
 
 func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	// Valid container/metadata, but no analyzer or provider exports. Runtime
 	// loading must fail; installation must succeed without starting a guest.
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})

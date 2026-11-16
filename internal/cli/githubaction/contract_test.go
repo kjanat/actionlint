@@ -42,7 +42,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var stdout bytes.Buffer
-	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
 	rendered := parseOutputs(read(t, outputPath))["output"]
@@ -144,7 +144,7 @@ permissions: {}
 				"INPUT_FILES":       "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
-			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 				t.Fatalf("Action status %d: %s", code, &stdout)
 			}
 			var persisted, rendered report.CheckResult

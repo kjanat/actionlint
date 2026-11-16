@@ -10,11 +10,12 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-func presetLevel(p Preset, d rule.Declaration, fallback Level) Level {
+func presetLevel(p ruleconfig.Preset, d rule.Declaration, fallback ruleconfig.Level) ruleconfig.Level {
 	switch p {
 	case "none":
 		return "off"
@@ -33,19 +34,19 @@ func presetLevel(p Preset, d rule.Declaration, fallback Level) Level {
 	}
 }
 
-func defaultLevel(d rule.Declaration) Level {
+func defaultLevel(d rule.Declaration) ruleconfig.Level {
 	if d.DefaultLevel != "" {
-		return Level(d.DefaultLevel)
+		return ruleconfig.Level(d.DefaultLevel)
 	}
 	return "on"
 }
 
-func (ruleSet RuleSet) SettingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) Setting {
+func (ruleSet RuleSet) SettingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) ruleconfig.Setting {
 	setting, _ := ruleSet.settingFor(cfg, d, p, selected)
 	return setting
 }
 
-func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) (Setting, bool) {
+func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) (ruleconfig.Setting, bool) {
 	if p.Experimental == nil && cfg != nil {
 		p.Experimental = cfg.Lint.Experimental
 	}
@@ -78,7 +79,7 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 	}
 	// Retained legacy controls apply only to their original membership. The
 	// semantic category then supplies the current baseline and exception.
-	groups := []Group{}
+	groups := []ruleconfig.Group{}
 	legacyCategory := ruleSet.LegacyGroup(d.Name)
 	if legacy, removed := rules.LegacyGroups()[legacyCategory]; removed {
 		groups = append(groups, legacy)
@@ -103,8 +104,8 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 		groups = append(groups, rules.Nursery)
 	}
 	groups = append(groups, rules.Groups()[d.Category])
-	var explicit Setting
-	var explicitLevel Level
+	var explicit ruleconfig.Setting
+	var explicitLevel ruleconfig.Level
 	for _, group := range groups {
 		// Category baselines select stable checks only. Nursery checks need
 		// an individual enable or the invocation's experimental switch.
@@ -146,7 +147,7 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 }
 
 // FixedDiagnosticLevel distinguishes a selected severity from a rule's default.
-func (ruleSet RuleSet) FixedDiagnosticLevel(cfg *Config, name string) (Level, bool) {
+func (ruleSet RuleSet) FixedDiagnosticLevel(cfg *Config, name string) (ruleconfig.Level, bool) {
 	name = ruleSet.ResolveAlias(name)
 	if cfg != nil {
 		if level, ok := cfg.Lint.Rules.ResolvedLevel(name); ok {
@@ -160,7 +161,7 @@ func (ruleSet RuleSet) FixedDiagnosticLevel(cfg *Config, name string) (Level, bo
 	return "on", false
 }
 
-func (ruleSet RuleSet) DiagnosticLevel(cfg *Config, name string) Level {
+func (ruleSet RuleSet) DiagnosticLevel(cfg *Config, name string) ruleconfig.Level {
 	name = ruleSet.ResolveAlias(name)
 	if cfg != nil {
 		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled || ruleSet.disabled(cfg.Lint.Rules.Disable, name) {
@@ -189,7 +190,7 @@ func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...ru
 // RuleRegistration identifies a rule and, for a selected tool integration, the
 // bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
 type RuleRegistration struct {
-	ToolSettings *toolsettings.Settings
+	ToolSettings *toolsettings.Spec
 	// Declaration supplies the rule's metadata and configuration scope. Its
 	// Options constructor is ignored; registered rules decode options as JSON.
 	Declaration  rule.Declaration
@@ -216,7 +217,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	if config != nil {
 		next = *config
 	}
-	resolved := make(map[string]Level)
+	resolved := make(map[string]ruleconfig.Level)
 	next.Lint.Rules.SetResolved(resolved)
 	next.Lint.Rules.resolvedFixed = make(map[string]bool)
 	next.Lint.Rules.boundSettings = make(map[string]boundSetting)
@@ -303,7 +304,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 		if !rule.ValidMaturity(descriptor.Maturity) {
 			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
 		}
-		if descriptor.DefaultLevel != "" && !Level(descriptor.DefaultLevel).Valid() {
+		if descriptor.DefaultLevel != "" && !ruleconfig.Level(descriptor.DefaultLevel).Valid() {
 			return nil, fmt.Errorf("rule %q declares invalid default level %q", descriptor.Name, descriptor.DefaultLevel)
 		}
 		if len(descriptor.OptionsSchema) > 0 {
@@ -454,7 +455,7 @@ func (ruleSet RuleSet) disabled(names []string, name string) bool {
 	return slices.ContainsFunc(names, func(disabled string) bool { return ruleSet.ResolveAlias(disabled) == name })
 }
 
-func validateRegisteredOptions(descriptor rule.Declaration, setting Setting) error {
+func validateRegisteredOptions(descriptor rule.Declaration, setting ruleconfig.Setting) error {
 	if !setting.HasOptions() {
 		return nil
 	}

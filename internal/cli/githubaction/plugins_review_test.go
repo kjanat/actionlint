@@ -105,7 +105,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
-			plan, err := provisioningRequest(lookup, pluginacquisition.Settings{})
+			plan, err := provisioningRequest(lookup, pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

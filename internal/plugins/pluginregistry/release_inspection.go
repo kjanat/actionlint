@@ -10,7 +10,7 @@ import (
 )
 
 // InspectRelease resolves a registry reference and verifies its downloaded metadata.
-func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition pluginacquisition.Settings) (artifacts.ArtifactProvenance, error) {
+func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition pluginacquisition.Options) (artifacts.ArtifactProvenance, error) {
 	client, err := New(ref.Registry(), acquisition)
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err

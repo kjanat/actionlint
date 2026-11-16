@@ -97,7 +97,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 		}
 	}
 	registration := providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}})
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 			if name == "shellcheck" {
 				registration = providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}})
 			}
-			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
+			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Options{})
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
 				t.Fatalf("foreign engine accepted for %s: %v", name, err)
 			}

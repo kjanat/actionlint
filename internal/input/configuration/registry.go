@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -40,7 +41,7 @@ func NewRuleSet(declarations []rule.Declaration) (RuleSet, error) {
 		if !rule.ValidCategory(declaration.Category) {
 			return RuleSet{}, fmt.Errorf("rule %q declares unknown category %q", declaration.Name, declaration.Category)
 		}
-		if declaration.DefaultLevel != "" && !Level(declaration.DefaultLevel).Valid() {
+		if declaration.DefaultLevel != "" && !ruleconfig.Level(declaration.DefaultLevel).Valid() {
 			return RuleSet{}, fmt.Errorf("rule %q declares invalid default level %q", declaration.Name, declaration.DefaultLevel)
 		}
 		switch declaration.Scope {

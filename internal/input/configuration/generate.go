@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"github.com/kjanat/go-yaml/v4"
@@ -77,12 +77,12 @@ func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("read default configuration: %w", err)
 	}
-	groups := make(map[string]map[string]Level)
+	groups := make(map[string]map[string]ruleconfig.Level)
 	entries := ruleSet.Rules()
 	slices.SortFunc(entries, func(a, b rule.Declaration) int { return strings.Compare(a.Name, b.Name) })
 	for _, entry := range entries {
 		if groups[entry.Category] == nil {
-			groups[entry.Category] = make(map[string]Level)
+			groups[entry.Category] = make(map[string]ruleconfig.Level)
 		}
 		groups[entry.Category][entry.Name] = ruleSet.DiagnosticLevel(defaults, entry.Name)
 	}
@@ -94,17 +94,17 @@ func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byt
 	if len(entries) != 0 {
 		entry := entries[0]
 		type lintExample struct {
-			Rules map[string]map[string]Level `yaml:"rules"`
+			Rules map[string]map[string]ruleconfig.Level `yaml:"rules"`
 		}
 		override, err = commentedYAML(map[string]lintExample{
-			"lint": {Rules: map[string]map[string]Level{entry.Category: {entry.Name: "off"}}},
+			"lint": {Rules: map[string]map[string]ruleconfig.Level{entry.Category: {entry.Name: "off"}}},
 		}, "#     ")
 		if err != nil {
 			return nil, fmt.Errorf("generate rule override example: %w", err)
 		}
 	}
-	levels := make([]string, 0, len(rules.Levels()))
-	for _, level := range rules.Levels() {
+	levels := make([]string, 0, len(ruleconfig.Levels()))
+	for _, level := range ruleconfig.Levels() {
 		levels = append(levels, string(level))
 	}
 	replacer := strings.NewReplacer(

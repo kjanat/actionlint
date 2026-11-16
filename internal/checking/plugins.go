@@ -27,7 +27,7 @@ import (
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input checkrequest.Request, paths []string, acquisition pluginacquisition.Settings) (result *report.Analysis, err error) {
+func CheckWithPluginPaths(ctx context.Context, options Options, input checkrequest.Request, paths []string, acquisition pluginacquisition.Options) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input checkrequest.R
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string, acquisition pluginacquisition.Settings) (needed ToolRequirements, err error) {
+func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string, acquisition pluginacquisition.Options) (needed ToolRequirements, err error) {
 	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err

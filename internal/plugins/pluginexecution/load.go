@@ -43,7 +43,7 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
 	ToolIDs      []string
-	Acquisition  pluginacquisition.Settings
+	Acquisition  pluginacquisition.Options
 	DisableTools bool
 }
 

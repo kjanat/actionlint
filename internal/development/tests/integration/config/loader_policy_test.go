@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 func TestConfigTimeoutBounds(t *testing.T) {
@@ -103,7 +104,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		value     string
-		level     configuration.Level
+		level     ruleconfig.Level
 		locations []configuration.PermissionLocation
 	}{
 		{"null", "error", nil},

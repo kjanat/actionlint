@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 // DependencyCategories lists rule categories selected for dependency checks.
@@ -34,7 +34,7 @@ func (c *DependencyFindings) DecodeConfig(value any) error {
 		return err
 	}
 	for i, category := range next.FailOnCategories {
-		if !slices.Contains(rules.Categories(), category) {
+		if !slices.Contains(ruleconfig.Categories(), category) {
 			return configdecode.At("fail-on-categories", configdecode.At(strconv.Itoa(i), fmt.Errorf("unknown rule category %q", category)))
 		}
 	}

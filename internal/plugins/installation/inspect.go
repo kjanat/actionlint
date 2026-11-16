@@ -12,7 +12,7 @@ import (
 
 // PinSource resolves an OCI tag or an unpinned HTTPS artifact to its checksum.
 // Installation saves that checksum so later checks use the same plugin bytes.
-func PinSource(ctx context.Context, source string, acquisition pluginacquisition.Settings) (string, error) {
+func PinSource(ctx context.Context, source string, acquisition pluginacquisition.Options) (string, error) {
 	if !artifacts.IsOCI(source) {
 		u, err := url.Parse(source)
 		if err == nil && u.Scheme == "https" && u.Fragment == "" {
@@ -35,7 +35,7 @@ func PinSource(ctx context.Context, source string, acquisition pluginacquisition
 }
 
 // Inspect resolves and reads metadata without creating a runtime.
-func Inspect(ctx context.Context, source string, acquisition pluginacquisition.Settings) (artifacts.ArtifactProvenance, error) {
+func Inspect(ctx context.Context, source string, acquisition pluginacquisition.Options) (artifacts.ArtifactProvenance, error) {
 	grant, err := artifacts.ExplicitSource(source)
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err

@@ -17,7 +17,7 @@ func deferredUnavailableFixture(t *testing.T) (*deferredScriptEngine, *fixturere
 	t.Helper()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)

@@ -1,5 +1,5 @@
-// Package rules owns rule-setting syntax, independent of the analyzer and CLI.
-package rules
+// Package ruleconfig owns rule-setting syntax, independent of the analyzer and CLI.
+package ruleconfig
 
 import (
 	"encoding/json"
@@ -242,7 +242,7 @@ func (s Setting) EncodeConfig() (any, error) {
 	return wire, nil
 }
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/rules -type Group -output internal/input/configuration/rules/owned_group.gen.go
+//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/ruleconfig -type Group -output internal/input/configuration/ruleconfig/owned_group.gen.go
 
 // Group contains a concern-wide baseline and individual exceptions.
 type Group struct {

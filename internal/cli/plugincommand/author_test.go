@@ -20,7 +20,7 @@ func TestPluginValidateBoundsLocalManifestRead(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 	streams := commandio.Streams{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &bytes.Buffer{}}
-	if status, err := (ValidateOptions{Path: path, JSON: true}).Run(t.Context(), streams, pluginacquisition.Settings{}); status != 1 || err != nil {
+	if status, err := (ValidateOptions{Path: path, JSON: true}).Run(t.Context(), streams, pluginacquisition.Options{}); status != 1 || err != nil {
 		t.Fatalf("status=%d error=%v stdout=%s", status, err, stdout.String())
 	}
 	var report authoringReport

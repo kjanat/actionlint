@@ -37,7 +37,7 @@ type Context struct {
 // Registration owns a tool's selection and construction policy. The host only
 // consumes capabilities; adding a provider does not change its control flow.
 type Registration struct {
-	ToolSettings          *toolsettings.Settings
+	ToolSettings          *toolsettings.Spec
 	InvocationDefinitions []commands.Definition
 	// ToolIntegration identifies a negotiated document provider for this tool.
 	ToolIntegration *checkinputs.ToolIntegration

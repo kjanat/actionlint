@@ -77,7 +77,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

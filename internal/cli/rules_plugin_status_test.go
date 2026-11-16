@@ -14,7 +14,7 @@ import (
 
 func TestRulesPluginFailureExitStatus(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := t.TempDir()
 	t.Chdir(root)

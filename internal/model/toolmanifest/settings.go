@@ -6,8 +6,8 @@ import (
 )
 
 // Settings returns the user configuration described by this manifest.
-func (m Manifest) Settings() toolsettings.Settings {
-	return (toolsettings.Settings{Schema: m.ConfigSchema, Shorthands: m.ConfigShorthands, ReadsFiles: m.ReadsConfigFiles()}).Clone()
+func (m Manifest) Settings() toolsettings.Spec {
+	return (toolsettings.Spec{Schema: m.ConfigSchema, Shorthands: m.ConfigShorthands, ReadsFiles: m.ReadsConfigFiles()}).Clone()
 }
 
 // ConfigurationSchemaProvider returns the part of this manifest that the

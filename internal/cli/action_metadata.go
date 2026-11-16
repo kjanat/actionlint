@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-func (c checkInvocation) actionMetadata(acquisition pluginacquisition.Settings) (actions.Provider, error) {
+func (c checkInvocation) actionMetadata(acquisition pluginacquisition.Options) (actions.Provider, error) {
 	mode := github.Online
 	if c.Offline {
 		mode = github.Offline

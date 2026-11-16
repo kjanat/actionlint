@@ -64,7 +64,7 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 					t.Fatalf("plugin-free linked config: %+v, %v", selected, err)
 				}
 			}
-			if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, ""); err == nil {
+			if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, ""); err == nil {
 				t.Fatal("mutation accepted linked configuration")
 			}
 			fixturefiles.WriteText(t, target, "plugins: [publisher/plugin]\n")

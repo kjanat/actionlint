@@ -29,7 +29,7 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 		return nil, errors.New("unexpected private connection")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	client, err := pluginregistry.NewWithGrant("https://127.0.0.1:8443/catalogue/", pluginregistry.StatusOptions{Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
 		}
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"schema_version":1,"plugins":[]}`)), Request: request}, nil
 	})
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	client, err := pluginregistry.New("https://127.0.0.1:8443/catalogue/", acquisition)
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +76,6 @@ func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
 	}
 }
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
-	return pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Options {
+	return pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

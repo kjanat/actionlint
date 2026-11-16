@@ -39,7 +39,7 @@ permissions: {}
 	}{{"shellcheck", "", 1}, {"shellcheck,ruff", "", 0}, {"shellcheck", "tools: {ruff: false}", 0}, {"shellcheck", "lint: {rules: {external: {ruff: off}}}", 0}} {
 		env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": tc.disabled, "INPUT_CONFIG": tc.config}
 		var out strings.Builder
-		if code := Main(func(k string) string { return env[k] }, &out, pluginacquisition.Settings{}); code != tc.code {
+		if code := Main(func(k string) string { return env[k] }, &out, pluginacquisition.Options{}); code != tc.code {
 			t.Fatalf("disable-tools=%q: exit=%d: %s", tc.disabled, code, &out)
 		}
 		if tc.code == 1 && !strings.Contains(out.String(), "F821") {

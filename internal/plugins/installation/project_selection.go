@@ -12,7 +12,7 @@ import (
 
 // OpenForSelection reads declarations without granting permission to edit a symlinked configuration.
 // files shares the parsed sources with later loads in the same run; it may be nil.
-func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string, readMode plugins.ReadMode, files *document.Files) (*Project, error) {
+func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, directory, configPath string, readMode plugins.ReadMode, files *document.Files) (*Project, error) {
 	configPath, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err

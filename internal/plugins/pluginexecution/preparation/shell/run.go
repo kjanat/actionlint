@@ -16,7 +16,7 @@ var ErrNoSourceAccess = errors.New("a snippet engine does not provide external s
 // Run supplies interpreter facts and integration settings for one script.
 type Run struct {
 	Shell         Shell
-	Settings      *integrationconfig.Settings
+	Settings      *integrationconfig.ResolvedSettings
 	SourcePlanner *preparation.SourcePlanner
 	ConfigFile    string
 	Sources       bool
@@ -37,7 +37,7 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		}
 		language, setup = r.Shell.Analysis()
 	}
-	settings := integrationconfig.Settings{}
+	settings := integrationconfig.ResolvedSettings{}
 	if r.Settings != nil {
 		settings = *r.Settings
 	}

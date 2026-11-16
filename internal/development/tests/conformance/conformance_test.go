@@ -33,6 +33,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -502,8 +503,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		config := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
 			Preset:      "none",
-			Correctness: configuration.NewGroup("recommended", "", nil),
-			Suspicious:  configuration.NewGroup("recommended", "", nil),
+			Correctness: ruleconfig.NewGroup("recommended", "", nil),
+			Suspicious:  ruleconfig.NewGroup("recommended", "", nil),
 		}}}
 		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runnerapi.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {

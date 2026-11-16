@@ -24,7 +24,7 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Options) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
@@ -82,7 +82,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Settings) ([]toolmanifest.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Options) ([]toolmanifest.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err

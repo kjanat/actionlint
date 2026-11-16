@@ -58,7 +58,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 		"INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 	}
 	stdout.Reset()
-	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
 	var actionResult report.CheckResult

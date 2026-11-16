@@ -35,7 +35,7 @@ func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	bytes := registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: fixtureregistry.FixtureRegistryURL, Name: "github.com/publisher/plugin", RepositoryID: 10, Metadata: metadata}, "v1.0.0", component)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)

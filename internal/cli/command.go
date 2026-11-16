@@ -28,7 +28,7 @@ type Command struct {
 	Stdin       io.Reader
 	Stdout      io.Writer
 	Stderr      io.Writer
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 func (cmd *Command) commandStreams() commandio.Streams {

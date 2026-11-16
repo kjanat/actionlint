@@ -43,7 +43,7 @@ func TestPrepareRunVariables(t *testing.T) {
 			source: "# shellcheck shell=bash\necho $1\n",
 		},
 		{
-			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &integrationconfig.Settings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
+			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &integrationconfig.ResolvedSettings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
 			vars:   map[string]string{"dialect": "dash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\necho ________\n",
 		},
@@ -64,7 +64,7 @@ func TestPrepareRunVariables(t *testing.T) {
 
 func TestPrepareRunLineOrigins(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.ResolvedSettings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestPrepareRunForEngines(t *testing.T) {
 func TestEngineInputRefusesSources(t *testing.T) {
 	t.Parallel()
 	yes := true
-	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &integrationconfig.Settings{ReadAccess: integrationconfig.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
+	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &integrationconfig.ResolvedSettings{ReadAccess: integrationconfig.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
 		t.Fatalf("got %v", err)
 	}
 }

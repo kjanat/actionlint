@@ -1,4 +1,4 @@
-package rules
+package ruleconfig
 
 import (
 	"encoding/json"

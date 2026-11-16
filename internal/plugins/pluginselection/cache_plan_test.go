@@ -37,7 +37,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 				"ruff": {Backend: backend("sha256://" + c)},
 			}}},
 		}},
-		Acquisition: pluginacquisition.Settings{UserCacheDir: cache},
+		Acquisition: pluginacquisition.Options{UserCacheDir: cache},
 	}
 	plan, err := sources.CachePlan(t.Context())
 	if err != nil {

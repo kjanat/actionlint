@@ -18,7 +18,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", module)
 	t.Chdir(t.TempDir())
@@ -83,7 +83,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 }
 
 func TestCheckingLegacyConfigDoesNotWriteProjectFiles(t *testing.T) {
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")

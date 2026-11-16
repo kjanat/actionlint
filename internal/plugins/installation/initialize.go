@@ -14,7 +14,7 @@ import (
 
 // InitializeConfiguration verifies default plugin artifacts before creating configuration.
 // A failed resolution leaves the project unchanged.
-func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, root, version string, format configuration.FileFormat) (string, error) {
+func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, root, version string, format configuration.FileFormat) (string, error) {
 	path, err := projectConfigPath(root, "")
 	if err != nil {
 		return "", err

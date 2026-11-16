@@ -187,7 +187,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 			}
 			return backend, nil
 		},
-	}, nil, pluginacquisition.Settings{})
+	}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 			<-release
 			return &editorTestBackend{}, nil
 		},
-	}, nil, pluginacquisition.Settings{})
+	}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

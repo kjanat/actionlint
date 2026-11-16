@@ -21,7 +21,7 @@ import (
 // cachedMigrationRules reads declarative metadata without running a guest or
 // acquiring an artifact. Registry selection can consult release metadata; a
 // missing cached manifest requires an explicit installation before migration.
-func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, path string) ([]rule.Descriptor, error) {
+func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
 	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {

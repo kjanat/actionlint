@@ -18,6 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 
@@ -165,7 +166,7 @@ func TestTombiMetadata(t *testing.T) {
 
 func TestRuleLevelSuggestions(t *testing.T) {
 	t.Parallel()
-	if schema := mapYAMLType(reflect.TypeFor[configuration.Level](), nil); schema.Ref != "#/$defs/level" {
+	if schema := mapYAMLType(reflect.TypeFor[ruleconfig.Level](), nil); schema.Ref != "#/$defs/level" {
 		t.Fatalf("level property does not reference its shared definition: %+v", schema)
 	}
 	schema := levelSchema()

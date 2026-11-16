@@ -35,7 +35,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		return nil, errors.New("private endpoint dialed")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	const endpoint = "https://127.0.0.1:8443/plugin.wasm"
 	source := endpoint + "#sha256=" + strings.Repeat("a", 64)
 	root := repositoryfixture.Directory(t)

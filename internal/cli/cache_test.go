@@ -16,7 +16,7 @@ func TestCacheManagementCommands(t *testing.T) {
 	t.Parallel()
 	base := t.TempDir()
 	directory := filepath.Join(base, "actionlint")
-	acquisition := pluginacquisition.Settings{UserCacheDir: base}
+	acquisition := pluginacquisition.Options{UserCacheDir: base}
 	code, output, log := runOfflineCommand(t, acquisition, "", "cache", "dir")
 	if code != 0 || strings.TrimSpace(output) != directory || log != "" {
 		t.Fatalf("cache dir: status=%d output=%q log=%s", code, output, log)

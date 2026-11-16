@@ -91,6 +91,6 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 	}
 }
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
-	return pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Options {
+	return pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

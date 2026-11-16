@@ -1,4 +1,4 @@
-package rules
+package ruleconfig
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"

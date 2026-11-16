@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -144,7 +145,7 @@ func (s *Scope) Rule(name string) *Rule {
 }
 
 // DiagnosticLevel reads the policy selected when this occurrence was prepared.
-func (s *Scope) DiagnosticLevel(name string) configuration.Level {
+func (s *Scope) DiagnosticLevel(name string) ruleconfig.Level {
 	return s.rules.DiagnosticLevel(s.Rule(name).policy, name)
 }
 

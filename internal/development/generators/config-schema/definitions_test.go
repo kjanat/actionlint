@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -55,10 +55,10 @@ func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
 	walk = func(value any) {
 		switch node := value.(type) {
 		case map[string]any:
-			if reflect.DeepEqual(node["enum"], enumValues(rules.Levels())) {
+			if reflect.DeepEqual(node["enum"], enumValues(ruleconfig.Levels())) {
 				levelEnums++
 			}
-			if reflect.DeepEqual(node["enum"], enumValues(rules.Presets())) {
+			if reflect.DeepEqual(node["enum"], enumValues(ruleconfig.Presets())) {
 				presetEnums++
 			}
 			if ref, ok := node["$ref"].(string); ok {

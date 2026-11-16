@@ -97,7 +97,7 @@ permissions: {}
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
-				if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Settings{}); code != 1 {
+				if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Options{}); code != 1 {
 					t.Fatalf("code %d; want findings: %s", code, output.String())
 				}
 				var result report.CheckResult
@@ -200,7 +200,7 @@ permissions: {}
 		"INPUT_OUTPUT-FILE": "report.sarif",
 	}
 	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Settings{}); code != 1 {
+	if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Options{}); code != 1 {
 		t.Fatalf("code %d; want 1: %s", code, output.String())
 	}
 	selected := parseOutputs(read(t, outputPath))["output"]
@@ -293,7 +293,7 @@ permissions: {}
 				"INPUT_CONFIG": "repository: {runners: []}",
 			}
 			var output strings.Builder
-			if got := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Settings{}); got != tc.code {
+			if got := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Options{}); got != tc.code {
 				t.Fatalf("code %d; want %d: %s", got, tc.code, output.String())
 			}
 			data, err := os.ReadFile(path)
@@ -334,7 +334,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 		"INPUT_FILES": "missing.yml", "INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Settings{}); code != 3 {
+	if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Options{}); code != 3 {
 		t.Fatalf("code %d: %s", code, output.String())
 	}
 	data, err := os.ReadFile(path)
@@ -378,7 +378,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 			}
 			var stdout strings.Builder
-			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 				t.Fatalf("code %d: %s", code, &stdout)
 			}
 			data := read(t, resultPath)

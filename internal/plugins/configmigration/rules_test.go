@@ -22,7 +22,7 @@ import (
 
 func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	manifest := toolmanifest.Manifest{
 		SchemaVersion: 1, ID: "migration-fixture", Version: "1.0.0", Role: toolmanifest.RoleDocument,
 		Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess, Preparation: "generic",

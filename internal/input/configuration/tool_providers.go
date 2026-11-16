@@ -54,7 +54,7 @@ func loadToolProvider(manifest toolmanifest.Manifest) (toolProvider, error) {
 	return tool, nil
 }
 
-func compileToolProvider(settings toolsettings.Settings) (toolProvider, error) {
+func compileToolProvider(settings toolsettings.Spec) (toolProvider, error) {
 	settings = settings.Clone()
 	for name, shorthand := range settings.Shorthands {
 		if len(shorthand.Path) == 0 {

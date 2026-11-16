@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
-func provisioningRequest(env func(string) string, acquisition pluginacquisition.Settings) (*lintRequest, error) {
+func provisioningRequest(env func(string) string, acquisition pluginacquisition.Options) (*lintRequest, error) {
 	in, err := parseInputs(environmentArgs(env))
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (req *lintRequest) pluginInput() checkrequest.Request {
 }
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
-func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition pluginacquisition.Settings) int {
+func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition pluginacquisition.Options) int {
 	ctx := context.Background()
 	req, err := provisioningRequest(env, acquisition)
 	if err == nil && req.configFile != "" {

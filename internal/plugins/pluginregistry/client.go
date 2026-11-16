@@ -53,7 +53,7 @@ func registryURL(raw string) (*url.URL, error) {
 
 // New constructs a client for an endpoint explicitly selected by its caller.
 // Repository declarations use NewWithGrant with invocation-owned authority.
-func New(raw string, acquisition pluginacquisition.Settings) (*Client, error) {
+func New(raw string, acquisition pluginacquisition.Options) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
 		return nil, err

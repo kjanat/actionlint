@@ -21,7 +21,7 @@ import (
 func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	wasm, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)

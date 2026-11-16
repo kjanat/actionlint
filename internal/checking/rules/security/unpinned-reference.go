@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -23,15 +23,15 @@ var UnpinnedReferenceRule = &define.Rule{
 	LegacyGroup: "policy",
 	Policy:      "require-commit-hash",
 	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
-	Options:     define.Options[rules.CommitHashOptions](),
+	Options:     define.Options[ruleconfig.CommitHashOptions](),
 	Checks: func(c define.RuleInputs) define.Checks {
-		options := new(rules.CommitHashOptions)
+		options := new(ruleconfig.CommitHashOptions)
 		if c.Config != nil {
 			// Parsing and ValidateRuleNames reject options that do not load
 			// here; without that check they leave no exclusions.
 			setting, _ := c.Config.Lint.Rules.Policy.Rule("unpinned-reference")
 			if _, err := setting.LoadOptions(options); err != nil {
-				options = new(rules.CommitHashOptions)
+				options = new(ruleconfig.CommitHashOptions)
 			}
 		}
 		return UnpinnedReferenceChecks(options.Excludes)
