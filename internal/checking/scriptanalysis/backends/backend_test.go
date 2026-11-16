@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -19,7 +20,7 @@ import (
 
 type selectorBackend struct{ calls atomic.Int64 }
 
-func (b *selectorBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *selectorBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.calls.Add(1)
 	return nil, nil
 }

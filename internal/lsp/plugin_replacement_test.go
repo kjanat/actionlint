@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -23,7 +24,7 @@ import (
 
 type countedPluginBackend struct{ calls atomic.Int32 }
 
-func (b *countedPluginBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *countedPluginBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.calls.Add(1)
 	return nil, nil
 }
@@ -109,7 +110,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if engine == "ruff" {
 					shell = "python"
 				}
-				plugins := &pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
+				plugins := &pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: scriptengine.Descriptor{
 					Engine: engine, Rule: rule.Descriptor{Name: engine},
 					Shells:       []string{shell},
 					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
@@ -171,14 +172,14 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				engine := &selectedInputBackend{descriptor: checkinputs.ScriptEngineDescriptor{
+				engine := &selectedInputBackend{descriptor: scriptengine.Descriptor{
 					Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"},
 					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "bash"}},
 				}}
 				if runs {
 					engine.descriptor.Shells = []string{"bash"}
 				}
-				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) {
 					return engine, nil
 				}}
 				sources := pluginselection.Sources{Paths: []string{plugin}}

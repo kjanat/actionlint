@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
@@ -124,7 +124,7 @@ func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
 func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	t.Parallel()
 	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), module.Options{})
-	described := coreDescribedBackend{ScriptBackend: engine, descriptor: checkinputs.ScriptEngineDescriptor{
+	described := coreDescribedBackend{Backend: engine, descriptor: scriptengine.Descriptor{
 		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
 	}}
 	nativeCalls := 0
@@ -139,7 +139,7 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 				return nil, nil
 			}), nil
 		},
-	}, func(contract.Context) (checkinputs.ScriptBackend, error) { return described, nil })
+	}, func(contract.Context) (scriptengine.Backend, error) { return described, nil })
 	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
@@ -163,11 +163,11 @@ func runBody(text string) *definition.ExecRun {
 }
 
 type coreDescribedBackend struct {
-	checkinputs.ScriptBackend
-	descriptor checkinputs.ScriptEngineDescriptor
+	scriptengine.Backend
+	descriptor scriptengine.Descriptor
 }
 
-func (b coreDescribedBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b coreDescribedBackend) ScriptDescriptor() scriptengine.Descriptor {
 	return b.descriptor
 }
 
@@ -180,7 +180,7 @@ func (r coreBatchRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch
 func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
 	t.Parallel()
 	guest := loadEngine(t, negotiationFixture(t, "inspect", "unicode", ""), module.Options{})
-	if findings, err := guest.Check(t.Context(), checkinputs.ScriptRequest{Source: "echo ok"}); err != nil || len(findings) != 0 {
+	if findings, err := guest.Check(t.Context(), scriptengine.Request{Source: "echo ok"}); err != nil || len(findings) != 0 {
 		t.Fatalf("findings=%v err=%v", findings, err)
 	}
 	if err := guest.ValidateConfig(t.Context(), nil); err != nil {

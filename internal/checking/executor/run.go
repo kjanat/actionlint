@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -54,7 +53,7 @@ type preparedRegistration struct {
 
 // Prepare validates a registration once for an exact set of available input kinds.
 func Prepare(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
-	if validation.IsNil(registration.Checker) {
+	if checkinputs.IsNilChecker(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
 	descriptor := registration.Checker.Descriptor().Detached()

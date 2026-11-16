@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -21,14 +21,14 @@ import (
 const deferredRetryDelay = 5 * time.Second
 
 type deferredBackend interface {
-	checkinputs.DescribedScriptBackend
-	checkinputs.ScriptConfigValidator
+	scriptengine.DescribedBackend
+	scriptengine.ConfigValidator
 	Close(context.Context) error
 }
 
 type deferredScriptEngine struct {
 	gate        chan struct{}
-	descriptor  checkinputs.ScriptEngineDescriptor
+	descriptor  scriptengine.Descriptor
 	pin         pluginregistry.Pin
 	acquisition pluginacquisition.Options
 	backend     deferredBackend
@@ -39,7 +39,7 @@ type deferredScriptEngine struct {
 }
 
 func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Options, reserved rule.Names) (*deferredScriptEngine, error) {
-	var descriptor checkinputs.ScriptEngineDescriptor
+	var descriptor scriptengine.Descriptor
 	if pin.Kind == artifacts.Component {
 		var err error
 		descriptor, err = component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
@@ -139,7 +139,7 @@ func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Art
 	return engine, nil
 }
 
-func sameScriptDescriptor(left, right checkinputs.ScriptEngineDescriptor) bool {
+func sameScriptDescriptor(left, right scriptengine.Descriptor) bool {
 	leftSchema, rightSchema := left.Rule.OptionsSchema, right.Rule.OptionsSchema
 	left.Rule.OptionsSchema, right.Rule.OptionsSchema = nil, nil
 	if len(left.Rule.Examples) == 0 {
@@ -151,11 +151,11 @@ func sameScriptDescriptor(left, right checkinputs.ScriptEngineDescriptor) bool {
 	return reflect.DeepEqual(left, right) && (len(leftSchema) == 0 && len(rightSchema) == 0 || artifacts.SameMetadata(leftSchema, rightSchema))
 }
 
-func (b *deferredScriptEngine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b *deferredScriptEngine) ScriptDescriptor() scriptengine.Descriptor {
 	return b.descriptor.Clone()
 }
 
-func (b *deferredScriptEngine) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *deferredScriptEngine) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	engine, err := b.get(ctx)
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"cmp"
+	"encoding/json"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
@@ -60,9 +61,9 @@ func DeclaredEnvironment(scope EnvironmentScope, declarations mappings.Mapping) 
 // CaseKnown is false when an earlier unresolved Windows declaration could have
 // introduced a different spelling of the same case-insensitive key.
 type EnvironmentVariableName struct {
-	Name      string
-	Scope     EnvironmentScope
-	CaseKnown bool
+	Name      string           `json:"name"`
+	Scope     EnvironmentScope `json:"scope"`
+	CaseKnown bool             `json:"case_known"`
 }
 
 // EnvironmentNames records merged names and lookup rules for one operating system.
@@ -79,6 +80,28 @@ func (e EnvironmentNames) MergeComparison() NameComparison  { return e.merge }
 func (e EnvironmentNames) LookupComparison() NameComparison { return e.lookup }
 func (e EnvironmentNames) UnknownNames() bool               { return e.unknownNames }
 func (e EnvironmentNames) Names() []EnvironmentVariableName { return slices.Clone(e.names) }
+
+// environmentNamesJSON is the JSON form of EnvironmentNames that script
+// engine requests carry: names and lookup rules, never values.
+type environmentNamesJSON struct {
+	OperatingSystem  runnerapi.OS              `json:"operating_system"`
+	MergeComparison  NameComparison            `json:"merge_comparison"`
+	LookupComparison NameComparison            `json:"lookup_comparison"`
+	Names            []EnvironmentVariableName `json:"names"`
+	UnknownNames     bool                      `json:"unknown_names"`
+}
+
+// MarshalJSON writes the names and lookup rules.
+func (e EnvironmentNames) MarshalJSON() ([]byte, error) {
+	names := e.names
+	if names == nil {
+		names = []EnvironmentVariableName{}
+	}
+	return json.Marshal(environmentNamesJSON{
+		OperatingSystem: e.operatingSystem, MergeComparison: e.merge, LookupComparison: e.lookup,
+		Names: names, UnknownNames: e.unknownNames,
+	})
+}
 
 // EnvironmentNamePresence describes lookup in the supplied layers.
 // Unknown layers prevent a missing name from being classified as undeclared.

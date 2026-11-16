@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -29,14 +30,14 @@ const HostInterface = host.InterfaceName
 // SourceAnnotationsInterface provides optional, source-local YAML comments.
 const SourceAnnotationsInterface = sourceannotations.InterfaceName
 
-// Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
+// Plugin is a loaded component. It implements checkinputs.Checker. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
 	reservedRules rule.Names
 	// A non-nil descriptor identifies a validated, available role.
 	analyzerDescriptor *checkinputs.Descriptor
 	runnerDescriptor   *runnerapi.Descriptor
-	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
+	scriptDescriptor   *scriptengine.Descriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
 	// runner is the negotiated runner-provider version, nil without the

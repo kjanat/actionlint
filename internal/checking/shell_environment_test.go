@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestShellcheckEnvironmentDeclarations(t *testing.T) {
@@ -64,12 +64,12 @@ func TestScriptEngineReceivesUnknownRunnerEnvironment(t *testing.T) {
 		t.Fatalf("expected one script and environment: %+v", engine.requests)
 	}
 	env := engine.requests[0].Environment[0]
-	if env.OperatingSystem != runnerapi.Linux || !env.UnknownNames {
+	if env.OperatingSystem() != runnerapi.Linux || !env.UnknownNames() {
 		t.Fatalf("expected Linux with unknown inherited names: %+v", env)
 	}
 	for _, want := range []string{"WORKFLOW_NAME", "JOB_NAME", "STEP_NAME"} {
-		if !slices.ContainsFunc(env.Names, func(name checkinputs.EnvironmentVariableName) bool { return name.Name == want && name.CaseKnown }) {
-			t.Errorf("missing known declaration %q: %+v", want, env.Names)
+		if !slices.ContainsFunc(env.Names(), func(name scripts.EnvironmentVariableName) bool { return name.Name == want && name.CaseKnown }) {
+			t.Errorf("missing known declaration %q: %+v", want, env.Names())
 		}
 	}
 }

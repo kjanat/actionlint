@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
@@ -120,8 +121,8 @@ func applyFix(t *testing.T, input string, fix results.Fix) string {
 	return result
 }
 
-func replacement(row, column int, text string) checkinputs.ScriptReplacement {
-	return checkinputs.ScriptReplacement{Row: row, EndRow: row, Column: column, EndColumn: column, Text: text}
+func replacement(row, column int, text string) scriptengine.Replacement {
+	return scriptengine.Replacement{Start: sourcetext.Position{Line: row, Column: column}, End: sourcetext.Position{Line: row, Column: column}, Text: text}
 }
 
 func TestScriptFixLiteralMapping(t *testing.T) {
@@ -131,7 +132,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			t.Parallel()
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			script := scriptFixture(t, input)
-			fix, ok := scriptFix(script.Source(), generated(script.Source().Value), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
+			fix, ok := scriptFix(script.Source(), generated(script.Source().Value), scriptengine.Fix{Description: "Quote variables", Replacements: []scriptengine.Replacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
 			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != results.FixSuggested {
@@ -173,9 +174,9 @@ func TestScriptFixPreservesApplicability(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
-		fix, ok := scriptFix(script.Source(), generated(script.Source().Value), checkinputs.ScriptFix{
+		fix, ok := scriptFix(script.Source(), generated(script.Source().Value), scriptengine.Fix{
 			Applicability: applicability,
-			Replacements:  []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
+			Replacements:  []scriptengine.Replacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
 		})
 		if !ok || fix.Applicability != applicability {
 			t.Fatalf("source mapping changed %s applicability: %+v, %t", applicability, fix, ok)
@@ -189,40 +190,40 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		input        string
-		replacements []checkinputs.ScriptReplacement
+		replacements []scriptengine.Replacement
 	}{
-		{"generated config", input, []checkinputs.ScriptReplacement{replacement(1, 1, "#")}},
-		{"generated startup", input, []checkinputs.ScriptReplacement{replacement(2, 1, "#")}},
-		{"cross line", input, []checkinputs.ScriptReplacement{{Row: 3, EndRow: 4, Column: 1, EndColumn: 3, Text: "echo"}}},
-		{"newline insertion", input, []checkinputs.ScriptReplacement{replacement(3, 6, "\nevil: key")}},
-		{"carriage return", input, []checkinputs.ScriptReplacement{replacement(3, 6, "\r")}},
-		{"NUL", input, []checkinputs.ScriptReplacement{replacement(3, 6, "\x00")}},
-		{"invalid UTF8", input, []checkinputs.ScriptReplacement{replacement(3, 6, "\xff")}},
-		{"indent insertion", input, []checkinputs.ScriptReplacement{replacement(3, 1, " ")}},
-		{"erase content", input, []checkinputs.ScriptReplacement{{Row: 3, EndRow: 3, Column: 1, EndColumn: 12}}},
-		{"outside column", input, []checkinputs.ScriptReplacement{replacement(3, 99, `"`)}},
-		{"outside line", input, []checkinputs.ScriptReplacement{replacement(99, 1, `"`)}},
-		{"overlap", input, []checkinputs.ScriptReplacement{{Row: 3, EndRow: 3, Column: 6, EndColumn: 12, Text: "x"}, {Row: 3, EndRow: 3, Column: 8, EndColumn: 10, Text: "y"}}},
-		{"shared insertion", input, []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 6, "{")}},
-		{"empty line", input, []checkinputs.ScriptReplacement{replacement(5, 1, "echo")}},
-		{"plain", "run: echo $VALUE\n", []checkinputs.ScriptReplacement{replacement(3, 6, `"`)}},
-		{"quoted", "run: 'echo $VALUE'\n", []checkinputs.ScriptReplacement{replacement(3, 6, `"`)}},
-		{"folded", "run: >\n  echo $VALUE\n", []checkinputs.ScriptReplacement{replacement(3, 6, `"`)}},
-		{"expression", "run: |\n  echo ${{ env.VALUE }} $OTHER\n", []checkinputs.ScriptReplacement{replacement(3, 6, `"`)}},
-		{"partial fix", input, []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(1, 1, "#")}},
+		{"generated config", input, []scriptengine.Replacement{replacement(1, 1, "#")}},
+		{"generated startup", input, []scriptengine.Replacement{replacement(2, 1, "#")}},
+		{"cross line", input, []scriptengine.Replacement{{Start: sourcetext.Position{Line: 3, Column: 1}, End: sourcetext.Position{Line: 4, Column: 3}, Text: "echo"}}},
+		{"newline insertion", input, []scriptengine.Replacement{replacement(3, 6, "\nevil: key")}},
+		{"carriage return", input, []scriptengine.Replacement{replacement(3, 6, "\r")}},
+		{"NUL", input, []scriptengine.Replacement{replacement(3, 6, "\x00")}},
+		{"invalid UTF8", input, []scriptengine.Replacement{replacement(3, 6, "\xff")}},
+		{"indent insertion", input, []scriptengine.Replacement{replacement(3, 1, " ")}},
+		{"erase content", input, []scriptengine.Replacement{{Start: sourcetext.Position{Line: 3, Column: 1}, End: sourcetext.Position{Line: 3, Column: 12}}}},
+		{"outside column", input, []scriptengine.Replacement{replacement(3, 99, `"`)}},
+		{"outside line", input, []scriptengine.Replacement{replacement(99, 1, `"`)}},
+		{"overlap", input, []scriptengine.Replacement{{Start: sourcetext.Position{Line: 3, Column: 6}, End: sourcetext.Position{Line: 3, Column: 12}, Text: "x"}, {Start: sourcetext.Position{Line: 3, Column: 8}, End: sourcetext.Position{Line: 3, Column: 10}, Text: "y"}}},
+		{"shared insertion", input, []scriptengine.Replacement{replacement(3, 6, `"`), replacement(3, 6, "{")}},
+		{"empty line", input, []scriptengine.Replacement{replacement(5, 1, "echo")}},
+		{"plain", "run: echo $VALUE\n", []scriptengine.Replacement{replacement(3, 6, `"`)}},
+		{"quoted", "run: 'echo $VALUE'\n", []scriptengine.Replacement{replacement(3, 6, `"`)}},
+		{"folded", "run: >\n  echo $VALUE\n", []scriptengine.Replacement{replacement(3, 6, `"`)}},
+		{"expression", "run: |\n  echo ${{ env.VALUE }} $OTHER\n", []scriptengine.Replacement{replacement(3, 6, `"`)}},
+		{"partial fix", input, []scriptengine.Replacement{replacement(3, 6, `"`), replacement(1, 1, "#")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			script := scriptFixture(t, tc.input)
 			prepared := generated(mask.Expressions(script.Text()))
-			if fix, ok := scriptFix(script.Source(), prepared, checkinputs.ScriptFix{Description: "Fix", Replacements: tc.replacements}); ok {
+			if fix, ok := scriptFix(script.Source(), prepared, scriptengine.Fix{Description: "Fix", Replacements: tc.replacements}); ok {
 				t.Fatalf("unsafe fix exposed: %+v", fix)
 			}
 		})
 	}
 	// Without a line map the engine saw the masked script itself.
 	script := scriptFixture(t, input)
-	fix, ok := scriptFix(script.Source(), preparation.Prepared{Source: mask.Expressions(script.Text())}, checkinputs.ScriptFix{Replacements: []checkinputs.ScriptReplacement{replacement(1, 6, `"`)}})
+	fix, ok := scriptFix(script.Source(), preparation.Prepared{Source: mask.Expressions(script.Text())}, scriptengine.Fix{Replacements: []scriptengine.Replacement{replacement(1, 6, `"`)}})
 	if !ok || len(fix.Edits) != 1 {
 		t.Fatalf("identity mapping lost the fix: %+v", fix)
 	}
@@ -231,19 +232,19 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 // reportingBackend is a process-like backend whose results the test scripts.
 type reportingBackend struct {
 	directory  string
-	result     func(checkinputs.ScriptRequest) process.DecodedCheck
+	result     func(scriptengine.Request) process.DecodedCheck
 	concurrent bool
 	mu         sync.Mutex
-	requests   []checkinputs.ScriptRequest
+	requests   []scriptengine.Request
 	vars       []map[string]string
 }
 
-func (b *reportingBackend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *reportingBackend) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	result, err := b.Run(ctx, request, nil)
 	return result.Diagnostics, err
 }
 
-func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequest, vars map[string]string) (process.DecodedCheck, error) {
+func (b *reportingBackend) Run(_ context.Context, request scriptengine.Request, vars map[string]string) (process.DecodedCheck, error) {
 	b.mu.Lock()
 	b.requests = append(b.requests, request)
 	b.vars = append(b.vars, vars)
@@ -255,12 +256,12 @@ func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequ
 
 func (b *reportingBackend) Concurrent() bool { return b.concurrent }
 
-func buildRunner(t *testing.T, backend checkinputs.ScriptBackend, options engineOptions) contract.Runner {
+func buildRunner(t *testing.T, backend scriptengine.Backend, options engineOptions) contract.Runner {
 	t.Helper()
-	return buildEngineRunner(t, checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}}, backend, options)
+	return buildEngineRunner(t, scriptengine.Descriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}}, backend, options)
 }
 
-func buildEngineRunner(t *testing.T, descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) contract.Runner {
+func buildEngineRunner(t *testing.T, descriptor scriptengine.Descriptor, backend scriptengine.Backend, options engineOptions) contract.Runner {
 	t.Helper()
 	registration, err := registerEngine(descriptor, backend, options)
 	if err != nil {
@@ -279,10 +280,10 @@ func TestReportedSourceFindings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
-		return process.DecodedCheck{Sources: []string{"lib.sh"}, Diagnostics: []checkinputs.ScriptDiagnostic{
-			{Filename: "lib.sh", Source: "lib.sh", Code: "X2086", Severity: "info", Message: "quote it", Location: checkinputs.ScriptPosition{Row: 1, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8}},
-			{Filename: "missing.sh", Source: "missing.sh", Code: "X1", Severity: "warning", Message: "gone", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}},
+	backend := &reportingBackend{directory: directory, result: func(scriptengine.Request) process.DecodedCheck {
+		return process.DecodedCheck{Sources: []string{"lib.sh"}, Diagnostics: []scriptengine.Diagnostic{
+			{Filename: "lib.sh", Source: "lib.sh", Code: "X2086", Severity: "info", Message: "quote it", Location: sourcetext.Position{Line: 1, Column: 6}, EndLocation: sourcetext.Position{Line: 1, Column: 8}},
+			{Filename: "missing.sh", Source: "missing.sh", Code: "X1", Severity: "warning", Message: "gone", Location: sourcetext.Position{Line: 3, Column: 1}},
 		}}
 	}}
 	var recorded []string
@@ -329,15 +330,15 @@ func TestReportedSourceFindings(t *testing.T) {
 func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
-	at := checkinputs.ScriptPosition{Row: 1, Column: 1}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
-		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{
-			{Code: "X1", Severity: "warning", Message: "snippet", Location: at, TemplateEffect: checkinputs.TemplateEffectNone},
+	at := sourcetext.Position{Line: 1, Column: 1}
+	backend := &reportingBackend{directory: directory, result: func(scriptengine.Request) process.DecodedCheck {
+		return process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{
+			{Code: "X1", Severity: "warning", Message: "snippet", Location: at, TemplateEffect: scriptengine.TemplateEffectNone},
 			{Source: "lib.sh", Code: "X2", Severity: "warning", Message: "read file", Location: at},
-			{Source: "lib.sh", Code: "X3", Severity: "warning", Message: "effect", Location: at, TemplateEffect: checkinputs.TemplateEffectOpaqueName},
+			{Source: "lib.sh", Code: "X3", Severity: "warning", Message: "effect", Location: at, TemplateEffect: scriptengine.TemplateEffectOpaqueName},
 		}}
 	}}
-	registration, err := registerEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, TemplateContract: checkinputs.TemplateEffectsContract}, backend, engineOptions{findings: findingCapabilities{reportedSources: true}})
+	registration, err := registerEngine(scriptengine.Descriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, TemplateContract: scriptengine.TemplateEffectsContract}, backend, engineOptions{findings: findingCapabilities{reportedSources: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,17 +360,17 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 func TestLineOriginsAndMessages(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
-	diagnostics := []checkinputs.ScriptDiagnostic{
-		{Code: "X1", Severity: "warning", Message: "on directive", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}},
-		{Code: "X2", Severity: "warning", Message: "on startup", Location: checkinputs.ScriptPosition{Row: 2, Column: 1}},
-		{Code: "X3", Severity: "error", Message: "startup fails", Location: checkinputs.ScriptPosition{Row: 2, Column: 1}},
+	diagnostics := []scriptengine.Diagnostic{
+		{Code: "X1", Severity: "warning", Message: "on directive", Location: sourcetext.Position{Line: 1, Column: 1}},
+		{Code: "X2", Severity: "warning", Message: "on startup", Location: sourcetext.Position{Line: 2, Column: 1}},
+		{Code: "X3", Severity: "error", Message: "startup fails", Location: sourcetext.Position{Line: 2, Column: 1}},
 		{
-			Code: "X4", Severity: "info", Message: "in script", Location: checkinputs.ScriptPosition{Row: 3, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 3, Column: 12},
-			Fixes: []checkinputs.ScriptFix{{Description: "quote", Replacements: []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)}}},
+			Code: "X4", Severity: "info", Message: "in script", Location: sourcetext.Position{Line: 3, Column: 6}, EndLocation: sourcetext.Position{Line: 3, Column: 12},
+			Fixes: []scriptengine.Fix{{Description: "quote", Replacements: []scriptengine.Replacement{replacement(3, 6, `"`), replacement(3, 12, `"`)}}},
 		},
-		{Code: "X5", Severity: "info", Message: "end on startup", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 2, Column: 1}},
+		{Code: "X5", Severity: "info", Message: "end on startup", Location: sourcetext.Position{Line: 3, Column: 1}, EndLocation: sourcetext.Position{Line: 2, Column: 1}},
 	}
-	backend := &reportingBackend{result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+	backend := &reportingBackend{result: func(scriptengine.Request) process.DecodedCheck {
 		return process.DecodedCheck{Diagnostics: diagnostics}
 	}}
 	prepared := generated(script.Text())
@@ -409,10 +410,10 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	started := make(chan struct{}, 2)
 	release := make(chan struct{})
-	backend := &reportingBackend{concurrent: true, result: func(request checkinputs.ScriptRequest) process.DecodedCheck {
+	backend := &reportingBackend{concurrent: true, result: func(request scriptengine.Request) process.DecodedCheck {
 		started <- struct{}{}
 		<-release
-		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{{Code: request.Source, Message: request.Source, Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}}
+		return process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{{Code: request.Source, Message: request.Source, Location: sourcetext.Position{Line: 1, Column: 1}}}}
 	}}
 	runner := buildRunner(t, backend, engineOptions{})
 	go func() {
@@ -448,9 +449,9 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var requests []checkinputs.ScriptRequest
+	var requests []scriptengine.Request
 	var engineRead []byte
-	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	backend := routingBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		requests = append(requests, request)
 		if request.DirectoryFS == nil {
 			return nil, errors.New("no directory grant")
@@ -459,19 +460,19 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 		if engineRead, err = fs.ReadFile(request.DirectoryFS, "lib.sh"); err != nil {
 			return nil, err
 		}
-		return []checkinputs.ScriptDiagnostic{
+		return []scriptengine.Diagnostic{
 			{
-				Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: checkinputs.ScriptPosition{Row: 1, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8},
-				Fixes: []checkinputs.ScriptFix{{Description: "quote", Replacements: []checkinputs.ScriptReplacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}},
+				Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: sourcetext.Position{Line: 1, Column: 6}, EndLocation: sourcetext.Position{Line: 1, Column: 8},
+				Fixes: []scriptengine.Fix{{Description: "quote", Replacements: []scriptengine.Replacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}},
 			},
-			{Filename: "lib.sh", Source: "lib.sh", Code: "X2", Severity: "info", Message: "sourced", Location: checkinputs.ScriptPosition{Row: 1, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8}},
+			{Filename: "lib.sh", Source: "lib.sh", Code: "X2", Severity: "info", Message: "sourced", Location: sourcetext.Position{Line: 1, Column: 6}, EndLocation: sourcetext.Position{Line: 1, Column: 8}},
 		}, nil
 	})
 	var recorded []string
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
 	script.Scope = &scriptanalysis.Scope{Paths: execution.Paths{Workspace: directory}, Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, Fixes: true, ReportedSources: true, Resources: []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}}
+	descriptor := scriptengine.Descriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, Fixes: true, ReportedSources: true, Resources: []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}}
 	registration, err := RegisterEngine(descriptor, backend)
 	if err != nil {
 		t.Fatal(err)
@@ -506,13 +507,13 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 
 // directoryEngine is a snippet engine requesting the directory resource that
 // reports a finding in source.
-func directoryEngine(t *testing.T, source string, requests *[]checkinputs.ScriptRequest) contract.Runner {
+func directoryEngine(t *testing.T, source string, requests *[]scriptengine.Request) contract.Runner {
 	t.Helper()
-	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	backend := routingBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		*requests = append(*requests, request)
-		return []checkinputs.ScriptDiagnostic{{Filename: source, Source: source, Code: "X2", Severity: "info", Message: "sourced", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2}}}, nil
+		return []scriptengine.Diagnostic{{Filename: source, Source: source, Code: "X2", Severity: "info", Message: "sourced", Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 2}}}, nil
 	})
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ReportedSources: true, Resources: []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}}
+	descriptor := scriptengine.Descriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ReportedSources: true, Resources: []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}}
 	return buildEngineRunner(t, descriptor, backend, engineOptions{})
 }
 
@@ -521,7 +522,7 @@ func directoryEngine(t *testing.T, source string, requests *[]checkinputs.Script
 func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
-	var requests []checkinputs.ScriptRequest
+	var requests []scriptengine.Request
 	runner := directoryEngine(t, "lib.sh", &requests)
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = outside, true
@@ -550,7 +551,7 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(outside, "secret"), []byte("secret\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var requests []checkinputs.ScriptRequest
+	var requests []scriptengine.Request
 	runner := directoryEngine(t, "lib.sh", &requests)
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = workspace, true
@@ -575,8 +576,8 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 
 func TestSnippetEnginesGetNoDirectory(t *testing.T) {
 	t.Parallel()
-	var requests []checkinputs.ScriptRequest
-	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	var requests []scriptengine.Request
+	backend := routingBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		requests = append(requests, request)
 		return nil, errors.New("partial")
 	})

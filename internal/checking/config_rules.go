@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -21,7 +20,7 @@ func ConfigurationRules() configuration.RuleSet { return configurationRules() }
 func ConfigurationRegistrations(checkers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, checker := range checkers {
-		if validation.IsNil(checker.Checker) {
+		if checkinputs.IsNilChecker(checker.Checker) {
 			continue
 		}
 		registrations = append(registrations, configuration.RuleRegistration{Declaration: checker.Checker.Descriptor().Clone(), Options: slices.Clone(checker.Options)})

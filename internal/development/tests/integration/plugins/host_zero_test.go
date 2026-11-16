@@ -5,18 +5,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 var (
-	_ checkinputs.Checker                = (*component.Plugin)(nil)
-	_ runnerapi.Provider                 = (*component.Plugin)(nil)
-	_ checkinputs.DescribedScriptBackend = (*component.Plugin)(nil)
-	_ checkinputs.ScriptConfigValidator  = (*component.Plugin)(nil)
-	_ checkinputs.ToolIntegrator         = (*component.Plugin)(nil)
-	_ checkinputs.DescribedScriptBackend = (*module.Engine)(nil)
-	_ checkinputs.ScriptConfigValidator  = (*module.Engine)(nil)
+	_ checkinputs.Checker           = (*component.Plugin)(nil)
+	_ runnerapi.Provider            = (*component.Plugin)(nil)
+	_ scriptengine.DescribedBackend = (*component.Plugin)(nil)
+	_ scriptengine.ConfigValidator  = (*component.Plugin)(nil)
+	_ checkinputs.ToolIntegrator    = (*component.Plugin)(nil)
+	_ scriptengine.DescribedBackend = (*module.Engine)(nil)
+	_ scriptengine.ConfigValidator  = (*module.Engine)(nil)
 )
 
 func TestHostZeroValueGetters(t *testing.T) {

@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -50,7 +50,7 @@ type authoringFixture struct {
 	ExpectSource      *string                      `json:"expect_source,omitempty"`
 	ExpectPreparation *preparation.SourcePlan      `json:"expect_preparation,omitempty"`
 	Name              string                       `json:"name"`
-	Request           checkinputs.ScriptRequest    `json:"request"`
+	Request           scriptengine.Request         `json:"request"`
 	Stdout            *string                      `json:"stdout,omitempty"`
 	Variables         map[string]string            `json:"variables,omitempty"`
 	ExitCode          *int                         `json:"exit_code,omitempty"`

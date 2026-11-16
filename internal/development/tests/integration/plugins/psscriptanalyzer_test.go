@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -130,12 +130,12 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 	}
 	for _, source := range []string{"Get-ChildItem .", "gci ."} {
 		config := []byte(`{"ExcludeRules":["PSAvoidUsingCmdletAliases"]}`)
-		findings, err := native.Check(t.Context(), checkinputs.ScriptRequest{Source: source, Filename: "actionlint.ps1", Config: config, Directory: root})
+		findings, err := native.Check(t.Context(), scriptengine.Request{Source: source, Filename: "actionlint.ps1", Config: config, Directory: root})
 		if err != nil || len(findings) != 0 {
 			t.Fatalf("clean or excluded snippet %q: %+v, %v", source, findings, err)
 		}
 	}
-	findings, err := native.Check(t.Context(), checkinputs.ScriptRequest{Source: "Write-Output (", Filename: "actionlint.ps1", Directory: root})
+	findings, err := native.Check(t.Context(), scriptengine.Request{Source: "Write-Output (", Filename: "actionlint.ps1", Directory: root})
 	if err != nil || len(findings) == 0 || findings[0].Severity != "error" {
 		t.Fatalf("PowerShell parse failure: %+v, %v", findings, err)
 	}

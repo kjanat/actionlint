@@ -16,12 +16,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 )
 
 type inputReplacementBackend struct {
 	mu       sync.Mutex
-	requests []checkinputs.ScriptRequest
+	requests []scriptengine.Request
 }
 
 func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
@@ -52,7 +53,7 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 				}
 			}
 			engine := &inputReplacementBackend{}
-			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: scriptengine.Descriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 			}}}}
 			options, err := assembly.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
@@ -71,14 +72,16 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 	}
 }
 
-func (b *inputReplacementBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *inputReplacementBackend) Check(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.requests = append(b.requests, request)
 	return nil, nil
 }
 
-func (*inputReplacementBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
+func (*inputReplacementBackend) TemplateContract() string {
+	return scriptengine.TemplateEffectsContract
+}
 
 func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 	t.Parallel()
@@ -93,8 +96,8 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 			t.Parallel()
 			backend := &inputReplacementBackend{}
 			site := checkinputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
-			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{site}, TemplateContract: checkinputs.TemplateEffectsContract,
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: scriptengine.Descriptor{
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{site}, TemplateContract: scriptengine.TemplateEffectsContract,
 			}}}}
 			options, err := assembly.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})
 			if err != nil {

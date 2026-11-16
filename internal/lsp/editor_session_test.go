@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -31,7 +32,7 @@ type editorTestBackend struct {
 	lastSource string
 }
 
-func (b *editorTestBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *editorTestBackend) Check(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.lastSource = request.Source
 	b.checks.Add(1)
 	return nil, nil
@@ -66,7 +67,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	var loads atomic.Int32
 	options := checking.Options{
 		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}),
-		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+		LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) {
 			loads.Add(1)
 			return backend, nil
 		},
@@ -255,7 +256,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 	backend := &editorTestBackend{}
 	loads := 0
 	session, err := newEditorPluginHost(t.Context(), checking.Options{
-		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+		LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) {
 			loads++
 			if loads == 1 {
 				return nil, context.Canceled
@@ -294,7 +295,7 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 	unblock := sync.OnceFunc(func() { close(release) })
 	defer unblock()
 	session, err := newEditorPluginHost(t.Context(), checking.Options{
-		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+		LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) {
 			close(started)
 			<-release
 			return &editorTestBackend{}, nil
@@ -333,39 +334,39 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 	}
 }
 
-type describedOnlyEditorBackend struct{ checkinputs.ScriptBackend }
+type describedOnlyEditorBackend struct{ scriptengine.Backend }
 
-func (describedOnlyEditorBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (describedOnlyEditorBackend) ScriptDescriptor() scriptengine.Descriptor {
 	return editorInputDescriptor()
 }
 
 type describedValidatingEditorBackend struct{ editorTestBackend }
 
-func (*describedValidatingEditorBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (*describedValidatingEditorBackend) ScriptDescriptor() scriptengine.Descriptor {
 	return editorInputDescriptor()
 }
 
-func editorInputDescriptor() checkinputs.ScriptEngineDescriptor {
-	return checkinputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}
+func editorInputDescriptor() scriptengine.Descriptor {
+	return scriptengine.Descriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}
 }
 
 func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name                  string
-		backend               checkinputs.ScriptBackend
+		backend               scriptengine.Backend
 		described, validating bool
 	}{
 		{"plain", pythonInputBackend{}, false, false},
 		{"validating", &editorTestBackend{}, false, true},
-		{"described", describedOnlyEditorBackend{ScriptBackend: pythonInputBackend{}}, true, false},
+		{"described", describedOnlyEditorBackend{Backend: pythonInputBackend{}}, true, false},
 		{"both", &describedValidatingEditorBackend{}, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			borrowed := borrowEditorEngine(tc.backend)
-			_, described := borrowed.(checkinputs.DescribedScriptBackend)
-			_, validating := borrowed.(checkinputs.ScriptConfigValidator)
+			_, described := borrowed.(scriptengine.DescribedBackend)
+			_, validating := borrowed.(scriptengine.ConfigValidator)
 			_, closing := borrowed.(interface{ Close(context.Context) error })
 			if described != tc.described || validating != tc.validating || closing {
 				t.Fatalf("borrowed capabilities changed: described=%t validating=%t close=%t", described, validating, closing)
@@ -388,7 +389,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Options{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
@@ -64,7 +65,7 @@ type analysisSession struct {
 	rules                configuration.RuleSet
 	tools                []contract.Registration
 	analyzers            []checkinputs.Registration
-	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
+	loadScriptEngine     func(context.Context, string) (scriptengine.Backend, error)
 	allowConfigProcesses bool
 	workflowNames        *nameindex.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service

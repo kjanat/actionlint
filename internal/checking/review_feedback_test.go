@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func writeReviewFixture(t *testing.T, root, path, content string) {
@@ -54,7 +54,7 @@ permissions: {}
 
 type reviewShellcheckBackend struct{ calls int }
 
-func (b *reviewShellcheckBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *reviewShellcheckBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.calls++
 	return nil, nil
 }

@@ -1,15 +1,12 @@
-// Package validation checks checker references before their methods are called.
-package validation
+package checkinputs
 
 import (
 	"reflect"
-
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
-// IsNil detects both nil interfaces and typed nil checkers before
+// IsNilChecker detects both nil interfaces and typed nil checkers before
 // metadata or execution methods are called.
-func IsNil(value checkinputs.Checker) bool {
+func IsNilChecker(value Checker) bool {
 	if value == nil {
 		return true
 	}

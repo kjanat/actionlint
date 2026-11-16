@@ -18,8 +18,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine/enginediagnostics"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/scriptcoords"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
@@ -98,7 +99,7 @@ type EngineVersion struct {
 
 // Capabilities lists what the engine supports. Fixes, ReportedSources and
 // Resources take effect only with check version 3; Resources may name only
-// analyzer.ToolDirectory.
+// checkinputs.ToolDirectory.
 type Capabilities struct {
 	ScriptShells     []string                       `json:"script_shells,omitempty"`
 	ScriptInputs     []checkinputs.ScriptInput      `json:"script_inputs,omitempty"`
@@ -113,8 +114,8 @@ type Capabilities struct {
 	MaxInputBytes    int                            `json:"max_input_bytes"`
 }
 
-// Engine is a loaded core module. It implements analyzer.ScriptBackend and
-// analyzer.ScriptConfigValidator, pools at most four instances across concurrent
+// Engine is a loaded core module. It implements scriptengine.Backend and
+// scriptengine.ConfigValidator, pools at most four instances across concurrent
 // calls and discards an instance after a trap or an exceeded limit.
 type Engine struct {
 	path     string
@@ -332,7 +333,7 @@ func ReadMetadata(raw []byte) (Metadata, error) {
 	if metadata.Interfaces == nil {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}
 	}
-	if metadata.TemplateContract != "" && metadata.TemplateContract != checkinputs.TemplateEffectsContract {
+	if metadata.TemplateContract != "" && metadata.TemplateContract != scriptengine.TemplateEffectsContract {
 		return Metadata{}, errors.New("unsupported template effects contract")
 	}
 	for _, resource := range metadata.Capabilities.Resources {
@@ -424,7 +425,7 @@ func (e *Engine) Metadata() Metadata {
 
 // ScriptDescriptor exposes negotiated capabilities to every host entrypoint.
 // Fixes, reported sources and resources are capabilities of check 3 only.
-func (e *Engine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (e *Engine) ScriptDescriptor() scriptengine.Descriptor {
 	descriptor := e.Metadata().ScriptDescriptor()
 	if e.checkVersion == 3 {
 		capabilities := e.metadata.Capabilities
@@ -434,7 +435,7 @@ func (e *Engine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	return descriptor
 }
 
-func (m Metadata) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (m Metadata) ScriptDescriptor() scriptengine.Descriptor {
 	descriptor := rule.Descriptor{Name: m.Engine.Name, Description: m.Name, Provider: m.ID}
 	for _, candidate := range m.Rules {
 		if candidate.Name == m.Engine.Name {
@@ -442,7 +443,7 @@ func (m Metadata) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 			break
 		}
 	}
-	return checkinputs.ScriptEngineDescriptor{
+	return scriptengine.Descriptor{
 		ID: m.ID, Version: m.PluginVersion, Name: m.Name,
 		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, TemplateContract: m.TemplateContract,
 		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor,
@@ -450,9 +451,9 @@ func (m Metadata) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 }
 
 type response struct {
-	OK          bool                           `json:"ok"`
-	Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
-	Errors      []string                       `json:"errors"`
+	OK          bool                      `json:"ok"`
+	Diagnostics []scriptengine.Diagnostic `json:"diagnostics"`
+	Errors      []string                  `json:"errors"`
 }
 
 // checkRequest is the check 1 and check 2 request.
@@ -474,7 +475,7 @@ type checkRequest3 struct {
 }
 
 // encodeRequest encodes request for the negotiated check version.
-func (e *Engine) encodeRequest(request checkinputs.ScriptRequest) ([]byte, error) {
+func (e *Engine) encodeRequest(request scriptengine.Request) ([]byte, error) {
 	if e.checkVersion != 3 {
 		return json.Marshal(checkRequest{Source: request.Source, Filename: request.Filename, Config: request.Config})
 	}
@@ -488,7 +489,7 @@ func (e *Engine) encodeRequest(request checkinputs.ScriptRequest) ([]byte, error
 
 // requestDirectory is the directory a check 3 request carries: the
 // request's own when the engine requested the directory resource, else "".
-func (e *Engine) requestDirectory(request checkinputs.ScriptRequest) string {
+func (e *Engine) requestDirectory(request scriptengine.Request) string {
 	if e.checkVersion != 3 || !slices.Contains(e.metadata.Capabilities.Resources, checkinputs.ToolDirectory) {
 		return ""
 	}
@@ -496,7 +497,7 @@ func (e *Engine) requestDirectory(request checkinputs.ScriptRequest) string {
 }
 
 // Check sends one snippet request and returns its diagnostics.
-func (e *Engine) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (e *Engine) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	body, err := e.encodeRequest(request)
 	if err != nil {
 		return nil, err
@@ -509,7 +510,7 @@ func (e *Engine) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 		err = e.engineError(result.Errors)
 	}
 	valid := result.Diagnostics[:0]
-	starts := scriptcoords.Starts(request.Source)
+	snippet := enginediagnostics.NewSnippet(request.Source, enginediagnostics.UniversalNewlineCoordinates)
 	for i, finding := range result.Diagnostics {
 		if e.metadata.TemplateContract != "" && !finding.TemplateEffect.Valid() {
 			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d has invalid template effect %q", e.name(), i, finding.TemplateEffect))
@@ -526,39 +527,21 @@ func (e *Engine) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d %s", e.name(), i, problem))
 			continue
 		}
-		start, end := finding.Location, finding.EndLocation
-		if !validRange(start, end) {
-			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d has invalid range %v-%v", e.name(), i, start, end))
+		if problem := snippet.Normalize(&finding); problem != nil {
+			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d: %w", e.name(), i, problem))
 			continue
 		}
 		valid = append(valid, finding)
-		if finding.Source != "" {
-			// Positions are the reported file's own, not the snippet's.
-			continue
-		}
-		last := &valid[len(valid)-1]
-		last.Location = sourcePosition(starts, last.Location)
-		last.EndLocation = sourcePosition(starts, last.EndLocation)
-		for f := range last.Fixes {
-			replacements := slices.Clone(last.Fixes[f].Replacements)
-			for r := range replacements {
-				replacement := &replacements[r]
-				start := sourcePosition(starts, checkinputs.ScriptPosition{Row: replacement.Row, Column: replacement.Column})
-				end := sourcePosition(starts, checkinputs.ScriptPosition{Row: replacement.EndRow, Column: replacement.EndColumn})
-				replacement.Row, replacement.Column, replacement.EndRow, replacement.EndColumn = start.Row, start.Column, end.Row, end.Column
-			}
-			last.Fixes[f].Replacements = replacements
-		}
 	}
 	return valid, err
 }
 
 // checkFindings3 reports why a check 3 diagnostic uses a capability the
-// engine did not declare or carries an invalid source or fix, or "".
+// engine did not declare or carries an invalid reported source, or "".
 // Directory is the one the request carried. A reported source must be a
 // relative path below it: the host reads that file to show the finding, and
 // a core module, which reads no files, must not choose any other.
-func (e *Engine) checkFindings3(finding checkinputs.ScriptDiagnostic, directory string) string {
+func (e *Engine) checkFindings3(finding scriptengine.Diagnostic, directory string) string {
 	capabilities := e.metadata.Capabilities
 	if finding.Source != "" {
 		switch {
@@ -566,7 +549,7 @@ func (e *Engine) checkFindings3(finding checkinputs.ScriptDiagnostic, directory 
 			return fmt.Sprintf("reports source %q without the reported_sources capability", finding.Source)
 		case directory == "":
 			return fmt.Sprintf("reports source %q but the request carried no directory", finding.Source)
-		case !scriptcoords.ReportedSource(finding.Source):
+		case !enginediagnostics.ValidReportedSource(finding.Source):
 			return fmt.Sprintf("reports invalid source %q; sources are relative slash-separated paths below the request directory", finding.Source)
 		case len(finding.Fixes) != 0:
 			return fmt.Sprintf("has fixes for reported source %q", finding.Source)
@@ -576,34 +559,7 @@ func (e *Engine) checkFindings3(finding checkinputs.ScriptDiagnostic, directory 
 	if len(finding.Fixes) != 0 && !capabilities.Fixes {
 		return "has fixes without the fixes capability"
 	}
-	for _, fix := range finding.Fixes {
-		if len(fix.Replacements) == 0 {
-			return "has a fix without replacements"
-		}
-		for _, r := range fix.Replacements {
-			start, end := checkinputs.ScriptPosition{Row: r.Row, Column: r.Column}, checkinputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn}
-			if start.Row < 1 || start.Column < 1 || !validRange(start, end) || end == (checkinputs.ScriptPosition{}) {
-				return fmt.Sprintf("has a fix with invalid range %v-%v", start, end)
-			}
-		}
-	}
 	return ""
-}
-
-// validRange accepts a positive start and an absent end or one that does not
-// precede the start.
-func validRange(start, end checkinputs.ScriptPosition) bool {
-	return start.Row >= 1 && start.Column >= 1 && (end == (checkinputs.ScriptPosition{}) ||
-		end.Row >= 1 && end.Column >= 1 && (end.Row > start.Row || end.Row == start.Row && end.Column >= start.Column))
-}
-
-// sourcePosition converts a snippet position to decoded-source rows; an
-// absent or out-of-range position is left unchanged.
-func sourcePosition(starts []checkinputs.ScriptPosition, position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
-	if position.Row < 1 || position.Row > len(starts) {
-		return position
-	}
-	return scriptcoords.SourcePosition(starts, position)
 }
 
 // ValidateConfig asks the engine to validate an options object. Engines that

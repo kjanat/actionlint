@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -18,7 +19,7 @@ func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
 	for i := range inputs {
 		inputs[i] = checkinputs.ScriptInput{Action: "owner/action", Input: fmt.Sprintf("input-%d", i), Language: "javascript"}
 	}
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: inputs}
+	descriptor := scriptengine.Descriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: inputs}
 	if _, err := RegisterEngine(descriptor, &selectorBackend{}); err == nil {
 		t.Fatal("oversized per-engine catalogue accepted")
 	}
@@ -27,7 +28,7 @@ func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
 func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/repository", Input: "source", Language: "javascript"}
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: []checkinputs.ScriptInput{site}}
+	descriptor := scriptengine.Descriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: []checkinputs.ScriptInput{site}}
 	backend := &selectorBackend{}
 	registration, err := RegisterEngine(descriptor, backend)
 	if err != nil {

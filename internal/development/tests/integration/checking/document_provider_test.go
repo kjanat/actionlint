@@ -12,10 +12,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -31,7 +32,7 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 	if err != nil {
 		os.Exit(2)
 	}
-	var request checkinputs.DocumentRequest
+	var request process.DocumentRequest
 	if err := json.Unmarshal(data, &request); err != nil {
 		os.Exit(2)
 	}
@@ -39,9 +40,9 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 		os.Exit(3)
 	}
 	response := struct {
-		OK          bool                           `json:"ok"`
-		Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
-	}{true, []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 3}, Fixes: []checkinputs.ScriptFix{{Description: "replace token", Replacements: []checkinputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 3, Text: "ON"}}}}}}}
+		OK          bool                      `json:"ok"`
+		Diagnostics []scriptengine.Diagnostic `json:"diagnostics"`
+	}{true, []scriptengine.Diagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 3}, Fixes: []scriptengine.Fix{{Description: "replace token", Replacements: []scriptengine.Replacement{{Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Text: "ON"}}}}}}}
 	if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
 		os.Exit(2)
 	}

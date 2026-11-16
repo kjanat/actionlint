@@ -146,12 +146,12 @@ export default defineDocumentProvider({
 		t.Fatal("standalone callback execution", findings, err)
 	}
 	var observed struct {
-		Source       string                           `json:"source"`
-		Kind         string                           `json:"kind"`
-		Config       json.RawMessage                  `json:"config"`
-		Dependencies []checkinputs.DocumentDependency `json:"dependencies"`
-		Path         string                           `json:"path"`
-		ChildVersion string                           `json:"childVersion"`
+		Source       string             `json:"source"`
+		Kind         string             `json:"kind"`
+		Config       json.RawMessage    `json:"config"`
+		Dependencies []facts.Dependency `json:"dependencies"`
+		Path         string             `json:"path"`
+		ChildVersion string             `json:"childVersion"`
 	}
 	if err := json.Unmarshal([]byte(findings[0].Message), &observed); err != nil {
 		t.Fatal(err)
