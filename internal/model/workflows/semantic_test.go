@@ -36,7 +36,7 @@ func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 		}}}},
 	}
 	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}
-	bound := Publish("", workflow, false, "").Bind("semantic-test")
+	bound := Bind("semantic-test", "", workflow, false, "")
 	workflowView := bound.Workflow()
 	jobView, ok := workflowView.Job("build")
 	if !ok {
@@ -116,7 +116,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("condition-test")
+	bound := Bind("condition-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -173,7 +173,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("null-test")
+	bound := Bind("null-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -229,7 +229,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("source-scalar")
+	bound := Bind("source-scalar", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -242,9 +242,9 @@ jobs:
 	if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" {
 		t.Fatalf("published source scalar = %#v; want original YAML null", got)
 	}
-	manual := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
+	manual := Bind("manual-source", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
 		"manual": {Name: &workflowlang.String{Value: "manual"}},
-	}}, false, "").Bind("manual-source")
+	}}, false, "")
 	manualJob, ok := manual.Workflow().Job("manual")
 	if !ok {
 		t.Fatal("manual job view missing")
@@ -268,7 +268,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("static-fold")
+	bound := Bind("static-fold", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -308,7 +308,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	job, ok := Publish(source, workflow, false, "").Bind("input-source").Workflow().Job("build")
+	job, ok := Bind("input-source", source, workflow, false, "").Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
 	}
@@ -359,7 +359,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("dynamic-env-test")
+	bound := Bind("dynamic-env-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -388,7 +388,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 			if len(errors) != 0 {
 				t.Fatalf("parse source: %v", errors)
 			}
-			job := Publish(source, workflow, false, "").Bind(test.name).Workflow()
+			job := Bind(test.name, source, workflow, false, "").Workflow()
 			view, ok := job.Job("build")
 			if !ok {
 				t.Fatal("job view missing")

@@ -36,9 +36,6 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, pa
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("action call source snapshot is unavailable")
-	}
 	declaration := call
 	actionView, ok := declaration.Action()
 	if !ok {
@@ -268,9 +265,6 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.Step, p
 func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.Step, config *configuration.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
-	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("metadata step source snapshot is unavailable")
 	}
 	declaration := step
 	for _, pass := range analysis.passes {

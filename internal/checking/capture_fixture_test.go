@@ -27,7 +27,7 @@ func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots,
 }
 
 func ownedApplicationStep(step *workflowlang.Step) workflowdecl.Step {
-	workflow := workflowdecl.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"unit": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("unit-application").Workflow()
+	workflow := workflowdecl.Bind("unit-application", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"unit": {Steps: []*workflowlang.Step{step}}}}, false, "").Workflow()
 	job, _ := workflow.Job("unit")
 	for step := range job.Steps() {
 		return step

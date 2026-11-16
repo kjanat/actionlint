@@ -12,33 +12,23 @@ import (
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// Record holds one decoded document and the facts derived from it. Publish
-// takes ownership of the tree: callers must not modify it afterwards.
-type Record struct {
-	text     string
-	action   bool
-	using    string
-	workflow *workflowlang.Workflow
-	skeleton workflowfacts.Skeleton
-}
-
-func Publish(text string, workflow *workflowlang.Workflow, action bool, using string) *Record {
-	return &Record{text: text, action: action, using: using, workflow: workflow, skeleton: workflowfacts.BuildSkeleton(workflow, action)}
-}
-
-func (r *Record) Text() string { return r.text }
-func (r *Record) Action() bool { return r.action }
-
-// Bound associates a parse record with one registry's document identity.
+// Bound is one decoded document bound to a registry's document identity. Over
+// the parsed tree it adds the source references derived from that identity and
+// the source text, so views can name and locate their declarations. Bind takes
+// ownership of the tree: callers must not modify it afterwards.
 type Bound struct {
-	record     *Record
+	text       string
+	using      string
+	workflow   *workflowlang.Workflow
 	references workflowfacts.References
 	steps      map[source.Reference]*workflowlang.Step
 }
 
-func (r *Record) Bind(identity string) *Bound {
-	refs := r.skeleton.Bind(identity, []byte(r.text))
-	bound := &Bound{record: r, references: refs, steps: map[source.Reference]*workflowlang.Step{}}
+// Bind indexes workflow under identity. action selects action-manifest step
+// addresses; using is the action's runs.using value, empty for workflows.
+func Bind(identity, text string, workflow *workflowlang.Workflow, action bool, using string) *Bound {
+	refs := workflowfacts.Index(identity, []byte(text), workflow, action)
+	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[source.Reference]*workflowlang.Step{}}
 	for step, ref := range refs.Steps {
 		bound.steps[ref] = step
 	}
@@ -47,10 +37,10 @@ func (r *Record) Bind(identity string) *Bound {
 
 func (b *Bound) Reference() source.Reference { return b.references.Document }
 func (b *Bound) Workflow() Workflow {
-	if b == nil || b.record.workflow == nil {
+	if b == nil || b.workflow == nil {
 		return Workflow{}
 	}
-	return Workflow{b.record.workflow, b}
+	return Workflow{b.workflow, b}
 }
 
 func (b *Bound) Step(reference source.Reference) (Step, bool) {
@@ -65,11 +55,14 @@ func (b *Bound) Owns(step Step) bool          { return step.Present() && b == st
 func (b *Bound) OwnsWorkflow(w Workflow) bool { return w.Present() && b == w.owner }
 func (b *Bound) OwnsJob(job Job) bool         { return job.Present() && b == job.owner }
 
-func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
-	return b.declarations()
+// SourceIndex returns detached source identities and positions. A nil Bound
+// returns the zero index.
+func (b *Bound) SourceIndex() workflowfacts.SourceIndex {
+	if b == nil {
+		return workflowfacts.SourceIndex{}
+	}
+	return b.references.SourceIndex()
 }
-
-func (b *Bound) SourceIndex() workflowfacts.SourceIndex { return b.references.SourceIndex() }
 
 // ActionBody exposes composite action steps without a workflow lifecycle.
 func (b *Bound) ActionBody() ActionBody { return ActionBody{workflow: b.Workflow()} }
@@ -184,7 +177,7 @@ func (s Step) ContentText() string {
 	if !s.Present() || s.owner == nil {
 		return ""
 	}
-	return s.owner.record.text
+	return s.owner.text
 }
 
 func (s Step) DeclaringJob() string {
@@ -267,7 +260,7 @@ func (a ActionBody) Using() string {
 	if a.workflow.owner == nil {
 		return ""
 	}
-	return a.workflow.owner.record.using
+	return a.workflow.owner.using
 }
 
 func (a ActionBody) Steps() iter.Seq[Step] {

@@ -26,7 +26,7 @@ func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 		t.Run(uses, func(t *testing.T) {
 			t.Parallel()
 			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: uses, Pos: &sourcepos.Position{Line: 7, Column: 9}}}}
-			snapshot := workflowdecl.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("metadata-step").Workflow()
+			snapshot := workflowdecl.Bind("metadata-step", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Workflow()
 			job, _ := snapshot.Job("test")
 			var checkedStep workflowdecl.Step
 			for step := range job.Steps() {
@@ -85,7 +85,7 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 				t.Fatal(err)
 			}
 			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "actions/checkout@v4", Pos: &sourcepos.Position{Line: 5, Column: 20}}}}
-			job, _ := workflowdecl.Publish(source, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("metadata-availability").Workflow().Job("test")
+			job, _ := workflowdecl.Bind("metadata-availability", source, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Workflow().Job("test")
 			for view := range job.Steps() {
 				got := MissingActionMetadataChecks(remote.Resolved()).Step(view)
 				if len(got) != tc.want {

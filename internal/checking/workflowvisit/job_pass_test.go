@@ -27,7 +27,7 @@ func (p *jobPhasePass) VisitJobPost(job declaration.Job) error {
 func TestVisitJobPassWrapsEveryJobPhase(t *testing.T) {
 	t.Parallel()
 	pass := &jobPhasePass{}
-	workflow := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {}}}, false, "").Bind("phases").Workflow()
+	workflow := declaration.Bind("phases", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {}}}, false, "").Workflow()
 	err := Visit(workflow, Options{
 		Passes: []Pass{pass},
 		Hooks: Hooks{JobPass: func(wrapped Pass, job declaration.Job, visit func() error) error {

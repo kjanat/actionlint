@@ -18,12 +18,14 @@ type declarationSet struct {
 	dependencies []workflowfacts.Dependency
 }
 
-func (b *Bound) declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
-	if b == nil || b.record == nil || b.record.workflow == nil {
+// Declarations returns the mappings and dependencies the document declares. A
+// nil Bound declares none.
+func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
+	if b == nil || b.workflow == nil {
 		return nil, nil
 	}
 	var set declarationSet
-	workflow := b.record.workflow
+	workflow := b.workflow
 	set.env("env", b.references.Document, workflow.Env)
 	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
 		set.job(b, workflow.Jobs[id], b.references.Jobs[id])

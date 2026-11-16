@@ -50,7 +50,7 @@ func TestMissingPermissions(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
+			view := declaration.Bind("test", source, ast, false, "").Workflow()
 			var lines []int
 			for _, finding := range security.MissingPermissionsChecks(nil).Workflow(view) {
 				if finding.Severity != "" || finding.Start.Column != 3 {

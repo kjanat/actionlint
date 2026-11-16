@@ -10,7 +10,7 @@ import (
 func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 	t.Parallel()
 	view := func(permissions *workflowlang.Permissions) *workflowlang.Permissions {
-		return declaration.Publish("", &workflowlang.Workflow{Permissions: permissions}, false, "").Bind("permissions").Workflow().Permissions
+		return declaration.Bind("permissions", "", &workflowlang.Workflow{Permissions: permissions}, false, "").Workflow().Permissions
 	}
 	read := view(&workflowlang.Permissions{All: &workflowlang.String{Value: "read-all"}})
 	empty := view(&workflowlang.Permissions{Scopes: map[string]*workflowlang.PermissionScope{}})

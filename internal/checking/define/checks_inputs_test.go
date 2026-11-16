@@ -39,7 +39,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := declaration.Publish(source, parsed, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, parsed, false, "").Workflow()
 	job, found := workflow.Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")

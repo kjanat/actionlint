@@ -86,7 +86,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	return declaration.Publish(source, parsed, false, "").Bind("test").Workflow()
+	return declaration.Bind("test", source, parsed, false, "").Workflow()
 }
 
 func job(t *testing.T, workflow declaration.Workflow, name string) declaration.Job {

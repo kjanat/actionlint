@@ -15,7 +15,7 @@ func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	job, found := declaration.Publish(source, parsed, false, "").Bind("test").Workflow().Job("build")
+	job, found := declaration.Bind("test", source, parsed, false, "").Workflow().Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")
 	}

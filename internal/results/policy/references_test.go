@@ -20,7 +20,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		t.Fatal(parseErrors)
 	}
 	first, second := workflow.Jobs["test"].Steps[0], workflow.Jobs["test"].Steps[1]
-	bound := workflowdecl.Publish(string(content), workflow, false, "").Bind("ci.yml")
+	bound := workflowdecl.Bind("ci.yml", string(content), workflow, false, "")
 	job, present := bound.Workflow().Job("test")
 	if !present {
 		t.Fatal("owned job unavailable")

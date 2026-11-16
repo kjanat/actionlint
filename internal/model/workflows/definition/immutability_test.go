@@ -13,7 +13,7 @@ import (
 const definitionPackage = "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 // treeBuilders may modify decoded syntax trees: they build them before
-// declaration.Publish takes ownership. internal/model/parsing builds the step
+// declaration.Bind takes ownership. internal/model/parsing builds the step
 // projection of composite action metadata.
 var treeBuilders = []string{
 	definitionPackage,

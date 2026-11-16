@@ -37,13 +37,15 @@ func (r References) SourceIndex() SourceIndex {
 	return SourceIndex{Document: r.Document, Steps: steps, Jobs: maps.Clone(r.Jobs), Positions: maps.Clone(r.Positions)}
 }
 
+// Index derives the source references of workflow for the document named path.
+// action selects action-manifest step addresses.
 func Index(path string, content []byte, workflow *workflowlang.Workflow, action bool) References {
-	return BuildSkeleton(workflow, action).Bind(path, content)
+	return buildSkeleton(workflow, action).bind(path, content)
 }
 
-// Skeleton records declaration identity before publication. Binding supplies
+// skeleton records declaration identity read from the decoded tree. bind supplies
 // only document identity and revision; it never rereads mutable syntax values.
-type Skeleton struct {
+type skeleton struct {
 	jobs []skeletonJob
 }
 
@@ -62,10 +64,10 @@ type skeletonStep struct {
 	children                  []skeletonStep
 }
 
-func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
-	var skeleton Skeleton
+func buildSkeleton(workflow *workflowlang.Workflow, action bool) skeleton {
+	var built skeleton
 	if workflow == nil {
-		return skeleton
+		return built
 	}
 	var walk func(string, string, []*workflowlang.Step) []skeletonStep
 	walk = func(address, job string, steps []*workflowlang.Step) []skeletonStep {
@@ -99,12 +101,12 @@ func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
 			address = "runs.steps"
 		}
 		entry.steps = walk(address, stringValue(job.ID), job.Steps)
-		skeleton.jobs = append(skeleton.jobs, entry)
+		built.jobs = append(built.jobs, entry)
 	}
-	return skeleton
+	return built
 }
 
-func (s Skeleton) Bind(path string, content []byte) References {
+func (s skeleton) bind(path string, content []byte) References {
 	index := source.NewReferenceIndex(path, content)
 	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*workflowlang.Step]source.Reference{}, StepJobs: map[*workflowlang.Step]string{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
 	var walk func(string, []skeletonStep)

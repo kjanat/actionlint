@@ -34,9 +34,6 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.Step, 
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("script source snapshot is unavailable")
-	}
 	if action, ok := declaration.Action(); ok {
 		return analysis.collectActionInputs(declaration, action)
 	}

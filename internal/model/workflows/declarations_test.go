@@ -39,7 +39,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("declaration-source")
+	bound := Bind("declaration-source", source, workflow, false, "")
 	mappings, _ := bound.Declarations()
 	byScope := map[string]workflowfacts.Mapping{}
 	for _, mapping := range mappings {

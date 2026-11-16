@@ -184,7 +184,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
+	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.Bound().SourceIndex()}
 	defer func() {
 		if resultErr != nil {
 			invocations := indexCheckInvocations(composed.Invocations)

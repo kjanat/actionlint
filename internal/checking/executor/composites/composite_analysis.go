@@ -103,9 +103,6 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("workflow source snapshot is unavailable")
-	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
 	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
@@ -179,9 +176,6 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.Step) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("step source snapshot is unavailable")
-	}
 	declaration := step
 	analysis.actions.ObserveExecution(declaration)
 	analysis.actions.ObserveCheckout(declaration)
@@ -203,9 +197,6 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.Step) error {
 func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.Step) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
-	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("step source snapshot is unavailable")
 	}
 	declaration := step
 	origin := canonicalStepOrigin(declaration, analysis.jobID)
