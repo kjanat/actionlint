@@ -531,13 +531,10 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
-	rules := document.NewFiles()
 	loaded, err := LoadSources(path, files, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {
 		value := source.Value()
 		inputs := ruleSet.migrationInputs(value, source.Origins())
-		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, func(value any) {
-			rules.Add(origin, document.Capture(captureRuleDocument(value), nil))
-		}, additional...)
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, additional...)
 		warningsByFile[origin] = warnings
 		if err != nil {
 			return source, err
@@ -561,13 +558,6 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
-	sources := &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
-	if bindRules {
-		// The load normalized and merged every file's rule settings with
-		// ruleSet, so binding with the same declarations repeats nothing.
-		sources.boundTo = ruleSet.signature
-	}
-	resolved.Config.Lint.Rules.sources = sources
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])

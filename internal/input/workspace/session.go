@@ -42,7 +42,9 @@ type PreparedBatch struct {
 
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
-	// Rules supplies the declarations used to validate loaded configuration.
+	// Rules is the analysis's final rule set: built-in rules plus the rules
+	// of its analyzers, tools and plugins. Each configuration and its
+	// overlays are resolved with it once; checking reads the result.
 	Rules                                 configuration.RuleSet
 	WorkingDir, StdinFileName, ConfigFile string
 	// Config, when set, is used for every input instead of the repository's

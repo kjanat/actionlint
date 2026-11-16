@@ -369,7 +369,10 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 }
 
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
-// It does not discover configuration or read the supplied source paths.
+// It does not discover configuration or read the supplied source paths. Each
+// source's Config is used as supplied, so a configuration file must be loaded
+// with ConfigurationRules plus the rules of options' analyzers and tools; the
+// analysis does not normalize its rule settings again.
 func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, checkrequest.Request{Kind: checkrequest.Prepared, Sources: sources})

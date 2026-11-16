@@ -64,14 +64,13 @@ type lintState struct {
 
 // ruleState owns prepared rule decisions. The shared handles are immutable:
 // RuleSet exposes detached descriptors, Settings expose detached options, and
-// captured rule sources and binding sources are only read after preparation.
+// binding sources are only read after preparation.
 type ruleState struct {
 	ruleSet         RuleSet `clone:"shared"`
 	resolved        map[string]ruleconfig.Level
 	resolvedFixed   map[string]bool
 	boundCategories map[string]string
 	boundSettings   map[string]boundSetting
-	sources         *ruleSources `clone:"shared"`
 	bindingSources  []bindingSource
 }
 

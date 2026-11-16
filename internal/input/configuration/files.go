@@ -50,7 +50,7 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]document.Location, inherited, bindRules bool, capture func(any), additional ...string) (any, []configreport.Warning, error) {
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]document.Location, inherited, bindRules bool, additional ...string) (any, []configreport.Warning, error) {
 	resolved, err := ruleSet.resolveValue(value, inputs, bindRules, additional...)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +66,6 @@ func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs ma
 	} else {
 		normalizeSourcePaths(value, filepath.Dir(path), inherited)
 	}
-	capture(value)
 	if local := field(value, "local-actions"); local != nil {
 		normalizeLocalActionSourceNode(local)
 	}
