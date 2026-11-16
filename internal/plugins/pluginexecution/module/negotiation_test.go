@@ -17,7 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
@@ -216,7 +215,7 @@ func TestMetadataDocumentVersions(t *testing.T) {
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
 	t.Parallel()
-	if _, err := module.LoadModuleEngine(t.Context(), "not-opened.wasm", module.Options{Limits: guestlimits.Limits{MemoryPages: 65537}}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+	if _, err := module.LoadModuleEngine(t.Context(), "not-opened.wasm", module.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
@@ -228,7 +227,7 @@ func TestBootstrapGuestCallsHaveDeadline(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
-			_, err := module.LoadModuleEngine(ctx, negotiationFixture(t, "check", "unicode", operation), module.Options{Limits: guestlimits.Limits{Timeout: 20 * time.Millisecond}})
+			_, err := module.LoadModuleEngine(ctx, negotiationFixture(t, "check", "unicode", operation), module.Options{Timeout: 20 * time.Millisecond})
 			if err == nil || !strings.Contains(err.Error(), "exceeded its time limit") {
 				t.Fatalf("err=%v", err)
 			}

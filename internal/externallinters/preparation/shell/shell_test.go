@@ -37,7 +37,7 @@ func TestShellStartup(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			dialect, setup := (Shell{Shell: scripts.Shell{Name: tc.name, Implicit: tc.implicit}}).Analysis()
+			dialect, setup := (Shell{Name: tc.name, Implicit: tc.implicit}).Analysis()
 			if dialect == "" || setup != tc.setup {
 				t.Fatalf("got %q / %q, want setup %q", dialect, setup, tc.setup)
 			}
@@ -54,7 +54,7 @@ func TestUnknownScriptLanguage(t *testing.T) {
 	} {
 		t.Run(shell, func(t *testing.T) {
 			t.Parallel()
-			dialect, setup := (Shell{Shell: scripts.Shell{Name: shell}}).Analysis()
+			dialect, setup := (Shell{Name: shell}).Analysis()
 			if dialect != "" || setup != "" {
 				t.Fatalf("unknown script language inferred as %q / %q", dialect, setup)
 			}

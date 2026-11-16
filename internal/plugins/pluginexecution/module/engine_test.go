@@ -122,7 +122,7 @@ func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 
 func TestFailuresDiscardTheInstance(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), module.Options{Limits: guestlimits.Limits{MemoryPages: 64}})
+	engine := loadEngine(t, enginePath("echo"), module.Options{MemoryPages: 64})
 	if engine.Limits().String() != "memory 4 MiB, time 10s" {
 		t.Fatalf("limits=%s", engine.Limits())
 	}
@@ -263,7 +263,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			start := time.Now()
-			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Limits: guestlimits.Limits{Timeout: 100 * time.Millisecond}})
+			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
@@ -285,7 +285,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 			initialized.Do(func() { initializedDeadline, _ = ctx.Deadline() })
 		})
 	}))
-	engine, err := module.LoadModuleEngine(ctx, enginePath("echo"), module.Options{Limits: guestlimits.Limits{Timeout: timeout}})
+	engine, err := module.LoadModuleEngine(ctx, enginePath("echo"), module.Options{Timeout: timeout})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Limits: guestlimits.Limits{Timeout: 100 * time.Millisecond}})
+			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
 			// Trap fixtures fail only their first deallocation. Both calls must
 			// fail, proving the second call receives a fresh instance.
 			for range 2 {

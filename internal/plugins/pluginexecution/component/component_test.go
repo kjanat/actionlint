@@ -202,7 +202,7 @@ func TestFailuresAreReportedAndIsolated(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
 	var logged []string
-	plugin := loadPlugin(t, "misbehave", component.Options{Limits: guestlimits.Limits{Timeout: 3 * time.Second, MemoryPages: 96}, Log: func(line string) {
+	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 3 * time.Second, MemoryPages: 96, Log: func(line string) {
 		mu.Lock()
 		defer mu.Unlock()
 		logged = append(logged, line)

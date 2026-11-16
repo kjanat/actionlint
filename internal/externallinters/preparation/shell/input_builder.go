@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -50,7 +49,7 @@ func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellS
 // facts. The plugin selects the languages it supports and interprets its own
 // directives. Invalid interpreter invocations return no input.
 func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
-	shell := Shell{Shell: scripts.Shell{Name: script.Shell}, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
+	shell := Shell{Name: script.Shell, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
 	if script.Runtime != nil && script.Runtime.Shell.Known() {
 		shell.Shell = script.Runtime.Shell
 	}
