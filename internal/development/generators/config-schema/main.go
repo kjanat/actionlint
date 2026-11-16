@@ -144,7 +144,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[configuration.LintRulesConfig]():
 		mapping := reflectMapping(struct {
 			Preset  ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
-			Disable []string             `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
+			Disable []string          `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
 		disable.Items = definitionRef("rule-name")

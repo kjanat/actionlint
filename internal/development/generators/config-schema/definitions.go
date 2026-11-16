@@ -45,7 +45,7 @@ func levelSchema() *jsonschema.Schema {
 func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.Definitions, error) {
 	setting := reflectMapping(struct {
 		Level   ruleconfig.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule."`
-		Options map[string]any      `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
+		Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
 	}{})
 	options, _ := setting.Properties.Get("options")
 	options.AdditionalProperties = jsonschema.TrueSchema

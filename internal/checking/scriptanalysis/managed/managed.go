@@ -165,10 +165,10 @@ func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Co
 		}
 	}
 	data, err := json.Marshal(struct {
-		Enabled bool                       `json:"enabled"`
-		Backend bool                       `json:"backend"`
+		Enabled bool                               `json:"enabled"`
+		Backend bool                               `json:"backend"`
 		Options integrationconfig.ResolvedSettings `json:"options"`
-		Plugin  any                        `json:"plugin"`
+		Plugin  any                                `json:"plugin"`
 	}{enabled, cfg != nil && cfg.Tools[r.name].Backend != nil, options, pluginOptions})
 	return string(data), err
 }

@@ -15,16 +15,16 @@ import (
 // SourcePlanInput supplies source, interpreter facts and integration settings to
 // a SourcePlanner. EnvironmentStartup declares names without values.
 type SourcePlanInput struct {
-	Source             string                     `json:"source"`
-	Language           string                     `json:"language"`
-	Startup            string                     `json:"startup"`
-	EnvironmentStartup string                     `json:"environment_startup"`
-	EnvironmentKnown   bool                       `json:"environment_known"`
+	Source             string                             `json:"source"`
+	Language           string                             `json:"language"`
+	Startup            string                             `json:"startup"`
+	EnvironmentStartup string                             `json:"environment_startup"`
+	EnvironmentKnown   bool                               `json:"environment_known"`
 	Settings           integrationconfig.ResolvedSettings `json:"settings"`
-	ConfigFile         string                     `json:"config_file"`
-	Filesystem         bool                       `json:"filesystem"`
-	Engine             bool                       `json:"engine"`
-	Input              bool                       `json:"input"`
+	ConfigFile         string                             `json:"config_file"`
+	Filesystem         bool                               `json:"filesystem"`
+	Engine             bool                               `json:"engine"`
+	Input              bool                               `json:"input"`
 }
 
 // SourcePlan adds generated text to a script and supplies the tool's options.

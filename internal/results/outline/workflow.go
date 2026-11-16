@@ -11,11 +11,11 @@ import (
 // ParseStatus is complete, partial (a tree with parser errors), or failed (no tree).
 // A complete parse can still produce validity findings or an analysis failure.
 type WorkflowOutline struct {
-	Path        string   `json:"path"`
-	Name        string   `json:"name,omitempty"`
-	ParseStatus string   `json:"parse_status"`
-	Triggers    []string `json:"triggers"`
-	Jobs        []JobOutline    `json:"jobs"`
+	Path        string       `json:"path"`
+	Name        string       `json:"name,omitempty"`
+	ParseStatus string       `json:"parse_status"`
+	Triggers    []string     `json:"triggers"`
+	Jobs        []JobOutline `json:"jobs"`
 }
 
 // JobOutline describes a workflow job.
@@ -31,7 +31,9 @@ type JobOutline struct {
 
 // Reference classifies Uses with callrefs.ClassifyWorkflow; it is nil when the job
 // calls no workflow.
-func (j JobOutline) Reference() callreferences.UsesReference { return callreferences.ClassifyWorkflow(j.Uses) }
+func (j JobOutline) Reference() callreferences.UsesReference {
+	return callreferences.ClassifyWorkflow(j.Uses)
+}
 
 type jobWire struct {
 	ID        string                       `json:"id"`
@@ -40,7 +42,7 @@ type jobWire struct {
 	Needs     []string                     `json:"needs"`
 	Uses      string                       `json:"uses,omitempty"`
 	Reference callreferences.UsesReference `json:"reference,omitempty"`
-	Steps     []StepOutline                       `json:"steps"`
+	Steps     []StepOutline                `json:"steps"`
 }
 
 // MarshalJSON encodes the job's declarations.
@@ -95,7 +97,7 @@ type stepWire struct {
 	Kind      string                       `json:"kind"`
 	Uses      string                       `json:"uses,omitempty"`
 	Reference callreferences.UsesReference `json:"reference,omitempty"`
-	Steps     []StepOutline                       `json:"steps,omitempty"`
+	Steps     []StepOutline                `json:"steps,omitempty"`
 }
 
 // MarshalJSON encodes the step's declarations.

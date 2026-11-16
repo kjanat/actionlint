@@ -29,7 +29,7 @@ resolve configuration, dispatch document languages or manage execution.
 | `internal/input/workspace`              | Repository discovery and immutable Git index snapshots shared within a session.                                     |
 | `internal/checking/workflowvisit`       | Visitor and invocation contracts, and ordered workflow traversal over supplied passes with caller-owned expansion.  |
 | `internal/checking/executor/composites` | Nested invocation discovery, execution facts, script completion and collection into one result.                     |
-| `internal/checking/scriptanalysis`             | Prepared script batches, fact/tool adapters and bounded execution.                                                  |
+| `internal/checking/scriptanalysis`      | Prepared script batches, fact/tool adapters and bounded execution.                                                  |
 | `internal/results/policy`               | Reference inference, suppression/severity/filter policy, diagnostic completion and cross-document deduplication.    |
 
 ```mermaid

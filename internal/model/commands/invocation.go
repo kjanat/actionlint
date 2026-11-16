@@ -83,16 +83,16 @@ type Definition struct {
 }
 
 type Invocation struct {
-	Command      string    `json:"command"`
-	Program      string    `json:"program"`
-	Arguments    []Token   `json:"arguments"`
-	DefinitionID string    `json:"definition_id,omitempty"`
-	Status       Status    `json:"status"`
-	Reason       string    `json:"reason,omitempty"`
-	Language     string    `json:"language,omitempty"`
-	Input        string    `json:"input"`
+	Command      string          `json:"command"`
+	Program      string          `json:"program"`
+	Arguments    []Token         `json:"arguments"`
+	DefinitionID string          `json:"definition_id,omitempty"`
+	Status       Status          `json:"status"`
+	Reason       string          `json:"reason,omitempty"`
+	Language     string          `json:"language,omitempty"`
+	Input        string          `json:"input"`
 	Settings     []OptionSetting `json:"settings,omitempty"`
-	Issues       []Issue   `json:"issues,omitempty"`
+	Issues       []Issue         `json:"issues,omitempty"`
 }
 
 // Registry owns copies of provider definitions. Analysis never modifies them.
