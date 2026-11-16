@@ -15,28 +15,32 @@ const module = "actionlint.kjanat.dev/v2/internal/"
 // higherLayers lists, for each layer, the layers its production code must not
 // depend on, directly or through any other package. Lower layers describe
 // documents and languages, read inputs, reach external services and publish
-// results. Plugin loaders and runtimes in internal/plugins build on them.
-// Rule implementations and the executor in internal/checking build on both and
-// host plugins, so internal/plugins must not import internal/checking.
+// results. internal/externallinters prepares scripts for external linters and
+// runs them as host processes; built-in tools and tool provider plugins share
+// it. Plugin hosting in internal/plugins and rule execution in
+// internal/checking build on those layers and never on each other.
+// internal/assembly loads the selected plugins and wires them into checking.
 // Rendering in internal/output and the entry points in internal/cli and
 // internal/lsp sit on top.
 var higherLayers = map[string][]string{
-	"model":        {"checking", "plugins", "output", "cli", "lsp"},
-	"input":        {"checking", "plugins", "output", "cli", "lsp"},
-	"results":      {"checking", "plugins", "output", "cli", "lsp"},
-	"languages":    {"checking", "plugins", "output", "cli", "lsp"},
-	"integrations": {"checking", "plugins", "output", "cli", "lsp"},
-	"plugins":      {"checking", "output", "cli", "lsp"},
-	"output":       {"checking", "plugins", "cli", "lsp"},
-	"checking":     {"output", "cli", "lsp"},
+	"model":           {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"input":           {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"results":         {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"languages":       {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"integrations":    {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"externallinters": {"checking", "plugins", "assembly", "output", "cli", "lsp"},
+	"plugins":         {"checking", "assembly", "output", "cli", "lsp"},
+	"checking":        {"plugins", "assembly", "output", "cli", "lsp"},
+	"assembly":        {"output", "cli", "lsp"},
+	"output":          {"externallinters", "checking", "plugins", "assembly", "cli", "lsp"},
 }
 
 // TestLowerLayersDoNotDependOnHigherLayers keeps rule identity, tool
 // settings, plugin references, the checker contract and other shared
 // declarations below the checks and plugin hosts that use them, and keeps
-// plugins below the checks that host them. Tests may still import higher
-// layers to exercise a lower package through the engine, so only production
-// imports are followed.
+// plugin hosting and rule execution independent of each other. Tests may
+// still import higher layers to exercise a lower package through the engine,
+// so only production imports are followed.
 func TestLowerLayersDoNotDependOnHigherLayers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("lists every internal package and its dependencies")
@@ -94,6 +98,7 @@ func TestHigherLayerDependenciesFollowTransitiveImports(t *testing.T) {
 	}
 	got := higherLayerDependencies(loaded)
 	want := []string{
+		module + "checking/scripts depends on " + module + "plugins/artifacts",
 		module + "input/configuration depends on " + module + "checking/rules/security",
 		module + "input/configuration depends on " + module + "plugins/loader through " + module + "input/configuration/schema",
 		module + "input/workspace depends on " + module + "plugins/artifacts",

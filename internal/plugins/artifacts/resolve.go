@@ -40,34 +40,11 @@ type Options struct {
 	PullOCI PullOCI
 }
 
-// NormalizeSource roots filesystem paths in directory while preserving URI
-// identity, including queries and digest pins. local is empty for remote URLs;
-// otherwise it identifies the local file consumed by the artifact resolver.
-// It validates the location without reading files or making network requests.
-func NormalizeSource(source, directory string) (reference, local string, err error) {
-	if IsOCI(source) {
-		ref, err := ParseOCI(source)
-		if err != nil {
-			return "", "", err
-		}
-		return ref.String(), "", nil
-	}
-	location, err := pluginreference.ParseModuleLocation(source)
-	if err != nil {
-		return "", "", err
-	}
-	if location.Endpoint != nil {
-		return source, location.Local, nil
-	}
-	local = location.File(directory)
-	return local, local, nil
-}
-
 // RequireRemotePin checks execution inputs without fetching their bytes.
 // Inspection may acquire unpinned URLs to discover their digest; execution may not.
 func RequireRemotePin(source string) error {
-	if IsOCI(source) {
-		_, err := ParseOCI(source)
+	if pluginreference.IsOCI(source) {
+		_, err := pluginreference.ParseOCI(source)
 		return err
 	}
 	location, err := pluginreference.ParseModuleLocation(source)
@@ -105,8 +82,8 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	options = options.withDefaults()
 	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
 	defer cancel()
-	if IsOCI(source) {
-		ref, err := ParseOCI(source)
+	if pluginreference.IsOCI(source) {
+		ref, err := pluginreference.ParseOCI(source)
 		if err != nil {
 			return nil, err
 		}

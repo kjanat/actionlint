@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -52,7 +53,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
+	result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
 		Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
 	}, sources)
 	if err != nil {
@@ -68,10 +69,10 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 
 func TestUnknownToolIDIsRejected(t *testing.T) {
 	t.Parallel()
-	_, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
+	_, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
 		Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"),
 	}, pluginselection.Sources{NamedTools: []string{"missing"}})
-	unknown, ok := errors.AsType[*checking.UnknownToolError](err)
+	unknown, ok := errors.AsType[*assembly.UnknownToolError](err)
 	if !ok || !slices.Equal(unknown.IDs(), []string{"missing"}) {
 		t.Fatalf("unknown tool id accepted: %v", err)
 	}
@@ -112,7 +113,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
+			result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
 				Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
 			}, sources)
 			if err != nil {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
@@ -46,7 +47,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		fixturefiles.WriteText(t, filepath.Join(root, ".github", "workflows", "ci.yml"), ociProviderInput)
 	}
 	for _, paths := range [][]string{{parent}, {filepath.Join(parent, "*"), parent}} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := assembly.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +70,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"first", "second"} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Repository, Directory: name}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := assembly.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, checkrequest.Request{Kind: checkrequest.Repository, Directory: name}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}

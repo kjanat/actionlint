@@ -91,9 +91,11 @@ internal/
 ├── languages/                       Parse text and implement language behavior
 ├── model/                           Describe workflows, actions and their relationships
 ├── checking/                        Select and execute rules against those descriptions
+├── externallinters/                 Prepare scripts for external linters and run them as processes
 ├── results/                         Validate and process findings and proposed edits
 ├── output/                          Format results and write requested output
 ├── plugins/                         Install, load and invoke extensions
+├── assembly/                        Load selected plugins and register them with checking
 ├── integrations/                    Access Git, GitHub, HTTP and external processes
 └── development/                     Go generators and cross-subsystem Go tests
 ```

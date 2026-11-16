@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // ErrCorrupt reports a stored blob whose bytes no longer match its digest,
@@ -29,7 +31,7 @@ type Store struct {
 // wrapping os.ErrNotExist when the blob is absent and ErrCorrupt when its
 // bytes do not match the digest.
 func (s Store) Read(ctx context.Context, digest string, limit int64) ([]byte, error) {
-	if err := CheckDigest(digest); err != nil {
+	if err := pluginreference.CheckDigest(digest); err != nil {
 		return nil, err
 	}
 	if s.Dir == "" {
@@ -49,7 +51,7 @@ func (s Store) Read(ctx context.Context, digest string, limit int64) ([]byte, er
 // bytes that do not match the digest, so they are never stored, and replaces
 // a corrupt blob atomically.
 func (s Store) Publish(ctx context.Context, digest string, data []byte) error {
-	if err := CheckDigest(digest); err != nil {
+	if err := pluginreference.CheckDigest(digest); err != nil {
 		return err
 	}
 	if sum := sha256.Sum256(data); hex.EncodeToString(sum[:]) != digest {
@@ -110,12 +112,3 @@ func (s Store) Materialize(ctx context.Context, digest, filename string, limit i
 // errDigestMismatch reports bytes that do not match the digest they were
 // fetched or imported under.
 var errDigestMismatch = errors.New("SHA256 mismatch")
-
-// CheckDigest accepts a SHA256 digest written as 64 lowercase hex digits.
-func CheckDigest(digest string) error {
-	decoded, err := hex.DecodeString(digest)
-	if err != nil || len(decoded) != sha256.Size || digest != strings.ToLower(digest) {
-		return fmt.Errorf("invalid artifact digest %q: want 64 lowercase hex digits", digest)
-	}
-	return nil
-}

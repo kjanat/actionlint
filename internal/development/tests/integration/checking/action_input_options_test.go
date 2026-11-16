@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -93,7 +94,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
 			}}}}
-			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
+			options, err := assembly.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}

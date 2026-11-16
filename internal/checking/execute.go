@@ -55,9 +55,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-
-	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -216,7 +215,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if _, err := CombineRuleDeclarations(extensions...); err != nil {
 		return nil, err
 	}
-	ruleRegistrations := configurationRegistrations(request.Analyzers, request.Tools)
+	ruleRegistrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
 	rules, err := ConfigurationRules().WithRegisteredRules(ruleRegistrations...)
 	if err != nil {
 		return nil, err
@@ -357,7 +356,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
 		request.LoadScriptEngine = func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
-			reference, local, err := artifacts.NormalizeSource(path, request.WorkingDir)
+			reference, local, err := pluginreference.NormalizeSource(path, request.WorkingDir)
 			if err != nil {
 				return nil, err
 			}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
@@ -81,7 +82,7 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 	input := func() checkrequest.Request {
 		return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 	}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources)
+	result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +93,7 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 	if len(findings[0].Fixes) != 1 || findings[0].Fixes[0].Edits[0].Start != findings[0].Start || len(findings[0].Fixes[0].Revisions) != 1 {
 		t.Fatal("document fixes lost captured-source admission", findings[0])
 	}
-	descriptors, err := checking.RulesWithPlugins(t.Context(), sources)
+	descriptors, err := assembly.RulesWithPlugins(t.Context(), sources)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,13 +101,13 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 		t.Fatal("document provider missing from catalogue")
 	}
 	sources.Configured = true
-	if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
+	if _, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 		t.Fatal("repository native execution lacked consent gate", err)
 	}
-	if _, err := checking.RequiredToolsWithPlugins(t.Context(), checking.Options{}, nil, sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
+	if _, err := assembly.RequiredToolsWithPlugins(t.Context(), checking.Options{}, nil, sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 		t.Fatal("required tools bypassed consent", err)
 	}
-	if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources); err != nil {
+	if _, err := assembly.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources); err != nil {
 		t.Fatal("consented document provider failed", err)
 	}
 }

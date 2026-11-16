@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -91,7 +92,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			needed, err := checking.RequiredToolsWithPlugins(ctx, checking.Options{
+			needed, err := assembly.RequiredToolsWithPlugins(ctx, checking.Options{
 				WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
 				IgnorePatterns: req.ignore, Tools: registry.Registrations(req.toolSelections()),
 			}, req.files, selected)

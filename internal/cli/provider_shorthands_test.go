@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -124,7 +125,7 @@ func TestInstalledProviderShorthands(t *testing.T) {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, pluginacquisition.Options{}, 0, "check", "--plugin", path, "--config", config, workflow)
-	if _, err := checking.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}, pluginacquisition.Options{}); err != nil {
+	if _, err := assembly.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}, pluginacquisition.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(config)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -58,7 +59,7 @@ func (d *distribution) UnmarshalJSON(data []byte) error {
 		}
 		*d = distribution{typeName: wire.Type, name: wire.Name, digest: wire.SHA256}
 	case "oci":
-		ref, err := artifacts.ParseOCI(wire.Reference)
+		ref, err := pluginreference.ParseOCI(wire.Reference)
 		if err != nil || len(fields) != 2 || wire.Name != "" || wire.SHA256 != "" || ref.String() != wire.Reference {
 			return errors.New("OCI publication source must contain only a normalized digest-pinned reference")
 		}

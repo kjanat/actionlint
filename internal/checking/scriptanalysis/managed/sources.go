@@ -16,11 +16,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

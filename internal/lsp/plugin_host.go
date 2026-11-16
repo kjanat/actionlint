@@ -15,6 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -54,11 +55,11 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 		return nil, err
 	}
 	sources.Artifacts = nil
-	options, err = checking.ConfigurePlugins(plugins, ctx, options)
+	options, err = assembly.ConfigurePlugins(plugins, ctx, options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
 	}
-	options, err = checking.ConfigureManagedPlugins(plugins, options)
+	options, err = assembly.ConfigureManagedPlugins(plugins, options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
 	}

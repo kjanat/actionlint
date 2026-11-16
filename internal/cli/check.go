@@ -12,14 +12,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/output"
-	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
@@ -86,12 +86,12 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		input.Kind, input.Reader, input.Name, input.NormalizePath = checkrequest.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
-	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
+	result, err := assembly.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 	if err != nil {
 		if _, ok := errors.AsType[*pluginexecution.LoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, arguments.UsageError{Cause: err}
 		}
-		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
+		if _, ok := errors.AsType[*assembly.UnknownToolError](err); ok {
 			return 0, arguments.UsageError{Cause: err}
 		}
 		if result != nil {
@@ -101,7 +101,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot}, result.Inputs...)
 	for _, source := range c.Plugins {
-		_, local, err := artifacts.NormalizeSource(source, workingDir)
+		_, local, err := pluginreference.NormalizeSource(source, workingDir)
 		if err != nil {
 			return 0, arguments.UsageError{Cause: err}
 		}
@@ -160,7 +160,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
+		result, err = assembly.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 		if err != nil {
 			return 0, err
 		}

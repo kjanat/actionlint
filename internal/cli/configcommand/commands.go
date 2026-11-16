@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
@@ -60,7 +61,7 @@ func WritePath(out io.Writer, req PathOptions) error {
 }
 
 func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Options) error {
-	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
+	inspection, err := assembly.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if err != nil {
 		return err
 	}
@@ -92,7 +93,7 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 // published actionlint.schema.json, it describes tools.<name> for every tool
 // provider that the --plugin flags or the selected configuration install.
 func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Options) error {
-	manifests, err := checking.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
+	manifests, err := assembly.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 }
 
 func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Options) error {
-	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
+	inspection, err := assembly.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
 	if err != nil {
 		return err
 	}

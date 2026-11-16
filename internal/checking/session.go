@@ -64,9 +64,9 @@ type Options struct {
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
-	// configSources holds the configuration files plugin selection parsed for
+	// ConfigSources holds the configuration files plugin selection parsed for
 	// this run, so the session merges them without reading them again.
-	configSources     *document.Files
+	ConfigSources     *document.Files
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
@@ -94,9 +94,22 @@ type SourceOverlay struct {
 	Content []byte
 }
 
+// PrepareInvocation loads the enforced lifecycle policies and fixes the
+// runner evaluation date once, so every Check given the returned options
+// shares them. Check prepares its options itself; a caller that splits one
+// invocation into several checks calls PrepareInvocation first.
+func PrepareInvocation(ctx context.Context, options Options) (Options, error) {
+	options, err := prepareEnforcedLifecycle(ctx, options)
+	if err != nil {
+		return options, err
+	}
+	options.ExecutionEnvironment = options.captureDate(time.Now)
+	return options, nil
+}
+
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input checkrequest.Request) (result *report.Analysis, err error) {
-	options, err = prepareEnforcedLifecycle(ctx, options)
+	options, err = PrepareInvocation(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +118,6 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, options.enforcedPolicyInputs...))))
 		}
 	}()
-	options.ExecutionEnvironment = options.captureDate(time.Now)
 	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
 		return nil, err
 	}
@@ -268,14 +280,14 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	rules, err := ConfigurationRules().WithRegisteredRules(configurationRegistrations(options.Analyzers, options.Tools)...)
+	rules, err := ConfigurationRules().WithRegisteredRules(ConfigurationRegistrations(options.Analyzers, options.Tools)...)
 	if err != nil {
 		return nil, err
 	}
 	session, err := workspace.New(ctx, workspace.Options{
 		Rules:      rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
-		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.configSources, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
+		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.ConfigSources, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})

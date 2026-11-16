@@ -12,6 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
@@ -58,7 +59,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 		if !strings.Contains(path, "://") {
 			continue
 		}
-		if artifacts.IsOCI(path) {
+		if pluginreference.IsOCI(path) {
 			digests, err := s.ociDigests(ctx, path)
 			if err != nil {
 				return CachePlan{}, err

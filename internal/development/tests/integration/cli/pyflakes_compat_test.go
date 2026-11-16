@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

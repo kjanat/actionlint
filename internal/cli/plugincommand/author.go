@@ -14,12 +14,12 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 const (

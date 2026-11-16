@@ -10,11 +10,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

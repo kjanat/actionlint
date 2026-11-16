@@ -10,14 +10,14 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 type doctorTool struct {
@@ -37,7 +37,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 	if err != nil {
 		return err
 	}
-	config, configErr := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
+	config, configErr := assembly.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -143,7 +143,7 @@ func checkDoctorTools(manifests []toolmanifest.Manifest, named []string) error {
 	if len(unknown) == 0 {
 		return nil
 	}
-	return arguments.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
+	return arguments.UsageError{Cause: assembly.NewUnknownToolError(unknown, known)}
 }
 
 // probeDoctorVersion runs the manifest's version probe against command, as

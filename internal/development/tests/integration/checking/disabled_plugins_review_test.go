@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
@@ -60,7 +61,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			if tc.offline {
 				ctx, _ = network.WithSession(ctx, network.Options{Offline: true})
 			}
-			result, err := checking.CheckProjects(ctx, checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}, selection)
+			result, err := assembly.CheckProjects(ctx, checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}, selection)
 			if err != nil {
 				t.Fatal(err)
 			}

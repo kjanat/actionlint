@@ -5,10 +5,10 @@ import (
 	"maps"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
 )
 
 func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script scriptanalysis.Unit, prepared preparation.Prepared, settings integrationconfig.ResolvedSettings, via route) (preparation.Prepared, error) {

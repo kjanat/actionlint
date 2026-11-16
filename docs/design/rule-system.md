@@ -86,7 +86,7 @@ contract. Both plugin types carry the shared rule descriptor.
 `sourcetext.Reference` accompanies document facts, scripts, mappings, invocation sites and
 findings. Nested composite callers have identities even when they contain no scripts.
 `rule.Descriptor` separates category/subcategory from provider and maturity.
-`checking.RulesWithPlugins` and `actionlint rules --plugin PATH` combine built-ins and selected
+`assembly.RulesWithPlugins` and `actionlint rules --plugin PATH` combine built-ins and selected
 plugins in one collision-checked namespace. Registered document analyzers use
 `lint.rules.plugins` for severity, options and presets; their option schemas are
 validated without implicit file or network access. The catalogue generates `docs/rules.md`.

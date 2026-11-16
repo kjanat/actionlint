@@ -30,9 +30,11 @@ selects files, a repository, stdin or prepared sources. Workspace selection read
 configuration and captures source text. `checking.Analyze` submits already prepared
 sources without discovering configuration or reading their paths again.
 
-`checking.CheckWithPlugins` loads selected plugins, supplies their registrations
-to `Check`, and closes those plugins afterward. File-based plugin arguments are
-converted to selected sources by `CheckWithPluginPaths`.
+`assembly.CheckWithPlugins` loads selected plugins, supplies their registrations
+to `checking.Check`, and closes those plugins afterward. File-based plugin
+arguments are converted to selected sources by `CheckWithPluginPaths`. Package
+`checking` does not import `internal/plugins`, and `internal/plugins` does not
+import `checking`; `internal/assembly` connects them.
 
 Rules receive decoded models and the data their declarations request. The
 checking session collects that data and coordinates nested invocations.

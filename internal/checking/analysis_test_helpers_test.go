@@ -71,7 +71,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
-	registrations := configurationRegistrations(request.Analyzers, request.Tools)
+	registrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
 	ruleSet, err := ConfigurationRules().WithRegisteredRules(registrations...)
 	if err != nil {
 		tb.Fatal(err)

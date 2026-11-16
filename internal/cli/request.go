@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
@@ -67,7 +67,7 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rules, err := checking.RulesWithPlugins(ctx, sources)
+	rules, err := assembly.RulesWithPlugins(ctx, sources)
 	if err != nil {
 		if _, loadFailure := errors.AsType[*pluginexecution.LoadError](err); loadFailure && len(selection.Paths) > 0 {
 			return 0, arguments.UsageError{Cause: err}

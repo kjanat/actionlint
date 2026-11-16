@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
@@ -59,7 +60,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: tc.command}})}
-			result, err := checking.CheckWithPlugins(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
+			result, err := assembly.CheckWithPlugins(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,7 +83,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 			if tc.managed && len(session.options.Analyzers) != 0 {
 				t.Fatal("editor kept standalone managed analyzer")
 			}
-			rules, err := checking.RulesWithPlugins(t.Context(), selected)
+			rules, err := assembly.RulesWithPlugins(t.Context(), selected)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +118,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if enabled {
 					selections = registry.ToolSelections{engine: {Command: engine}}
 				}
-				options, err := checking.ConfigurePlugins(plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
+				options, err := assembly.ConfigurePlugins(plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -196,7 +197,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 					}()
 					result, err = checking.Check(t.Context(), session.options, input)
 				} else {
-					result, err = checking.CheckWithPlugins(t.Context(), options, input, sources)
+					result, err = assembly.CheckWithPlugins(t.Context(), options, input, sources)
 				}
 				if err != nil {
 					t.Fatal(err)

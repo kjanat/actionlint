@@ -32,7 +32,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 		return ToolRequirements{}, err
 	}
 	var names []string
-	registrations := configurationRegistrations(options.Analyzers, options.Tools)
+	registrations := ConfigurationRegistrations(options.Analyzers, options.Tools)
 	for _, registration := range options.Analyzers {
 		if !validation.IsNil(registration.Checker) {
 			names = append(names, registration.Checker.Descriptor().Name)

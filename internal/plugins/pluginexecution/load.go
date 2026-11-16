@@ -26,7 +26,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
 type Loaded struct {
@@ -49,7 +49,7 @@ type Loaded struct {
 
 // SelectedProvider records the files and execution authority of one selected process plugin.
 type SelectedProvider struct {
-	Files      process.ProviderFiles
+	Files      toolproviders.ProviderFiles
 	Network    acquisitionhttp.Grant
 	Repository bool
 }
@@ -101,7 +101,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 				loaded.SkippedTools = append(loaded.SkippedTools, manifest.Rule.Name)
 				continue
 			}
-			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: process.ProviderFiles{Manifest: manifest, Programs: programs}, Repository: sources.Configured})
+			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: toolproviders.ProviderFiles{Manifest: manifest, Programs: programs}, Repository: sources.Configured})
 			continue
 		}
 		if err := artifacts.RequireRemotePin(path); err != nil {
@@ -129,7 +129,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			continue
 		}
 		if artifact.Info.Kind == artifacts.ProviderManifest {
-			manifest, err := process.ReadProviderArtifact(artifact)
+			manifest, err := toolproviders.ReadProviderArtifact(artifact)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -139,7 +139,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			}
 			// configure fetches the executable and transform programs after
 			// the --allow-config-processes check.
-			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: process.ProviderFiles{Manifest: manifest, Source: path}, Network: networkPolicy, Repository: sources.Configured})
+			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: toolproviders.ProviderFiles{Manifest: manifest, Source: path}, Network: networkPolicy, Repository: sources.Configured})
 			continue
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so

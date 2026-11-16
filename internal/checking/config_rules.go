@@ -16,7 +16,9 @@ import (
 // The cached set has no mutation operations; each caller receives the same read-only values.
 func ConfigurationRules() configuration.RuleSet { return configurationRules() }
 
-func configurationRegistrations(checkers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
+// ConfigurationRegistrations declares the rules that analyzers and tool registrations add
+// to the built-in rule set, so configuration can name and configure them.
+func ConfigurationRegistrations(checkers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, checker := range checkers {
 		if validation.IsNil(checker.Checker) {

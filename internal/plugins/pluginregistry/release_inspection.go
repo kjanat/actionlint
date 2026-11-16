@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
 // InspectRelease resolves a registry reference and verifies its downloaded metadata.
@@ -24,7 +24,7 @@ func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisit
 			return artifacts.ArtifactProvenance{}, err
 		}
 	}
-	info, err := process.InspectArtifact(ctx, pin.Source(), acquisition.ArtifactOptions())
+	info, err := toolproviders.InspectArtifact(ctx, pin.Source(), acquisition.ArtifactOptions())
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err
 	}

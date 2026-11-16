@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -21,7 +22,7 @@ func TestOCIResolutionHookSnapshots(t *testing.T) {
 	blobs := []string{strings.Repeat("b", 64)}
 	calls := 0
 	options := artifacts.Options{CacheDir: cache, Timeout: time.Second, MaxBytes: 4096}
-	options.PullOCI = func(ctx context.Context, ref artifacts.OCIReference, bounds artifacts.Options) (*artifacts.Artifact, error) {
+	options.PullOCI = func(ctx context.Context, ref pluginreference.OCIReference, bounds artifacts.Options) (*artifacts.Artifact, error) {
 		calls++
 		if ref.String() != source || ref.Host() != "registry.example" || ref.Repository() != "tools/echo" || ref.Digest() != digest || ref.Tag() != "" {
 			t.Fatalf("wrong reference: %s", ref)
@@ -54,7 +55,7 @@ func TestOCIResolutionHookDefaultsAndFailures(t *testing.T) {
 	t.Parallel()
 	source := "oci://registry.example/echo@sha256:" + strings.Repeat("a", 64)
 	want := errors.New("hook refused")
-	_, err := artifacts.Resolve(context.Background(), source, artifacts.Options{PullOCI: func(ctx context.Context, ref artifacts.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
+	_, err := artifacts.Resolve(context.Background(), source, artifacts.Options{PullOCI: func(ctx context.Context, ref pluginreference.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
 		if options.Timeout != 30*time.Second || options.MaxBytes != 128<<20 {
 			t.Fatalf("missing default acquisition bounds: %+v", options)
 		}
@@ -63,7 +64,7 @@ func TestOCIResolutionHookDefaultsAndFailures(t *testing.T) {
 	if !errors.Is(err, want) {
 		t.Fatalf("hook error identity lost: %v", err)
 	}
-	_, err = artifacts.Resolve(context.Background(), source, artifacts.Options{PullOCI: func(context.Context, artifacts.OCIReference, artifacts.Options) (*artifacts.Artifact, error) {
+	_, err = artifacts.Resolve(context.Background(), source, artifacts.Options{PullOCI: func(context.Context, pluginreference.OCIReference, artifacts.Options) (*artifacts.Artifact, error) {
 		return nil, nil
 	}})
 	if err == nil || !strings.Contains(err.Error(), "no artifact") {
@@ -73,7 +74,7 @@ func TestOCIResolutionHookDefaultsAndFailures(t *testing.T) {
 
 func TestOCIReferenceIdentity(t *testing.T) {
 	t.Parallel()
-	ref, err := artifacts.ParseOCITag("oci://REGISTRY.example/tools/echo:v1")
+	ref, err := pluginreference.ParseOCITag("oci://REGISTRY.example/tools/echo:v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +85,11 @@ func TestOCIReferenceIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := artifacts.ParseOCI(pinned.String())
+	parsed, err := pluginreference.ParseOCI(pinned.String())
 	if err != nil || parsed != pinned || parsed.Tag() != "" || ref.Tag() != "v1" {
 		t.Fatalf("digest conversion mutated original or lost identity: %s %s %v", ref, parsed, err)
 	}
-	if _, err := artifacts.ParseOCI(ref.String()); err == nil {
+	if _, err := pluginreference.ParseOCI(ref.String()); err == nil {
 		t.Fatal("execution reference accepted an unpinned tag")
 	}
 }

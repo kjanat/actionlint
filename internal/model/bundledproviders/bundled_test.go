@@ -14,9 +14,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"github.com/google/go-cmp/cmp"
 	"github.com/itchyny/gojq"
 )
