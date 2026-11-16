@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	providerconfig "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 	"github.com/kjanat/go-yaml/v4"

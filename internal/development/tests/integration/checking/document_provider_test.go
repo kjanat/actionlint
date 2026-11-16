@@ -12,9 +12,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"

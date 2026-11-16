@@ -5,11 +5,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

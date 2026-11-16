@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestDetachedConfigPreservesAndSeparatesMutableSettings(t *testing.T) {

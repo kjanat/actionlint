@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // Merge combines completed or partial analyses in order. It rejects conflicting

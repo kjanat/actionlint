@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowmodel "actionlint.kjanat.dev/v2/internal/model/workflows/definition"

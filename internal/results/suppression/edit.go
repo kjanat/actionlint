@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	rulemodel "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	rulemodel "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )

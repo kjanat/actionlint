@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -43,7 +43,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := binding.NewRegistry(rules)
+	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(cfg, cfg, cfg)
 	graph, collection := batchSourceFixture(t, []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo safe\n"))
 	collection.Scopes[0].Config, collection.Scopes[0].Bindings = cfg, scope

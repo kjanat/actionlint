@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestDependencySettingsInheritanceAndOverrides(t *testing.T) {

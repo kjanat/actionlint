@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.

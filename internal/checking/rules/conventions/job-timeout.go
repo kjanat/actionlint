@@ -2,9 +2,9 @@ package conventions
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

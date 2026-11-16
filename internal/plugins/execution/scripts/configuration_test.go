@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	pythonprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"

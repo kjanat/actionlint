@@ -7,8 +7,8 @@ import (
 	"slices"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"

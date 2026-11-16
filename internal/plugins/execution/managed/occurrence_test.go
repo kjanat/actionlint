@@ -16,8 +16,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )

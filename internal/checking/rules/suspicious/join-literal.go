@@ -5,10 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // JoinLiteralRule is the single definition of the join-literal rule.

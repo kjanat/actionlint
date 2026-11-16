@@ -12,8 +12,8 @@ import (
 	"errors"
 	"fmt"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"

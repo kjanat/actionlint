@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 

@@ -7,9 +7,9 @@ import (
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

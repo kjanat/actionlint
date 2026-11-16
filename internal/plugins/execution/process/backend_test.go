@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )

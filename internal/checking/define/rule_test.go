@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

@@ -3,8 +3,8 @@ package policy_test
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )

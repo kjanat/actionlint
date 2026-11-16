@@ -6,11 +6,11 @@ import (
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 

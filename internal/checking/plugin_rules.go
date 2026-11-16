@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // RulesWithPluginPaths discovers selected providers without analyzing a document.

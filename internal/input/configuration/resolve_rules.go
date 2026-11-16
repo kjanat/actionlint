@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 

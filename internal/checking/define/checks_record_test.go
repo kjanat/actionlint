@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"

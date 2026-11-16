@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 type SuppressionReport uint8

@@ -1,8 +1,8 @@
 package configuration
 
 import (
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // ForSuppressions resolves source-scoped checks and their tool settings without workflow-only rule options.

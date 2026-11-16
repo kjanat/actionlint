@@ -3,7 +3,6 @@ package correctness
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -11,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"

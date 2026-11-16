@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {

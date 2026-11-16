@@ -11,10 +11,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"

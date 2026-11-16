@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"reflect"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // FileMigration holds a preview and the exact input graph used to prepare it.

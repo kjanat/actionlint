@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 

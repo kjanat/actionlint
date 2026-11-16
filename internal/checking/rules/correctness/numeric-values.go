@@ -2,8 +2,8 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

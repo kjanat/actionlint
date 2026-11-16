@@ -2,7 +2,7 @@ package suspicious
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // StringConditionsRule is the single definition of the string-conditions rule.

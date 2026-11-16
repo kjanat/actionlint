@@ -11,9 +11,9 @@ import (
 	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )

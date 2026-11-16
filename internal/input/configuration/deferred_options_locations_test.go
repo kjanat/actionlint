@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func deferredOptionsRegistration() configuration.RuleRegistration {

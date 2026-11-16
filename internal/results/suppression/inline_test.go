@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"github.com/google/go-cmp/cmp"
 )

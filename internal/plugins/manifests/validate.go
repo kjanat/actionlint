@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 

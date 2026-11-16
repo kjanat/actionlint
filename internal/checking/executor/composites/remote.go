@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -26,7 +26,7 @@ type remoteDocument struct {
 	metadataFindings []*findingmodel.Finding
 }
 
-func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *binding.Scope, actions *workspaceactions.Resolver) error {
+func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *rulebinding.Scope, actions *workspaceactions.Resolver) error {
 	document, remote := analysis.remoteDocuments[address]
 	if !remote {
 		return nil

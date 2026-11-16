@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"

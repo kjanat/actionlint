@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 

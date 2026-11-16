@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -66,7 +66,7 @@ type Collection struct {
 // Scope identifies a workflow or composite invocation independently of
 // whether it contains scripts, so configuration failures are still observable.
 type Scope struct {
-	Bindings *binding.Scope
+	Bindings *rulebinding.Scope
 	Paths    workflowexecution.Paths
 	Reader   *files.Reader // records the filesystem reads tools make in this scope
 	// Config is a host-owned prepared value. Internal consumers treat it as read-only;

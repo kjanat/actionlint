@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -134,10 +134,10 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
 	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
 	rules := ConfigurationRules()
-	registry := binding.NewRegistry(rules)
+	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(nil, nil, nil)
 	finding.Binding = scope.Rule(finding.Rule).ID()
-	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*binding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
+	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
 	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
 	snapshot, err := fixture.Capture(path, source, sourcepos.YAML)
 	if err != nil {

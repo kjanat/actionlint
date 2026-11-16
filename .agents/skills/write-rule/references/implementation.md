@@ -66,7 +66,7 @@ identity. Trace the adapter through `internal/checking/source_admission.go`
 before attaching a finding to another file. Use existing span/source-map helpers
 for decoded scalars; decoded string offsets are not YAML source offsets.
 
-Inspect `internal/checking/rules/declaration.go`, `internal/checking/rules/aliases.go`, and `internal/input/configuration/resolve_rules.go` for
+Inspect `internal/model/rules/declaration.go`, `internal/model/rules/aliases.go`, and `internal/input/configuration/resolve_rules.go` for
 rule metadata, categories and preset selection. Read current configuration examples
 in `docs/config.md`. Public rule settings belong under
 `lint.rules.<category>.<rule-id>`, beside that category's defaults. Legacy internal
@@ -99,7 +99,7 @@ through actionlint; recorded-output tests do not perform those operations.
 ## Renames and settings changes
 
 Search the old ID across code, schemas, docs, fixtures, and examples. Inspect
-`internal/checking/rules/aliases.go`, `internal/input/configuration/migration.go`, `internal/input/configuration/category_migration.go`,
+`internal/model/rules/aliases.go`, `internal/input/configuration/migration.go`, `internal/input/configuration/category_migration.go`,
 `internal/results/suppression`, and `internal/results/policy`. Check structured ignores,
 inline selectors, unused-suppression accounting, CLI lookup, and emitted codes.
 

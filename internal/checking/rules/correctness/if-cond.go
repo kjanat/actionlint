@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
@@ -13,6 +12,7 @@ import (
 	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"

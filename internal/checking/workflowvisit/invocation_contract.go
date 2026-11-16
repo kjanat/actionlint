@@ -1,7 +1,7 @@
 package workflowvisit
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -12,7 +12,7 @@ import (
 // Invocation supplies the already-resolved caller and action scope.
 // Participants own analyzer-specific configuration and state adaptation.
 type Invocation struct {
-	Bindings   *binding.Scope
+	Bindings   *rulebinding.Scope
 	Context    invocation.Context
 	ActionPath string
 

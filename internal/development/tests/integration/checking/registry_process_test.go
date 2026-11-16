@@ -15,7 +15,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"

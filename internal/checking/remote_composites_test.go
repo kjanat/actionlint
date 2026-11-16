@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"

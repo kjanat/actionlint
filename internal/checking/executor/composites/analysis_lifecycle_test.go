@@ -7,10 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"

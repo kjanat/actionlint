@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"

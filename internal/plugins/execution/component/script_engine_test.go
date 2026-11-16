@@ -16,7 +16,7 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"github.com/kjanat/wacogo"
 )
 

@@ -5,8 +5,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -24,7 +24,7 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
-	Bindings                    *binding.Scope
+	Bindings                    *rulebinding.Scope
 	RequiredPermissionLocations []configuration.PermissionLocation
 	Lifecycle                   actionmeta.LifecycleContext
 

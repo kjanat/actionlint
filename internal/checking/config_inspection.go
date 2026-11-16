@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"

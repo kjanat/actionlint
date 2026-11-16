@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -30,11 +30,11 @@ func TestFinalPublicationCannotAuditConflictedSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			rules := ConfigurationRules()
-			registry := binding.NewRegistry(rules)
+			registry := rulebinding.NewRegistry(rules)
 			scope := registry.Prepare(nil, nil, nil)
 			batch := &policy.Batch{
 				Processor:  policy.Processor{RuleSet: rules},
-				Policy:     policy.Policy{Path: entryPath, ConfigPath: entryPath, WorkingDir: root, Content: entry.Bytes(), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*binding.Scope{foreignPath: scope}},
+				Policy:     policy.Policy{Path: entryPath, ConfigPath: entryPath, WorkingDir: root, Content: entry.Bytes(), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{foreignPath: scope}},
 				Sources:    map[string][]byte{foreignPath: content},
 				References: map[string]workflowfacts.SourceIndex{foreignPath: {Document: sourcepos.Reference{Document: foreign.Revision().Document(), Revision: foreign.Revision().Digest()}}},
 			}

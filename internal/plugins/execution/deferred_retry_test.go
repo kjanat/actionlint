@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )

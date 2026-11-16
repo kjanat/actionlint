@@ -2,7 +2,7 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // UnusedSuppressionRule is the single definition of the unused-suppression rule.

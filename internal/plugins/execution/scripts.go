@@ -8,7 +8,7 @@ import (
 	"io"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"

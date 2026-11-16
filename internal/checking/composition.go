@@ -6,13 +6,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 type documentChecks struct {
@@ -65,7 +65,7 @@ func (s *analysisSession) buildChecks(context define.Inputs, toolContext tools.C
 	return selected, nil
 }
 
-func (d documentChecks) inputSelectors(c tools.Context, scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
+func (d documentChecks) inputSelectors(c tools.Context, scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 	c.ProjectConfig, c.ProjectRoot = nil, ""
 	var inputs []checkinputs.ScriptInput
 	for _, registration := range d.registeredTools {

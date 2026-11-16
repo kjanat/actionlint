@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"}

@@ -3,7 +3,7 @@ package checking
 import (
 	"sync"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 var bundledRuleNames = sync.OnceValue(func() rule.Names {

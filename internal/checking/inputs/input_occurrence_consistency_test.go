@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {

@@ -3,12 +3,12 @@ package composites
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
@@ -31,7 +31,7 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			registry := binding.NewRegistry(rules)
+			registry := rulebinding.NewRegistry(rules)
 			prepared := registry.Prepare(source, source, occurrence)
 			fixture := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: []}}\n", nil, nil)
 			graph, err := invocation.NewBuilder(invocation.EntryWorkflow, fixture.root.Reference(), invocation.DefaultBudget())
@@ -41,7 +41,7 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 			analysis := compositeAnalyzer{bindings: prepared, compositionSession: &compositionSession{
 				invocations: graph,
 				passes:      []workflowvisit.Pass{&failingMetadataParticipant{Base: workflowvisit.NewBase("metadata-files", "")}},
-				bindSource: func(parent *binding.Scope, _ string) (*binding.Scope, error) {
+				bindSource: func(parent *rulebinding.Scope, _ string) (*rulebinding.Scope, error) {
 					return registry.Prepare(parent.Caller(), source, parent.Composite()), nil
 				},
 			}}

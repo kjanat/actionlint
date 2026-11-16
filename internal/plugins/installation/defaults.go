@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"

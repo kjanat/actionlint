@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"

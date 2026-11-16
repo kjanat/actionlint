@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	rulemetadata "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

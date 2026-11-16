@@ -15,12 +15,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
 )

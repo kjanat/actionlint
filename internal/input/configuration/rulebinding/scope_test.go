@@ -1,12 +1,12 @@
-package binding_test
+package rulebinding_test
 
 import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestPreparedDecisionsKeepScopeAndRegistryIdentity(t *testing.T) {
@@ -20,9 +20,9 @@ func TestPreparedDecisionsKeepScopeAndRegistryIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	caller, source, composite := &configuration.Config{}, &configuration.Config{}, &configuration.Config{}
-	registry := binding.NewRegistry(rules)
+	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(caller, source, composite)
-	other := binding.NewRegistry(rules).Prepare(caller, source, composite)
+	other := rulebinding.NewRegistry(rules).Prepare(caller, source, composite)
 	snapshot := registry.Seal()
 	if _, ok := snapshot.Lookup(other.Rule("source").ID()); ok {
 		t.Fatal("accepted another registry's identity")

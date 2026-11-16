@@ -1,7 +1,7 @@
 package configuration
 
 import (
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // Rule projects a declaration into configuration selection and legacy policy fields.

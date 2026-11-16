@@ -5,8 +5,8 @@ package inputs
 import (
 	slices "slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	commands "actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	scripts "actionlint.kjanat.dev/v2/internal/model/scripts"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -29,7 +29,7 @@ func copyOwnedAnalyzerInput(in AnalyzerInput) AnalyzerInput {
 
 func copyOwnedDescriptor(in Descriptor) Descriptor {
 	out := in
-	out.Descriptor = copyOwnedDescriptor_985dd41517f164f2713eab7b878b699b(in.Descriptor)
+	out.Descriptor = copyOwnedDescriptor_2fc9d66e34a8ead13f312beaf63d9474(in.Descriptor)
 	out.InvocationDefinitions = copyOwnedValue_c3d263bd63537c696454d0abea20febe(in.InvocationDefinitions)
 	return out
 }
@@ -67,7 +67,7 @@ func copyOwnedValue_af7332f132c73a2a02720d5025c89d84(in []facts.Mapping) []facts
 	return out
 }
 
-func copyOwnedDescriptor_985dd41517f164f2713eab7b878b699b(in rule.Descriptor) rule.Descriptor {
+func copyOwnedDescriptor_2fc9d66e34a8ead13f312beaf63d9474(in rule.Descriptor) rule.Descriptor {
 	out := in
 	out.DefaultEnabled = copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in.DefaultEnabled)
 	out.Aliases = slices.Clone(in.Aliases)

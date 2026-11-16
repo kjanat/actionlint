@@ -24,7 +24,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"

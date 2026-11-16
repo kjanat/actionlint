@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -28,8 +28,8 @@ import (
 )
 
 type Options struct {
-	Bindings        *binding.Scope
-	BindSource      func(*binding.Scope, string) (*binding.Scope, error)
+	Bindings        *rulebinding.Scope
+	BindSource      func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
 	Budget          *invocation.Budget
 	SourceSnapshots *parsing.SourceSnapshots
 	Captures        *capture.Store
@@ -43,7 +43,7 @@ type Options struct {
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
 	// ScriptInputsForScope loads lazily once per immutable config, including nil.
-	ScriptInputsForScope func(*binding.Scope) ([]checkinputs.ScriptInput, error)
+	ScriptInputsForScope func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
 	Context              context.Context
 	Actions              *workspaceactions.Resolver
 	Rules                []workflowvisit.Rule
@@ -157,7 +157,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Comp
 			budget:               invocation.DefaultBudget(),
 			scriptInputs:         scriptInputs,
 			scriptInputsForScope: options.ScriptInputsForScope,
-			scriptCatalogues:     map[*binding.Scope][]checkinputs.ScriptInput{},
+			scriptCatalogues:     map[*rulebinding.Scope][]checkinputs.ScriptInput{},
 			sourceSnapshots:      options.SourceSnapshots,
 			captures:             options.Captures,
 			remoteActions:        options.RemoteActions,

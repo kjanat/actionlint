@@ -2,9 +2,9 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"

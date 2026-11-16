@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -14,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )

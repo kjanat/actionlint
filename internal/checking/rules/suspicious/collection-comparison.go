@@ -5,10 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // CollectionComparisonRule is the single definition of the collection-comparison rule.

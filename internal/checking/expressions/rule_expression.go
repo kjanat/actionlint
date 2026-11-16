@@ -3,7 +3,7 @@ package expressions
 import (
 	"context"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -42,7 +42,7 @@ type ruleExpression struct {
 	*Checker
 	reporting.Logger
 	name, description string
-	bindings          *binding.Scope
+	bindings          *rulebinding.Scope
 	host              repository.Snapshot
 	frames            []expressionInvocation
 	findings          workflowvisit.Findings
@@ -155,7 +155,7 @@ func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Fin
 	r.findings.AnnotateSince(mark, annotate)
 }
 
-func (r *ruleExpression) SetBindings(scope *binding.Scope) {
+func (r *ruleExpression) SetBindings(scope *rulebinding.Scope) {
 	r.bindings = scope
 	r.Configure(workflowExpressionOptionsWithFacts(scope, r.host))
 }
@@ -165,11 +165,11 @@ func (r *ruleExpression) SetRepository(facts repository.Snapshot) {
 	r.Configure(workflowExpressionOptionsWithFacts(r.bindings, facts))
 }
 
-func workflowExpressionOptions(scope *binding.Scope) Options {
+func workflowExpressionOptions(scope *rulebinding.Scope) Options {
 	return workflowExpressionOptionsWithFacts(scope, repository.Snapshot{})
 }
 
-func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Snapshot) Options {
+func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repository.Snapshot) Options {
 	var config *configuration.Config
 	if scope != nil {
 		config = scope.Composite()

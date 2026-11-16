@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // RuleNameChoices projects declared names and aliases to individual JSON Schema

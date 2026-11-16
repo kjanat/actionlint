@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

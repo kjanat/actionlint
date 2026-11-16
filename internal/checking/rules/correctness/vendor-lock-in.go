@@ -7,9 +7,9 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 )

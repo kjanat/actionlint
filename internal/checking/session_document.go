@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
@@ -19,7 +19,6 @@ import (
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -39,6 +38,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -384,7 +384,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
-		ScriptInputsForScope: func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
+		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, scope)
 		},
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader,

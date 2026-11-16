@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
@@ -41,10 +41,10 @@ import (
 
 // compositionSession owns the graph and accumulated results shared by invocations.
 type compositionSession struct {
-	bindSource             func(*binding.Scope, string) (*binding.Scope, error)
+	bindSource             func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
 	scriptInputs           []checkinputs.ScriptInput
-	scriptInputsForScope   func(*binding.Scope) ([]checkinputs.ScriptInput, error)
-	scriptCatalogues       map[*binding.Scope][]checkinputs.ScriptInput
+	scriptInputsForScope   func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
+	scriptCatalogues       map[*rulebinding.Scope][]checkinputs.ScriptInput
 	runners                *runnerlang.Knowledge
 	resolveScriptExecution bool
 	scripts                []scriptexecution.ScriptRequest
@@ -75,7 +75,7 @@ type compositionSession struct {
 // but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
 	*compositionSession
-	bindings                          *binding.Scope
+	bindings                          *rulebinding.Scope
 	actions                           *workspaceactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope

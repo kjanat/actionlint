@@ -9,9 +9,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"

@@ -3,7 +3,7 @@ package configuration
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestLifecycleFixedDiagnosticLevel(t *testing.T) {

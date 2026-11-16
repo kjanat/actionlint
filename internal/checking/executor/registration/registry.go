@@ -3,12 +3,12 @@ package registration
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/expressions"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // All lists every native rule in presentation order. Each rule is defined

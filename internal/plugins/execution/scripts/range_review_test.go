@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 

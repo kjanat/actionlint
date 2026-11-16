@@ -14,12 +14,12 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"

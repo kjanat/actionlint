@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
 

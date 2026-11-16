@@ -3,9 +3,9 @@ package policy
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -40,7 +40,7 @@ func TestIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			registry := binding.NewRegistry(rules)
+			registry := rulebinding.NewRegistry(rules)
 			scope := registry.Prepare(nil, nil, nil)
 			input := []*findingmodel.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}
 			input[0].Binding = scope.Rule(tc.name).ID()

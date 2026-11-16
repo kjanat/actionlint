@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -196,7 +196,7 @@ func publishTestDiagnostics(tb testing.TB, result *analysisResult) {
 			continue
 		}
 		rules := ConfigurationRules()
-		registry := binding.NewRegistry(rules)
+		registry := rulebinding.NewRegistry(rules)
 		cfg := file.source.Config
 		scope := registry.Prepare(cfg, cfg, cfg)
 		for _, finding := range file.errors {

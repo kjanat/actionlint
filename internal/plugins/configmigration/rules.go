@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"

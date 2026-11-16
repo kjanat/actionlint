@@ -11,8 +11,8 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	backendroute "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )

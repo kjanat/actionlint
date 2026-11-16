@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"

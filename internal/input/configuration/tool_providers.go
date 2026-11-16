@@ -8,7 +8,7 @@ import (
 	"slices"
 	"sync"
 
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )

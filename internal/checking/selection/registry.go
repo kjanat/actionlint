@@ -7,13 +7,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	repository "actionlint.kjanat.dev/v2/internal/model/repository"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 type Selection struct {
@@ -71,10 +71,10 @@ func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action boo
 }
 
 // ConfigureRules binds invocation configuration and debug output after rule interception.
-func ConfigureRules(rules []workflowvisit.Rule, scope *binding.Scope, debug io.Writer) {
+func ConfigureRules(rules []workflowvisit.Rule, scope *rulebinding.Scope, debug io.Writer) {
 	for _, r := range rules {
 		config := scope.Rule(r.Name()).Config()
-		if configured, ok := r.(interface{ SetBindings(*binding.Scope) }); ok {
+		if configured, ok := r.(interface{ SetBindings(*rulebinding.Scope) }); ok {
 			configured.SetBindings(scope)
 		} else if configured, ok := r.(interface{ SetConfig(*configuration.Config) }); ok && config != nil {
 			configured.SetConfig(config)

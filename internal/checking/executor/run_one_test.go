@@ -13,11 +13,11 @@ import (
 	"testing/fstest"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"

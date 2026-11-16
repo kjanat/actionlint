@@ -20,7 +20,7 @@ import (
 	"slices"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 

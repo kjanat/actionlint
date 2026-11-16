@@ -10,10 +10,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	fixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	nameinput "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -41,7 +41,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		t.Fatal(err)
 	}
 	return define.Inputs{
-		Bindings: binding.NewRegistry(rules).Prepare(config, config, config),
+		Bindings: rulebinding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
 		WorkflowNames: nameinput.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),

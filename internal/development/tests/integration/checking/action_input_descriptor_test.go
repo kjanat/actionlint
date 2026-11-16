@@ -13,11 +13,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 

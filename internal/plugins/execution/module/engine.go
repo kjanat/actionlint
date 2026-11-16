@@ -17,9 +17,9 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	scriptcoords "actionlint.kjanat.dev/v2/internal/input/source/scripts"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scriptcoords"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
