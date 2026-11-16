@@ -43,7 +43,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	descriptor := adapter.Analyzer.Descriptor()
 	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
 	prepared := make(map[bindingmodel.ID]checkexecutor.PreparedRegistration)
-	for _, scope := range batch.Scopes() {
+	for _, scope := range batch.Scopes {
 		var identity bindingmodel.ID
 		options := adapter.Options
 		if scope.Bindings != nil {
@@ -67,10 +67,10 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	graph := batch.Invocations()
+	graph := batch.CallGraph
 	var findings []*findingmodel.Finding
 	var failures []error
-	for index, unit := range batch.Scripts() {
+	for index, unit := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			failures = append(failures, err)
 			break

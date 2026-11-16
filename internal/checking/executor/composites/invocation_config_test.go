@@ -54,10 +54,10 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			})
 			result, err := Workflow(f.options, f.root)
 			want := fmt.Sprintf("load configuration for action %q: %s", filepath.Join(f.options.Paths.Workspace, "outer", "action.yml"), failure)
-			if !errors.Is(err, failure) || err.Error() != want || loads != 1 || !result.Batch.Invocations().Incomplete() || len(result.Sources) != 1 {
+			if !errors.Is(err, failure) || err.Error() != want || loads != 1 || !result.Batch.CallGraph.Incomplete() || len(result.Sources) != 1 {
 				t.Fatalf("configuration failure lost or hidden: error=%v loads=%d result=%+v", err, loads, result)
 			}
-			calls := result.Batch.Invocations().Calls()
+			calls := result.Batch.CallGraph.Calls()
 			if len(calls) != 1 || calls[0].Outcome.Detail() != want {
 				t.Fatalf("interruption lost the action path: %+v", calls)
 			}
@@ -68,7 +68,7 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			if collect {
 				wantScripts = 1
 			}
-			if len(result.Batch.Scripts()) != wantScripts || (collect && result.Batch.Scripts()[0].Run.Run.Text() != "echo before") {
+			if len(result.Batch.Scripts) != wantScripts || (collect && result.Batch.Scripts[0].Run.Run.Text() != "echo before") {
 				t.Fatal("interruption lost preceding facts or collected scripts after the failing call")
 			}
 		})
@@ -89,8 +89,8 @@ func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loads != 1 || len(result.Batch.Scopes()) != 3 {
-		t.Fatalf("repeated no-script invocation reloaded/lost config: loads=%d scopes=%d", loads, len(result.Batch.Scopes()))
+	if loads != 1 || len(result.Batch.Scopes) != 3 {
+		t.Fatalf("repeated no-script invocation reloaded/lost config: loads=%d scopes=%d", loads, len(result.Batch.Scopes))
 	}
 }
 
@@ -118,11 +118,11 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"owner/root", "owner/child", "owner/shared", "owner/shared"}
-	if len(result.Batch.Scripts()) != len(want) || loads[rootConfig] != 1 || loads[childConfig] != 1 {
-		t.Fatalf("catalogue lost sites or rebuilt per step: scripts=%d loads=%v", len(result.Batch.Scripts()), loads)
+	if len(result.Batch.Scripts) != len(want) || loads[rootConfig] != 1 || loads[childConfig] != 1 {
+		t.Fatalf("catalogue lost sites or rebuilt per step: scripts=%d loads=%v", len(result.Batch.Scripts), loads)
 	}
 	for index, name := range want {
-		if input := result.Batch.Scripts()[index].Input; input == nil || input.Site.Action != name {
+		if input := result.Batch.Scripts[index].Input; input == nil || input.Site.Action != name {
 			t.Fatalf("script %d uses the wrong catalogue: %+v", index, input)
 		}
 	}
@@ -150,17 +150,17 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []*configuration.Config{rootConfig, childConfig, rootConfig}
-			if !slices.Equal(seen, []*configuration.Config{rootConfig, childConfig}) || len(result.Batch.Invocations().Scripts()) != len(want) {
+			if !slices.Equal(seen, []*configuration.Config{rootConfig, childConfig}) || len(result.Batch.CallGraph.Scripts()) != len(want) {
 				t.Fatal("semantic registration must use each declaring config even without script analysis")
 			}
 			if !collect {
 				want = nil
 			}
-			if len(result.Batch.Scripts()) != len(want) {
-				t.Fatalf("collected %d script units, want %d", len(result.Batch.Scripts()), len(want))
+			if len(result.Batch.Scripts) != len(want) {
+				t.Fatalf("collected %d script units, want %d", len(result.Batch.Scripts), len(want))
 			}
 			for index, config := range want {
-				unit := result.Batch.Scripts()[index]
+				unit := result.Batch.Scripts[index]
 				if unit.Scope.Config != config {
 					t.Fatalf("script %d uses a foreign configuration", index)
 				}
@@ -240,7 +240,7 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 					if found != 1 {
 						t.Fatalf("probe findings=%d, want 1", found)
 					}
-					if len(result.Batch.Scopes()) != 2 || result.Batch.Scopes()[1].Config != childConfig {
+					if len(result.Batch.Scopes) != 2 || result.Batch.Scopes[1].Config != childConfig {
 						t.Fatal("no-script invocation lost its file configuration")
 					}
 				})
@@ -284,7 +284,7 @@ func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
 						t.Fatalf("root opaque call has foreign selectors: %+v", origin)
 					}
 				}
-				if found != 1 || len(result.Batch.Scopes()) != 1 || result.Batch.Scopes()[0].Config != config {
+				if found != 1 || len(result.Batch.Scopes) != 1 || result.Batch.Scopes[0].Config != config {
 					t.Fatalf("opaque call created a child scope/config or lost its finding: %+v", result)
 				}
 			})

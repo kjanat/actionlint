@@ -8,7 +8,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
@@ -19,7 +19,7 @@ import (
 // The cached set has no mutation operations; each caller receives the same read-only values.
 func ConfigurationRules() configuration.RuleSet { return configurationRules() }
 
-func configurationRegistrations(checkers []checkinputs.Registration, providers []tools.Registration) []configuration.RuleRegistration {
+func configurationRegistrations(checkers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, checker := range checkers {
 		if validation.IsNil(checker.Checker) {

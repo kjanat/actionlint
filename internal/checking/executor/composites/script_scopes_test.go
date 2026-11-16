@@ -54,7 +54,7 @@ jobs:
 	}
 	batch := prepareCollectedScripts(t, collector)
 	var shells []string
-	for _, script := range batch.Scripts() {
+	for _, script := range batch.Scripts {
 		if script.Shell != nil {
 			shells = append(shells, *script.Shell)
 		} else {
@@ -95,7 +95,7 @@ jobs:
 		t.Fatal(err)
 	}
 	actionBatch := prepareCollectedScripts(t, actionCollector)
-	if got := actionBatch.Scripts()[0].Shell; got == nil || *got != "bash" {
+	if got := actionBatch.Scripts[0].Shell; got == nil || *got != "bash" {
 		t.Fatalf("composite explicit shell was not bound: %v", got)
 	}
 }

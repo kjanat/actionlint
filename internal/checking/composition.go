@@ -10,7 +10,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
@@ -19,10 +19,10 @@ type documentChecks struct {
 	selection.Selection
 	scripts          scriptexecution.Service
 	resolveExecution bool
-	registeredTools  []tools.Registration
+	registeredTools  []contract.Registration
 }
 
-func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext tools.Context, action bool) (documentChecks, error) {
+func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext contract.Context, action bool) (documentChecks, error) {
 	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
 	selected := documentChecks{Selection: rules}
 	if err != nil {
@@ -53,7 +53,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext too
 			}
 			continue
 		}
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Name: registration.Name, Runner: adapter})
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, contract.Tool{Name: registration.Name, Runner: adapter})
 		selected.registeredTools = append(selected.registeredTools, registration)
 		selected.ScriptInfo = append(selected.ScriptInfo, registration.Descriptor)
 		selected.resolveExecution = selected.resolveExecution || registration.RequiresExecution
@@ -65,7 +65,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext too
 	return selected, nil
 }
 
-func (d documentChecks) inputSelectors(c tools.Context, scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 	c.ProjectConfig, c.ProjectRoot = nil, ""
 	var inputs []checkinputs.ScriptInput
 	for _, registration := range d.registeredTools {

@@ -14,7 +14,8 @@ import (
 	"syscall"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
@@ -66,8 +67,8 @@ func closeSourceAuthorities(authorities []sourceAuthority) error {
 	return failure
 }
 
-func sourceAuthorities(script tools.Script, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
-	if script.Config == nil {
+func sourceAuthorities(script scriptexecution.Unit, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
+	if script.Config() == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
 	inline := settings.ReadAccess
@@ -150,27 +151,28 @@ func sourceAuthorities(script tools.Script, settings integrationconfig.Settings,
 	return authorities, nil
 }
 
-func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, resources []checkinputs.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
+func (r documentRunner) sourceFiles(ctx context.Context, script scriptexecution.Unit, resources []checkinputs.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
 	files := &pluginSourceFiles{}
 	budget := &inputfiles.SnapshotBudget{}
 	if len(resources) == 0 {
 		return files, nil
 	}
-	if script.Scope == nil || !script.Execution.DirectoryKnown {
+	workingDirectory, directoryKnown := script.WorkingDirectory()
+	if script.Scope == nil || !directoryKnown {
 		return nil, errors.New("source access requires a known workspace and working directory")
 	}
 	if len(resources) > 33 {
 		return nil, errors.New("tool source access exceeds 32 search directories")
 	}
-	directory := sourcePath(script.Execution.Directory, "")
+	directory := sourcePath(workingDirectory, "")
 	paths := scriptsbackend.PathContext(script.Scope)
-	settings, err := r.options(ctx, script.Config, nil)
+	settings, err := r.options(ctx, script.Config(), nil)
 	if err != nil {
 		return nil, err
 	}
-	workspace := script.Scope.Workspace
+	workspace := script.Scope.Paths.Workspace
 	if workspace == "" {
-		workspace = script.Scope.AnalysisDir
+		workspace = script.Scope.Paths.Analysis
 	}
 	if workspace == "" {
 		return nil, errors.New("tool source access requires a workspace root")
@@ -315,12 +317,12 @@ func (f *pluginSourceFiles) close() error {
 	return failure
 }
 
-func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script tools.Script, index int) (tools.ToolFinding, error) {
-	result := tools.ToolFinding{Diagnostic: finding, Script: index, Source: results.DiagnosticSource{Content: script.Content}}
+func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script scriptexecution.Unit, index int) (contract.ToolFinding, error) {
+	result := contract.ToolFinding{Diagnostic: finding, Script: index, Source: results.DiagnosticSource{Content: script.Content}}
 	if finding.Path == script.Path {
 		return result, nil
 	}
-	if reference := finding.Reference; reference != nil && reference.Document != "" && reference.Revision != "" && reference.Node != "" && *reference == script.Fact.Reference {
+	if reference := finding.Reference; reference != nil && reference.Document != "" && reference.Revision != "" && reference.Node != "" && *reference == script.Reference {
 		result.Path = script.Path
 		return result, nil
 	}
@@ -331,20 +333,20 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 		}
 		relative, content, ok := mount.files.Content(relative)
 		if !ok {
-			return tools.ToolFinding{}, fmt.Errorf("tool reported unread source %q", finding.Path)
+			return contract.ToolFinding{}, fmt.Errorf("tool reported unread source %q", finding.Path)
 		}
 		result.Path = filepath.Join(mount.host, filepath.FromSlash(relative))
 		result.Reference, result.Fixes = nil, nil
 		result.Source.Content, result.Source.RawScript = content, true
 		result.Source.Unavailable = results.ReportedSourceUnavailable(name, result.Path, false)
-		last := script.Value.Line
-		for _, span := range script.Source.LineSpans() {
+		last := script.Value().Line
+		for _, span := range script.Source().LineSpans() {
 			last = max(last, span.YamlLine)
 		}
-		result.Suppression = &results.SuppressionOrigin{Path: script.Path, First: script.Key.Line, Last: last}
+		result.Suppression = &results.SuppressionOrigin{Path: script.Path, First: script.Key().Line, Last: last}
 		return result, nil
 	}
-	return tools.ToolFinding{}, fmt.Errorf("tool reported source outside its grants: %q", finding.Path)
+	return contract.ToolFinding{}, fmt.Errorf("tool reported source outside its grants: %q", finding.Path)
 }
 
 // sourceName joins a relative path to directory without cleaning it, as a

@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -26,7 +26,7 @@ import (
 
 // providerRegistration returns the registration of the bundled provider
 // named name, run as selection says.
-func providerRegistration(t *testing.T, name string, selection scripts.Selection) tools.Registration {
+func providerRegistration(t *testing.T, name string, selection scripts.Selection) contract.Registration {
 	t.Helper()
 	for _, registration := range registry.Registrations(registry.Selections{name: selection}) {
 		if registration.Name == name {
@@ -34,14 +34,14 @@ func providerRegistration(t *testing.T, name string, selection scripts.Selection
 		}
 	}
 	t.Fatalf("no bundled provider %s", name)
-	return tools.Registration{}
+	return contract.Registration{}
 }
 
 func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, shell  string
-		registration tools.Registration
+		registration contract.Registration
 	}{
 		{"ruff", "python", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
 		{"shellcheck", "bash", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
@@ -50,7 +50,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 			t.Parallel()
 			engine := &inputReplacementBackend{}
 			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}}}}}}
-			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
+			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 		}
 	}
 	registration := providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 			if name == "shellcheck" {
 				registration = providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
 			}
-			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
+			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
 				t.Fatalf("foreign engine accepted for %s: %v", name, err)
 			}
@@ -172,7 +172,7 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 			if err := os.WriteFile(configFile, []byte("lint:\n  rules:\n    plugins:\n      independent: "+setting+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, ConfigFile: configFile, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v9\n        with:\n          script: print(1)\n")})
+			_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, ConfigFile: configFile, Tools: []contract.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v9\n        with:\n          script: print(1)\n")})
 			if enabled {
 				if err == nil || !strings.Contains(err.Error(), "conflicting languages") {
 					t.Fatalf("active conflict accepted: %v", err)
@@ -203,7 +203,7 @@ func (pythonInputBackend) Check(_ context.Context, request checkinputs.ScriptReq
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	t.Parallel()
 	plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: pythonInputBackend{}, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: checkinputs.TemplateEffectsContract, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
-	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})}})
+	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,14 +262,14 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 				shell := providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
 				failedBuilds := 0
 				if mode == "failed-optional" {
-					shell.Build = func(tools.Context) (tools.Runner, error) {
+					shell.Build = func(contract.Context) (contract.Runner, error) {
 						failedBuilds++
 						return nil, errors.New("optional ShellCheck unavailable")
 					}
-					shell.Required = func(tools.Context) bool { return false }
+					shell.Required = func(contract.Context) bool { return false }
 				}
 				loads := 0
-				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 					if filepath.Base(path) == "default.wasm" {
 						return &inputReplacementBackend{}, nil
 					}

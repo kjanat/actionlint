@@ -75,10 +75,10 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.Step, 
 			jobShell, workflowShell, runnerShell = value.Value{}, value.Value{}, value.Value{}
 			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
-		request.Execution = scriptexecution.Execution{
-			Shell:     execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell),
-			Directory: runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), jobDir, workflowDir), analysis.reader),
-		}
+		request.Execution = execution.ScriptExecution(
+			execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell),
+			runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), jobDir, workflowDir), analysis.reader),
+		)
 	}
 	analysis.scripts = append(analysis.scripts, request)
 	return nil

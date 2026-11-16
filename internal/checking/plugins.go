@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -226,7 +226,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			return options, &pluginexec.LoadError{Err: err}
 		}
 		registration.ToolSettings = new(local.Files.Manifest.Settings())
-		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Name == name })
+		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing contract.Registration) bool { return existing.Name == name })
 		options.Tools = append(options.Tools, registration)
 	}
 
@@ -241,7 +241,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 
 // checkTools reports the tool ids named by --tool or --no-tool that match no
 // tool registration, no loaded plugin and no skipped plugin.
-func checkPluginTools(l *pluginexec.Loaded, registrations []tools.Registration) error {
+func checkPluginTools(l *pluginexec.Loaded, registrations []contract.Registration) error {
 	known := slices.Concat(l.SkippedTools, l.ToolIDs)
 	for _, registration := range registrations {
 		known = append(known, registration.Name)

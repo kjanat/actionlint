@@ -9,7 +9,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -18,7 +19,7 @@ import (
 
 type configurationNoopRunner struct{}
 
-func (configurationNoopRunner) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
+func (configurationNoopRunner) Analyze(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	return nil, nil
 }
 
@@ -33,7 +34,7 @@ func TestToolRequirementsCannotMutateSiblingConfiguration(t *testing.T) {
 		}
 	}
 	seen := 0
-	providers := []tools.Registration{
+	providers := []contract.Registration{
 		{Name: "mutator", Category: "correctness", NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			cfg.Lint.Enabled, project.Lint.Enabled = new(false), new(false)
 			return false, nil
@@ -64,7 +65,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
-			mutate := func(c tools.Context) {
+			mutate := func(c contract.Context) {
 				calls++
 				for _, selected := range []*configuration.Config{c.Config, c.ProjectConfig} {
 					if selected != nil {
@@ -72,10 +73,10 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 					}
 				}
 			}
-			provider := tools.Registration{
+			provider := contract.Registration{
 				Name: "ownership-test", Category: "correctness",
 				Scope: rule.SourceConfiguration, SupportsActions: true,
-				Build: func(c tools.Context) (tools.Runner, error) {
+				Build: func(c contract.Context) (contract.Runner, error) {
 					if callback == "build" {
 						mutate(c)
 					}
@@ -84,14 +85,14 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 					}
 					return configurationNoopRunner{}, nil
 				},
-				Enabled: func(c tools.Context) bool {
+				Enabled: func(c contract.Context) bool {
 					if callback == "enabled" {
 						mutate(c)
 					}
 					return true
 				},
-				Required: func(c tools.Context) bool { mutate(c); return false },
-				InputSelectors: func(c tools.Context) ([]checkinputs.ScriptInput, error) {
+				Required: func(c contract.Context) bool { mutate(c); return false },
+				InputSelectors: func(c contract.Context) ([]checkinputs.ScriptInput, error) {
 					if callback == "input selectors" {
 						mutate(c)
 					}
@@ -99,7 +100,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 				},
 			}
 			root := t.TempDir()
-			options := checking.Options{WorkingDir: root, Tools: []tools.Registration{provider}}
+			options := checking.Options{WorkingDir: root, Tools: []contract.Registration{provider}}
 			options.Runners.AsOf, _ = lifecycle.ParseDate("2026-11-01")
 			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{
 				Path: filepath.Join(root, "ci.yml"), Config: cfg,

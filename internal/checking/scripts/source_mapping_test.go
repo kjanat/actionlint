@@ -29,7 +29,7 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				units := batch.Scripts()
+				units := batch.Scripts
 				assertScalarMapping(t, rawRun.Source, units[0].Run.Source)
 				assertScalarMapping(t, rawInput.Source, units[1].Input.Value.Source)
 				runPos, runHasPos := units[0].Run.Run.Position()

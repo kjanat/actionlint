@@ -35,7 +35,7 @@ func TestCompositeCarriesCaptureAcrossRelativeDisplayPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := result.Batch.Scripts()
+	scripts := result.Batch.Scripts
 	if len(scripts) != 1 || scripts[0].Run.Run.Text() != "echo relative" {
 		t.Fatalf("relative action scripts = %+v", scripts)
 	}

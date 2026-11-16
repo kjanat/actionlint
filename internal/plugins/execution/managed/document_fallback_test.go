@@ -8,8 +8,11 @@ import (
 	"strconv"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -44,22 +47,25 @@ func (guest *fallbackGuest) CheckDocument(_ context.Context, input checkinputs.A
 	return []results.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil
 }
 
-type fallbackRunner func(context.Context, tools.Batch) ([]tools.ToolFinding, error)
+type fallbackRunner func(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error)
 
-func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (run fallbackRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	return run(ctx, batch)
 }
 
-func documentBatchFixture(tb testing.TB, count int) tools.Batch {
+func documentBatchFixture(tb testing.TB, count int) scriptexecution.Batch {
 	tb.Helper()
 	declared := make([]invocationfixture.Script, count)
 	for index := range declared {
 		declared[index] = invocationfixture.Script{Node: fmt.Sprintf("run%d", index), Entry: true}
 	}
-	batch := tools.Batch{CallGraph: invocationfixture.Graph(tb, declared...)}
+	batch := scriptexecution.Batch{CallGraph: invocationfixture.Graph(tb, declared...)}
 	for _, occurrence := range batch.CallGraph.Scripts() {
-		fact := checkinputs.Script{Reference: occurrence.Declaration, Text: "echo test", Occurrence: occurrence, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-		batch.Scripts = append(batch.Scripts, tools.Script{Fact: fact, Text: fact.Text, Path: "workflow.yml"})
+		batch.Scripts = append(batch.Scripts, scriptexecution.Unit{
+			Occurrence: occurrence.ID, Reference: occurrence.Declaration, Path: "workflow.yml",
+			Run:       &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo test"}},
+			Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true},
+		})
 	}
 	return batch
 }
@@ -73,19 +79,21 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch.Scripts[1].Config = cfg
+	batch.Scripts[1].Scope = &scriptexecution.Scope{Config: cfg}
 	guest := &fallbackGuest{}
 	nativeCalls := 0
-	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *configuration.Config) (tools.Runner, error) {
+	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *configuration.Config) (contract.Runner, error) {
 		if selected != cfg {
 			t.Fatal("fallback initialized with the workflow configuration instead of the declined script configuration")
 		}
-		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.ToolFinding, error) {
+		return fallbackRunner(func(_ context.Context, selected scriptexecution.Batch) ([]contract.ToolFinding, error) {
 			nativeCalls++
-			if len(selected.Scopes) != 0 || !reflect.DeepEqual(selected.CallGraph, graph) || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
+			selectedFact, selectedExists := selected.Fact(0, true)
+			declinedFact, declinedExists := batch.Fact(1, true)
+			if len(selected.Scopes) != 1 || selected.Scopes[0] != batch.Scripts[1].Scope || !reflect.DeepEqual(selected.CallGraph, graph) || len(selected.Scripts) != 1 || !selectedExists || !declinedExists || !reflect.DeepEqual(selectedFact, declinedFact) {
 				t.Fatal("native fallback lost graph or script fact")
 			}
-			return []tools.ToolFinding{{Script: 0, Message: "native"}}, nil
+			return []contract.ToolFinding{{Script: 0, Message: "native"}}, nil
 		}), nil
 	}}
 	findings, err := runner.Analyze(t.Context(), batch)
@@ -120,7 +128,7 @@ func BenchmarkDocumentPluginGraph(b *testing.B) {
 		b.Run(strconv.Itoa(count), func(b *testing.B) {
 			batch := documentBatchFixture(b, count)
 			guest := &scalingGuest{}
-			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
+			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, err := runner.Analyze(b.Context(), batch); err != nil {

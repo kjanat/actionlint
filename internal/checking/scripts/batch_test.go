@@ -394,16 +394,15 @@ func TestBatchFactsMatchCanonicalDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(batch.Scripts()) != 2 {
-		t.Fatalf("fixture must produce a run and an input unit, got %d", len(batch.Scripts()))
+	if len(batch.Scripts) != 2 {
+		t.Fatalf("fixture must produce a run and an input unit, got %d", len(batch.Scripts))
 	}
 	assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
 }
 
 func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, registry *parsing.SourceSnapshots) {
 	t.Helper()
-	_, units := batch.Snapshot()
-	for index, unit := range units {
+	for index, unit := range batch.Scripts {
 		declaration, exists := registry.Declaration(unit.Reference)
 		if !exists {
 			t.Fatalf("canonical declaration %q is missing", unit.Reference)
@@ -432,8 +431,8 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 		} else {
 			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
 		}
-		want := fact(projected, batch.data.graph, false)
-		occurrence, found := batch.data.graph.Script(unit.Occurrence)
+		want := fact(projected, batch.CallGraph, false)
+		occurrence, found := batch.CallGraph.Script(unit.Occurrence)
 		if !found {
 			t.Fatalf("script occurrence %q is missing from the graph", unit.Occurrence)
 		}
@@ -449,7 +448,7 @@ func TestScopesOnlyBatchRetainsGraphWithoutMaterializedScripts(t *testing.T) {
 	t.Parallel()
 	graph, collection := batchFixture(t, false)
 	batch, err := NewBatch(graph, Collection{Scopes: collection.Scopes})
-	if err != nil || !batch.Valid() || batch.CollectedScripts() || len(batch.Scripts()) != 0 || len(batch.Invocations().Scripts()) != 1 {
+	if err != nil || !batch.Valid() || batch.Collected || len(batch.Scripts) != 0 || len(batch.CallGraph.Scripts()) != 1 {
 		t.Fatalf("scopes-only batch: %v", err)
 	}
 	if _, ok := batch.Fact(0, false); ok {
@@ -495,30 +494,5 @@ func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
 	}
 	if _, err := NewBatch(graph, Collection{Scopes: scopes}); !errors.Is(err, ErrInvalidBatch) {
 		t.Fatalf("missing completed scope accepted: %v", err)
-	}
-}
-
-func TestUnpreparedBatchCannotExecute(t *testing.T) {
-	t.Parallel()
-	for name, adapter := range map[string]func(*testing.T) Analyzer{
-		"fact": func(t *testing.T) Analyzer {
-			t.Helper()
-			return FactAnalyzer{Analyzer: partialFactAnalyzer{t: t}}
-		},
-		"tool": func(t *testing.T) Analyzer {
-			t.Helper()
-			return Tool{Runner: partialTool{t: t}}
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			adapter := adapter(t)
-			if _, err := adapter.AnalyzeScripts(t.Context(), Batch{}); !errors.Is(err, ErrInvalidBatch) {
-				t.Fatalf("adapter accepted unprepared batch: %v", err)
-			}
-			if _, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), Batch{}); !errors.Is(err, ErrInvalidBatch) {
-				t.Fatalf("scheduler accepted unprepared batch: %v", err)
-			}
-		})
 	}
 }

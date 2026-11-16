@@ -14,7 +14,7 @@ import (
 // CheckInput projects a composition result onto the check input of its
 // entry document. A batch that disagrees with the entry snapshot is rejected.
 func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.AnalyzerInput, error) {
-	units := result.Batch.Scripts()
+	units := result.Batch.Scripts
 	refs := references[pathAbs]
 	input := executor.SourceInput(document, path, content, refs.Document)
 	if !document.CanAnalyze() {
@@ -23,7 +23,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
 		return input, scriptexecution.ErrInvalidBatch
 	}
-	input.CallGraph = result.Batch.Invocations()
+	input.CallGraph = result.Batch.CallGraph
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
@@ -33,7 +33,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
 	input.AvailableInputs = append(input.AvailableInputs, rulemeta.Mappings, rulemeta.Dependencies, rulemeta.Invocations)
-	if result.Batch.CollectedScripts() {
+	if result.Batch.Collected {
 		input.AvailableInputs = append(input.AvailableInputs, rulemeta.Scripts)
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)

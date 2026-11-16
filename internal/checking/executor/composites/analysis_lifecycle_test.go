@@ -130,7 +130,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
-			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
+			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes) != 1 || len(result.Batch.Scripts) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
 		})
@@ -139,8 +139,8 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 
 func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptexecution.Batch) ([]*findingmodel.Finding, error) {
 	a.t.Helper()
-	if !*a.visited || len(batch.Scripts()) != 1 {
-		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts()))
+	if !*a.visited || len(batch.Scripts) != 1 {
+		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts))
 	}
 	a.calls++
 	return nil, a.failure
@@ -184,7 +184,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			}
 			options.SourceSnapshots = registry
 			result, err := Workflow(options, snapshot)
-			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts()) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
+			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
 				t.Fatalf("error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)
 			}
 		})

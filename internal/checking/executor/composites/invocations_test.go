@@ -127,14 +127,14 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			graph := result.Batch.Invocations()
-			if graph.Incomplete() || len(result.Batch.Scripts()) != 6 {
-				t.Fatalf("incomplete=%v scripts=%d", graph.Incomplete(), len(result.Batch.Scripts()))
+			graph := result.Batch.CallGraph
+			if graph.Incomplete() || len(result.Batch.Scripts) != 6 {
+				t.Fatalf("incomplete=%v scripts=%d", graph.Incomplete(), len(result.Batch.Scripts))
 			}
-			if len(graph.Scripts()) != len(result.Batch.Scripts()) {
+			if len(graph.Scripts()) != len(result.Batch.Scripts) {
 				t.Fatal("traversal bypassed the canonical script owner")
 			}
-			for _, script := range result.Batch.Scripts() {
+			for _, script := range result.Batch.Scripts {
 				registered, exists := graph.Script(script.Occurrence)
 				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Context.ID() {
 					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
@@ -152,7 +152,7 @@ jobs:
 			leafSteps := actionStepViews(t, leaf)
 			declaration := stepReference(t, leaf, leafSteps[0])
 			seen := map[invocation.ID]bool{}
-			for i, unit := range result.Batch.Scripts() {
+			for i, unit := range result.Batch.Scripts {
 				chain := []invocation.ID{graph.RootID()}
 				sites := []source.Reference{rootSites[i/2]}
 				if middle {
@@ -201,8 +201,8 @@ func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	graph := result.Batch.Invocations()
-	if graph.Entry().Kind != invocation.EntryAction || len(graph.Calls()) != 1 || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 1 {
+	graph := result.Batch.CallGraph
+	if graph.Entry().Kind != invocation.EntryAction || len(graph.Calls()) != 1 || len(result.Batch.Scopes) != 1 || len(result.Batch.Scripts) != 1 {
 		t.Fatalf("fabricated standalone caller: %+v", result.Batch)
 	}
 	call := graph.Calls()[0]
@@ -210,7 +210,7 @@ func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 	if !ok || cycle.Owner != graph.RootID() || call.Depth() != 1 || call.Parent() != graph.RootID() || !graph.Incomplete() {
 		t.Fatalf("standalone cycle: %+v", call)
 	}
-	if result.Batch.Scripts()[0].Scope.Context.ID() != graph.RootID() {
+	if result.Batch.Scripts[0].Scope.Context.ID() != graph.RootID() {
 		t.Fatal("root script attached to a fabricated call")
 	}
 }
@@ -238,11 +238,11 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {
 				t.Fatalf("validation fetched a body beyond the budget: %v", f.parsed)
 			}
-			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo initial" {
+			if !result.Batch.CallGraph.Incomplete() || len(result.Batch.Scripts) != 1 || result.Batch.Scripts[0].Run.Run.Text() != "echo initial" {
 				t.Fatal("budget lost prior facts or incomplete state")
 			}
 			if tc.total {
-				if _, exists := result.Batch.Invocations().Stop(); !exists {
+				if _, exists := result.Batch.CallGraph.Stop(); !exists {
 					t.Fatal("missing total stop boundary")
 				}
 			}
@@ -257,8 +257,8 @@ func TestRepeatedMetadataFailuresRemainUnresolvedCalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := result.Batch.Invocations().Calls()
-	if len(calls) != 2 || !result.Batch.Invocations().Incomplete() {
+	calls := result.Batch.CallGraph.Calls()
+	if len(calls) != 2 || !result.Batch.CallGraph.Incomplete() {
 		t.Fatalf("unresolved calls lost: %+v", calls)
 	}
 	for _, call := range calls {
@@ -286,7 +286,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := result.Batch.Invocations().Calls()
+	calls := result.Batch.CallGraph.Calls()
 	if len(calls) != 3 || len(f.parsed) != 0 {
 		t.Fatalf("invalid/dynamic calls acquired metadata: calls=%d parsed=%v", len(calls), f.parsed)
 	}
@@ -318,16 +318,16 @@ func TestCompositionCancellationRetainsEntryOrPendingCall(t *testing.T) {
 				cancel()
 			}
 			result, err := Workflow(f.options, f.root)
-			if !errors.Is(err, context.Canceled) || !result.Batch.Invocations().Incomplete() {
+			if !errors.Is(err, context.Canceled) || !result.Batch.CallGraph.Incomplete() {
 				t.Fatalf("cancellation lost: %v", err)
 			}
-			calls := result.Batch.Invocations().Calls()
+			calls := result.Batch.CallGraph.Calls()
 			if pending {
 				if len(calls) != 1 || calls[0].Outcome.Kind() != invocation.OutcomeInterrupted || calls[0].Outcome.Reason() != invocation.ReasonCanceled {
 					t.Fatalf("pending call lost: %+v", calls)
 				}
 			} else {
-				if _, exists := result.Batch.Invocations().EntryInterruption(); !exists || len(calls) != 0 {
+				if _, exists := result.Batch.CallGraph.EntryInterruption(); !exists || len(calls) != 0 {
 					t.Fatal("entry interruption lost")
 				}
 			}

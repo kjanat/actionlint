@@ -26,7 +26,7 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -85,7 +85,7 @@ type analysisRequest struct {
 	DiskSources        bool
 	NoIgnore           bool
 	Analyzers          []checkinputs.Registration
-	Tools              []tools.Registration
+	Tools              []contract.Registration
 	IgnorePatterns     configuration.IgnorePatterns
 	IgnoreSelectors    policy.IgnoreSelectors
 	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule

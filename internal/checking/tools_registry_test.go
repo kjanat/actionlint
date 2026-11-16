@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
@@ -22,7 +22,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	register := func(environment ...string) tools.Registration {
+	register := func(environment ...string) contract.Registration {
 		t.Helper()
 		registration, err := scripts.RegisterProvider(scripts.Provider{
 			Manifest: manifests.Manifest{
@@ -47,7 +47,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	registration := register("ACTIONLINT_TEST_SCRIPT_PROVIDER=1")
 	const content = "on: push\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing\n        shell: python\n      - run: echo skipped\n        shell: bash\npermissions: {}\n"
 	source := workspace.InputFile{Path: "test.yml", Content: []byte(content)}
-	result, err := checking.Analyze(t.Context(), checking.Options{Tools: []tools.Registration{registration}}, []workspace.InputFile{source})
+	result, err := checking.Analyze(t.Context(), checking.Options{Tools: []contract.Registration{registration}}, []workspace.InputFile{source})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestIndependentProcessTool(t *testing.T) {
 		t.Fatalf("mapping=%+v", finding)
 	}
 	failed := register("ACTIONLINT_TEST_SCRIPT_PROVIDER=1", "ACTIONLINT_TEST_SCRIPT_FAILURE=1")
-	_, err = checking.Analyze(t.Context(), checking.Options{Tools: []tools.Registration{failed}}, []workspace.InputFile{source})
+	_, err = checking.Analyze(t.Context(), checking.Options{Tools: []contract.Registration{failed}}, []workspace.InputFile{source})
 	if err == nil || !strings.Contains(err.Error(), "exited with status 1") {
 		t.Fatalf("accepted successful JSON from failed process: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = checking.Analyze(t.Context(), checking.Options{Tools: []tools.Registration{registration}}, []workspace.InputFile{source})
+	result, err = checking.Analyze(t.Context(), checking.Options{Tools: []contract.Registration{registration}}, []workspace.InputFile{source})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("disabled provider: result=%+v err=%v", result, err)
 	}

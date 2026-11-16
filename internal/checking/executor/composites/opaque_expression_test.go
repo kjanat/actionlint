@@ -52,7 +52,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 						}
 					}
 					cycles := 0
-					for _, call := range result.Batch.Invocations().Calls() {
+					for _, call := range result.Batch.CallGraph.Calls() {
 						if call.Outcome.Kind() == invocation.OutcomeCycle {
 							cycles++
 						}

@@ -136,7 +136,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			if err := collector.collectScript(step, nil, nil); err != nil {
 				t.Fatal(err)
 			}
-			if s := collector.scripts[0].Execution.Shell.Name; s != tc.want {
+			if s := collector.scripts[0].Execution.Shell; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}
 		})

@@ -8,8 +8,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -35,12 +38,12 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 	}
 	shells[0], shells[len(shells)-1] = "bash", "bash"
 	for range 2 {
-		runner, err := registration.Build(tools.Context{})
+		runner, err := registration.Build(contract.Context{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, shell := range []string{"shell-0", "python", `C:\Tools\PYTHON.exe -u`, "bash", "not-listed"} {
-			if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Execution: tools.Execution{Shell: shell}}}}); err != nil {
+			if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Execution: &scriptmodel.Execution{Shell: shell, ShellKnown: true}}}}); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -118,11 +121,11 @@ func BenchmarkShellCatalogueSelection(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			runner, err := registration.Build(tools.Context{})
+			runner, err := registration.Build(contract.Context{})
 			if err != nil {
 				b.Fatal(err)
 			}
-			batch := tools.Batch{Scripts: make([]tools.Script, 100)}
+			batch := scriptexecution.Batch{Scripts: make([]scriptexecution.Unit, 100)}
 			for i := range batch.Scripts {
 				batch.Scripts[i].Execution.Shell = "not-listed"
 			}

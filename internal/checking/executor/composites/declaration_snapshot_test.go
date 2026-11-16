@@ -113,7 +113,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				t.Fatalf("script occurrences = %d, want 2", len(analysis.scripts))
 			}
 			batch := prepareCollectedScripts(t, analysis)
-			units := batch.Scripts()
+			units := batch.Scripts
 			snapshot, err := snapshots.Action(files.PhysicalPath(metadata.Path()), metadata)
 			if err != nil {
 				t.Fatal(err)

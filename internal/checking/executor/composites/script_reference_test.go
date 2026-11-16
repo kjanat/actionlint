@@ -79,29 +79,29 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Batch.Scripts()) != 4 {
-		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts()))
+	if len(result.Batch.Scripts) != 4 {
+		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts))
 	}
 	indexes := parsing.References(path, content, document, result.Sources, files.PhysicalPath)
 	declarations := map[source.Reference]bool{}
 	for _, reference := range indexes[actionPath].Steps {
 		declarations[reference] = true
 	}
-	for i, unit := range result.Batch.Scripts() {
+	for i, unit := range result.Batch.Scripts {
 		if !declarations[unit.Reference] {
 			t.Fatalf("script %d drifted from source index: %+v", i, unit.Reference)
 		}
 		if i >= 2 {
-			original := result.Batch.Scripts()[i-2]
+			original := result.Batch.Scripts[i-2]
 			if unit.Reference != original.Reference || !reflect.DeepEqual(unit.Run, original.Run) {
 				t.Fatal("mapped snapshot changed its declaration or script value")
 			}
 		}
 	}
-	if result.Batch.Scripts()[0].Reference == result.Batch.Scripts()[1].Reference {
+	if result.Batch.Scripts[0].Reference == result.Batch.Scripts[1].Reference {
 		t.Fatal("aliased action declarations collapsed")
 	}
-	if result.Batch.Scripts()[0].Scope.Deployment.ActionPath() != filepath.Dir(actionPath) || result.Batch.Scripts()[2].Scope.Deployment.ActionPath() != "" {
+	if result.Batch.Scripts[0].Scope.Deployment.ActionPath() != filepath.Dir(actionPath) || result.Batch.Scripts[2].Scope.Deployment.ActionPath() != "" {
 		t.Fatal("source reuse contaminated per-lookup deployment paths")
 	}
 }

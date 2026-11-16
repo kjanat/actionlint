@@ -43,7 +43,7 @@ jobs:
 		if err := collector.collectScript(slices.Collect(job.Steps())[0], nil, nil); err != nil {
 			t.Fatal(err)
 		}
-		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell.Name; got != id {
+		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}
 	}

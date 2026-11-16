@@ -15,7 +15,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
@@ -83,7 +84,7 @@ type parityUnavailable struct {
 	Address string `json:"address"`
 }
 
-// paritySuppression is a tools.Suppression.
+// paritySuppression is a contract.Suppression.
 type paritySuppression struct {
 	Path        string `json:"path"`
 	First, Last int
@@ -109,15 +110,15 @@ func contentHash(content []byte) string {
 // parityRecorder collects the findings the tool runners return to the host.
 type parityRecorder struct {
 	mu       sync.Mutex
-	findings []tools.ToolFinding
+	findings []contract.ToolFinding
 }
 
 // wrap returns registrations whose runners record their findings in r.
-func (r *parityRecorder) wrap(registrations []tools.Registration) []tools.Registration {
+func (r *parityRecorder) wrap(registrations []contract.Registration) []contract.Registration {
 	out := slices.Clone(registrations)
 	for i := range out {
 		build := out[i].Build
-		out[i].Build = func(c tools.Context) (tools.Runner, error) {
+		out[i].Build = func(c contract.Context) (contract.Runner, error) {
 			runner, err := build(c)
 			if err != nil || runner == nil {
 				return runner, err
@@ -130,11 +131,11 @@ func (r *parityRecorder) wrap(registrations []tools.Registration) []tools.Regist
 
 // recordingRunner passes a batch to runner and records the findings.
 type recordingRunner struct {
-	runner   tools.Runner
+	runner   contract.Runner
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -161,7 +162,7 @@ type paritySnapshots map[string]parityDiagnostics
 
 // parityRun analyzes a case with registrations and returns its tool
 // findings, recording the runners' findings in recorder.
-type parityRun func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics
+type parityRun func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics
 
 // assertParity runs the bundled providers with ShellCheck and Ruff from PATH
 // and compares their findings with the snapshot of key. arguments are added
@@ -391,7 +392,7 @@ func TestProviderParityFixtures(t *testing.T) {
 			path := filepath.Join(dir, name)
 			t.Run(subdir+"/"+name, func(t *testing.T) {
 				t.Parallel()
-				snapshots.assertParity(t, subdir+"/"+name, func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
+				snapshots.assertParity(t, subdir+"/"+name, func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics {
 					content, err := os.ReadFile(filepath.Join(repository, path))
 					if err != nil {
 						t.Fatal(err)
@@ -497,7 +498,7 @@ func TestProviderParityCases(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			run := func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
+			run := func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				root = inputfiles.PhysicalPath(root)

@@ -21,7 +21,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -62,7 +62,7 @@ type analysisSession struct {
 
 	ruleRegistrations    []configuration.RuleRegistration
 	rules                configuration.RuleSet
-	tools                []tools.Registration
+	tools                []contract.Registration
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
@@ -333,7 +333,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
-	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: configuration.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
+	toolContext := contract.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: configuration.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
 		skippedMu.Lock()
 		skipped[name] = true
 		skippedMu.Unlock()

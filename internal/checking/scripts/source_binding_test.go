@@ -157,10 +157,10 @@ func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch, err := NewBatch(graph, collection)
-	if err != nil || !batch.Invocations().Incomplete() || len(batch.Scripts()) != 1 {
+	if err != nil || !batch.CallGraph.Incomplete() || len(batch.Scripts) != 1 {
 		t.Fatalf("cancelled partial collection lost: %v", err)
 	}
-	if units := batch.Scripts(); units[0].Shell == nil || *units[0].Shell != "pwsh" {
+	if units := batch.Scripts; units[0].Shell == nil || *units[0].Shell != "pwsh" {
 		t.Fatal("inherited default was lost for a declaration without shell")
 	}
 }
@@ -191,7 +191,7 @@ func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 		workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
 		collection := Collection{Scopes: []*Scope{scope}, Collected: collected}
 		batch, err := NewBatch(graph, collection)
-		if err != nil || !batch.Valid() || len(batch.Scripts()) != 0 || len(batch.Scopes()) != 1 || batch.Scopes()[0].Composite || batch.CollectedScripts() != collected {
+		if err != nil || !batch.Valid() || len(batch.Scripts) != 0 || len(batch.Scopes) != 1 || batch.Scopes[0].Composite || batch.Collected != collected {
 			t.Fatalf("empty noncomposite action batch (collected=%v): %v", collected, err)
 		}
 		scope.Deployment = Deployment{}

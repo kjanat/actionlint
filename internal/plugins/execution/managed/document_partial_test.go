@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
@@ -41,20 +42,20 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			batch.Scripts[nativeIndex].Config = cfg
+			batch.Scripts[nativeIndex].Scope = &scriptexecution.Scope{Config: cfg}
 			failure := errors.New("negotiation failed")
 			guest := &partialGuest{failAt: failureAt, grant: grant, failure: failure}
 			nativeCalls := 0
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
-				native: func(*configuration.Config) (tools.Runner, error) {
-					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.ToolFinding, error) {
+				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				native: func(*configuration.Config) (contract.Runner, error) {
+					return fallbackRunner(func(_ context.Context, selected scriptexecution.Batch) ([]contract.ToolFinding, error) {
 						nativeCalls++
-						if len(selected.Scripts) != 1 || selected.Scripts[0].Fact.Occurrence.ID != batch.Scripts[nativeIndex].Fact.Occurrence.ID || len(selected.Scopes) != 0 {
+						if len(selected.Scripts) != 1 || selected.Scripts[0].Occurrence != batch.Scripts[nativeIndex].Occurrence || len(selected.Scopes) != 1 || selected.Scopes[0] != batch.Scripts[nativeIndex].Scope {
 							t.Fatal("native fallback selection changed")
 						}
-						return []tools.ToolFinding{{Script: 0, Message: "native"}}, nil
+						return []contract.ToolFinding{{Script: 0, Message: "native"}}, nil
 					}), nil
 				},
 			}

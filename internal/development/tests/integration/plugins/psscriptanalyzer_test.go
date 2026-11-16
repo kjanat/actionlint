@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -90,7 +90,7 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, []workspace.InputFile{{Path: filepath.Join(root, "workflow.yml"), Content: workflow, Config: cfg}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, []workspace.InputFile{{Path: filepath.Join(root, "workflow.yml"), Content: workflow, Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}

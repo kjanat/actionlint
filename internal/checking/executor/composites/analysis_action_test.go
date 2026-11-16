@@ -106,7 +106,7 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if result.EntrySnapshot != snapshot {
 		t.Fatal("action entry result replaced the canonical snapshot")
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || !scopes[0].Composite || len(scripts) != 1 {
 		t.Fatalf("mutable metadata changed action classification or expansion: scopes=%+v scripts=%+v", scopes, scripts)
 	}
@@ -140,7 +140,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			scripts := result.Batch.Scripts()
+			scripts := result.Batch.Scripts
 			if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 				t.Fatalf("rejected run entered standalone script batch: %+v", scripts)
 			}
@@ -171,7 +171,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := result.Batch.Scripts()
+	scripts := result.Batch.Scripts
 	if len(result.Findings) != 0 || len(scripts) != 1 {
 		t.Fatalf("empty composite script lost: scripts=%d findings=%v", len(scripts), result.Findings)
 	}

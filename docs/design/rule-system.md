@@ -49,7 +49,9 @@ with its owning subsystem.
 
 ## Script-tool boundary
 
-`internal/checking/scripts/contract` defines registration, prepared script batches and findings.
+`internal/checking/scripts` defines the prepared script batch. Each tool receives the same
+batch type with its own configuration. `internal/checking/scripts/contract` defines
+registration, the runner interface and findings.
 `internal/plugins/execution/scripts` adapts the shared snippet protocol to native processes or
 an injected WASM backend. Bundled manifests and their jq transforms under
 `internal/model/bundledproviders` define each tool's command and output conversion.

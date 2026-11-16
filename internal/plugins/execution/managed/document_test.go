@@ -17,7 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -30,7 +30,7 @@ import (
 
 // shellcheckRegistration is the bundled ShellCheck provider run as selected,
 // which a managed analyzer speaking its integration contract may replace.
-func shellcheckRegistration(selection scripts.Selection) tools.Registration {
+func shellcheckRegistration(selection scripts.Selection) contract.Registration {
 	for _, registration := range registry.Registrations(registry.Selections{"shellcheck": selection}) {
 		if registration.Name == "shellcheck" {
 			return registration
@@ -100,7 +100,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {external-sources: true, source-path: ["+strconv.Quote(directory)+"]}}}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
+			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []contract.Registration{registration}}
 			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err == nil || len(guest.inputs) != 0 {
 				var messages []string
@@ -151,7 +151,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {source-path: ["+strconv.Quote(directory)+"]}}}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
+			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []contract.Registration{registration}}
 			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err != nil {
 				t.Fatal(err)
@@ -236,7 +236,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}
+			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []contract.Registration{registration}}
 			needed, err := checking.RequiredTools(t.Context(), options, nil)
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("native dependency: %v %v", needed, err)
@@ -305,7 +305,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}, nil)
+			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []contract.Registration{registration}}, nil)
 			if err != nil || !needed["shellcheck"] {
 				t.Fatalf("explicit native settings lost: %v %v", needed, err)
 			}
@@ -359,7 +359,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			guest := &documentGuest{}
 			options := checking.Options{
 				WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays,
-				Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
+				Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
 				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
@@ -404,7 +404,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			guest := &documentGuest{}
 			options := checking.Options{
 				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{base, disabled},
-				Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck", ManagedOnly: true})},
+				Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck", ManagedOnly: true})},
 				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
@@ -446,7 +446,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	guest := &documentGuest{}
 	options := checking.Options{
 		WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
-		Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
+		Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
 		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}
 	needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
@@ -486,7 +486,7 @@ func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
 	guest := &planningContextGuest{contexts: make(chan context.Context, 1), release: release}
 	options := checking.Options{
 		WorkingDir: t.TempDir(), SkipProjectConfig: true,
-		Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
+		Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
 		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}
 	result := make(chan error, 1)

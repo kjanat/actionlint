@@ -19,7 +19,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -52,7 +52,7 @@ type Options struct {
 	RemoteWorkflows workflowinputs.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
-	Tools      []tools.Registration
+	Tools      []contract.Registration
 	Resolver   references.Resolver
 	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
 	SuggestCommitPins bool

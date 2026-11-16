@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
@@ -23,19 +24,21 @@ import (
 
 // Unit snapshots invocation context before analyzers run.
 type Unit struct {
-	Revision     source.Revision
-	Coordinates  source.Coordinates
-	Occurrence   invocation.ID
-	Reference    source.Reference
-	Run          *workflowlang.ExecRun
-	Input        *ActionInput
-	Shell        *string
-	Path         string
-	Content      []byte
-	Origin       *findingmodel.IgnoreOrigin
-	Owner        *findingmodel.Owner
-	Scope        *Scope
-	Execution    Execution
+	Revision    source.Revision
+	Coordinates source.Coordinates
+	Occurrence  invocation.ID
+	Reference   source.Reference
+	Run         *workflowlang.ExecRun
+	Input       *ActionInput
+	Shell       *string
+	Path        string
+	Content     []byte
+	Origin      *findingmodel.IgnoreOrigin
+	Owner       *findingmodel.Owner
+	Scope       *Scope
+	// Execution is nil when the analysis did not resolve the run's shell and
+	// working directory.
+	Execution    *scriptmodel.Execution
 	Environment  []scriptmodel.EnvironmentNames
 	Interpreters *commands.Registry
 }
@@ -46,12 +49,83 @@ type ActionInput struct {
 	Value *workflowlang.ActionArgument
 }
 
+// Text returns the script text: the action input value or the run body.
+func (u Unit) Text() string {
+	if u.Input != nil {
+		return u.Input.Value.Value.Text()
+	}
+	if u.Run == nil {
+		return ""
+	}
+	return u.Run.Run.Text()
+}
+
+// Source maps Text back to its declaring YAML scalar.
+func (u Unit) Source() *workflowlang.ScriptSource {
+	if u.Input != nil {
+		return u.Input.Value.Source
+	}
+	if u.Run == nil {
+		return nil
+	}
+	return u.Run.Source
+}
+
+// Key is the position of the input name or the run key.
+func (u Unit) Key() *source.Position {
+	if u.Input != nil {
+		return u.Input.Value.Name.Pos
+	}
+	if u.Run == nil {
+		return nil
+	}
+	return u.Run.RunPos
+}
+
+// Value is the position of the script value.
+func (u Unit) Value() *source.Position {
+	if u.Input != nil {
+		return u.Input.Value.Value.Pos
+	}
+	if u.Run == nil || u.Run.Run == nil {
+		return nil
+	}
+	return u.Run.Run.Pos
+}
+
+// Config is the configuration of the script's scope.
+func (u Unit) Config() *configuration.Config {
+	if u.Scope == nil {
+		return nil
+	}
+	return u.Scope.Config
+}
+
+// RuntimeShell returns the resolved shell and whether the runner supplies it
+// implicitly. Unresolved execution returns no shell.
+func (u Unit) RuntimeShell() (string, bool) {
+	if u.Execution == nil {
+		return "", false
+	}
+	return u.Execution.Shell, u.Execution.ShellImplicit
+}
+
+// WorkingDirectory returns the directory a tool runs the script in and whether
+// it is known. Unresolved execution keeps the tool's own working directory, so
+// it reports an empty, known directory.
+func (u Unit) WorkingDirectory() (string, bool) {
+	if u.Execution == nil {
+		return "", true
+	}
+	return u.Execution.Directory, u.Execution.DirectoryKnown
+}
+
 // ScriptRequest contains invocation policy; declarations come from the source registry.
 type ScriptRequest struct {
 	Occurrence   invocation.ID
 	DefaultShell *string
 	Input        *checkinputs.ScriptInput
-	Execution    Execution
+	Execution    *scriptmodel.Execution
 	Environment  []scriptmodel.EnvironmentNames
 	Interpreters *commands.Registry
 }
@@ -70,7 +144,7 @@ type Scope struct {
 	Paths    workflowexecution.Paths
 	Reader   *files.Reader // records the filesystem reads tools make in this scope
 	// Config is a host-owned prepared value. Internal consumers treat it as read-only;
-	// Tool detaches selected settings before invoking a registered Runner.
+	// ForTool detaches selected settings before a tool reads them.
 	Config           *configuration.Config
 	ConfigProvenance configuration.Provenance
 	Deployment       Deployment
@@ -78,21 +152,17 @@ type Scope struct {
 	Context          invocation.Context
 }
 
-type Execution struct {
-	Shell     workflowexecution.Shell
-	Directory workflowexecution.Directory
-}
-
 var ErrInvalidBatch = errors.New("execution: invalid prepared batch")
 
-// Batch binds execution inputs to a published graph. Its zero value is unprepared.
-type Batch struct{ data *batchData }
-
-type batchData struct {
-	graph     invocation.Graph
-	scopes    []*Scope
-	scripts   []Unit
-	collected bool
+// Batch binds execution inputs to a published graph. NewBatch validates it;
+// its zero value is unprepared. Tools receive the batch ForTool returns and
+// may select subsets of its scripts and scopes.
+type Batch struct {
+	CallGraph invocation.Graph
+	Scopes    []*Scope
+	Scripts   []Unit
+	// Collected reports complete script collection. A scopes-only batch has none.
+	Collected bool
 }
 
 // NewBatch validates complete script collection or an explicit scopes-only batch.
@@ -128,7 +198,7 @@ func NewBatch(graph invocation.Graph, collection Collection) (Batch, error) {
 	if err != nil {
 		return Batch{}, err
 	}
-	return Batch{&batchData{graph: graph, scopes: scopes, scripts: scripts, collected: collected}}, nil
+	return Batch{CallGraph: graph, Scopes: scopes, Scripts: scripts, Collected: collected}, nil
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
@@ -170,27 +240,34 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 	return nil
 }
 
-func (batch Batch) Valid() bool { return batch.data != nil }
+func (batch Batch) Valid() bool { return batch.CallGraph.Valid() }
 
-func (batch Batch) Invocations() invocation.Graph {
-	if batch.data == nil {
-		return invocation.Graph{}
+// ForTool returns the batch the named tool analyzes. Each scope carries a
+// detached copy of the configuration bound to the tool, and each script its own
+// environment, so a tool cannot change what other analyzers read.
+func (batch Batch) ForTool(name string) (Batch, error) {
+	view := Batch{CallGraph: batch.CallGraph, Collected: batch.Collected, Scopes: make([]*Scope, 0, len(batch.Scopes)), Scripts: slices.Clone(batch.Scripts)}
+	scopes := make(map[*Scope]*Scope, len(batch.Scopes))
+	for _, scope := range batch.Scopes {
+		config := scope.Config
+		if scope.Bindings != nil {
+			config = scope.Bindings.Rule(name).Config()
+		}
+		detached, err := config.Detached()
+		if err != nil {
+			return Batch{}, fmt.Errorf("prepare tool %q configuration: %w", name, err)
+		}
+		owned := *scope
+		owned.Config = detached
+		scopes[scope] = &owned
+		view.Scopes = append(view.Scopes, &owned)
 	}
-	return batch.data.graph
-}
-
-func (batch Batch) CollectedScripts() bool { return batch.data != nil && batch.data.collected }
-
-// Snapshot returns the batch's scopes and scripts. Callers must not modify them.
-func (batch Batch) Snapshot() ([]*Scope, []Unit) {
-	if batch.data == nil {
-		return nil, nil
+	for i := range view.Scripts {
+		view.Scripts[i].Scope = scopes[view.Scripts[i].Scope]
+		view.Scripts[i].Environment = slices.Clone(view.Scripts[i].Environment)
 	}
-	return batch.data.scopes, batch.data.scripts
+	return view, nil
 }
-
-func (batch Batch) Scripts() []Unit  { _, scripts := batch.Snapshot(); return scripts }
-func (batch Batch) Scopes() []*Scope { scopes, _ := batch.Snapshot(); return scopes }
 
 type Analyzer interface {
 	AnalyzeScripts(context.Context, Batch) ([]*findingmodel.Finding, error)

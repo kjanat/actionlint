@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	scripttools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
@@ -37,7 +37,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 	for i := range tools {
 		if tools[i].Name == "shellcheck" {
 			tools[i].Enabled, tools[i].Required = nil, nil
-			tools[i].Build = func(scripttools.Context) (scripttools.Runner, error) { return nil, cause }
+			tools[i].Build = func(contract.Context) (contract.Runner, error) { return nil, cause }
 		}
 	}
 	const source = "on: {workflow_run: {workflows: [Missing], types: [completed]}}\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"

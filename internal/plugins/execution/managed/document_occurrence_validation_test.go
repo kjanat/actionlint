@@ -6,11 +6,14 @@ import (
 	"errors"
 	"testing"
 
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 type negotiationObserver struct {
@@ -25,18 +28,18 @@ func (guest *negotiationObserver) NegotiateTool(ctx context.Context, data, versi
 
 func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 	t.Parallel()
-	for name, change := range map[string]func(*invocation.Script){
-		"owner": func(value *invocation.Script) { value.Owner = "foreign" },
-		"input": func(value *invocation.Script) { value.Input = "script" },
+	for name, change := range map[string]func(*scriptexecution.Unit){
+		"occurrence":  func(unit *scriptexecution.Unit) { unit.Occurrence = "foreign" },
+		"declaration": func(unit *scriptexecution.Unit) { unit.Reference.Node = "foreign" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			batch := documentBatchFixture(t, 1)
-			change(&batch.Scripts[0].Fact.Occurrence)
+			change(&batch.Scripts[0])
 			guest := &negotiationObserver{}
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 			}
 			_, err := runner.Analyze(t.Context(), batch)
 			if !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
@@ -56,7 +59,7 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 	wrong.Revision = "wrong"
 	for _, reference := range []source.Reference{{}, wrong} {
 		guest := &negotiationObserver{}
-		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.AnalyzerInput{Reference: reference}}}
+		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: reference}}}
 		_, err := runner.Analyze(t.Context(), batch)
 		if !errors.Is(err, checkinputs.ErrInvalidCallGraph) || guest.calls != 0 {
 			t.Fatalf("mismatched or absent header reached negotiation: calls=%d err=%v", guest.calls, err)
@@ -69,10 +72,13 @@ func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
 	batch := documentBatchFixture(t, 1)
 	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "run0", Input: "script", Entry: true})
 	batch.CallGraph = graph
-	batch.Scripts[0].Fact.Occurrence = graph.Scripts()[0]
-	batch.Scripts[0].Fact.Reference = graph.Scripts()[0].Declaration
-	batch.Scripts[0].Fact.Runtime = nil
-	batch.Scripts[0].Input = &checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}
+	batch.Scripts[0].Occurrence = graph.Scripts()[0].ID
+	batch.Scripts[0].Reference = graph.Scripts()[0].Declaration
+	batch.Scripts[0].Run, batch.Scripts[0].Execution = nil, nil
+	batch.Scripts[0].Input = &scriptexecution.ActionInput{
+		Site:  checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"},
+		Value: &workflowlang.ActionArgument{Name: &workflowlang.String{Value: "script"}, Value: &workflowlang.String{Value: "echo test"}},
+	}
 	guest := &negotiationObserver{}
 	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest}
 	if _, err := runner.Analyze(t.Context(), batch); !errors.Is(err, checkinputs.ErrInvalidCallGraph) {

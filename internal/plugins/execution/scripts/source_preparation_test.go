@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
@@ -30,7 +30,7 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 				ConfigSchema:         json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`),
 				PreparationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond",config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}`},
 			}
-			script := tools.Script{Text: "print(1)\n", Shell: new("python"), Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}
+			script := scriptexecution.Unit{Run: runBody("print(1)\n", nil), Shell: new("python"), Scope: &scriptexecution.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
 			prepared, err := newPreparation(manifest, routeEngine, nil).input(t.Context(), script)
 			if err != nil {
 				t.Fatal(err)
@@ -53,8 +53,8 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 
 func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	t.Parallel()
-	script := tools.Script{Text: "__all__ = ['${{ inputs.name }}']\nprint(real_name)\n"}
-	prepared, err := pythonprofile.Script(script.Text)
+	script := scriptexecution.Unit{Run: runBody("__all__ = ['${{ inputs.name }}']\nprint(real_name)\n", nil)}
+	prepared, err := pythonprofile.Script(script.Text())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,8 @@ import (
 	"sync"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
@@ -49,7 +50,7 @@ type Provider struct {
 	// Bind completes a registration, such as with a managed document
 	// analyzer route; nil leaves it as is. RegisterProvider applies it to every
 	// registration it derives.
-	Bind func(tools.Registration, Provider) tools.Registration
+	Bind func(contract.Registration, Provider) contract.Registration
 }
 
 // selection is a Selection as a registration applies it.
@@ -96,39 +97,39 @@ func (s selection) selected(name string) bool {
 // tools.<name> configures the tool. A repository's tools.<name>.backend may
 // select a WebAssembly engine or, with --allow-config-processes, another
 // process for the default command.
-func RegisterProvider(p Provider) (tools.Registration, error) {
+func RegisterProvider(p Provider) (contract.Registration, error) {
 	return register(p, selection{Selection: p.Selection})
 }
 
-func register(p Provider, sel selection) (tools.Registration, error) {
+func register(p Provider, sel selection) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
 	if m.Role != manifests.RoleScript || m.Transport != manifests.TransportProcess || m.Process == nil {
-		return tools.Registration{}, fmt.Errorf("tool provider %s is not a process script provider", name)
+		return contract.Registration{}, fmt.Errorf("tool provider %s is not a process script provider", name)
 	}
 	if !knownPreparation(m.Preparation) {
-		return tools.Registration{}, fmt.Errorf("tool provider %s names unknown preparation profile %q", name, m.Preparation)
+		return contract.Registration{}, fmt.Errorf("tool provider %s names unknown preparation profile %q", name, m.Preparation)
 	}
 	if _, err := integrationconfig.New(m, p.Programs); err != nil {
-		return tools.Registration{}, fmt.Errorf("tool provider %s configuration: %w", name, err)
+		return contract.Registration{}, fmt.Errorf("tool provider %s configuration: %w", name, err)
 	}
 	if _, err := preparation.NewSourcePlanner(m.PreparationTransform, p.Programs); err != nil {
-		return tools.Registration{}, fmt.Errorf("tool provider %s preparation: %w", name, err)
+		return contract.Registration{}, fmt.Errorf("tool provider %s preparation: %w", name, err)
 	}
 	if _, err := shellCatalogue(m.Rule, m.Selectors.Shells); err != nil {
-		return tools.Registration{}, err
+		return contract.Registration{}, err
 	}
 	if err := checkinputs.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
-		return tools.Registration{}, err
+		return contract.Registration{}, err
 	}
 	if _, generic := newPreparation(m, routeProcess, p.Programs).(genericPreparation); generic && len(m.Selectors.Shells)+len(m.Selectors.Inputs) == 0 {
-		return tools.Registration{}, fmt.Errorf("tool provider %s selects no scripts; declare selectors.shells or selectors.inputs", name)
+		return contract.Registration{}, fmt.Errorf("tool provider %s selects no scripts; declare selectors.shells or selectors.inputs", name)
 	}
 	scope, err := m.Scope.ConfigurationScope()
 	if err != nil {
-		return tools.Registration{}, fmt.Errorf("tool provider %s: %w", name, err)
+		return contract.Registration{}, fmt.Errorf("tool provider %s: %w", name, err)
 	}
-	registration := tools.Registration{
+	registration := contract.Registration{
 		InvocationDefinitions: m.InvocationDefinitions,
 		Descriptor:            m.Rule.Clone(),
 		Scope:                 scope,
@@ -141,11 +142,11 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		// docs/design/tool-providers-decisions.md.
 		RequiresExecution: len(m.Selectors.Shells) != 0 || len(m.Capabilities.Resources) != 0,
 		PrepareInput:      newPreparation(m, routeEngine, p.Programs).input,
-		Enabled: func(c tools.Context) bool {
+		Enabled: func(c contract.Context) bool {
 			possible, err := ProjectMayEnable(name, c.Config, c.ProjectConfig)
 			return sel.selected(name) && (possible || err != nil)
 		},
-		Required: func(c tools.Context) bool {
+		Required: func(c contract.Context) bool {
 			o := sel.forConfig(name, c.Config)
 			options := ProcessOptions(name, o.Command, o.Process, c.Config, c.WorkingDir)
 			return o.Backend != nil || Module(name, o.Command, o.Process, c.Config) != nil || options == nil && o.Runner == nil || options != nil && !options.Optional
@@ -162,27 +163,27 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 			}
 			return nil
 		},
-		ConfiguredBackend: func(c tools.Context) (checkinputs.ScriptBackend, error) {
+		ConfiguredBackend: func(c contract.Context) (checkinputs.ScriptBackend, error) {
 			if sel.Backend != nil {
 				return sel.Backend, nil
 			}
 			return LoadConfiguredModule(name, sel.Command, sel.Process, c.Config, engineLoader(c))
 		},
 	}
-	registration.WithBackend = func(backend checkinputs.ScriptBackend) (tools.Registration, error) {
+	registration.WithBackend = func(backend checkinputs.ScriptBackend) (contract.Registration, error) {
 		if !sel.selected(name) {
 			return registration, nil
 		}
 		if !sel.defaultCommand(name) {
-			return tools.Registration{}, fmt.Errorf("%s plugin conflicts with an explicitly selected backend or command", name)
+			return contract.Registration{}, fmt.Errorf("%s plugin conflicts with an explicitly selected backend or command", name)
 		}
 		next := p
 		next.Selection = Selection{Backend: backend, ManagedOnly: sel.ManagedOnly}
 		return register(next, selection{Selection: next.Selection, fallback: true})
 	}
 	probes := &versionProbes{}
-	registration.Build = func(c tools.Context) (tools.Runner, error) {
-		transports := &transports{provider: p, selection: sel, registration: registration, context: c, built: map[string]tools.Runner{}, probes: probes}
+	registration.Build = func(c contract.Context) (contract.Runner, error) {
+		transports := &transports{provider: p, selection: sel, registration: registration, context: c, built: map[string]contract.Runner{}, probes: probes}
 		if _, err := transports.forConfig(c.Config); err != nil {
 			return nil, err
 		}
@@ -196,7 +197,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 
 // engineLoader loads repository-selected WebAssembly engines through the
 // invocation's loader.
-func engineLoader(c tools.Context) func(string) (checkinputs.ScriptBackend, error) {
+func engineLoader(c contract.Context) func(string) (checkinputs.ScriptBackend, error) {
 	if c.LoadEngine == nil {
 		return nil
 	}
@@ -208,9 +209,9 @@ func engineLoader(c tools.Context) func(string) (checkinputs.ScriptBackend, erro
 type transports struct {
 	provider     Provider
 	selection    selection
-	registration tools.Registration
-	context      tools.Context
-	built        map[string]tools.Runner
+	registration contract.Registration
+	context      contract.Context
+	built        map[string]contract.Runner
 	selected     map[*configuration.Config]string
 	probes       *versionProbes
 }
@@ -389,7 +390,7 @@ func templateContract(engine checkinputs.ScriptBackend) string {
 // built is skipped.
 type transportRouting struct{ transports *transports }
 
-func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (r transportRouting) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	t := r.transports
 	var failures error
 	failed := map[*configuration.Config]bool{}
@@ -410,12 +411,12 @@ func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]too
 		return key
 	}
 	var order []string
-	groups := map[string]*tools.Batch{}
+	groups := map[string]*scriptexecution.Batch{}
 	indices := map[string][]int{}
-	group := func(key string) *tools.Batch {
+	group := func(key string) *scriptexecution.Batch {
 		if groups[key] == nil {
 			order = append(order, key)
-			groups[key] = &tools.Batch{CallGraph: batch.CallGraph}
+			groups[key] = &scriptexecution.Batch{CallGraph: batch.CallGraph}
 		}
 		return groups[key]
 	}
@@ -430,13 +431,13 @@ func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]too
 		}
 	}
 	for i, script := range batch.Scripts {
-		if key := keyOf(script.Config); key != "" {
+		if key := keyOf(script.Config()); key != "" {
 			selected := group(key)
 			selected.Scripts = append(selected.Scripts, script)
 			indices[key] = append(indices[key], i)
 		}
 	}
-	out := make([]tools.ToolFinding, 0, len(batch.Scripts))
+	out := make([]contract.ToolFinding, 0, len(batch.Scripts))
 	for _, key := range order {
 		findings, err := t.built[key].Analyze(ctx, *groups[key])
 		out = append(out, restoreIndices(findings, indices[key])...)

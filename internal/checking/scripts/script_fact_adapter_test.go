@@ -54,7 +54,7 @@ func TestFactAnalyzerJoinsUnitErrorsAndKeepsPartialFindings(t *testing.T) {
 	if findings[0].Message != "echo first" || findings[1].Message != "echo second" || strings.Index(err.Error(), "first failed") > strings.Index(err.Error(), "second failed") {
 		t.Fatalf("unit results lost execution order: %v %v", findings, err)
 	}
-	for index, unit := range batch.Scripts() {
+	for index, unit := range batch.Scripts {
 		fact, exists := batch.Fact(index, false)
 		if !exists || !strings.Contains(err.Error(), unit.Path) || !strings.Contains(err.Error(), string(fact.Occurrence.ID)) {
 			t.Fatalf("unit error lost path or occurrence: %v", err)
@@ -267,7 +267,7 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			units := batch.Scripts()
+			units := batch.Scripts
 			calls := 0
 			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{
 				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "selected", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}}},
@@ -277,7 +277,7 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 					if err := input.ValidateInvocations(); err != nil {
 						t.Fatal(err)
 					}
-					if input.Reference != batch.Invocations().Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}) {
+					if input.Reference != batch.CallGraph.Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}) {
 						t.Fatalf("script call invented a source/header or lost unit path: %+v", input)
 					}
 					scripts := slices.Concat(input.Scripts, input.Invoked)
@@ -318,7 +318,7 @@ func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
 			return nil, nil
 		},
 	}}
-	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts()) {
+	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts) {
 		t.Fatalf("execution analyzer calls=%d, error=%v", calls, err)
 	}
 }
@@ -326,7 +326,7 @@ func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
 func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	t.Parallel()
 	batch := twoRunFactBatch(t)
-	want := batch.Invocations()
+	want := batch.CallGraph
 	options := json.RawMessage(`{"mode":"safe"}`)
 	calls := 0
 	adapter := FactAnalyzer{Options: options, Analyzer: factAdapterAnalyzer{
@@ -347,10 +347,10 @@ func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != 2 {
 		t.Fatalf("mutation interrupted later unit: calls=%d error=%v", calls, err)
 	}
-	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.Invocations(), want) {
+	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.CallGraph, want) {
 		t.Fatal("analyzer mutated parent registration or batch graph")
 	}
-	for index := range batch.Scripts() {
+	for index := range batch.Scripts {
 		fact, exists := batch.Fact(index, false)
 		if !exists || fact.Occurrence.Owner != want.RootID() || fact.Spans[0].End == 999 {
 			t.Fatal("analyzer mutated parent script facts")
@@ -366,7 +366,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := batch.Invocations()
+	want := batch.CallGraph
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "invoked-mutator"}}, run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		calls++
@@ -380,13 +380,13 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 		input.AvailableInputs[0] = rulemeta.Source
 		return nil, nil
 	}}}
-	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts()) {
+	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts) {
 		t.Fatalf("invoked analysis failed: calls=%d error=%v", calls, err)
 	}
-	if !reflect.DeepEqual(batch.Invocations(), want) {
+	if !reflect.DeepEqual(batch.CallGraph, want) {
 		t.Fatal("invoked analyzer mutated batch graph")
 	}
-	for index := range batch.Scripts() {
+	for index := range batch.Scripts {
 		fact, exists := batch.Fact(index, false)
 		if !exists || fact.Text == "changed" || fact.Spans[0].End == 999 || fact.Occurrence.Owner == "changed" {
 			t.Fatal("invoked analyzer mutated parent script facts")
@@ -397,15 +397,15 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 func TestFactAnalyzerRejectsUnavailablePreparedFact(t *testing.T) {
 	t.Parallel()
 	batch := twoRunFactBatch(t)
-	corrupted := *batch.data
-	corrupted.scripts = slices.Clone(batch.data.scripts)
-	corrupted.scripts[0].Occurrence = "forged"
+	corrupted := batch
+	corrupted.Scripts = slices.Clone(batch.Scripts)
+	corrupted.Scripts[0].Occurrence = "forged"
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		calls++
 		return nil, nil
 	}}}
-	if _, err := adapter.AnalyzeScripts(t.Context(), Batch{data: &corrupted}); !errors.Is(err, ErrInvalidBatch) || calls != 0 {
+	if _, err := adapter.AnalyzeScripts(t.Context(), corrupted); !errors.Is(err, ErrInvalidBatch) || calls != 0 {
 		t.Fatalf("unavailable fact reached analyzer: calls=%d error=%v", calls, err)
 	}
 }
@@ -421,7 +421,7 @@ func TestFactAnalyzerPreservesForeignDiagnosticPath(t *testing.T) {
 		return []results.Diagnostic{{Path: "sourced/helper.sh", Message: "foreign", Snippet: "captured foreign snippet"}}, nil
 	}}}
 	findings, err := adapter.AnalyzeScripts(t.Context(), batch)
-	if err != nil || len(findings) != len(batch.Scripts()) {
+	if err != nil || len(findings) != len(batch.Scripts) {
 		t.Fatalf("foreign findings lost: %v %v", findings, err)
 	}
 	for _, finding := range findings {

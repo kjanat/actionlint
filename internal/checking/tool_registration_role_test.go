@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -48,7 +48,7 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			index := slices.IndexFunc(options.Tools, func(tool tools.Registration) bool { return tool.Name == "shellcheck" })
+			index := slices.IndexFunc(options.Tools, func(tool contract.Registration) bool { return tool.Name == "shellcheck" })
 			if index < 0 {
 				t.Fatal("shellcheck registration missing")
 			}
