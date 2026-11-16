@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -24,7 +24,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	}
 	register := func(environment ...string) contract.Registration {
 		t.Helper()
-		registration, err := scripts.RegisterProvider(scripts.Provider{
+		registration, err := backends.RegisterProvider(backends.Provider{
 			Manifest: manifests.Manifest{
 				SchemaVersion: manifests.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: manifests.RoleScript,
 				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider", Category: "correctness", Maturity: "stable"}, Scope: manifests.ScopeSource,
@@ -37,7 +37,7 @@ func TestIndependentProcessTool(t *testing.T) {
 					Output:         manifests.Output{Format: manifests.FormatEnvelope},
 				},
 			},
-			Selection: scripts.Selection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
+			Selection: backends.Selection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
 		})
 		if err != nil {
 			t.Fatal(err)

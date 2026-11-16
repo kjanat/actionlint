@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
@@ -131,10 +131,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
-				options["ruff"] = scripts.Selection{Command: "ruff"}
+				options["ruff"] = backends.Selection{Command: "ruff"}
 			} else {
 				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
-				options["shellcheck"] = scripts.Selection{Command: "shellcheck"}
+				options["shellcheck"] = backends.Selection{Command: "shellcheck"}
 				shell = "bash"
 			}
 			request.Sources = []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\npermissions: {}\n")}}

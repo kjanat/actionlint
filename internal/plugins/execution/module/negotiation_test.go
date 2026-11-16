@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
-	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 // Build small guests directly so timeout tests need no external compiler.
@@ -128,7 +128,7 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
 	}}
 	nativeCalls := 0
-	registration := scriptsbackend.WithConfiguredEngine(contract.Registration{
+	registration := backends.WithConfiguredEngine(contract.Registration{
 		Name: "ruff",
 		Build: func(contract.Context) (contract.Runner, error) {
 			return coreBatchRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {

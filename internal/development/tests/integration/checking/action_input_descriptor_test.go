@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -19,14 +20,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // providerRegistration returns the registration of the bundled provider
 // named name, run as selection says.
-func providerRegistration(t *testing.T, name string, selection scripts.Selection) contract.Registration {
+func providerRegistration(t *testing.T, name string, selection backends.Selection) contract.Registration {
 	t.Helper()
 	for _, registration := range registry.Registrations(registry.Selections{name: selection}) {
 		if registration.Name == name {
@@ -43,8 +43,8 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 		name, shell  string
 		registration contract.Registration
 	}{
-		{"ruff", "python", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", "bash", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", "python", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -96,7 +96,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	registration := providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})
+	registration := providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})
 	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
@@ -141,9 +141,9 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			registration := providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})
+			registration := providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})
 			if name == "shellcheck" {
-				registration = providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
+				registration = providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
 			}
 			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, pluginacquisition.Settings{})
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
@@ -159,7 +159,7 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
 			t.Parallel()
 			engine := &inputReplacementBackend{}
-			registration, err := scripts.RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
+			registration, err := backends.RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,7 +203,7 @@ func (pythonInputBackend) Check(_ context.Context, request checkinputs.ScriptReq
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	t.Parallel()
 	plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: pythonInputBackend{}, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: checkinputs.TemplateEffectsContract, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
-	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})}})
+	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					}
 				}
 				activeRuff := &inputReplacementBackend{}
-				shell := providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
+				shell := providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})
 				failedBuilds := 0
 				if mode == "failed-optional" {
 					shell.Build = func(contract.Context) (contract.Runner, error) {
@@ -269,7 +269,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					shell.Required = func(contract.Context) bool { return false }
 				}
 				loads := 0
-				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{providerRegistration(t, "ruff", backends.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 					if filepath.Base(path) == "default.wasm" {
 						return &inputReplacementBackend{}, nil
 					}

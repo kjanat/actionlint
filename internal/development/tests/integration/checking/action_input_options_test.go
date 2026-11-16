@@ -12,13 +12,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 type inputOptionsBackend struct {
@@ -68,8 +68,8 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 		name, shell, base, nested string
 		registration              contract.Registration
 	}{
-		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

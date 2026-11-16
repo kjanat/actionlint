@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -160,7 +160,7 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	if c.NoTools {
 		resolved.tools = make(registry.Selections, len(manifests))
 		for _, manifest := range manifests {
-			resolved.tools[manifest.Rule.Name] = scripts.Selection{}
+			resolved.tools[manifest.Rule.Name] = backends.Selection{}
 			resolved.disabled = append(resolved.disabled, manifest.Rule.Name)
 		}
 		return resolved, nil
@@ -193,16 +193,16 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 		command, explicit := commands[id]
 		switch {
 		case slices.Contains(resolved.disabled, id):
-			resolved.tools[id] = scripts.Selection{}
+			resolved.tools[id] = backends.Selection{}
 		case explicit:
-			resolved.tools[id] = scripts.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
+			resolved.tools[id] = backends.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
 		default:
 			options, err := toolEnvironment(id)
 			if err != nil {
 				return resolvedTools{}, err
 			}
 			if options != nil {
-				resolved.tools[id] = scripts.Selection{Command: id, Process: options}
+				resolved.tools[id] = backends.Selection{Command: id, Process: options}
 				continue
 			}
 			selection, disabled := defaultSelection(id, c.DeprecatedToolFlags)
@@ -229,14 +229,14 @@ type resolvedTools struct {
 // or environment variable selected it: its default command, changed by the
 // last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
-func defaultSelection(id string, used []deprecatedToolFlag) (scripts.Selection, bool) {
-	selection := scripts.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
+func defaultSelection(id string, used []deprecatedToolFlag) (backends.Selection, bool) {
+	selection := backends.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {
 		if flag.id != id {
 			continue
 		}
 		if disablesTool(flag.value) {
-			return scripts.Selection{}, true
+			return backends.Selection{}, true
 		}
 		selection.Process.Arguments = slices.Clone(flag.flag.Arguments)
 		break

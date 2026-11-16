@@ -18,9 +18,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -291,7 +291,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 	selections := registry.Selections{}
 	for _, id := range registry.IDs() {
 		if slices.Contains(req.disabledTools, id) {
-			selections[id] = scripts.Selection{}
+			selections[id] = backends.Selection{}
 			continue
 		}
 		options := process.CommandOptions{Optional: true}
@@ -299,7 +299,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 			options = *replaced
 		}
 		options.WorkingDir = req.workingDir
-		selections[id] = scripts.Selection{Command: id, Process: &options}
+		selections[id] = backends.Selection{Command: id, Process: &options}
 	}
 	return selections
 }

@@ -13,13 +13,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -266,7 +266,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				if result.Diagnostics[0].Rule != tool.name || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
-				disabled := scripts.Selection{Process: &process.CommandOptions{Executable: new("")}}
+				disabled := backends.Selection{Process: &process.CommandOptions{Executable: new("")}}
 				options.Tools = registry.Registrations(registry.Selections{tool.name: disabled})
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {

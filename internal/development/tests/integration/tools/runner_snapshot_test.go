@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 type snapshotScriptBackend struct{ calls int }
@@ -45,7 +45,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			engine := &snapshotScriptBackend{}
-			registration, err := scripts.Register(rule.Descriptor{Name: "powershell-test", Provider: "test", Category: "correctness", Maturity: "stable"}, []string{"pwsh", "powershell"}, engine)
+			registration, err := backends.Register(rule.Descriptor{Name: "powershell-test", Provider: "test", Category: "correctness", Maturity: "stable"}, []string{"pwsh", "powershell"}, engine)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -15,7 +15,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
@@ -26,7 +27,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -135,7 +135,7 @@ type recordingRunner struct {
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -531,7 +531,7 @@ func TestProviderParityCases(t *testing.T) {
 func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 	t.Parallel()
 	var args []string
-	registrations := registry.Registrations(registry.Selections{"shellcheck": scripts.Selection{Runner: func(received []string, _ string) ([]byte, error) {
+	registrations := registry.Registrations(registry.Selections{"shellcheck": backends.Selection{Runner: func(received []string, _ string) ([]byte, error) {
 		args = received
 		return []byte(`{"comments":[]}`), nil
 	}}})

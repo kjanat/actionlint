@@ -17,11 +17,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -159,7 +159,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			if err != nil {
 				return options, &pluginexec.LoadError{Err: err}
 			}
-			replacement, err = scripts.WithScriptInputs(replacement, metadata, engine.Backend)
+			replacement, err = backends.WithScriptInputs(replacement, metadata, engine.Backend)
 			if err != nil {
 				return options, &pluginexec.LoadError{Err: err}
 			}
@@ -168,7 +168,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			break
 		}
 		if !found {
-			registration, err := scripts.RegisterEngine(metadata, engine.Backend)
+			registration, err := backends.RegisterEngine(metadata, engine.Backend)
 			if err != nil {
 				return options, &pluginexec.LoadError{Err: err}
 			}
@@ -216,12 +216,12 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
 			continue
 		}
-		selection := scripts.Selection{Command: name}
+		selection := backends.Selection{Command: name}
 		if local.Files.Executable != "" {
 			selection.Process = &hostprocess.CommandOptions{Executable: &local.Files.Executable}
 		}
 		// An explicitly selected manifest replaces the tool's default route.
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: local.Files.Manifest, Programs: local.Files.Programs, Selection: selection})
+		registration, err := backends.RegisterProvider(backends.Provider{Manifest: local.Files.Manifest, Programs: local.Files.Programs, Selection: selection})
 		if err != nil {
 			return options, &pluginexec.LoadError{Err: err}
 		}
@@ -232,7 +232,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 
 	options.Tools = slices.Clone(options.Tools)
 	for i, registration := range options.Tools {
-		options.Tools[i] = scripts.Configure(registration)
+		options.Tools[i] = backends.Configure(registration)
 	}
 	options.Analyzers = slices.Concat(options.Analyzers, l.Registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.RunnerProviders())

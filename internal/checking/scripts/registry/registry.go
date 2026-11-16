@@ -8,17 +8,17 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/managed"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/managed"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // Selections chooses how each bundled provider runs, keyed by its rule name.
 // A provider without a selection is registered disabled.
-type Selections map[string]scripts.Selection
+type Selections map[string]backends.Selection
 
 // Registrations registers every bundled provider in directory order, binds
 // managed document analyzers to providers that name an integration
@@ -50,11 +50,11 @@ func bundledRegistrations(selections Selections) ([]contract.Registration, error
 	}
 	registrations := make([]contract.Registration, 0, len(manifests))
 	for _, manifest := range manifests {
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: bundledproviders.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
+		registration, err := backends.RegisterProvider(backends.Provider{Manifest: manifest, Programs: bundledproviders.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
 		if err != nil {
 			return nil, fmt.Errorf("bundled tool provider %s: %w", manifest.Rule.Name, err)
 		}
-		registrations = append(registrations, scripts.Configure(registration))
+		registrations = append(registrations, backends.Configure(registration))
 	}
 	return registrations, nil
 }
@@ -83,7 +83,7 @@ func Defaults() Selections {
 	}
 	selections := make(Selections, len(manifests))
 	for _, manifest := range manifests {
-		selections[manifest.Rule.Name] = scripts.Selection{Command: manifest.Rule.Name, Process: &process.CommandOptions{Optional: true}}
+		selections[manifest.Rule.Name] = backends.Selection{Command: manifest.Rule.Name, Process: &process.CommandOptions{Optional: true}}
 	}
 	return selections
 }

@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -77,7 +77,7 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 		t.Skip("set ACTIONLINT_TEST_PSSCRIPTANALYZER=1 with pwsh and PSScriptAnalyzer installed")
 	}
 	manifest, programs := loadPSScriptAnalyzer(t)
-	registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: programs, Selection: scripts.Selection{Command: "pwsh"}})
+	registration, err := backends.RegisterProvider(backends.Provider{Manifest: manifest, Programs: programs, Selection: backends.Selection{Command: "pwsh"}})
 	if err != nil {
 		t.Fatal(err)
 	}

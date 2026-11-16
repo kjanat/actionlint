@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -35,7 +36,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -204,7 +204,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if processes == nil {
 		processes = process.NewProcessPool(ctx, runtime.NumCPU())
 	}
-	engines := scripts.NewScriptEngines(options.LoadScriptEngine)
+	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
