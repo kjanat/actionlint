@@ -419,12 +419,10 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 	if err != nil {
 		return results.Diagnostic{}, err
 	}
-	// Host spellings are normalized here. Other text is a tool severity that
-	// the managed tool runner maps through its manifest's severity table.
+	// The text stays as the guest wrote it: a tool integration's manifest
+	// table may map an alias such as "note". hostSeverities normalizes it for
+	// other analyzers.
 	d.Severity = severity.Severity(level)
-	if parsed, known := severity.Parse(level); known {
-		d.Severity = parsed
-	}
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err
 	}
@@ -441,6 +439,16 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		return d, results.NewRejectedRelatedError(withheld)
 	}
 	return d, nil
+}
+
+// hostSeverities replaces host severity spellings, such as "note", with the
+// severity they name. Other text is kept.
+func hostSeverities(diagnostics []results.Diagnostic) {
+	for i := range diagnostics {
+		if parsed, known := severity.Parse(string(diagnostics[i].Severity)); known {
+			diagnostics[i].Severity = parsed
+		}
+	}
 }
 
 func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {

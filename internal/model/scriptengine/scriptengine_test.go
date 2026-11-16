@@ -80,6 +80,37 @@ func TestDiagnosticJSONOmitsMissingEnd(t *testing.T) {
 	}
 }
 
+// Suggested is the zero Applicability. encoding/json/v2 still writes it, as
+// the bundled providers' golden files expect.
+func TestDiagnosticJSONWritesSuggestedApplicability(t *testing.T) {
+	t.Parallel()
+	diagnostic := Diagnostic{
+		Filename: "a.sh", Code: "SC1", Message: "m", Location: sourcetext.Position{Line: 1, Column: 1},
+		Fixes: []Fix{{Applicability: results.FixSuggested, Description: "d"}},
+	}
+	encoded, err := jsonv2.Marshal(diagnostic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"filename":"a.sh","code":"SC1","message":"m","location":{"row":1,"column":1},` +
+		`"fixes":[{"applicability":"suggested","description":"d","replacements":[]}]}`
+	if string(encoded) != want {
+		t.Fatalf("encoded\n%s\nwant\n%s", encoded, want)
+	}
+}
+
+func TestDiagnosticJSONHonorsRejectUnknownMembers(t *testing.T) {
+	t.Parallel()
+	data := []byte(`[{"filename":"a.sh","code":"SC1","message":"m","location":{"row":1,"column":1},"extra":true}]`)
+	var decoded []Diagnostic
+	if err := jsonv2.Unmarshal(data, &decoded, jsonv2.RejectUnknownMembers(true)); err == nil {
+		t.Fatal("unknown diagnostic member was accepted")
+	}
+	if err := jsonv2.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("default options rejected an unknown member: %v", err)
+	}
+}
+
 func TestRequestEnvironmentJSON(t *testing.T) {
 	t.Parallel()
 	environments := scripts.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux},

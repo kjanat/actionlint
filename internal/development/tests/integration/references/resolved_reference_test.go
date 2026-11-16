@@ -246,7 +246,7 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 	t.Parallel()
 	for _, uses := range []string{
 		"owner/@v1", "https://host/owner/repo@v1", "owner/repo@", "/repo@v1",
-		"owner/repo", "owner//repo@v1", "owner/repo/../action@v1", "owner/repo@${{ inputs.ref }}",
+		"owner/repo", "owner/repo/../action@v1", "owner/repo@${{ inputs.ref }}",
 		"./local", "$/action@v1", "docker://alpine:3", "self:owner/repo@v1",
 	} {
 		t.Run(uses, func(t *testing.T) {
@@ -258,6 +258,21 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 				t.Fatalf("unsupported reference resolved: requests=%v findings=%v error=%v", provider.requests, findings, err)
 			}
 		})
+	}
+}
+
+// The runner drops empty path segments, so owner//repo@v1 runs owner/repo@v1.
+func TestConsumerResolvesEmptyPathSegmentsLikeRunner(t *testing.T) {
+	t.Parallel()
+	provider := &fakeResolver{}
+	rule := newReferenceCheck(provider)
+	findings, err := rule.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "owner//repo@v1", Kind: "action"}}})
+	if err != nil || len(findings) != 1 || len(provider.requests) != 1 {
+		t.Fatalf("reference not resolved: %v %v %+v", findings, err, provider.requests)
+	}
+	want := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action"}
+	if provider.requests[0] != want {
+		t.Fatalf("request = %+v, want %+v", provider.requests[0], want)
 	}
 }
 
