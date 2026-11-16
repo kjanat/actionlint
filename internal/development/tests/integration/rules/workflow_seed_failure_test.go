@@ -57,7 +57,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := reusableworkflows.NewCache(root, nil)
+			cache := reusableworkflows.NewMetadataCache(root, nil)
 			cache.SetSources(t.Context(), store, root)
 			visit := func(snapshot parsing.SourceSnapshot) (int, int) {
 				t.Helper()

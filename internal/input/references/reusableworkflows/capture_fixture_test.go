@@ -17,7 +17,7 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 	if err != nil {
 		tb.Fatal(err)
 	}
-	cache := NewCache(root, debug)
+	cache := NewMetadataCache(root, debug)
 	store, err := capture.New(tb.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
 		return os.ReadFile(filepath.FromSlash(path))
 	})
@@ -26,5 +26,5 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 	}
 	cache.SetSources(tb.Context(), store, base)
 	capturefixture.CloseCaptures(tb, store)
-	return &ASTComparisonCache{Cache: cache, WorkingDir: cwd}
+	return &ASTComparisonCache{MetadataCache: cache, WorkingDir: cwd}
 }

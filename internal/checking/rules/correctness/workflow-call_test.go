@@ -32,7 +32,7 @@ jobs:
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()
-	cache := reusableworkflows.NewCache(root, nil)
+	cache := reusableworkflows.NewMetadataCache(root, nil)
 	cache.Store("./callee.yml", &calls.Metadata{JobPermissions: map[string]calls.PermissionScopeLevels{
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})

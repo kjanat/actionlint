@@ -54,7 +54,7 @@ jobs:
 				}
 				project := workspace.Identity(root)
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
-				fileCache := reusableworkflows.NewCache(project.RootDir(), nil)
+				fileCache := reusableworkflows.NewMetadataCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
 				fromFile, err := fileCache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 				if err != nil {
@@ -64,7 +64,7 @@ jobs:
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := reusableworkflows.NewCache(project.RootDir(), nil)
+				astCache := reusableworkflows.NewMetadataCache(project.RootDir(), nil)
 				astCache.SetSources(t.Context(), store, root)
 				path := filepath.Join(root, "callee.yaml")
 				snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))

@@ -41,7 +41,7 @@ type ActionMetadataDocumentLookup interface {
 type Resolver struct {
 	repositorySource     func(string) (RepositoryDocument, error)
 	runners              *runners.Knowledge
-	base                 *Cache
+	base                 *ManifestCache
 	prepared             preparedAction
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
@@ -93,7 +93,7 @@ func (d SourceDocument) Provenance() parsing.Provenance { return d.provenance }
 
 // NewResolver starts a document scope over shared repository metadata and takes
 // its own immutable copy of the source mappings.
-func NewResolver(cache *Cache, checkoutMappings map[string]string) *Resolver {
+func NewResolver(cache *ManifestCache, checkoutMappings map[string]string) *Resolver {
 	return &Resolver{base: cache, sourceMappings: maps.Clone(checkoutMappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
 }
 

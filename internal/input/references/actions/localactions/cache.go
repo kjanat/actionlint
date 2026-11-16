@@ -56,9 +56,9 @@ func (e *ParseError) Error() string {
 }
 func (e *ParseError) Unwrap() error { return e.cause }
 
-// Cache shares parsed manifests and raw source snapshots for one repository.
+// ManifestCache shares parsed manifests and raw source snapshots for one repository.
 // Configure it before concurrent analysis; callers use separate Resolver instances.
-type Cache struct {
+type ManifestCache struct {
 	captures          *capture.Store
 	ctx               context.Context
 	sourceBase        string
@@ -92,7 +92,7 @@ type Options struct {
 }
 
 // Configure installs shared input resources before any lookups start.
-func (c *Cache) Configure(options Options) {
+func (c *ManifestCache) Configure(options Options) {
 	if options.Reader != nil {
 		c.reader = options.Reader
 	}
@@ -115,10 +115,10 @@ func (c *Cache) Configure(options Options) {
 	c.onManifestRequest = options.OnManifestRequest
 }
 
-// NewCache creates a repository metadata cache bound to ctx. An empty root disables lookups.
+// NewManifestCache creates a repository metadata cache bound to ctx. An empty root disables lookups.
 // Configure may later replace the context together with the shared reader.
-func NewCache(ctx context.Context, root string, dbg io.Writer) *Cache {
-	return &Cache{
+func NewManifestCache(ctx context.Context, root string, dbg io.Writer) *ManifestCache {
+	return &ManifestCache{
 		ctx:     ctx,
 		reader:  files.New(ctx, nil, nil),
 		root:    root,
@@ -128,12 +128,12 @@ func NewCache(ctx context.Context, root string, dbg io.Writer) *Cache {
 	}
 }
 
-func newNullCache(dbg io.Writer) *Cache {
+func newNullManifestCache(dbg io.Writer) *ManifestCache {
 	// Null cache. Cache never hits. It is used when project is not found
-	return &Cache{dbg: dbg}
+	return &ManifestCache{dbg: dbg}
 }
 
-func (c *Cache) debug(format string, args ...any) {
+func (c *ManifestCache) debug(format string, args ...any) {
 	if c.dbg == nil {
 		return
 	}
@@ -141,14 +141,14 @@ func (c *Cache) debug(format string, args ...any) {
 	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
-func (c *Cache) readCache(key string) (MetadataResult, bool) {
+func (c *ManifestCache) readCache(key string) (MetadataResult, bool) {
 	c.mu.RLock()
 	m, ok := c.cache[key]
 	c.mu.RUnlock()
 	return m.result, ok
 }
 
-func (c *Cache) writeCache(key string, result MetadataResult, source metadataSource) (MetadataResult, bool) {
+func (c *ManifestCache) writeCache(key string, result MetadataResult, source metadataSource) (MetadataResult, bool) {
 	if errors.Is(result.cause, context.Canceled) || errors.Is(result.cause, context.DeadlineExceeded) {
 		return result, false
 	}
@@ -167,21 +167,21 @@ func (c *Cache) writeCache(key string, result MetadataResult, source metadataSou
 }
 
 // FindMetadata reports missing manifests at each reference and other cached failures once.
-func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+func (c *ManifestCache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 	metadata, cached, _, err := c.FindMetadataDocument(spec)
 	return metadata, cached, err
 }
 
 // FindMetadataDocument returns metadata and its provenance from the same lookup,
 // including the captured source of a failed parse. It performs no second read.
-func (c *Cache) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
+func (c *ManifestCache) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
 	result, cached := c.LookupMetadata(spec)
 	document, _ := c.SourceDocument(result)
 	return result.Metadata(), cached, document, c.reportMetadataError(result)
 }
 
 // SourceDocument projects the captured parse record associated with a lookup.
-func (c *Cache) SourceDocument(result MetadataResult) (SourceDocument, bool) {
+func (c *ManifestCache) SourceDocument(result MetadataResult) (SourceDocument, bool) {
 	if c == nil || result.cacheSpec == "" {
 		return SourceDocument{}, false
 	}
@@ -195,7 +195,7 @@ func (c *Cache) SourceDocument(result MetadataResult) (SourceDocument, bool) {
 }
 
 // LookupMetadata preserves failure causes without consuming their diagnostics.
-func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
+func (c *ManifestCache) LookupMetadata(spec string) (MetadataResult, bool) {
 	if local, ok := callreferences.SelfRepositoryLocal(spec); ok {
 		spec = local
 	}
@@ -254,7 +254,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	return result, cached
 }
 
-func (c *Cache) hasDockerfile(dir string) (bool, error) {
+func (c *ManifestCache) hasDockerfile(dir string) (bool, error) {
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		file := filepath.Join(dir, name)
 		if !c.customReader {
@@ -275,7 +275,7 @@ func (c *Cache) hasDockerfile(dir string) (bool, error) {
 	return false, nil
 }
 
-func (c *Cache) readLocalActionMetadataFile(dir string) (capture.CapturedDocument, string, error) {
+func (c *ManifestCache) readLocalActionMetadataFile(dir string) (capture.CapturedDocument, string, error) {
 	if c.captures == nil {
 		return capture.CapturedDocument{}, "", errors.New("local action cache requires a capture store")
 	}
@@ -297,7 +297,7 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.CapturedDocumen
 	return capture.CapturedDocument{}, "", nil
 }
 
-func (c *Cache) hasExplicitAction(spec string) (bool, error) {
+func (c *ManifestCache) hasExplicitAction(spec string) (bool, error) {
 	if c == nil || c.root == "" || len(c.explicitDocuments) == 0 {
 		return false, nil
 	}
@@ -320,26 +320,26 @@ func (c *Cache) hasExplicitAction(spec string) (bool, error) {
 
 // Factory shares repository metadata caches across one analysis invocation.
 type Factory struct {
-	caches map[string]*Cache
+	caches map[string]*ManifestCache
 	dbg    io.Writer
 }
 
 // GetCache returns the shared cache for a repository root, or a disabled cache for an empty root.
 // Create caches serially before starting concurrent metadata lookups.
-func (f *Factory) GetCache(ctx context.Context, root string) *Cache {
+func (f *Factory) GetCache(ctx context.Context, root string) *ManifestCache {
 	if root == "" {
-		return newNullCache(f.dbg)
+		return newNullManifestCache(f.dbg)
 	}
 	r := root
 	if c, ok := f.caches[r]; ok {
 		return c
 	}
-	c := NewCache(ctx, root, f.dbg)
+	c := NewManifestCache(ctx, root, f.dbg)
 	f.caches[r] = c
 	return c
 }
 
 // NewFactory creates a cache factory for one analysis invocation.
 func NewFactory(dbg io.Writer) *Factory {
-	return &Factory{map[string]*Cache{}, dbg}
+	return &Factory{map[string]*ManifestCache{}, dbg}
 }

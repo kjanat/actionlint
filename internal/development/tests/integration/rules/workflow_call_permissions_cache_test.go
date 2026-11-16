@@ -50,7 +50,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..", "..", "..", "input", "references", "reusableworkflows", "testdata", "reusable-workflows")
 
-	run := func(t *testing.T, cache *reusableworkflows.Cache) []string {
+	run := func(t *testing.T, cache *reusableworkflows.MetadataCache) []string {
 		t.Helper()
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)

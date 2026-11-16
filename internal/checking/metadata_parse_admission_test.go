@@ -160,7 +160,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := localactions.NewCache(t.Context(), root, nil)
+			cache := localactions.NewManifestCache(t.Context(), root, nil)
 			cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)

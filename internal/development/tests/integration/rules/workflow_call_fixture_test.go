@@ -14,7 +14,7 @@ import (
 )
 
 // workflowCallVisitor exercises the production adapter with prepared workflow inputs.
-func workflowCallVisitor(tb testing.TB, workflow workflows.BoundWorkflow, cache *reusableworkflows.Cache, facts repository.Snapshot) workflowvisit.Rule {
+func workflowCallVisitor(tb testing.TB, workflow workflows.BoundWorkflow, cache *reusableworkflows.MetadataCache, facts repository.Snapshot) workflowvisit.Rule {
 	tb.Helper()
 	var uses []string
 	for _, job := range workflow.Jobs() {

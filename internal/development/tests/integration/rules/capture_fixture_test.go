@@ -15,15 +15,15 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *reusableworkflows.Cache {
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *reusableworkflows.MetadataCache {
 	tb.Helper()
 	cache, _ := newCapturedWorkflowCacheAndSnapshots(tb, root, cwd, debug)
 	return cache
 }
 
-func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*reusableworkflows.Cache, *declarations.CapturedSnapshots) {
+func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*reusableworkflows.MetadataCache, *declarations.CapturedSnapshots) {
 	tb.Helper()
-	cache := reusableworkflows.NewCache(root, debug)
+	cache := reusableworkflows.NewMetadataCache(root, debug)
 	store, snapshots := newCapturedSnapshots(tb, sourceFixtureBase(tb))
 	cache.SetSources(tb.Context(), store, sourceFixtureBase(tb))
 	return cache, snapshots

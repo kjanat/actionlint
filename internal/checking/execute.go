@@ -359,7 +359,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		root    string
 		mirrors references.MirrorAccess
 	}
-	workflows := map[workflowCacheKey]*reusableworkflows.Cache{}
+	workflows := map[workflowCacheKey]*reusableworkflows.MetadataCache{}
 	remoteWorkflows := make(map[references.MirrorAccess]*reusableworkflows.Remote)
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
@@ -413,7 +413,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		key := workflowCacheKey{root, mirrors}
 		wc, configured := workflows[key]
 		if !configured {
-			wc = reusableworkflows.NewCache(root, session.debugWriter())
+			wc = reusableworkflows.NewMetadataCache(root, session.debugWriter())
 			wc.SetRemote(remoteWorkflows[mirrors])
 			workflows[key] = wc
 		}

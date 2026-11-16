@@ -10,7 +10,7 @@ import (
 
 // ASTComparisonCache compares AST-derived metadata with captured-file decoding.
 type ASTComparisonCache struct {
-	*Cache
+	*MetadataCache
 	WorkingDir string
 }
 

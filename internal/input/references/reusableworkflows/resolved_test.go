@@ -32,7 +32,7 @@ func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	cache := NewCache(root, nil)
+	cache := NewMetadataCache(root, nil)
 	cache.SetSources(t.Context(), store, root)
 	resolved := cache.Resolved()
 	if metadata, err := resolved.LookupForCall("./outer.yml"); metadata != nil || err != nil || len(reads) != 0 {
@@ -67,7 +67,7 @@ func TestInvalidWorkflowMetadataRejectsQuarantinedCapture(t *testing.T) {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	cache := NewCache(root, nil)
+	cache := NewMetadataCache(root, nil)
 	cache.SetSources(t.Context(), store, root)
 	if _, err := cache.LoadForCall(t.Context(), "./broken.yml"); err == nil {
 		t.Fatal("broken metadata was accepted")

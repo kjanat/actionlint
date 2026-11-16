@@ -127,7 +127,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	if !available {
 		t.Fatal("captured workflow unavailable")
 	}
-	c := reusableworkflows.NewCache(cwd, nil)
+	c := reusableworkflows.NewMetadataCache(cwd, nil)
 	c.SetSources(t.Context(), store, cwd)
 	if err := c.Seed(snapshot); err != nil {
 		t.Fatal(err)

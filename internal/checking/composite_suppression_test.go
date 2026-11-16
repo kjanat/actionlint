@@ -45,8 +45,8 @@ jobs:
 permissions: {}
 `)
 	project := workspace.Identity(root)
-	actions := localactions.NewCache(t.Context(), projectRoot(project), nil)
-	workflows := reusableworkflows.NewCache(project.RootDir(), nil)
+	actions := localactions.NewManifestCache(t.Context(), projectRoot(project), nil)
+	workflows := reusableworkflows.NewMetadataCache(project.RootDir(), nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}, checks: testChecks(t, nil, nil)}
 	var fixture *declarations.CapturedSnapshots

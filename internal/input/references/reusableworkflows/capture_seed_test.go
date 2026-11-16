@@ -65,7 +65,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := NewCache(cacheRoot, nil)
+			cache := NewMetadataCache(cacheRoot, nil)
 			cache.SetSources(t.Context(), store, base)
 			if err := cache.Seed(snapshot); err != nil {
 				t.Fatal(err)

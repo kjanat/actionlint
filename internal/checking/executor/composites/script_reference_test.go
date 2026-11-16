@@ -67,7 +67,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := localactions.NewCache(t.Context(), root, nil)
+	cache := localactions.NewManifestCache(t.Context(), root, nil)
 	actionCapture, err := snapshots.Capture(actionPath, actionContent, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)

@@ -84,7 +84,7 @@ type analysisSession struct {
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+	processes *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
@@ -103,7 +103,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+	actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) (findings []*finding.Finding, outline outline.Outline, publication *policy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -267,7 +267,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *localactions.Cache, workflows *reusableworkflows.Cache, registrations []results.AnalyzerRegistration, usedRules *[]rule.Descriptor,
+	actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, registrations []results.AnalyzerRegistration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex

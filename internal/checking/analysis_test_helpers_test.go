@@ -50,7 +50,7 @@ permissions: {}
 // checkWithCaches analyzes with the same registry and store, so the cache and
 // the analysis see one capture of each document.
 type capturedWorkflowCache struct {
-	*reusableworkflows.Cache
+	*reusableworkflows.MetadataCache
 	registry  *parsing.SourceSnapshots
 	captures  *capture.Store
 	snapshots *declarations.CapturedSnapshots
@@ -62,13 +62,13 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 		cwd = sourceFixtureBase(tb)
 	}
 	registry, captures, snapshots := newCapturedSnapshots(tb, cwd)
-	cache := reusableworkflows.NewCache(root, debug)
+	cache := reusableworkflows.NewMetadataCache(root, debug)
 	cache.SetSources(tb.Context(), captures, cwd)
-	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
+	return &capturedWorkflowCache{MetadataCache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
@@ -84,10 +84,10 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		session.workingDir = sourceFixtureBase(tb)
 	}
 	var fixture *declarations.CapturedSnapshots
-	var workflowCache *reusableworkflows.Cache
+	var workflowCache *reusableworkflows.MetadataCache
 	if workflows != nil {
 		session.snapshots, session.captures, fixture = workflows.registry, workflows.captures, workflows.snapshots
-		workflowCache = workflows.Cache
+		workflowCache = workflows.MetadataCache
 	} else {
 		session.snapshots, session.captures, fixture = newCapturedSnapshots(tb, session.workingDir)
 	}

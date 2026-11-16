@@ -38,7 +38,7 @@ type RuleInputs struct {
 	Repository                    repository.Snapshot
 	Actions                       *localactions.Resolver
 	RemoteActions                 *remote.ResolvedActions
-	WorkflowSources               *reusableworkflows.Cache
+	WorkflowSources               *reusableworkflows.MetadataCache
 	Workflows                     *reusableworkflows.ResolvedWorkflows
 	WorkflowNames                 *nameindex.Index
 	WorkflowNameInventory         names.Inventory
