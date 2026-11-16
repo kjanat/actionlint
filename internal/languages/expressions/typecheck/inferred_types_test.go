@@ -30,7 +30,7 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		types InferredTypes
-		want  exprtypes.Kind
+		want  exprtypes.TypeKind
 	}{{first.Types, exprtypes.KindNumber}, {second.Types, exprtypes.KindBool}} {
 		got, known := tc.types.TypeOf(call.Args[1])
 		if !known || got.Kind() != tc.want {

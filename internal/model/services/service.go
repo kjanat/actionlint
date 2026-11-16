@@ -8,17 +8,18 @@ import (
 	"strings"
 )
 
-type Kind string
+// ServiceKind names the GitHub service that runs a workflow.
+type ServiceKind string
 
 const (
-	Unknown                Kind = ""
-	GitHubCom              Kind = "github.com"
-	GitHubDataResidency    Kind = "github-data-residency"
-	GitHubEnterpriseServer Kind = "ghes"
+	Unknown                ServiceKind = ""
+	GitHubCom              ServiceKind = "github.com"
+	GitHubDataResidency    ServiceKind = "github-data-residency"
+	GitHubEnterpriseServer ServiceKind = "ghes"
 )
 
 type Service struct {
-	kind    Kind
+	kind    ServiceKind
 	version string
 }
 
@@ -28,7 +29,7 @@ func Parse(kind, version string) (Service, error) {
 	if kind == "unknown" {
 		kind = ""
 	}
-	k := Kind(kind)
+	k := ServiceKind(kind)
 	switch k {
 	case Unknown, GitHubCom, GitHubDataResidency:
 		if version != "" {
@@ -43,12 +44,12 @@ func Parse(kind, version string) (Service, error) {
 	}
 	return Service{kind: k, version: version}, nil
 }
-func (s Service) Kind() Kind      { return s.kind }
-func (s Service) Version() string { return s.version }
+func (s Service) Kind() ServiceKind { return s.kind }
+func (s Service) Version() string   { return s.version }
 func (s Service) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Kind    Kind   `json:"kind"`
-		Version string `json:"version,omitempty"`
+		Kind    ServiceKind `json:"kind"`
+		Version string      `json:"version,omitempty"`
 	}{s.kind, s.version})
 }
 

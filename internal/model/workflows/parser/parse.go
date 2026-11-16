@@ -24,7 +24,7 @@ import (
 )
 
 // NodeKindName describes the kind of a YAML node.
-func NodeKindName(k codec.Kind) string {
+func NodeKindName(k codec.NodeKind) string {
 	switch k {
 	case codec.DocumentNode:
 		return "document"

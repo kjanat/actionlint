@@ -49,7 +49,7 @@ func TestDispatchInputsUpdateOnlyTheirEventVariant(t *testing.T) {
 	for _, tc := range []struct {
 		root string
 		path []string
-		kind exprtypes.Kind
+		kind exprtypes.TypeKind
 	}{
 		{"inputs", []string{"count"}, exprtypes.KindNumber},
 		{"inputs", []string{"flag"}, exprtypes.KindBool},

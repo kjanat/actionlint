@@ -29,10 +29,11 @@ const (
 	Invalid
 )
 
-type Kind uint8
+// ValueKind is the JSON type of a context value. KindUnknown means the type is not known statically.
+type ValueKind uint8
 
 const (
-	KindUnknown Kind = iota
+	KindUnknown ValueKind = iota
 	Null
 	Bool
 	Number
@@ -60,7 +61,7 @@ type Value struct{ p *node }
 
 type node struct {
 	state            State
-	kind             Kind
+	kind             ValueKind
 	origin           Origin
 	boolean          bool
 	number           float64
@@ -73,7 +74,7 @@ type node struct {
 	templateFragment bool
 }
 
-func makeValue(state State, kind Kind, origin Origin) Value {
+func makeValue(state State, kind ValueKind, origin Origin) Value {
 	return Value{p: &node{state: state, kind: kind, origin: origin}}
 }
 
@@ -84,7 +85,7 @@ func (v Value) State() State {
 	return v.p.state
 }
 
-func (v Value) Kind() Kind {
+func (v Value) Kind() ValueKind {
 	if v.p == nil {
 		return KindUnknown
 	}
@@ -347,7 +348,7 @@ func YAMLScalar(text, tag string, origin Origin) Value {
 // DynamicValue constructs a runtime-dependent semantic value. source is the
 // original expression or template text when one exists; kind may be
 // KindUnknown when the runtime result shape is not known.
-func DynamicValue(source string, kind Kind, origin Origin) Value {
+func DynamicValue(source string, kind ValueKind, origin Origin) Value {
 	result := makeValue(Dynamic, kind, origin)
 	result.p.source = source
 	return result

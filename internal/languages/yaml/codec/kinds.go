@@ -7,7 +7,7 @@ import (
 )
 
 var kinds = [...]struct {
-	owned  Kind
+	owned  NodeKind
 	parser upstream.Kind
 }{
 	{0, 0},
@@ -30,7 +30,7 @@ var styles = [...]struct {
 	{FlowStyle, upstream.FlowStyle},
 }
 
-func ownedKind(kind upstream.Kind) (Kind, error) {
+func ownedKind(kind upstream.Kind) (NodeKind, error) {
 	for _, pair := range kinds {
 		if kind == pair.parser {
 			return pair.owned, nil
@@ -39,7 +39,7 @@ func ownedKind(kind upstream.Kind) (Kind, error) {
 	return 0, fmt.Errorf("unsupported parser YAML node kind %d", kind)
 }
 
-func parserKind(kind Kind) (upstream.Kind, error) {
+func parserKind(kind NodeKind) (upstream.Kind, error) {
 	for _, pair := range kinds {
 		if kind == pair.owned {
 			return pair.parser, nil

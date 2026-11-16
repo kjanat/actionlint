@@ -15,7 +15,7 @@ func TestMissingAndExplicitScalarStates(t *testing.T) {
 		name  string
 		value Value
 		state State
-		kind  Kind
+		kind  ValueKind
 	}{
 		{name: "missing", state: Missing, kind: KindUnknown},
 		{name: "null", value: YAMLScalar("null", "!!null", Origin{}), state: Literal, kind: Null},
@@ -47,7 +47,7 @@ func TestTemplateClassifiesLiteralEvaluatedDynamicAndInvalid(t *testing.T) {
 		name  string
 		input string
 		state State
-		kind  Kind
+		kind  ValueKind
 		text  string
 		known bool
 	}{
@@ -158,7 +158,7 @@ func TestYAMLCoreScalarCoercionAndScalarFormatting(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		text string
-		kind Kind
+		kind ValueKind
 		want string
 	}{
 		{text: "TRUE", kind: Bool, want: "true"},

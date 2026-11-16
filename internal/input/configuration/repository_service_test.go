@@ -16,7 +16,7 @@ func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		input   any
-		kind    services.Kind
+		kind    services.ServiceKind
 		version string
 	}{
 		{"inherit", map[string]any{}, services.GitHubCom, ""},

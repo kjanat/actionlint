@@ -147,7 +147,7 @@ func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
 type SourceScalar struct {
 	HasSource bool
 	Evaluated bool
-	Kind      codec.Kind
+	Kind      codec.NodeKind
 	Tag       string
 	Value     string
 	Pos       source.Position

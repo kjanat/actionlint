@@ -12,7 +12,7 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
-		kind         exprtypes.Kind
+		kind         exprtypes.TypeKind
 		open         bool
 	}{
 		{"known axis", `item: [1, 2]`, exprtypes.KindNumber, false},

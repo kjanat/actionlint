@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-// Kind is the shape of a Type.
-type Kind uint8
+// TypeKind is the shape of a Type.
+type TypeKind uint8
 
 const (
 	// KindAny is a value whose type cannot be known statically, so it cannot be
-	// type-checked. It is the zero Kind, which makes the zero Type any.
-	KindAny Kind = iota
+	// type-checked. It is the zero TypeKind, which makes the zero Type any.
+	KindAny TypeKind = iota
 	// KindNull is the type of null.
 	KindNull
 	// KindNumber is the type of integer and float values.
@@ -41,7 +41,7 @@ var kindNames = [...]string{
 }
 
 // String returns the name of the kind, as used in type diagnostics.
-func (k Kind) String() string {
+func (k TypeKind) String() string {
 	if int(k) < len(kindNames) {
 		return kindNames[k]
 	}
@@ -56,7 +56,7 @@ func (k Kind) String() string {
 // ObjectBuilder or NewArrayType, and widen them to a Type with their Type
 // method. Read them back with Kind, Object and Array.
 type Type struct {
-	kind Kind
+	kind TypeKind
 	// object holds the members when kind is KindObject.
 	object ObjectType
 	// array holds the element type when kind is KindArray.
@@ -80,7 +80,7 @@ func BoolType() Type { return Type{kind: KindBool} }
 func StringType() Type { return Type{kind: KindString} }
 
 // Kind returns the shape of the type.
-func (t Type) Kind() Kind { return t.kind }
+func (t Type) Kind() TypeKind { return t.kind }
 
 // Object returns the object members of t. ok is false when t is not an object.
 func (t Type) Object() (o ObjectType, ok bool) { return t.object, t.kind == KindObject }

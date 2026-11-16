@@ -24,7 +24,7 @@ func TestExpressionFailurePhases(t *testing.T) {
 		source string
 		phase  exprlang.FailurePhase
 		state  exprvalues.EvaluationState
-		kind   exprtypes.Kind
+		kind   exprtypes.TypeKind
 	}{
 		{"${{ startsWith(true) }}", exprlang.FailureStaticValidation, exprvalues.EvaluationNotAttempted, exprtypes.KindBool},
 		{"${{ startsWith(fromJSON(null), 'x') }}", exprlang.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindBool},
@@ -63,11 +63,11 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 	t.Cleanup(func() { delete(exprfunctions.Builtins, "hosttest") })
 	for _, tc := range []struct {
 		source   string
-		declared []exprtypes.Kind
-		refined  exprtypes.Kind
+		declared []exprtypes.TypeKind
+		refined  exprtypes.TypeKind
 	}{
-		{"${{ fromJSON(true) }}", []exprtypes.Kind{exprtypes.KindAny}, exprtypes.KindBool},
-		{"${{ hosttest(github.event.unknown) }}", []exprtypes.Kind{exprtypes.KindAny, exprtypes.KindBool}, exprtypes.KindAny},
+		{"${{ fromJSON(true) }}", []exprtypes.TypeKind{exprtypes.KindAny}, exprtypes.KindBool},
+		{"${{ hosttest(github.event.unknown) }}", []exprtypes.TypeKind{exprtypes.KindAny, exprtypes.KindBool}, exprtypes.KindAny},
 	} {
 		rule := newTestChecker()
 		types, valid := rule.checkExprsIn(tc.source, &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")

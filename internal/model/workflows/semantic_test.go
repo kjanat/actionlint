@@ -203,7 +203,7 @@ jobs:
 	if actionView == nil {
 		t.Fatal("action view missing")
 	}
-	for name, wantKind := range map[string]value.Kind{"literal-null": value.Null, "blank": value.Null, "empty": value.String} {
+	for name, wantKind := range map[string]value.ValueKind{"literal-null": value.Null, "blank": value.Null, "empty": value.String} {
 		got := ResolvedInputs(actionView).Lookup(name)
 		if got.State() != value.Literal || got.Kind() != wantKind {
 			t.Errorf("action input %q = (%v,%v); want Literal %v", name, got.State(), got.Kind(), wantKind)
@@ -375,7 +375,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name, runsOn string
-		wantKind     value.Kind
+		wantKind     value.ValueKind
 		wantState    value.State
 	}{
 		{name: "whole expression", runsOn: `${{ fromJSON('["linux","arm64"]') }}`, wantKind: value.Array, wantState: value.Evaluated},

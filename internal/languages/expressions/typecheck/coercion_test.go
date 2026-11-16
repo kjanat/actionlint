@@ -23,7 +23,7 @@ func TestFunctionCallFacts(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 		valid bool
 		state exprvalues.EvaluationState
 		value any

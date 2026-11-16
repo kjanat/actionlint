@@ -47,7 +47,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		input string
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 		want  any
 	}{
 		{"inputs.flag", exprtypes.KindBool, true},
