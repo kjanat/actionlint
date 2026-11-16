@@ -2,14 +2,13 @@ package workflows
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"path"
 	"strings"
-	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/remotecontent"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -67,27 +66,38 @@ func (f RemoteFile) Reason() availability.Reason { return f.missing.Reason() }
 // in one analysis. Lookup never starts a network request.
 type Remote struct {
 	provider Provider
-	mu       sync.Mutex
-	results  map[string]reusableWorkflowMetadataResult
-	pending  map[string]chan struct{}
-	contents map[string][32]byte
+	store    *remotecontent.Store[string, reusableWorkflowMetadataResult, parsedWorkflow]
+}
+
+// parsedWorkflow is the outcome of parsing one immutable workflow file.
+type parsedWorkflow struct {
+	metadata *calls.Metadata
+	err      error
+}
+
+func parseWorkflow(content []byte) parsedWorkflow {
+	metadata, err := calls.ParseMetadata(content)
+	return parsedWorkflow{metadata: metadata, err: err}
+}
+
+// resultFor names a parse failure with the requested reference.
+func (p parsedWorkflow) resultFor(spec string) reusableWorkflowMetadataResult {
+	if p.err != nil {
+		return reusableWorkflowMetadataResult{failure: parseFailure(spec, p.err)}
+	}
+	return reusableWorkflowMetadataResult{metadata: p.metadata}
 }
 
 func NewRemote(provider Provider) *Remote {
-	return &Remote{provider: provider, results: make(map[string]reusableWorkflowMetadataResult), pending: make(map[string]chan struct{}), contents: make(map[string][32]byte)}
+	return &Remote{provider: provider, store: remotecontent.New[string, reusableWorkflowMetadataResult](parseWorkflow)}
 }
 
 func (r *Remote) Lookup(spec string) (*calls.Metadata, error) {
 	if r == nil {
 		return nil, nil
 	}
-	r.mu.Lock()
-	result := r.results[spec]
-	r.mu.Unlock()
-	if result.failure.failed() {
-		return nil, result.failure
-	}
-	return result.metadata, nil
+	result, _ := r.store.Lookup(spec)
+	return result.outcome()
 }
 
 func (r *Remote) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
@@ -97,65 +107,39 @@ func (r *Remote) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.
 	if r == nil || r.provider == nil || !IsRemoteReference(spec) {
 		return nil, nil
 	}
-	r.mu.Lock()
-	if _, exists := r.results[spec]; exists {
-		r.mu.Unlock()
-		return r.Lookup(spec)
+	result, err := r.store.Acquire(ctx, spec, func(ctx context.Context) (reusableWorkflowMetadataResult, error) {
+		return r.fetch(ctx, spec)
+	})
+	if err != nil {
+		return nil, err
 	}
-	if ready, exists := r.pending[spec]; exists {
-		r.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-ready:
-			return r.LoadWorkflowMetadata(ctx, spec)
-		}
-	}
-	ready := make(chan struct{})
-	r.pending[spec] = ready
-	r.mu.Unlock()
+	return result.outcome()
+}
+
+func (r *Remote) fetch(ctx context.Context, spec string) (reusableWorkflowMetadataResult, error) {
 	file, err := r.provider.LookupWorkflow(ctx, spec)
 	if err == nil {
 		err = ctx.Err()
 	}
-	result := reusableWorkflowMetadataResult{}
-	if err == nil && file.Available() {
-		if file.spec != spec {
-			err = errors.New("remote workflow provider returned a different reference")
-		} else {
-			result.metadata, err = calls.ParseMetadata([]byte(file.content))
-			if err != nil {
-				result.failure = parseFailure(spec, err)
-				err = nil
-			}
-		}
+	if err != nil || !file.Available() {
+		return reusableWorkflowMetadataResult{}, err
 	}
-	if err == nil {
-		err = ctx.Err()
+	if file.spec != spec {
+		return reusableWorkflowMetadataResult{}, errors.New("remote workflow provider returned a different reference")
 	}
-	r.mu.Lock()
-	if err == nil && file.Available() {
-		ref, parseErr := actions.ParseReference("github.com", spec)
-		if parseErr != nil {
-			err = parseErr
-		} else {
-			key := strings.ToLower(ref.Repository()) + "\x00" + ref.Directory() + "\x00" + file.commit
-			digest := sha256.Sum256([]byte(file.content))
-			if previous, exists := r.contents[key]; exists && previous != digest {
-				err = errors.New("remote workflow provider changed content for one commit and path")
-			} else {
-				r.contents[key] = digest
-			}
-		}
-	}
-	if err == nil {
-		r.results[spec] = result
-	}
-	delete(r.pending, spec)
-	close(ready)
-	r.mu.Unlock()
+	ref, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		return nil, err
+		return reusableWorkflowMetadataResult{}, err
 	}
-	return r.Lookup(spec)
+	parsed, unchanged := r.store.Parse(remotecontent.Content{
+		Location: remotecontent.Location{Host: ref.Host(), Repository: ref.Repository(), Commit: file.commit, Path: ref.Directory()},
+		Bytes:    file.content,
+	})
+	if !unchanged {
+		return reusableWorkflowMetadataResult{}, errors.New("remote workflow provider changed content for one commit and path")
+	}
+	if err := ctx.Err(); err != nil {
+		return reusableWorkflowMetadataResult{}, err
+	}
+	return parsed.resultFor(spec), nil
 }

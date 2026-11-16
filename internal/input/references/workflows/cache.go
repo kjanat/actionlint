@@ -35,6 +35,14 @@ type reusableWorkflowMetadataResult struct {
 	captured capture.CapturedDocument
 }
 
+// outcome returns the metadata or the recorded failure.
+func (r reusableWorkflowMetadataResult) outcome() (*calls.Metadata, error) {
+	if r.failure.failed() {
+		return nil, r.failure
+	}
+	return r.metadata, nil
+}
+
 // failureKind says which step of loading a reusable workflow failed.
 type failureKind uint8
 
@@ -105,10 +113,8 @@ func (c *Cache) Lookup(key string) (*calls.Metadata, error, bool) {
 			return nil, err, true
 		}
 	}
-	if result.failure.failed() {
-		return nil, result.failure, true
-	}
-	return result.metadata, nil, true
+	metadata, err := result.outcome()
+	return metadata, err, true
 }
 
 // Store records a copy of parsed metadata for a repository-relative
