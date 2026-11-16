@@ -1,7 +1,6 @@
 package checking
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"sync"
@@ -10,9 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // ConfigurationRules supplies the declarations used by the native and editor entry points.
@@ -46,24 +43,12 @@ func configurationRegistrations(checkers []checkinputs.Registration, providers [
 
 var configurationRules = sync.OnceValue(func() configuration.RuleSet {
 	declarations := BuiltinRuleDeclarations()
-	for _, name := range bundledproviders.Names() {
-		data, found := bundledproviders.Manifest(name)
-		if !found {
-			panic("missing bundled provider manifest: " + name)
-		}
-		var manifest struct {
-			Rule  rulemeta.Descriptor `json:"rule"`
-			Scope manifests.Scope     `json:"scope"`
-		}
-		if err := json.Unmarshal(data, &manifest); err != nil {
-			panic(fmt.Errorf("bundled provider %s: %w", name, err))
-		}
+	for _, manifest := range bundledManifests() {
 		scope, err := manifest.Scope.ConfigurationScope()
 		if err != nil {
-			panic(fmt.Errorf("bundled provider %s: %w", name, err))
+			panic(fmt.Errorf("bundled provider %s: %w", manifest.Rule.Name, err))
 		}
-		declaration := rulemeta.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}
-		declarations = append(declarations, declaration)
+		declarations = append(declarations, rulemeta.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true})
 	}
 	rules, err := configuration.NewRuleSet(declarations)
 	if err != nil {

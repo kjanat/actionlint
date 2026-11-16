@@ -3,10 +3,9 @@
 // programs the manifest references by sha256 digest. The directory name is the
 // provider's rule name.
 //
-// The package is data only and imports no actionlint package, so the rule
-// catalog and configuration decoding can read the manifests without
-// depending on the plugin layer. manifests.Bundled in internal/plugins
-// parses and validates them.
+// The package is data only and imports no actionlint package.
+// manifests.Bundled in internal/plugins decodes and validates the manifests
+// once; the rule catalog, configuration and provider registry read them there.
 package bundledproviders
 
 import (
