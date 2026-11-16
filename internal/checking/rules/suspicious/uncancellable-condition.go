@@ -1,13 +1,13 @@
 package suspicious
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"strings"
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"

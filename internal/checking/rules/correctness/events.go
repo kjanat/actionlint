@@ -1,7 +1,6 @@
 package correctness
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"slices"
 	"strconv"
 	"strings"
@@ -9,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
