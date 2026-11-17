@@ -11,4 +11,8 @@ func appendAnalysis(dst *Analysis, part Analysis) {
 	dst.Documents = append(dst.Documents, part.Documents...)
 	dst.Configurations = append(dst.Configurations, part.Configurations...)
 	dst.Inputs = append(dst.Inputs, part.Inputs...)
+	dst.LintedFiles = append(dst.LintedFiles, part.LintedFiles...)
+	dst.CollectedByRule = append(dst.CollectedByRule, part.CollectedByRule...)
+	dst.InlineSuppressions = append(dst.InlineSuppressions, part.InlineSuppressions...)
+	dst.Providers = append(dst.Providers, part.Providers...)
 }

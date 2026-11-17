@@ -25,11 +25,20 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 type inlineAudit struct {
 	level func(string) ruleconfig.Level
 	used  func(sourcetext.Position, string)
+	// declared receives each rule a directive names, used or not.
+	declared func(sourcetext.Position, string)
 }
 
 func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*finding.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*finding.Finding {
 	allowedRules := processor.SuppressionRules(additional...)
 	directives, invalid := suppression.ParseInlineSuppressions(source, allowedRules, processor.RuleSet.Names())
+	if audit != nil && audit.declared != nil {
+		for _, directive := range directives {
+			for _, name := range directive.Rules {
+				audit.declared(directive.Position, name)
+			}
+		}
+	}
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(processor.RuleSet.ResolveAlias(name))
 		return suppression.Decision{

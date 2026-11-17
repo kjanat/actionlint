@@ -533,6 +533,7 @@ func (g *GitHub) bucket(ref actions.Reference, commit string) string {
 	return filepath.Join(g.cacheDir, sha256hex.Digest([]byte(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory())))
 }
 
+// cached reads a valid cache record and counts the lookup as a cache hit or miss.
 func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repository.ID, object string, filenames []string) (cacheRecord, bool, error) {
 	if g.cacheDir == "" {
 		return cacheRecord{}, false, nil
@@ -540,6 +541,14 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repo
 	if err := ctx.Err(); err != nil {
 		return cacheRecord{}, false, err
 	}
+	record, exists, err := g.readCacheRecord(ctx, ref, learned, object, filenames)
+	if ctx.Err() == nil {
+		accounting.RecordCacheLookup(ctx, "repository-metadata", exists && err == nil)
+	}
+	return record, exists, err
+}
+
+func (g *GitHub) readCacheRecord(ctx context.Context, ref actions.Reference, learned repository.ID, object string, filenames []string) (cacheRecord, bool, error) {
 	reader := files.New(ctx, nil, nil)
 	file, err := reader.Open(filepath.Join(g.bucket(ref, object), cacheFilename))
 	if errors.Is(err, os.ErrNotExist) {

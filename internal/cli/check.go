@@ -165,6 +165,12 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
+	if options.Verbose || options.Debug {
+		run := assembly.NewRunContext(ctx, assembly.RunContextInputs{Options: options, IgnoreSelectors: c.IgnoreSelectors, Getenv: os.Getenv, Result: result})
+		if err := writeRunContext(log, run); err != nil {
+			return 0, err
+		}
+	}
 	presentation := output.FromAnalysis(*result)
 	presentation.CheckResult = exitcode.AnalysisResult(*result)
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, presentation); err != nil {

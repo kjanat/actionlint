@@ -57,7 +57,11 @@ func CheckWithPlugins(ctx context.Context, options checking.Options, input check
 		}
 		options.LoadScriptEngine = pluginexecution.ScriptEngineLoader(sources.Acquisition, checking.BuiltinRuleNames(), log, options.Debug)
 	}
-	return checking.Check(ctx, options, input)
+	result, err = checking.Check(ctx, options, input)
+	if result != nil {
+		result.Providers = providerStatuses(sources, options.Tools, result)
+	}
+	return result, err
 }
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools

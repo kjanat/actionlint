@@ -9,6 +9,10 @@ type Report struct {
 	Explicit   bool
 	Overrides  []string
 	Inspection Inspection
+	// FileDigests holds the lowercase hexadecimal SHA-256 digest of each
+	// loaded configuration source, keyed by its normalized address. The
+	// verbose run context prints them; the JSON and YAML report omits them.
+	FileDigests map[string]string `json:"-" yaml:"-"`
 }
 
 // Inspection contains effective settings and optional source locations.

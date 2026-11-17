@@ -30,6 +30,67 @@ type Analysis struct {
 	Configurations  []configreport.Report     `merge:"append"`
 	Inputs          []string                  `merge:"append"`
 	Rules           []rule.Descriptor         `merge:"rules"`
+	// LintedFiles lists each selected entry document with the digest of the
+	// content its rules analyzed.
+	LintedFiles []LintedFile `merge:"append"`
+	// CollectedByRule counts, per rule that ran, the findings collected before
+	// inline suppressions, rule levels and ignore settings were applied.
+	CollectedByRule []RuleCollection `merge:"append"`
+	// InlineSuppressions lists the rules that inline directives in analyzed
+	// sources name, whether or not a finding matched them.
+	InlineSuppressions []InlineSuppression `merge:"append"`
+	// Providers lists the plugins and tool providers selected for the analysis
+	// and whether each one took part.
+	Providers []ProviderStatus `merge:"append"`
+}
+
+// LintedFile identifies one entry document by its selected path and the
+// lowercase hexadecimal SHA-256 digest of the content analyzed.
+type LintedFile struct {
+	Path   string
+	Digest string
+}
+
+// RuleCollection counts the findings one rule collected in one analysis,
+// before publication policy. A rule that ran without findings has Findings 0.
+// Completed counts the linted entry documents where the rule was selected
+// and no incomplete check names it.
+type RuleCollection struct {
+	Rule      string
+	Findings  int
+	Completed int
+}
+
+// InlineSuppression is one rule named by an inline suppression directive.
+// Path is the source as policy evaluated it; Line is 1-based.
+type InlineSuppression struct {
+	Path string
+	Line int
+	Rule string
+}
+
+// ProviderKind distinguishes plugins from the tool providers that analyze scripts.
+type ProviderKind string
+
+const (
+	PluginProvider ProviderKind = "plugin"
+	ToolProvider   ProviderKind = "tool"
+)
+
+// ProviderStatus records whether one plugin or tool provider took part in an
+// analysis. Version and Digest identify a registry release or artifact when
+// known. OnDemand marks a plugin loaded only when a script needs it. Inactive
+// is empty for a provider that took part, and otherwise says why it did not,
+// for example "disabled in configuration". Incomplete lists, once each, the
+// reasons its incomplete checks gave, whether or not it took part elsewhere.
+type ProviderStatus struct {
+	Kind       ProviderKind
+	Name       string
+	Version    string
+	Digest     string
+	OnDemand   bool
+	Inactive   string
+	Incomplete []string
 }
 
 // IncompleteCheck identifies work that could not finish for a captured source.

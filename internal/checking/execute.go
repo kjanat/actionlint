@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -670,6 +671,21 @@ func (d *actionDocuments) list() []actionDocument {
 func (r *analysisResult) publishDiagnostics() error {
 	r.FileCount = len(r.files)
 	batches := make([]policy.Batch, len(r.files))
+	collected := make(map[string]int)
+	for _, file := range r.files {
+		// A rule that ran without findings still counts as selected.
+		for _, descriptor := range file.rules {
+			if _, seen := collected[descriptor.Name]; !seen {
+				collected[descriptor.Name] = 0
+			}
+		}
+		for _, item := range file.errors {
+			collected[item.Rule]++
+		}
+		if revision := file.captured.Revision(); revision.Valid() {
+			r.LintedFiles = append(r.LintedFiles, report.LintedFile{Path: file.source.InputPath, Digest: revision.Digest()})
+		}
+	}
 	for i, file := range r.files {
 		var batch policy.Batch
 		if file.publication != nil {
@@ -684,6 +700,12 @@ func (r *analysisResult) publishDiagnostics() error {
 	published, err := policy.Publish(batches, r.IncompleteChecks)
 	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
+	r.InlineSuppressions = published.InlineSuppressions
+	completed := r.completedRules()
+	r.CollectedByRule = make([]report.RuleCollection, 0, len(collected))
+	for _, name := range slices.Sorted(maps.Keys(collected)) {
+		r.CollectedByRule = append(r.CollectedByRule, report.RuleCollection{Rule: name, Findings: collected[name], Completed: completed[name]})
+	}
 	if r.Diagnostics == nil {
 		r.Diagnostics = []results.PublishedDiagnostic{}
 	}
@@ -691,6 +713,34 @@ func (r *analysisResult) publishDiagnostics() error {
 		r.files[i].errors = findings
 	}
 	return err
+}
+
+// completedRules counts, per rule, the linted entry documents where the rule
+// was selected and no incomplete check names it. An incomplete check without a
+// rule counts against every rule of its source or entry.
+func (r *analysisResult) completedRules() map[string]int {
+	type ruleSource struct{ rule, document, revision string }
+	incomplete := map[ruleSource]bool{}
+	for _, check := range r.IncompleteChecks {
+		for _, source := range []sourcetext.Reference{check.Source, check.Invocation.Entry} {
+			if source.Document != "" {
+				incomplete[ruleSource{check.Rule, source.Document, source.Revision}] = true
+			}
+		}
+	}
+	completed := map[string]int{}
+	for _, file := range r.files {
+		revision := file.captured.Revision()
+		if !revision.Valid() || incomplete[ruleSource{"", revision.Document(), revision.Digest()}] {
+			continue
+		}
+		for _, descriptor := range file.rules {
+			if !incomplete[ruleSource{descriptor.Name, revision.Document(), revision.Digest()}] {
+				completed[descriptor.Name]++
+			}
+		}
+	}
+	return completed
 }
 
 // revalidateCaptures is the final publication boundary: a handle admitted before
