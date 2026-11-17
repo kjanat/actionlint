@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
@@ -27,7 +26,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	}
 	const workspace = `C:\workspace`
 	const file = `D:\shared\workflow.yml`
-	analysis := &checking.Result{Diagnostics: []results1.Diagnostic{{
+	analysis := &resultreport.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
 		Rule: "shellcheck", Path: file, Message: "Quote variable",
 		Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 8},
 		Fixes: []results1.Fix{{Description: "Quote", Edits: []results1.Edit{{Path: file}}}},

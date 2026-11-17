@@ -26,7 +26,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {require-job-timeout: " + tc.input + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {require-job-timeout: " + tc.input + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +55,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 	} {
 		t.Run(tc.mapping, func(t *testing.T) {
 			t.Parallel()
-			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-job-timeout: " + tc.mapping))
+			_, err := checking.ConfigurationRules().ParseConfig([]byte("policy:\n  require-job-timeout: " + tc.mapping))
 			var source *configuration.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
@@ -115,7 +115,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {require-permissions: " + tc.value + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {require-permissions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -150,7 +150,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
-			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-permissions: " + tc.value))
+			_, err := checking.ConfigurationRules().ParseConfig([]byte("policy:\n  require-permissions: " + tc.value))
 			var source *configuration.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)

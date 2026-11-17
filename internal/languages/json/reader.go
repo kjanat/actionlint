@@ -47,11 +47,11 @@ type ReadResult struct {
 var ErrUnsupportedValue = errors.New("JSON constructor serialization is not supported by static evaluation")
 
 func Read(source string) (any, []MemberCollision, error) {
-	result, err := Parse(source)
+	result, err := ParseJSON(source)
 	return result.Value, result.Collisions, err
 }
 
-func Parse(source string) (ReadResult, error) {
+func ParseJSON(source string) (ReadResult, error) {
 	r := fromJSONReader{source: source}
 	value, err := r.value(0, true)
 	if err == nil && r.unsupported {

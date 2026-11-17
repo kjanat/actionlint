@@ -71,7 +71,7 @@ jobs:
 					t.Fatal(err)
 				}
 			}
-			workflow, errs := workflowparser.Parse(callee)
+			workflow, errs := workflowparser.ParseWorkflow(callee)
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}

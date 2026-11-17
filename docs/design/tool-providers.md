@@ -202,8 +202,8 @@ type Backend struct{ /* spec, *analyzerhost.Command, Decoder, limits, probe cach
 func NewBackend(spec ProcessSpec, cmd *analyzerhost.Command, dec Decoder) *Backend
 // implements analyzer.ScriptBackend, DescribedScriptBackend, ScriptConfigValidator (schema), ScriptTemplateValidator (version probe; generalizes ruff/version_probe.go)
 
-type Decoder interface { Decode(ctx context.Context, stdout []byte, vars map[string]string) (Result, error) }
-type Result struct { Diagnostics []analyzer.ScriptDiagnostic; Sources, Errors []string }
+type Decoder interface { Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) }
+type DecodedCheck struct { Diagnostics []analyzer.ScriptDiagnostic; Sources, Errors []string }
 // Envelope{} (process.go:52-56 shape), SARIF{}, JQ{program, limits}
 
 // Proposed additions to internal/plugins/artifacts
@@ -318,7 +318,7 @@ type ToolConfig struct {
 - Bool shorthand such as `tools.ruff: false` works for every tool. See `shellcheck.go:98-105` and `ruff/config.go:56-63`.
 - Ruff's flat `target-version/select/ignore` (`internal/input/configuration/tools/ruff/config.go:21-26`) fold into `Config` at decode (unknown sibling keys become `config.<key>`), and the bundled ruff manifest's config transform normalizes them. `internal/input/configuration/tools/ruff` is deleted; remove it from `contracts_test.go:22`.
 - `tools.<id>.config` as a scalar string is a path (today ShellCheck's rc path, `config.go:439-445`); `files.go:80,85` resolves scalar paths for every `tools.*.config` setting relative to its configuration file.
-- Unknown `tools.<id>` keys are validated against registered providers at the same point `lint.rules.plugins` names are (`lint.go:66-74`; registration-time names already flow through `config.Parse(..., names)`, `docs/plugins.md:543`).
+- Unknown `tools.<id>` keys are validated against registered providers at the same point `lint.rules.plugins` names are (`lint.go:66-74`; registration-time names already flow through `config.ParseConfig(..., names)`, `docs/plugins.md:543`).
 - `lint.rules.external.<id>` = all script providers (bundled or installed); `lint.rules.plugins.<name>` = document analyzers. `rulecatalog.ConfigGroup` (`catalog.go:77-80`) returns `"external"` for any provider rule; `config/catalog.go:63,105` entries go; `Scope` comes from `Manifest.Scope`; `suppression_scope.go:67` is derived from providers with `scope: source`.
 - Repo-selected process backends keep requiring `--allow-config-processes` (`selection/process.go:14-19` semantics, moved).
 

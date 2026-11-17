@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -22,7 +22,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, nil, configuration.RuleRegistration{Descriptor: descriptor, ReplacesTool: tc.replaces})
+			cfg, err := checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, nil, configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: descriptor}, ReplacesTool: tc.replaces})
 			if tc.wantError {
 				if err == nil || !strings.Contains(err.Error(), "conflicts") {
 					t.Fatalf("expected collision, got %v", err)

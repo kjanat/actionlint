@@ -16,7 +16,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 		`ignores: [{rule: expression, uses: './generated', file: '.github/workflows/*.yml', job: build, step: lint, reason: generated}]`,
 		`{"ignores":[{"rule":"expression","uses":"./generated","file":".github/workflows/*.yml","job":"build","step":"lint","reason":"generated"}]}`,
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(source))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(source))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,7 +35,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 	} {
 		t.Run(entry, func(t *testing.T) {
 			t.Parallel()
-			if _, err := checking.ConfigurationRules().Parse([]byte("ignores: [" + entry + "]")); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [" + entry + "]")); err == nil {
 				t.Fatalf("accepted invalid ignore %s", entry)
 			}
 		})
@@ -63,7 +63,7 @@ func TestReusableIgnoreInheritance(t *testing.T) {
 		if err := os.WriteFile(child, []byte("extends: [base.yaml]\n"+tc.overlay), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		cfg, err := checking.ConfigurationRules().Load(child)
+		cfg, err := checking.ConfigurationRules().LoadConfig(child)
 		if err != nil {
 			t.Fatal(err)
 		}

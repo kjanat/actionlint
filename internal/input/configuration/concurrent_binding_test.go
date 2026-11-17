@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
@@ -13,7 +13,7 @@ func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := rules.Parse([]byte("overrides:\n  - includes: ['**']\n    lint: {rules: {correctness: {example: on}}}\n"))
+	cfg, err := rules.ParseConfig([]byte("overrides:\n  - includes: ['**']\n    lint: {rules: {correctness: {example: on}}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

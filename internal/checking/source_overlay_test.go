@@ -52,7 +52,7 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 		}
 	}
 	result.CapturedSources[realPath].Content[0] = '!'
-	if string(result.CapturedSources[entryAlias].Content) != unsaved || string(result.Sources[0].Content) != unsaved {
+	if string(result.CapturedSources[entryAlias].Content) != unsaved || string(result.Diagnostics[0].Source.Content) != unsaved {
 		t.Fatal("mutable result projection changed another capture view")
 	}
 }

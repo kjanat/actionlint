@@ -31,12 +31,12 @@ func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 				"empty":    {Name: &workflowlang.String{Value: "empty"}, Value: &workflowlang.String{Value: ""}},
 			},
 		},
-		Steps: []*workflowlang.Step{{If: condition, Exec: &workflowlang.ExecAction{Inputs: map[string]*workflowlang.Input{
+		Steps: []*workflowlang.Step{{If: condition, Exec: &workflowlang.ExecAction{Inputs: map[string]*workflowlang.ActionArgument{
 			"greeting": {Name: &workflowlang.String{Value: "greeting"}, Value: &workflowlang.String{Value: "hello"}},
 		}}}},
 	}
 	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}
-	bound := Publish("", workflow, false, "").Bind("semantic-test")
+	bound := Bind("semantic-test", "", workflow, false, "")
 	workflowView := bound.Workflow()
 	jobView, ok := workflowView.Job("build")
 	if !ok {
@@ -112,11 +112,11 @@ jobs:
           - if: ${{ github.ref == 'refs/heads/main' }}
             run: echo runtime
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("condition-test")
+	bound := Bind("condition-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -169,11 +169,11 @@ jobs:
           blank:
           empty: ""
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("null-test")
+	bound := Bind("null-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -203,7 +203,7 @@ jobs:
 	if actionView == nil {
 		t.Fatal("action view missing")
 	}
-	for name, wantKind := range map[string]value.Kind{"literal-null": value.Null, "blank": value.Null, "empty": value.String} {
+	for name, wantKind := range map[string]value.ValueKind{"literal-null": value.Null, "blank": value.Null, "empty": value.String} {
 		got := ResolvedInputs(actionView).Lookup(name)
 		if got.State() != value.Literal || got.Kind() != wantKind {
 			t.Errorf("action input %q = (%v,%v); want Literal %v", name, got.State(), got.Kind(), wantKind)
@@ -225,11 +225,11 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("source-scalar")
+	bound := Bind("source-scalar", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -242,9 +242,9 @@ jobs:
 	if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" {
 		t.Fatalf("published source scalar = %#v; want original YAML null", got)
 	}
-	manual := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
+	manual := Bind("manual-source", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
 		"manual": {Name: &workflowlang.String{Value: "manual"}},
-	}}, false, "").Bind("manual-source")
+	}}, false, "")
 	manualJob, ok := manual.Workflow().Job("manual")
 	if !ok {
 		t.Fatal("manual job view missing")
@@ -264,11 +264,11 @@ jobs:
       - id: ${{ '${{ runtime }}' }}
         run: echo ok
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("static-fold")
+	bound := Bind("static-fold", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -304,11 +304,11 @@ jobs:
       - uses: actions/checkout@v4
         with: ${{ fromJSON('{"script":"echo derived"}') }}
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	job, ok := Publish(source, workflow, false, "").Bind("input-source").Workflow().Job("build")
+	job, ok := Bind("input-source", source, workflow, false, "").Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
 	}
@@ -321,7 +321,7 @@ jobs:
 	if len(actions) != 2 {
 		t.Fatalf("action count = %d; want 2", len(actions))
 	}
-	var literalInput *workflowlang.Input
+	var literalInput *workflowlang.ActionArgument
 	literalNames, _ := InputNames(actions[0])
 	for name, candidate := range literalNames {
 		if name == "script" {
@@ -331,7 +331,7 @@ jobs:
 	if literalInput == nil || literalInput.Source == nil {
 		t.Fatal("literal key expression lost its declared source handle")
 	}
-	var derivedInput *workflowlang.Input
+	var derivedInput *workflowlang.ActionArgument
 	derivedNames, _ := InputNames(actions[1])
 	for name, candidate := range derivedNames {
 		if name == "script" {
@@ -355,11 +355,11 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
-	bound := Publish(source, workflow, false, "").Bind("dynamic-env-test")
+	bound := Bind("dynamic-env-test", source, workflow, false, "")
 	job, ok := bound.Workflow().Job("build")
 	if !ok {
 		t.Fatal("job view missing")
@@ -375,7 +375,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name, runsOn string
-		wantKind     value.Kind
+		wantKind     value.ValueKind
 		wantState    value.State
 	}{
 		{name: "whole expression", runsOn: `${{ fromJSON('["linux","arm64"]') }}`, wantKind: value.Array, wantState: value.Evaluated},
@@ -384,11 +384,11 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  build:\n    runs-on: " + test.runsOn + "\n    steps:\n      - run: echo ok\n"
-			workflow, errors := workflowparser.Parse([]byte(source))
+			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatalf("parse source: %v", errors)
 			}
-			job := Publish(source, workflow, false, "").Bind(test.name).Workflow()
+			job := Bind(test.name, source, workflow, false, "").Workflow()
 			view, ok := job.Job("build")
 			if !ok {
 				t.Fatal("job view missing")

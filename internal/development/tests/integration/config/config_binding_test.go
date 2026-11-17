@@ -6,7 +6,7 @@ import (
 )
 
 func decodeConfigYAML(data []byte, target any) error {
-	parsed, err := document.Parse("config.yaml", data)
+	parsed, err := document.ParseConfigDocument("config.yaml", data)
 	if err != nil {
 		return err
 	}

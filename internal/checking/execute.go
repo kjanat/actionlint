@@ -24,9 +24,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -85,7 +85,7 @@ type analysisRequest struct {
 	DiskSources        bool
 	NoIgnore           bool
 	Analyzers          []checkinputs.Registration
-	Tools              []tools.Registration
+	Tools              []contract.Registration
 	IgnorePatterns     configuration.IgnorePatterns
 	IgnoreSelectors    policy.IgnoreSelectors
 	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
@@ -117,7 +117,7 @@ type analyzedFile struct {
 	outline     documentmodel.Outline
 }
 
-type inputFiles struct{ workspace.Inputs }
+type inputFiles struct{ workspace.InputFiles }
 
 func (f *inputFiles) add(path string) { f.Add(path) }
 func (f *inputFiles) list() []string  { return f.List() }
@@ -201,7 +201,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	seenTools := map[string]bool{}
 	for _, registration := range request.Tools {
-		name := registration.Descriptor.Name
+		name := registration.Name
 		if seenTools[name] {
 			return nil, fmt.Errorf("duplicate script tool %q", name)
 		}
@@ -223,7 +223,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	for _, registration := range request.Tools {
 		if registration.Build == nil {
-			return nil, fmt.Errorf("tool %q has no adapter", registration.Descriptor.Name)
+			return nil, fmt.Errorf("tool %q has no adapter", registration.Name)
 		}
 		if registration.Validate != nil {
 			if err := registration.Validate(); err != nil {
@@ -411,13 +411,13 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		session.repositories[root] = facts
 	}
 	session.gitModes = &gitModes{}
-	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
+	result = &analysisResult{Diagnostics: []diagmodel.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
 		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
 		if err != nil {
 			return namemodel.Unknown(), err
 		}
-		workflow, errs := workflowparser.Parse(captured.Bytes())
+		workflow, errs := workflowparser.ParseWorkflow(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
 			return namemodel.Unknown(), nil
 		}
@@ -716,10 +716,10 @@ func (r *analysisResult) publishDiagnostics() error {
 		batches[i] = batch
 	}
 	published, err := policy.Publish(batches, r.IncompleteChecks)
-	r.Diagnostics, r.Sources = published.Diagnostics, published.Sources
+	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
 	if r.Diagnostics == nil {
-		r.Diagnostics = []diagmodel.Diagnostic{}
+		r.Diagnostics = []diagmodel.PublishedDiagnostic{}
 	}
 	for i, findings := range published.Findings {
 		r.files[i].errors = findings

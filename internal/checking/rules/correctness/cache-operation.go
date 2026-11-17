@@ -21,11 +21,11 @@ var CacheOperationRule = &define.Rule{
 	Explanation: "Report cache save or restore operations blocked by an explicit cache mode. GitHub skips the blocked operations.",
 	Help:        "Remove the cache step or choose an action and cache mode that allow the intended operation.",
 	Prepare:     define.PrepareWorkflowMetadata,
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
 		return CacheOperationChecks(workflow, c.Workflows)
 	},
-	Enabled: func(c define.Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") },
+	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-operation") },
 }
 
 // CacheOperationChecks checks action operations and reusable calls against their

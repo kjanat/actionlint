@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptcoords "actionlint.kjanat.dev/v2/internal/input/source/scripts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scriptcoords"
 	"github.com/kjanat/wacogo"
 )
 

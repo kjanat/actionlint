@@ -12,6 +12,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
@@ -34,13 +35,13 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 				root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				configPath := fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {preset: none, suspicious: {"+tc.name+": on}}}\n")
 				action := fmt.Sprintf("name: Script regression\ndescription: Check runner script behavior\nruns:\n  using: composite\n  steps:\n    - shell: %s\n      run: |\n        %s\n", tc.shell, tc.script)
-				var result *checking.Result
+				var result *report.Analysis
 				if called {
 					fixturefiles.Write(t, root, "inner/action.yml", action)
 					result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{ConfigFile: configPath})
 				} else {
 					var err error
-					config, parseErr := checking.ConfigurationRules().Parse([]byte("lint: {rules: {preset: none, suspicious: {" + tc.name + ": on}}}"))
+					config, parseErr := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {preset: none, suspicious: {" + tc.name + ": on}}}"))
 					if parseErr != nil {
 						t.Fatal(parseErr)
 					}
@@ -52,7 +53,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 				var found []results.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == tc.name {
-						found = append(found, d)
+						found = append(found, d.Diagnostic)
 					}
 				}
 				if len(found) != tc.want {
@@ -86,7 +87,7 @@ func TestScriptRuntimePublicGPGAction(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			config, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {preset: none, suspicious: {errexit-status: on, workflow-command-syntax: on}}}"))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {preset: none, suspicious: {errexit-status: on, workflow-command-syntax: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

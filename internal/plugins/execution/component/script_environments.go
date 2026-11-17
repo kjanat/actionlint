@@ -101,7 +101,7 @@ func environmentResult(environments []checkinputs.ScriptEnvironment) (environmen
 	return environmentbind.ResultListEnvironmentStringOk{Value: result}, nil
 }
 
-func documentEnvironments(input checkinputs.Input) documentEnvironmentNames {
+func documentEnvironments(input checkinputs.AnalyzerInput) documentEnvironmentNames {
 	scope := make(documentEnvironmentNames)
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {

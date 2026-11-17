@@ -42,17 +42,10 @@ type parallelCheck struct {
 // ParallelSteps analyzes one complete job independently of visitor order.
 func ParallelSteps(job declaration.Job) []reporting.StepFinding {
 	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[source.Reference]struct{}{}}
-	var visit func(iter.Seq[declaration.Step])
-	visit = func(steps iter.Seq[declaration.Step]) {
-		for step := range steps {
-			rule.Step = step
-			rule.checkStep(step)
-			if parallel, ok := step.ParallelSteps(); ok {
-				visit(parallel)
-			}
-		}
+	for step := range job.AllSteps() {
+		rule.Step = step
+		rule.checkStep(step)
 	}
-	visit(job.Steps())
 	return rule.Findings
 }
 

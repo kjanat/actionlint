@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -40,7 +41,7 @@ func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes := result.Batch.Scopes()
+	scopes := result.Batch.Scopes
 	if len(scopes) != 2 {
 		t.Fatalf("expected entry and child, got %d scopes", len(scopes))
 	}
@@ -68,7 +69,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := result.Batch.Invocations().Calls()
+	calls := result.Batch.CallGraph.Calls()
 	if len(calls) != 1 || calls[0].Uses() != "$/inner" {
 		t.Fatal("standalone fixture lost nested call")
 	}
@@ -88,7 +89,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes := result.Batch.Scopes()
+	scopes := result.Batch.Scopes
 	if len(scopes) != 1 {
 		t.Fatal("fixture must have only an entry scope")
 	}
@@ -96,7 +97,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || !got.Placements.Present() || got.Placements.Details().Directory.Path != "checkout" {
 		t.Fatalf("entry origin or shared paths incorrect: %+v", got)
 	}
-	if fact, exists := result.Batch.Fact(0, false); !exists || fact.Occurrence.Owner != result.Batch.Invocations().RootID() {
+	if fact, exists := result.Batch.Fact(0, false); !exists || fact.Occurrence.Owner != result.Batch.CallGraph.RootID() {
 		t.Fatal("entry script fabricated a caller")
 	}
 }
@@ -118,12 +119,12 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Deployment.ActionPath() == "" || !scopes[0].Composite {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
+	_, err = scriptexecution.NewBatch(result.Batch.CallGraph, scriptexecution.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
 	if !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
@@ -142,7 +143,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	if !exists {
 		t.Fatal("top-level call projection absent")
 	}
-	graph := result.Batch.Invocations()
+	graph := result.Batch.CallGraph
 	call, exists := graph.Call(fact.Occurrence.Owner)
 	if !exists {
 		t.Fatal("top-level owning call absent")
@@ -168,11 +169,11 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 3 || len(scripts) != 2 {
 		t.Fatal("fixture did not expand both calls")
 	}
-	graph := result.Batch.Invocations()
+	graph := result.Batch.CallGraph
 	configByOwner := map[invocation.ID]*configuration.Config{}
 	for i, script := range scripts {
 		record, exists := graph.Script(script.Occurrence)
@@ -191,14 +192,14 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 		}
 	}
 	requests := requestsFromUnits(scripts)
-	executionByOccurrence := make(map[invocation.ID]execution.Shell, len(requests))
+	executionByOccurrence := make(map[invocation.ID]string, len(requests))
 	for i := range requests {
 		name := "bash"
 		if i == 1 {
 			name = "pwsh"
 		}
-		requests[i].Execution.Shell = execution.Shell{Name: name}
-		executionByOccurrence[requests[i].Occurrence] = requests[i].Execution.Shell
+		requests[i].Execution = &scriptmodel.Execution{Shell: name, ShellKnown: true}
+		executionByOccurrence[requests[i].Occurrence] = name
 	}
 	requests[0], requests[1] = requests[1], requests[0]
 	scopes[1], scopes[2] = scopes[2], scopes[1]
@@ -208,12 +209,12 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, unit := range rebuilt.Scripts() {
+	for _, unit := range rebuilt.Scripts {
 		record, _ := graph.Script(unit.Occurrence)
 		if unit.Scope.Config != configByOwner[record.Owner] {
 			t.Fatalf("request for owner %q used another invocation config", record.Owner)
 		}
-		if unit.Execution.Shell != executionByOccurrence[unit.Occurrence] {
+		if unit.Execution == nil || unit.Execution.Shell != executionByOccurrence[unit.Occurrence] {
 			t.Fatalf("request for occurrence %q used another execution", unit.Occurrence)
 		}
 	}
@@ -229,7 +230,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if using == "docker" {
 					body = "image: Dockerfile"
 				}
-				meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns:\n  using: "+using+"\n  "+body+"\n"))
+				meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns:\n  using: "+using+"\n  "+body+"\n"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -239,9 +240,9 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				scopes := result.Batch.Scopes()
-				if !result.Batch.Valid() || len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Composite || scopes[0].Deployment.SourcePath() != meta.Path() || scopes[0].Deployment.ActionPath() != filepath.Dir(meta.Path()) || len(result.Batch.Scripts()) != 0 {
-					t.Fatalf("non-composite entry lost its deployment or added scripts: scopes=%+v scripts=%+v", scopes, result.Batch.Scripts())
+				scopes := result.Batch.Scopes
+				if !result.Batch.Valid() || len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Composite || scopes[0].Deployment.SourcePath() != meta.Path() || scopes[0].Deployment.ActionPath() != filepath.Dir(meta.Path()) || len(result.Batch.Scripts) != 0 {
+					t.Fatalf("non-composite entry lost its deployment or added scripts: scopes=%+v scripts=%+v", scopes, result.Batch.Scripts)
 				}
 			})
 		}
@@ -263,7 +264,7 @@ func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error    { re
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	t.Parallel()
-	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
+	meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,10 +280,10 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 		Join: func() error { joined = true; return joinFailure },
 	}
 	result, err := standaloneActionForTest(t, options, meta, declarations)
-	if !errors.Is(err, failure) || !errors.Is(err, joinFailure) || !joined || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
+	if !errors.Is(err, failure) || !errors.Is(err, joinFailure) || !joined || !result.Batch.Valid() || len(result.Batch.Scripts) != 0 {
 		t.Fatalf("entry failure, cleanup, or prepared action batch lost: error=%v joined=%v result=%+v", err, joined, result)
 	}
-	scopes := result.Batch.Scopes()
+	scopes := result.Batch.Scopes
 	if len(scopes) != 1 || scopes[0].Composite || scopes[0].Deployment.SourcePath() != meta.Path() || scopes[0].Deployment.ActionPath() != filepath.Dir(meta.Path()) {
 		t.Fatalf("entry error left an invalid action scope: %+v", scopes)
 	}
@@ -304,7 +305,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 	for _, change := range []string{"zero context", "foreign context", "derived path"} {
 		t.Run(change, func(t *testing.T) {
 			t.Parallel()
-			shared, units := first.Batch.Snapshot()
+			shared, units := first.Batch.Scopes, first.Batch.Scripts
 			scopes := make([]*scriptexecution.Scope, len(shared))
 			for i, scope := range shared {
 				scopes[i] = new(*scope)
@@ -314,7 +315,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 			case "zero context":
 				scopes[1].Context = invocation.Context{}
 			case "foreign context":
-				foreign := second.Batch.Scopes()[1].Context
+				foreign := second.Batch.Scopes[1].Context
 				if foreign.ID() != scopes[1].Context.ID() {
 					t.Fatal("fixture IDs differ")
 				}
@@ -323,7 +324,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 				scopes[1].Paths.ActionIndependent = !scopes[1].Paths.ActionIndependent
 				want = "action paths disagree"
 			}
-			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
+			if _, err := scriptexecution.NewBatch(first.Batch.CallGraph, scriptexecution.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
 				t.Fatalf("%s accepted: %v", change, err)
 			}
 		})
@@ -341,7 +342,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	graph := result.Batch.Invocations()
+	graph := result.Batch.CallGraph
 	if len(graph.Scripts()) != 1 {
 		t.Fatal("fixture must produce one nested script")
 	}
@@ -353,7 +354,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 	if !exists {
 		t.Fatal("missing invocation projection")
 	}
-	call, exists := result.Batch.Invocations().Call(projection.Occurrence.Owner)
+	call, exists := result.Batch.CallGraph.Call(projection.Occurrence.Owner)
 	if !exists || projection.Occurrence.Owner != owner.ID() {
 		t.Fatal("missing occurrence owner call")
 	}
@@ -387,7 +388,7 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	var inner []invocation.Call
-	for _, call := range result.Batch.Invocations().Calls() {
+	for _, call := range result.Batch.CallGraph.Calls() {
 		if call.Uses() == "$/inner" {
 			inner = append(inner, call)
 		}

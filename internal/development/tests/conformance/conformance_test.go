@@ -440,7 +440,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	case "expression":
 		parser := exprsyntax.Parser{}
 		lexer := exprsyntax.NewLexer(c.Input + "}}")
-		node, err := parser.Parse(lexer)
+		node, err := parser.ParseExpression(lexer)
 		if err != nil {
 			return []string{err.Error()}
 		}
@@ -471,7 +471,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				callChecker.SetFunctionAvailability(contextspec.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
 				args := make([]exprsyntax.Node, len(n.Args))
 				for i := range args {
-					parsed, err := parser.Parse(exprsyntax.NewLexer("argument}}"))
+					parsed, err := parser.ParseExpression(exprsyntax.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -511,7 +511,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		errs := make([]*findingmodel.Finding, 0, len(result.Diagnostics))
 		for _, d := range result.Diagnostics {
-			errs = append(errs, &findingmodel.Finding{Diagnostic: d})
+			errs = append(errs, &findingmodel.Finding{Diagnostic: d.Diagnostic})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
@@ -521,7 +521,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			t.Fatal(err)
 		}
 		metadataPath := filepath.Join(dir, "action.yml")
-		meta, err := actionmeta.Parse(metadataPath, []byte(c.Input))
+		meta, err := actionmeta.ParseActionMetadata(metadataPath, []byte(c.Input))
 		if err != nil {
 			return []string{err.Error()}
 		}

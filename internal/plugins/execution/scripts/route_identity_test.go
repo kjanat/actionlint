@@ -5,9 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
@@ -21,15 +24,15 @@ func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runner, err := registration.Build(tools.Context{})
+	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := []tools.Script{{Text: "echo run", Execution: tools.Execution{Shell: "bash"}}}
+	scripts := []scriptexecution.Unit{{Run: runBody("echo run", nil), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}}
 	for _, site := range sites {
-		scripts = append(scripts, tools.Script{Input: &site, Text: "code"})
+		scripts = append(scripts, scriptexecution.Unit{Input: actionInput(site, "code", nil)})
 	}
-	if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: scripts}); err != nil {
+	if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: scripts}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"actionlint-script", "actionlint-input/python/owner/action/SubPath/source.py", "actionlint-input/javascript/owner/action/code.js", "actionlint-input/python/owner/action/other.py"}

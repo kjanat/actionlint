@@ -13,7 +13,7 @@ import (
 func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	t.Parallel()
 	const source = "name: café # actionlint:ignore cache-operation, cache-operation -- reviewed"
-	cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: true}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: true}"))
 	if err != nil {
 		t.Fatal(err)
 	}

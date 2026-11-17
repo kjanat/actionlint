@@ -13,7 +13,7 @@ func TestDecodeJSONCommentsAndTrailingCommas(t *testing.T) {
 		t.Run(extension, func(t *testing.T) {
 			t.Parallel()
 			source := "{\n  // settings\n  \"value\": [true,], /* comment */\n  \"text\": \"https://example.test/*literal*/\",\n}\n"
-			node, err := Parse("actionlint."+extension, []byte(source))
+			node, err := ParseConfigDocument("actionlint."+extension, []byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -25,14 +25,14 @@ func TestDecodeJSONCommentsAndTrailingCommas(t *testing.T) {
 				t.Fatalf("source positions changed: key %d:%d, value %d:%d", key.Line, key.Column, value.Line, value.Column)
 			}
 			for _, invalid := range []string{`{"value": }`, `{"a": 1 "b": 2}`, `{} garbage`, `{} /* unfinished`} {
-				if _, err := Parse("actionlint."+extension, []byte(invalid)); err == nil {
+				if _, err := ParseConfigDocument("actionlint."+extension, []byte(invalid)); err == nil {
 					t.Errorf("accepted invalid JSON: %s", invalid)
 				}
 			}
-			if _, err := Parse("actionlint."+extension, []byte("// empty\n")); err != nil {
+			if _, err := ParseConfigDocument("actionlint."+extension, []byte("// empty\n")); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := Parse("actionlint."+strings.ToUpper(extension), []byte(source)); err != nil {
+			if _, err := ParseConfigDocument("actionlint."+strings.ToUpper(extension), []byte(source)); err != nil {
 				t.Fatal(err)
 			}
 		})

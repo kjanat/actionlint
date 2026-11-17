@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -19,13 +19,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-type actionInputObserver struct{ input checkinputs.Input }
+type actionInputObserver struct{ input checkinputs.AnalyzerInput }
 
 func (*actionInputObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
-func (o *actionInputObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (o *actionInputObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.input = input
 	return nil, nil
 }

@@ -2,9 +2,9 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -21,7 +21,7 @@ var ShellNameRule = &define.Rule{
 	Help:        "Select a supported interpreter, include {0} for the script filename in custom commands, and correct invalid options. Bash uses -o for set options and -O for shopt options.",
 	Examples: []rule.Example{rule.WorkflowExample("Correct the shell name.",
 		"    steps:\n      - shell: bashh\n        run: echo ok\n", "    steps:\n      - shell: bash\n        run: echo ok\n")},
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		return ShellNameChecks(c.Runners, commands.FromContext(c.Context))
 	},
 }

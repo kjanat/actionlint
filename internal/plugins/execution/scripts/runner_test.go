@@ -13,13 +13,17 @@ import (
 	"testing"
 	"time"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
@@ -29,7 +33,7 @@ import (
 
 // scriptFixture keeps the scalar's original lines and columns by placing its
 // anchor before an appended workflow, whose step runs it through an alias.
-func scriptFixture(t *testing.T, input string) tools.Script {
+func scriptFixture(t *testing.T, input string) scriptexecution.Unit {
 	t.Helper()
 	content := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
 	document := parsing.Workflow([]byte(content))
@@ -53,7 +57,7 @@ func scriptFixture(t *testing.T, input string) tools.Script {
 	if !ok {
 		t.Fatal("fixture has no run")
 	}
-	return tools.Script{Text: run.Run.Value, Source: view.Source, Key: run.RunPos, Value: run.Run.Pos, Path: "fix.yml", Content: []byte(content), Execution: tools.Execution{Shell: "bash"}}
+	return scriptexecution.Unit{Run: &workflowlang.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 }
 
 // generated prepares a script as a shell preparation does: a kept shebang,
@@ -127,7 +131,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			t.Parallel()
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			script := scriptFixture(t, input)
-			fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
+			fix, ok := scriptFix(script.Source(), generated(script.Source().Value), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
 			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != results.FixSuggested {
@@ -142,7 +146,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 				Run  string `yaml:"run"`
 				Next string `yaml:"next"`
 			}
-			root, err := codec.Parse([]byte(changed))
+			root, err := codec.ParseYAML([]byte(changed))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -169,7 +173,7 @@ func TestScriptFixPreservesApplicability(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
-		fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{
+		fix, ok := scriptFix(script.Source(), generated(script.Source().Value), checkinputs.ScriptFix{
 			Applicability: applicability,
 			Replacements:  []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
 		})
@@ -210,15 +214,15 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			script := scriptFixture(t, tc.input)
-			prepared := generated(mask.Expressions(script.Text))
-			if fix, ok := scriptFix(script.Source, prepared, checkinputs.ScriptFix{Description: "Fix", Replacements: tc.replacements}); ok {
+			prepared := generated(mask.Expressions(script.Text()))
+			if fix, ok := scriptFix(script.Source(), prepared, checkinputs.ScriptFix{Description: "Fix", Replacements: tc.replacements}); ok {
 				t.Fatalf("unsafe fix exposed: %+v", fix)
 			}
 		})
 	}
 	// Without a line map the engine saw the masked script itself.
 	script := scriptFixture(t, input)
-	fix, ok := scriptFix(script.Source, preparation.Prepared{Source: mask.Expressions(script.Text)}, checkinputs.ScriptFix{Replacements: []checkinputs.ScriptReplacement{replacement(1, 6, `"`)}})
+	fix, ok := scriptFix(script.Source(), preparation.Prepared{Source: mask.Expressions(script.Text())}, checkinputs.ScriptFix{Replacements: []checkinputs.ScriptReplacement{replacement(1, 6, `"`)}})
 	if !ok || len(fix.Edits) != 1 {
 		t.Fatalf("identity mapping lost the fix: %+v", fix)
 	}
@@ -227,7 +231,7 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 // reportingBackend is a process-like backend whose results the test scripts.
 type reportingBackend struct {
 	directory  string
-	result     func(checkinputs.ScriptRequest) process.Result
+	result     func(checkinputs.ScriptRequest) process.DecodedCheck
 	concurrent bool
 	mu         sync.Mutex
 	requests   []checkinputs.ScriptRequest
@@ -239,7 +243,7 @@ func (b *reportingBackend) Check(ctx context.Context, request checkinputs.Script
 	return result.Diagnostics, err
 }
 
-func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequest, vars map[string]string) (process.Result, error) {
+func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequest, vars map[string]string) (process.DecodedCheck, error) {
 	b.mu.Lock()
 	b.requests = append(b.requests, request)
 	b.vars = append(b.vars, vars)
@@ -251,18 +255,18 @@ func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequ
 
 func (b *reportingBackend) Concurrent() bool { return b.concurrent }
 
-func buildRunner(t *testing.T, backend checkinputs.ScriptBackend, options engineOptions) tools.Runner {
+func buildRunner(t *testing.T, backend checkinputs.ScriptBackend, options engineOptions) contract.Runner {
 	t.Helper()
 	return buildEngineRunner(t, checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}}, backend, options)
 }
 
-func buildEngineRunner(t *testing.T, descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) tools.Runner {
+func buildEngineRunner(t *testing.T, descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) contract.Runner {
 	t.Helper()
 	registration, err := registerEngine(descriptor, backend, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runner, err := registration.Build(tools.Context{})
+	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,18 +279,18 @@ func TestReportedSourceFindings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.Result {
-		return process.Result{Sources: []string{"lib.sh"}, Diagnostics: []checkinputs.ScriptDiagnostic{
+	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Sources: []string{"lib.sh"}, Diagnostics: []checkinputs.ScriptDiagnostic{
 			{Filename: "lib.sh", Source: "lib.sh", Code: "X2086", Severity: "info", Message: "quote it", Location: checkinputs.ScriptPosition{Row: 1, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8}},
 			{Filename: "missing.sh", Source: "missing.sh", Code: "X1", Severity: "warning", Message: "gone", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}},
 		}}
 	}}
 	var recorded []string
 	script := scriptFixture(t, "run: |\n  source lib.sh\n")
-	script.Scope = &tools.Scope{Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
+	script.Scope = &scriptexecution.Scope{Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
 	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
 	runner := buildRunner(t, backend, engineOptions{findings: findingCapabilities{reportedSources: true, messageTemplate: "tool: {code}:{severity}:{row}:{column}: {message}"}})
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +306,7 @@ func TestReportedSourceFindings(t *testing.T) {
 		t.Errorf("reported finding: %+v", read)
 	}
 	for _, f := range findings {
-		if !f.Source.Unavailable.Present() || f.Source.Unavailable.Provider() != "tool" || f.Suppression == nil || f.Suppression.First != script.Key.Line {
+		if !f.Source.Unavailable.Present() || f.Source.Unavailable.Provider() != "tool" || f.Suppression == nil || f.Suppression.First != script.Key().Line {
 			t.Errorf("reported finding provenance: %+v", f)
 		}
 	}
@@ -314,7 +318,7 @@ func TestReportedSourceFindings(t *testing.T) {
 	}
 
 	undeclared := buildRunner(t, backend, engineOptions{})
-	findings, err = undeclared.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err = undeclared.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err == nil || !strings.Contains(err.Error(), "does not declare reported sources") || len(findings) != 0 {
 		t.Fatalf("undeclared reported sources accepted: %+v %v", findings, err)
 	}
@@ -326,8 +330,8 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	at := checkinputs.ScriptPosition{Row: 1, Column: 1}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.Result {
-		return process.Result{Diagnostics: []checkinputs.ScriptDiagnostic{
+	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{
 			{Code: "X1", Severity: "warning", Message: "snippet", Location: at, TemplateEffect: checkinputs.TemplateEffectNone},
 			{Source: "lib.sh", Code: "X2", Severity: "warning", Message: "read file", Location: at},
 			{Source: "lib.sh", Code: "X3", Severity: "warning", Message: "effect", Location: at, TemplateEffect: checkinputs.TemplateEffectOpaqueName},
@@ -337,13 +341,13 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runner, err := registration.Build(tools.Context{})
+	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	script := scriptFixture(t, "run: |\n  source lib.sh\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err == nil || !strings.Contains(err.Error(), `template effect "opaque-name" for reported source`) {
 		t.Errorf("reported source with a template effect accepted: %v", err)
 	}
@@ -365,15 +369,17 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		},
 		{Code: "X5", Severity: "info", Message: "end on startup", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 2, Column: 1}},
 	}
-	backend := &reportingBackend{result: func(checkinputs.ScriptRequest) process.Result { return process.Result{Diagnostics: diagnostics} }}
-	prepared := generated(script.Text)
+	backend := &reportingBackend{result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Diagnostics: diagnostics}
+	}}
+	prepared := generated(script.Text())
 	prepared.Vars = map[string]string{"dialect": "bash"}
 	runner := buildRunner(t, backend, engineOptions{
-		prepare:  func(context.Context, tools.Script) (preparation.Prepared, error) { return prepared, nil },
+		prepare:  func(context.Context, scriptexecution.Unit) (preparation.Prepared, error) { return prepared, nil },
 		filename: "actionlint.sh",
 		findings: findingCapabilities{fixes: true, messageTemplate: "{code}:{severity}:{row}:{column}: {message}"},
 	})
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: X1: on directive") || !strings.Contains(err.Error(), "tools.tool.config: X3: startup fails") || strings.Contains(err.Error(), "X2") {
 		t.Fatalf("line origins: %v", err)
 	}
@@ -391,8 +397,8 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		t.Errorf("end on a generated line kept: %+v", findings[1])
 	}
 
-	undeclared := buildRunner(t, backend, engineOptions{prepare: func(context.Context, tools.Script) (preparation.Prepared, error) { return prepared, nil }})
-	if _, err := undeclared.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}}); err == nil || !strings.Contains(err.Error(), "does not declare them") {
+	undeclared := buildRunner(t, backend, engineOptions{prepare: func(context.Context, scriptexecution.Unit) (preparation.Prepared, error) { return prepared, nil }})
+	if _, err := undeclared.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}}); err == nil || !strings.Contains(err.Error(), "does not declare them") {
 		t.Fatalf("undeclared fixes accepted: %v", err)
 	}
 }
@@ -403,10 +409,10 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	started := make(chan struct{}, 2)
 	release := make(chan struct{})
-	backend := &reportingBackend{concurrent: true, result: func(request checkinputs.ScriptRequest) process.Result {
+	backend := &reportingBackend{concurrent: true, result: func(request checkinputs.ScriptRequest) process.DecodedCheck {
 		started <- struct{}{}
 		<-release
-		return process.Result{Diagnostics: []checkinputs.ScriptDiagnostic{{Code: request.Source, Message: request.Source, Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}}
+		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{{Code: request.Source, Message: request.Source, Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}}
 	}}
 	runner := buildRunner(t, backend, engineOptions{})
 	go func() {
@@ -419,9 +425,9 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 		}
 		close(release)
 	}()
-	scripts := []tools.Script{{Text: "first", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 1, Column: 1}}, {Text: "second", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 2, Column: 1}}}
+	scripts := []scriptexecution.Unit{{Run: runBody("first", &sourcepos.Position{Line: 1, Column: 1}), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}, {Run: runBody("second", &sourcepos.Position{Line: 2, Column: 1}), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}}
 	begin := time.Now()
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: scripts})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: scripts})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +470,7 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	var recorded []string
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
-	script.Scope = &tools.Scope{Workspace: directory, Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
+	script.Scope = &scriptexecution.Scope{Paths: workflowexecution.Paths{Workspace: directory}, Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
 	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, Fixes: true, ReportedSources: true, Resources: []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}}
 	registration, err := RegisterEngine(descriptor, backend)
 	if err != nil {
@@ -474,11 +480,11 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 		t.Fatal("an engine requesting the directory needs execution facts")
 	}
 	// The preparation's excluded codes travel with the request.
-	prepare := func(context.Context, tools.Script) (preparation.Prepared, error) {
+	prepare := func(context.Context, scriptexecution.Unit) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: "echo $x\n", Excluded: []string{"X9"}}, nil
 	}
 	runner := buildEngineRunner(t, descriptor, backend, engineOptions{prepare: prepare})
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +506,7 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 
 // directoryEngine is a snippet engine requesting the directory resource that
 // reports a finding in source.
-func directoryEngine(t *testing.T, source string, requests *[]checkinputs.ScriptRequest) tools.Runner {
+func directoryEngine(t *testing.T, source string, requests *[]checkinputs.ScriptRequest) contract.Runner {
 	t.Helper()
 	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		*requests = append(*requests, request)
@@ -519,8 +525,8 @@ func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 	runner := directoryEngine(t, "lib.sh", &requests)
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = outside, true
-	script.Scope = &tools.Scope{Workspace: workspace}
-	_, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	script.Scope = &scriptexecution.Scope{Paths: workflowexecution.Paths{Workspace: workspace}}
+	_, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err == nil || !strings.Contains(err.Error(), "outside workspace root") || len(requests) != 0 {
 		t.Fatalf("requests %+v err %v", requests, err)
 	}
@@ -530,7 +536,7 @@ func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 		t.Skipf("cannot create symlinks: %v", err)
 	}
 	script.Execution.Directory = link
-	if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}}); err == nil || len(requests) != 0 {
+	if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}}); err == nil || len(requests) != 0 {
 		t.Fatalf("symlinked directory: requests %+v err %v", requests, err)
 	}
 }
@@ -548,9 +554,9 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	runner := directoryEngine(t, "lib.sh", &requests)
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = workspace, true
-	script.Scope = &tools.Scope{Workspace: workspace, Reader: files.New(t.Context(), nil, nil)}
+	script.Scope = &scriptexecution.Scope{Paths: workflowexecution.Paths{Workspace: workspace}, Reader: files.New(t.Context(), nil, nil)}
 	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(workspace, "lib.sh")); err == nil {
-		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+		findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 		if err != nil || len(findings) != 1 || len(findings[0].Source.Content) != 0 || findings[0].Source.Unavailable.Reason() != "read-failed" {
 			t.Fatalf("symlinked source: findings %+v err %v", findings, err)
 		}
@@ -558,7 +564,7 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	// A missing working directory gets no grant and is not sent.
 	script.Execution.Directory = filepath.Join(workspace, "missing")
 	requests = nil
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	findings, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{script}})
 	if err != nil || len(requests) != 1 || requests[0].Directory != "" || requests[0].DirectoryFS != nil {
 		t.Fatalf("missing directory: requests %+v err %v", requests, err)
 	}
@@ -575,7 +581,7 @@ func TestSnippetEnginesGetNoDirectory(t *testing.T) {
 		return nil, errors.New("partial")
 	})
 	runner := buildRunner(t, backend, engineOptions{})
-	_, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "x", Execution: tools.Execution{Shell: "bash", Directory: t.TempDir(), DirectoryKnown: true}}}})
+	_, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Run: runBody("x", nil), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true, Directory: t.TempDir(), DirectoryKnown: true}}}})
 	if err == nil || len(requests) != 1 || requests[0].Directory != "" || requests[0].Filename != "actionlint-script" {
 		t.Fatalf("requests %+v err %v", requests, err)
 	}

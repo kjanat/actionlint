@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -42,7 +42,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}
@@ -53,7 +53,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	}
 	rules := configurationRegistrations(configured.Analyzers, configured.Tools)
 	for _, engine := range plugins.ScriptEngines {
-		rules = append(rules, configuration.RuleRegistration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: engine.Descriptor.Engine})
+		rules = append(rules, configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true}, ReplacesTool: engine.Descriptor.Engine})
 	}
 	for _, provider := range plugins.Providers {
 		manifest := provider.Files.Manifest
@@ -61,7 +61,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 		if scopeErr != nil {
 			return inspection, fmt.Errorf("provider %s: %w", manifest.ID, scopeErr)
 		}
-		registration := configuration.RuleRegistration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true, ToolSettings: new(manifest.Settings())}
+		registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}, ToolSettings: new(manifest.Settings())}
 		if manifest.Role == pluginmanifests.RoleScript {
 			registration.ReplacesTool = manifest.Rule.Name
 		}

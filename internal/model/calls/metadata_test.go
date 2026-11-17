@@ -33,7 +33,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"i": {"i", false, workflowlang.WorkflowCallEventInputTypeString},
+					"i": {Name: "i", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: Outputs{
 					"o": {"o"},
@@ -102,14 +102,14 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"a": {"a", false, workflowlang.WorkflowCallEventInputTypeString},
-					"b": {"b", false, workflowlang.WorkflowCallEventInputTypeNumber},
-					"c": {"c", false, workflowlang.WorkflowCallEventInputTypeBoolean},
-					"e": {"e", false, workflowlang.WorkflowCallEventInputTypeString},
-					"f": {"f", true, workflowlang.WorkflowCallEventInputTypeString},
-					"g": {"g", false, workflowlang.WorkflowCallEventInputTypeString},
-					"h": {"h", false, workflowlang.WorkflowCallEventInputTypeString},
-					"j": {"j", true, workflowlang.WorkflowCallEventInputTypeString},
+					"a": {Name: "a", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"b": {Name: "b", Required: false, Type: workflowlang.WorkflowCallEventInputTypeNumber},
+					"c": {Name: "c", Required: false, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
+					"e": {Name: "e", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"f": {Name: "f", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"g": {Name: "g", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"h": {Name: "h", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"j": {Name: "j", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: nil,
 				Secrets: nil,
@@ -131,7 +131,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"i": {"i", false, workflowlang.WorkflowCallEventInputTypeString},
+					"i": {Name: "i", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: Outputs{
 					"o": {"o"},
@@ -218,8 +218,8 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"my_input1": {"MY_INPUT1", false, workflowlang.WorkflowCallEventInputTypeString},
-					"my_input2": {"MY_INPUT2", false, workflowlang.WorkflowCallEventInputTypeNumber},
+					"my_input1": {Name: "MY_INPUT1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+					"my_input2": {Name: "MY_INPUT2", Required: false, Type: workflowlang.WorkflowCallEventInputTypeNumber},
 				},
 				Outputs: Outputs{
 					"my_output1": {"MY_OUTPUT1"},

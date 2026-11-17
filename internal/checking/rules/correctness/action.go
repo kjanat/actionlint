@@ -29,7 +29,7 @@ var ActionRule = &define.Rule{
 	Recommended:     true,
 	Help:            "Check the action reference, runtime, declared inputs and action metadata at the indicated source.",
 	SupportsActions: true,
-	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewRuleAction(c.Context, base, c.Actions.Prepared(), c.RemoteActions).WithLifecycle(c.Lifecycle)
 	},
 }
@@ -40,7 +40,7 @@ var ActionRule = &define.Rule{
 type ruleAction struct {
 	workflowvisit.Base
 	reporting.Logger
-	cache      workspaceactions.MetadataDocumentLookup
+	cache      workspaceactions.ActionMetadataDocumentLookup
 	validation *actionMetadataValidation
 	remote     *actionremote.ResolvedActions
 	context    context.Context
@@ -57,7 +57,7 @@ func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *rule
 }
 
 // NewRuleAction checks references using local metadata and acquired remote definitions.
-func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspaceactions.MetadataDocumentLookup, remote *actionremote.ResolvedActions) *ruleAction {
+func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspaceactions.ActionMetadataDocumentLookup, remote *actionremote.ResolvedActions) *ruleAction {
 	return &ruleAction{
 		Base:  base,
 		Tag:   base.Name(),

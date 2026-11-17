@@ -22,7 +22,7 @@ func TestReferencePath(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := NewParser().Parse(NewLexer(tc.expression + "}}"))
+			node, err := NewParser().ParseExpression(NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

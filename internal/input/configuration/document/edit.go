@@ -17,7 +17,7 @@ type Editor struct {
 
 // NewEditor parses content as the file at path. The path's extension selects the syntax.
 func NewEditor(path string, content []byte) (*Editor, error) {
-	root, err := Parse(path, content)
+	root, err := ParseConfigDocument(path, content)
 	if err != nil {
 		return nil, err
 	}

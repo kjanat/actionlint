@@ -476,7 +476,7 @@ The host grants these imports and nothing else:
 
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
 
-Go embedders can supply `analyzer.Input.Files` for one `Analyze` call. Each entry
+Go embedders can supply `inputs.AnalyzerInput.Files` for one `Analyze` call. Each entry
 maps a caller-owned read-only filesystem to an absolute guest path. The caller
 keeps it open until analysis returns and supplies directory-relative read
 operations. A later call inherits no grants. Ordinary standalone analyzers receive
@@ -966,9 +966,9 @@ Generated comments must end with a newline. The host inserts comments after a sh
 leading comments, then maps the inserted lines so they cannot receive edits to the original source.
 Omit `config`, or return `null`, when the tool needs no options.
 
-The bundled [ShellCheck transformation](../internal/plugins/manifests/bundled/shellcheck/configuration.jq)
+The bundled [ShellCheck transformation](../internal/model/bundledproviders/shellcheck/configuration.jq)
 normalizes `enable: true`, writes directive comments and supplies source-directory requests. Its option names
-and directive syntax are defined by that integration. Its [preparation program](../internal/plugins/manifests/bundled/shellcheck/preparation.jq)
+and directive syntax are defined by that integration. Its [preparation program](../internal/model/bundledproviders/shellcheck/preparation.jq)
 selects the shell, exclusions and native arguments. The component plugin uses the ShellCheck parser for directives
 and requests environment facts to choose its exclusions.
 

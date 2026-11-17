@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"github.com/invopop/jsonschema"
 )

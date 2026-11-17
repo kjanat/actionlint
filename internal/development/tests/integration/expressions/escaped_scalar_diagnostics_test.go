@@ -8,6 +8,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
@@ -25,7 +26,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 						src = "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: " + scalar + "\n"
 					}
 					src = strings.ReplaceAll(src, "\n", newline)
-					var result *checking.Result
+					var result *report.Analysis
 					if metadata {
 						fixturefiles.Write(t, root, "inner/action.yml", src)
 						result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
@@ -40,7 +41,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 						t.Fatalf("expected one EOF diagnostic: %+v", result.Diagnostics)
 					}
 					eof := strings.LastIndex(src, `"`)
-					assertDiagnosticOffsetRange(t, src, result.Diagnostics[0], eof, eof)
+					assertDiagnosticOffsetRange(t, src, result.Diagnostics[0].Diagnostic, eof, eof)
 				})
 			}
 		}

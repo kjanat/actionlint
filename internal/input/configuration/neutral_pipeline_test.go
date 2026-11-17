@@ -26,7 +26,7 @@ func TestNeutralMixedFormatExtends(t *testing.T) {
 	writeNeutralFixture(t, dir, "base.toml", "[repository]\nrunners = ['gpu']\nsecrets = ['BASE']\n")
 	writeNeutralFixture(t, dir, "middle.jsonc", "{\n // inherit TOML\n \"extends\": [\"base.toml\"],\n \"repository\": {\"secrets\": [],},\n}\n")
 	leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [middle.jsonc]\nrepository:\n  runners: []\n")
-	loaded, err := document.Load(leaf, nil, os.ReadFile, nil, nil)
+	loaded, err := document.LoadConfigDocument(leaf, nil, os.ReadFile, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestNeutralMixedFormatExtends(t *testing.T) {
 	if len(loaded.Files) != 3 {
 		t.Fatalf("sources: %v", loaded.Files)
 	}
-	if _, err := checking.ConfigurationRules().Load(leaf); err != nil {
+	if _, err := checking.ConfigurationRules().LoadConfig(leaf); err != nil {
 		t.Fatalf("load mixed-format graph: %v", err)
 	}
 }
@@ -58,7 +58,7 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 			dir := t.TempDir()
 			writeNeutralFixture(t, dir, "base.yaml", "mapping: {one: base}\nlist: [base]\n")
 			leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [base.yaml]\n"+tc.overlay+"\n")
-			got, err := document.Load(leaf, nil, os.ReadFile, nil, nil)
+			got, err := document.LoadConfigDocument(leaf, nil, os.ReadFile, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 
 func TestNeutralFileOverrideAfterNull(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: off}}\noverrides:\n  - includes: ['**']\n    lint: {rules: {correctness: null}}\n  - includes: ['**']\n    lint: {rules: {correctness: {if-cond: warn}}}\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: off}}\noverrides:\n  - includes: ['**']\n    lint: {rules: {correctness: null}}\n  - includes: ['**']\n    lint: {rules: {correctness: {if-cond: warn}}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestNeutralLegacyPermissionScopeMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Parse(migration.Content)
+			cfg, err := checking.ConfigurationRules().ParseConfig(migration.Content)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -201,7 +202,7 @@ func ruleOptionsError(category, name string, err error) error {
 
 // validateOptions checks a rule's JSON Schema or decodes its registered Go type.
 // A rule with neither contract accepts no options.
-func validateOptions(d Rule, setting Setting) error {
+func validateOptions(d rule.Declaration, setting Setting) error {
 	if !setting.HasOptions() {
 		return nil
 	}

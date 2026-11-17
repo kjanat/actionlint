@@ -134,7 +134,7 @@ func (s submission) assetName() string {
 
 func (s submission) isOCI() bool { return s.SchemaVersion == 2 && s.Artifact.typeName == "oci" }
 
-func validAsset(kind artifacts.Kind, name string) bool {
+func validAsset(kind artifacts.ArtifactFormat, name string) bool {
 	if !namePattern.MatchString(name) {
 		return false
 	}

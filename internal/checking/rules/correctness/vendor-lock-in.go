@@ -7,9 +7,9 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -52,7 +52,7 @@ var VendorLockInRule = &define.Rule{
 	}},
 	SupportsActions: true,
 	Scope:           rule.SourceConfiguration,
-	Checks:          func(c define.Inputs) define.Checks { return VendorLockInChecks(c.Runners.Target()) },
+	Checks:          func(c define.RuleInputs) define.Checks { return VendorLockInChecks(c.Runners.Target()) },
 }
 
 func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target string) []results.Diagnostic {

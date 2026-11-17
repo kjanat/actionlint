@@ -11,7 +11,7 @@ import (
 )
 
 // retain makes the only visibility and duplicate decision across evaluated batches.
-func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.Diagnostic, sources []diagmodel.DiagnosticSource) {
+func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.PublishedDiagnostic) {
 	type location struct {
 		project, path, rule string
 		start               sourcepos.Position
@@ -24,7 +24,7 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
 		if _, required := authority[retained[index]]; required {
 			retained[index].Source.Suppression = nil
-			sources[index].Suppression = nil
+			diagnostics[index].Source.Suppression = nil
 		}
 	}
 	type metadataLocation struct {
@@ -85,16 +85,16 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			if !required && finding.Rule == "action" && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
 				continue
 			}
-			diagnostic := finding.Canonical(file.Policy.Content)
+			published := finding.Publish(file.Policy.Content)
 			identityPath := file.InputPath
 			if finding.Source.Content != nil {
-				identityPath = diagnostic.Path
+				identityPath = published.Path
 			}
-			content := file.Policy.Content
 			if finding.Foreign(file.Policy.Content) {
-				content = copies.of(finding.Source.Content)
+				published.Source.Content = copies.of(finding.Source.Content)
 			}
-			file.Processor.completeDiagnostic(&diagnostic, content, identityPath, finding.Source.Unavailable.Present())
+			file.Processor.completeDiagnostic(&published.Diagnostic, published.Source.Content, identityPath, published.Source.Unavailable.Present())
+			diagnostic := published.Diagnostic
 			var metadataKey metadataLocation
 			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
 			if identity := finding.MetadataIdentity; isMetadata {
@@ -113,7 +113,7 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			}
 			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
 			duplicate := slices.IndexFunc(seen[key], func(index int) bool {
-				previous, current := diagnostics[index], diagnostic
+				previous, current := diagnostics[index].Diagnostic, diagnostic
 				previous.NonBlocking, current.NonBlocking = false, false
 				if retainedBatch[index] == i && retained[index].InferredReference && finding.InferredReference {
 					previous.Reference, current.Reference = nil, nil
@@ -134,23 +134,20 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			seen[key] = append(seen[key], len(diagnostics))
 			retained = append(retained, finding)
 			retainedBatch = append(retainedBatch, i)
-			diagnostics = append(diagnostics, diagnostic)
-			published := finding.Source
-			published.Content, published.Suppression = content, nil
 			if suppression := finding.Source.Suppression; suppression != nil && !required {
 				target := *suppression
 				if target.Path == "" {
 					target.Path = file.InputPath
 				}
-				published.Suppression = &target
+				published.Source.Suppression = &target
 			}
-			sources = append(sources, published)
+			diagnostics = append(diagnostics, published)
 			unique = append(unique, finding)
 		}
 		clear(file.Findings[len(unique):])
 		file.Findings = unique
 	}
-	return diagnostics, sources
+	return diagnostics
 }
 
 // sourceCopies copies each foreign source once per publication. Findings in

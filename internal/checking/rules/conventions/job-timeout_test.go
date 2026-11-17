@@ -11,11 +11,11 @@ import (
 func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps: [{run: echo ok}]\n"
-	parsed, errs := workflowparser.Parse([]byte(source))
+	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	job, found := declaration.Publish(source, parsed, false, "").Bind("test").Workflow().Job("build")
+	job, found := declaration.Bind("test", source, parsed, false, "").Workflow().Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")
 	}

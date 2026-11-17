@@ -23,7 +23,7 @@ type (
 )
 type shellScriptInputs struct{}
 
-func newShellScriptInputScope(input checkinputs.Input) shellScriptInputScope {
+func newShellScriptInputScope(input checkinputs.AnalyzerInput) shellScriptInputScope {
 	prepare := input.BuildShellScriptInput
 	if prepare == nil {
 		prepare = shellprofile.NewShellScriptInputBuilder(slices.Concat(input.Scripts, input.Invoked))
@@ -85,7 +85,7 @@ func shellInputFailure(err error) (shellinputbind.ResultOptionInputString, error
 
 // Only run scripts with supplied text can request preparation, even when the
 // graph describes additional occurrences.
-func suppliedOccurrences(input checkinputs.Input) map[invocation.ID]struct{} {
+func suppliedOccurrences(input checkinputs.AnalyzerInput) map[invocation.ID]struct{} {
 	occurrences := make(map[invocation.ID]struct{}, len(input.Scripts)+len(input.Invoked))
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {

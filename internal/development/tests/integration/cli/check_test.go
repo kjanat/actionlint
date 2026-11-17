@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	diagnosticmodel "actionlint.kjanat.dev/v2/internal/results"
 

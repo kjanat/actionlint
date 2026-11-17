@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	shellsyntax "mvdan.cc/sh/v3/syntax"
 )
 

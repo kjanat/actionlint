@@ -6,9 +6,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -17,7 +16,7 @@ type exampleOptions struct{ Limit int }
 func TestDeclarationAppliesDefaults(t *testing.T) {
 	t.Parallel()
 	native := &Rule{Name: "example", Description: "Report examples", Category: "correctness", Subcategory: "tests", Options: Options[exampleOptions]()}
-	got := native.Declaration()
+	got := native.ResolvedDeclaration()
 	if got.Provider != "actionlint" || got.Maturity != rule.StableMaturity {
 		t.Fatalf("provider %q maturity %q", got.Provider, got.Maturity)
 	}
@@ -38,7 +37,7 @@ func TestDeclarationKeepsExplicitValues(t *testing.T) {
 		Name: "example", Description: "Report examples", Category: "correctness", Subcategory: "tests",
 		Provider: "plugin", Maturity: rule.NurseryMaturity, Explanation: "Longer text.", DocumentationURL: "https://example.com/rule",
 	}
-	got := native.Declaration()
+	got := native.ResolvedDeclaration()
 	if got.Provider != "plugin" || got.Maturity != rule.NurseryMaturity || got.Explanation != "Longer text." || got.DocumentationURL != "https://example.com/rule" {
 		t.Fatalf("explicit values were replaced: %+v", got.Descriptor)
 	}
@@ -47,9 +46,9 @@ func TestDeclarationKeepsExplicitValues(t *testing.T) {
 func TestDeclarationIsDetached(t *testing.T) {
 	t.Parallel()
 	native := &Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s", Aliases: []rule.Alias{{Name: "old"}}}
-	first := native.Declaration()
+	first := native.ResolvedDeclaration()
 	first.Aliases[0].Name = "changed"
-	if native.Declaration().Aliases[0].Name != "old" {
+	if native.ResolvedDeclaration().Aliases[0].Name != "old" {
 		t.Fatal("caller changed the rule's aliases")
 	}
 }
@@ -57,9 +56,9 @@ func TestDeclarationIsDetached(t *testing.T) {
 func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 	t.Parallel()
 	base := Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s"}
-	checks := func(Inputs) Checks { return Checks{} }
-	walker := func(Inputs, workflowvisit.Base) workflowvisit.Rule { return nil }
-	script := func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) { return nil, nil }
+	checks := func(RuleInputs) Checks { return Checks{} }
+	walker := func(RuleInputs, workflowvisit.Base) workflowvisit.Rule { return nil }
+	script := func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return nil, nil }
 	tests := map[string]struct {
 		edit    func(*Rule)
 		wantErr string
@@ -71,7 +70,7 @@ func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 		"no form and no emitter": {func(*Rule) {}, "DeclaredBy"},
 		"checks and walker":      {func(r *Rule) { r.Checks, r.Walker = checks, walker }, "more than one"},
 		"executable and emitter": {func(r *Rule) { r.Checks, r.DeclaredBy = checks, "expression" }, "must not name DeclaredBy"},
-		"declared with enable":   {func(r *Rule) { r.DeclaredBy, r.Enabled = "expression", func(Inputs) bool { return true } }, "cannot prepare or enable"},
+		"declared with enable":   {func(r *Rule) { r.DeclaredBy, r.Enabled = "expression", func(RuleInputs) bool { return true } }, "cannot prepare or enable"},
 		"no name":                {func(r *Rule) { r.Name, r.Checks = "", checks }, "no name"},
 	}
 	for name, test := range tests {
@@ -94,15 +93,15 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 	t.Parallel()
 	native := &Rule{
 		Name: "example", Description: "d", Category: "c", Subcategory: "s",
-		Script: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+		Script: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			return []results.Diagnostic{{Message: "unnamed"}, {Rule: "other", Message: "named"}}, nil
 		},
 	}
-	registration := native.Registration(configuration.Rule{})
+	registration := native.Registration(rule.Declaration{})
 	if registration.Build != nil || registration.Script == nil {
 		t.Fatalf("script rule registered as %+v", registration)
 	}
-	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.Input{})
+	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.AnalyzerInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +113,7 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 func TestDeclarationOnlyRuleRegistersNoExecution(t *testing.T) {
 	t.Parallel()
 	native := &Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s", DeclaredBy: "expression"}
-	registration := native.Registration(configuration.Rule{})
+	registration := native.Registration(rule.Declaration{})
 	if native.Executable() || registration.Build != nil || registration.Script != nil {
 		t.Fatalf("declaration-only rule executes: %+v", registration)
 	}

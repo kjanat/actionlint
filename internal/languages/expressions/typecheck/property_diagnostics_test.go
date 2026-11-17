@@ -35,7 +35,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 			gh = gh.With("event", exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"author": author.Type()}).Type()).Type())
 			checker.SetContextTypes(map[string]exprtypes.Type{"github": gh.Type(), "env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type()})
 			checker.SetContextAvailability([]string{"github", "env"})
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -18,8 +18,8 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// Load reads and validates a component and asks it to describe itself.
-func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
+// LoadComponentPlugin reads and validates a component and asks it to describe itself.
+func LoadComponentPlugin(ctx context.Context, path string, options Options) (*Plugin, error) {
 	limits, err := options.limits()
 	if err != nil {
 		return nil, err

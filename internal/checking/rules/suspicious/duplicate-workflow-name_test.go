@@ -26,11 +26,11 @@ func TestDuplicateWorkflowNameUsesSuppliedInventory(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			text := tc.source + "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-			parsed, errs := workflowparser.Parse([]byte(text))
+			parsed, errs := workflowparser.ParseWorkflow([]byte(text))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := declaration.Publish(text, parsed, false, "").Bind("checked").Workflow()
+			workflow := declaration.Bind("checked", text, parsed, false, "").Workflow()
 			findings := DuplicateWorkflowName(others, workflow)
 			if tc.message == "" {
 				if len(findings) != 0 {

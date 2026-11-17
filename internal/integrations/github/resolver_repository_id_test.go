@@ -48,8 +48,8 @@ func TestResolverRepositoryIDSurvivesAcquisition(t *testing.T) {
 				path += filename
 				hosts := gitAndRawHosts(t, map[string]string{path: "fresh metadata"})
 				client, err := New(Options{CacheDir: t.TempDir(), Transport: hosts, Resolver: func() references.Resolver {
-					return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
-						return references.Result{Version: 1, Repository: request.Repository(), RepositoryID: id(tc.resolved), Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+					return resolveFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
+						return references.ResolutionRecord{Version: 1, Repository: request.Repository(), RepositoryID: id(tc.resolved), Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 					})
 				}})
 				if err != nil {

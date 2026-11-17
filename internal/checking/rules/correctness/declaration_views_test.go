@@ -18,12 +18,12 @@ import (
 func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	t.Parallel()
 	const src = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: same\n        run: echo first\n      - id: same\n        run: echo second\n"
-	ast, errs := workflowparser.Parse([]byte(src))
+	ast, errs := workflowparser.ParseWorkflow([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	check := correctness.IdRule.Checks(define.Inputs{})
+	w := declaration.Bind("test", src, ast, false, "").Workflow()
+	check := correctness.IdRule.Checks(define.RuleInputs{})
 	if check.Step != nil || check.Workflow != nil {
 		t.Fatal("ID checking requests more than job declarations")
 	}
@@ -44,12 +44,12 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 
 func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
+	ast, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
-	findings := correctness.EnvVarRule.Checks(define.Inputs{}).Job(jobView(w, "test"))
+	w := declaration.Bind("test", "", ast, false, "").Workflow()
+	findings := correctness.EnvVarRule.Checks(define.RuleInputs{}).Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
 	}
@@ -64,7 +64,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 
 func TestParallelJobsDoNotShareBackgroundSteps(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.Parse([]byte(`on: push
+	ast, errs := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   producer:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
+	w := declaration.Bind("test", "", ast, false, "").Workflow()
 	want := correctness.ParallelSteps(jobView(w, "consumer"))
 	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "consumer").Steps())[0].Reference() {
 		t.Fatalf("expected unknown background step with its owner: %+v", want)

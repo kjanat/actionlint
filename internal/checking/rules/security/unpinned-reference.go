@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -24,7 +24,7 @@ var UnpinnedReferenceRule = &define.Rule{
 	Policy:      "require-commit-hash",
 	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
 	Options:     define.Options[lintconfig.CommitHashOptions](),
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		options := new(lintconfig.CommitHashOptions)
 		if c.Config != nil {
 			// Parsing and ValidateRuleNames reject options that do not load
@@ -36,7 +36,7 @@ var UnpinnedReferenceRule = &define.Rule{
 		}
 		return UnpinnedReferenceChecks(options.Excludes)
 	},
-	Enabled: func(c define.Inputs) bool { return c.Config.RequiresCommitHash() },
+	Enabled: func(c define.RuleInputs) bool { return c.Config.RequiresCommitHash() },
 }
 
 // UnpinnedReferenceChecks binds reference exclusions to job and step declarations.

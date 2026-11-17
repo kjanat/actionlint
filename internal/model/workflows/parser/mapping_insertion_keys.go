@@ -25,21 +25,21 @@ func emptyResolvedMappingKey(key value.Value) bool {
 	return stringValue && name == ""
 }
 
-func mappingInputsFromYAML(node *codec.Node) *mapping.Inputs {
+func mappingInputsFromYAML(node *codec.Node) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
 	if node.Kind == codec.ScalarNode {
 		text := newString(node)
 		if text != nil && text.ContainsExpression() {
-			return &mapping.Inputs{Expression: workflowlang.SemanticValue(text)}
+			return &mapping.DeclaredMapping{Expression: workflowlang.SemanticValue(text)}
 		}
 		return nil
 	}
 	if node.Kind != codec.MappingNode {
 		return nil
 	}
-	result := &mapping.Inputs{Values: map[string]mapping.Input{}}
+	result := &mapping.DeclaredMapping{Values: map[string]mapping.DeclaredEntry{}}
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		keyNode, valueNode := node.Content[i], node.Content[i+1]
 		key := newString(keyNode)
@@ -50,7 +50,7 @@ func mappingInputsFromYAML(node *codec.Node) *mapping.Inputs {
 			result.Insertions = append(result.Insertions, mappingInputsFromYAML(valueNode))
 			continue
 		}
-		result.Values[key.Value] = mapping.Input{Name: workflowlang.SemanticValue(key), Source: key.Value}
+		result.Values[key.Value] = mapping.DeclaredEntry{Name: workflowlang.SemanticValue(key), Source: key.Value}
 	}
 	return result
 }

@@ -11,15 +11,6 @@ type Mapping struct {
 	Reference sourcepos.Reference
 	Scope     string
 	Complete  bool
-	Entries   []Entry
-}
-
-// Entry separates an evaluated name from source expression text. Evaluated
-// entries came from object expressions and must not be interpreted again.
-type Entry struct {
-	Name      string
-	State     mapping.KeyState
-	Source    string
-	Evaluated bool
-	Start     sourcepos.Position
+	// Entries are the mapping's declarations in source traversal order.
+	Entries []mapping.Declaration
 }

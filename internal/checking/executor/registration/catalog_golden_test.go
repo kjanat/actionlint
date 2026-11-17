@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 var updateGolden = flag.Bool("update", false, "rewrite testdata/catalog.golden.json")

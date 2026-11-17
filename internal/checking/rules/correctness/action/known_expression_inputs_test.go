@@ -8,12 +8,13 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestKnownExpressionActionInputs(t *testing.T) {
 	t.Parallel()
-	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{
+	meta := &actionmeta.Metadata{Inputs: calls.Inputs{
 		"token": {Name: "token", Required: true},
 		"old":   {Name: "old", Deprecated: true},
 	}}
@@ -31,7 +32,7 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, parseErrors := workflowparser.Parse([]byte(`on: push
+			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

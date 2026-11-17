@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestDependencySettingsInheritanceAndOverrides(t *testing.T) {
@@ -59,7 +59,7 @@ func TestDependencySettingsRejectInvalidSelections(t *testing.T) {
 		"fail-on-all: nope", "fail-on-categories: [typo]", "fail-on-rules: [missing]",
 		"fail-on-rules: ['example/']", "fail-on-rules: ['example/with space']", "fail-on-rules: ['example/code/more']", "unknown: true",
 	} {
-		if _, err := rules.Parse([]byte("lint: {dependencies: {" + body + "}}")); err == nil {
+		if _, err := rules.ParseConfig([]byte("lint: {dependencies: {" + body + "}}")); err == nil {
 			t.Errorf("accepted invalid dependency settings: %s", body)
 		}
 	}

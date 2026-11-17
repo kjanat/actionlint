@@ -13,6 +13,7 @@ import (
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
@@ -25,7 +26,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -78,9 +79,9 @@ func publishOCIProvider(t *testing.T) ociProvider {
 
 const ociProviderInput = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ github.ref }}\n        shell: bash\n"
 
-func ociFindings(t *testing.T, result *checking.Result) []results.Diagnostic {
+func ociFindings(t *testing.T, result *report.Analysis) []results.Diagnostic {
 	t.Helper()
-	return slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "oci-tool" })
+	return slices.DeleteFunc(results.Diagnostics(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "oci-tool" })
 }
 
 // A provider pulled from an OCI registry runs its stored executable through
@@ -89,7 +90,7 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	t.Parallel()
 	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
-	check := func() *checking.Result {
+	check := func() *report.Analysis {
 		t.Helper()
 		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
 		if err != nil {
@@ -206,7 +207,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
 		t.Fatalf("planning fetched executable %d times", got)
 	}
-	ref, err := pluginreference.Parse(pkg.reference)
+	ref, err := pluginreference.ParsePluginReference(pkg.reference)
 	if err != nil {
 		t.Fatal(err)
 	}

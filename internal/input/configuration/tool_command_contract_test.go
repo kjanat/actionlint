@@ -33,7 +33,7 @@ overrides:
 	if err := os.WriteFile(child, []byte("extends: [./parent/base.yaml]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(child)
+	cfg, err := checking.ConfigurationRules().LoadConfig(child)
 	if err != nil {
 		t.Fatal(err)
 	}

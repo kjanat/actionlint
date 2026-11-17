@@ -23,7 +23,7 @@ func TestFunctionCallFacts(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 		valid bool
 		state exprvalues.EvaluationState
 		value any
@@ -50,7 +50,7 @@ func TestFunctionCallFacts(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestFunctionContractFacts(t *testing.T) {
 	t.Parallel()
 	check := func(input string) ExpressionCheckResult {
 		t.Helper()
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func TestFunctionContractFacts(t *testing.T) {
 
 func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 	t.Parallel()
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith(true).foo}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith(true).foo}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "test", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
 	}}
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("test(github.event.unknown)}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("test(github.event.unknown)}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 	t.Parallel()
 	parse := func(input string) exprsyntax.Node {
 		t.Helper()
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -209,7 +209,7 @@ func TestKnownResultRefinesDeclaredAny(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

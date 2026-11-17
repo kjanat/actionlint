@@ -35,7 +35,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 			if !ok {
 				t.Fatal("missing descriptor")
 			}
-			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {preset: none, %s: {%s: warn}}}", descriptor.Group, selected))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {preset: none, %s: {%s: warn}}}", descriptor.Category, selected))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,7 +85,7 @@ func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
 	} {
 		t.Run(tc.level+tc.comment, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {preset: none, correctness: {expression-call: %s}}}", tc.level))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {preset: none, correctness: {expression-call: %s}}}", tc.level))
 			if err != nil {
 				t.Fatal(err)
 			}

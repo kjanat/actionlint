@@ -8,6 +8,7 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -29,12 +30,12 @@ func TestInsertedActionInputMetadata(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          ${{ insert }}: " + tc.value + "\n"))
+			workflow, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          ${{ insert }}: " + tc.value + "\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-			got := actioncheck.Inputs(&actionmeta.Metadata{Inputs: map[string]*actionmeta.Input{"token": {Name: "token", Required: true}}}, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
+			got := actioncheck.Inputs(&actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" {
 				if len(got) != 0 {
 					t.Fatal(got)

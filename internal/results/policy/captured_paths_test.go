@@ -16,7 +16,7 @@ func TestReportedPhysicalPathIsRelativeToAliasedCheckout(t *testing.T) {
 	checkout := filepath.Join(directory, "checkout-alias")
 	physical := filepath.Join(directory, "captured-checkout")
 	processor := policy.Processor{RuleSet: checking.ConfigurationRules(), CanonicalPaths: map[string]string{checkout: physical}}
-	config, err := checking.ConfigurationRules().Parse([]byte("{}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 		if ignore {
 			configuration = "ignores: [{rule: expression-type, file: ci.yml}]"
 		}
-		config, err := checking.ConfigurationRules().Parse([]byte(configuration))
+		config, err := checking.ConfigurationRules().ParseConfig([]byte(configuration))
 		if err != nil {
 			t.Fatal(err)
 		}

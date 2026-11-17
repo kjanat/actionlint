@@ -8,14 +8,14 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestDirectPluginDeclaration(t *testing.T) {
 	t.Parallel()
 	source := "https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32)
-	cfg, err := checking.ConfigurationRules().Parse([]byte("plugins: [\"" + source + "\"]"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("plugins: [\"" + source + "\"]"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,14 +31,14 @@ func TestDirectPluginDeclaration(t *testing.T) {
 		t.Fatalf("roundtrip: %s %v", data, err)
 	}
 	duplicate := "plugins: [\"" + source + "\", \"" + strings.ReplaceAll(source, "abab", "cdcd") + "\"]"
-	if _, err := checking.ConfigurationRules().Parse([]byte(duplicate)); err == nil {
+	if _, err := checking.ConfigurationRules().ParseConfig([]byte(duplicate)); err == nil {
 		t.Fatal("accepted two pins for the same URL")
 	}
 }
 
 func TestPluginDeclarations(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`plugins:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`plugins:
   - Kjanat/Shellcheck@v1
   - name: gitlab.com/Group/Subgroup/Plugin
     version: latest
@@ -58,7 +58,7 @@ func TestPluginDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roundTrip, err := checking.ConfigurationRules().Parse(data)
+	roundTrip, err := checking.ConfigurationRules().ParseConfig(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func declarationFields(refs configuration.PluginDeclarations) [][3]string {
 
 func TestPluginAliasRegistryScope(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`plugins:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`plugins:
   - community-check
   - name: community-check
     registry: https://custom.example/
@@ -107,7 +107,7 @@ func TestPluginAliasRegistryScope(t *testing.T) {
 func TestPluginDeclarationsPresence(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"plugins: null", "plugins: []", "plugins:"} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(input))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +115,7 @@ func TestPluginDeclarationsPresence(t *testing.T) {
 			t.Fatalf("%q must explicitly select zero plugins", input)
 		}
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("{}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestPluginDeclarationsReject(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			if _, err := checking.ConfigurationRules().Parse([]byte(input)); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(input)); err == nil {
 				t.Fatalf("accepted %q", input)
 			}
 		})
@@ -166,7 +166,7 @@ func TestPluginDeclarationsExtends(t *testing.T) {
 		{"plugins: []", 0, ""},
 	} {
 		path := write("leaf.yaml", "extends: [base.yaml]\n"+tc.suffix)
-		cfg, err := checking.ConfigurationRules().Load(path)
+		cfg, err := checking.ConfigurationRules().LoadConfig(path)
 		if err != nil {
 			t.Fatal(err)
 		}

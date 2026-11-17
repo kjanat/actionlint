@@ -25,7 +25,7 @@ func TestServiceValidationAndJSON(t *testing.T) {
 	} {
 		t.Run(tc.kind+"/"+tc.version, func(t *testing.T) {
 			t.Parallel()
-			s, err := Parse(tc.kind, tc.version)
+			s, err := ParseService(tc.kind, tc.version)
 			if (err == nil) != tc.valid {
 				t.Fatalf("Parse error=%v", err)
 			}

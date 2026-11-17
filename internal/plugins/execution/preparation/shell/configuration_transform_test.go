@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Settings, error) {
@@ -21,7 +21,7 @@ func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Set
 		if manifest.Rule.Name != "shellcheck" {
 			continue
 		}
-		transform, err := integrationconfig.New(manifest, bundled.Program)
+		transform, err := integrationconfig.New(manifest, bundledproviders.Program)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,7 +126,7 @@ func prepareShellcheck(t *testing.T, run Run, source string) (preparation.Prepar
 		if provider.Rule.Name != "shellcheck" {
 			continue
 		}
-		run.SourcePlanner, err = preparation.NewSourcePlanner(provider.PreparationTransform, bundled.Program)
+		run.SourcePlanner, err = preparation.NewSourcePlanner(provider.PreparationTransform, bundledproviders.Program)
 		if err != nil {
 			t.Fatal(err)
 		}

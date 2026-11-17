@@ -3,13 +3,11 @@ package define
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -20,7 +18,7 @@ const (
 
 // ScriptCheck analyzes the scripts of one document. It reports findings with
 // an empty Rule; the rule's name is attached to them.
-type ScriptCheck func(context.Context, checkinputs.Input) ([]results.Diagnostic, error)
+type ScriptCheck func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error)
 
 // Rule is the single definition of a native rule.
 //
@@ -33,50 +31,22 @@ type ScriptCheck func(context.Context, checkinputs.Input) ([]results.Diagnostic,
 // is declaration-only and names in DeclaredBy the component that reports its
 // findings.
 type Rule struct {
-	Name             string
-	Aliases          []rule.Alias
-	Description      string
-	Category         string
-	Subcategory      string
-	Maturity         string
-	Provider         string
-	Recommended      bool
-	Explanation      string
-	Help             string
-	DocumentationURL string
-	Examples         []rule.Example
-	RequiredInputs   []rule.InputKind
-
-	ExecutionFailure bool
-	DefaultLevel     string
-	DefaultEnabled   *bool
-	SupportsActions  bool
-	Scope            rule.ConfigurationScope
-
-	// Options constructs a fresh options value for decoding and schema
-	// generation. Use [Options]. Nil means the rule accepts no options.
-	Options func() any
-
-	// LegacyGroup, Policy, MovedOptions and MigrationNote describe how
-	// configuration written for earlier versions selects the rule. See
-	// [rule.Declaration].
-	LegacyGroup   string
-	Policy        string
-	MovedOptions  []rule.MovedOption
-	MigrationNote string
+	// Declaration holds the rule's metadata and configuration requirements.
+	// Construct its Options with [Options].
+	rule.Declaration
 
 	// Prepare acquires facts before construction. Nil means none are needed.
-	Prepare func(Inputs) (InputPreparation, error)
+	Prepare func(RuleInputs) (InputPreparation, error)
 	// Enabled reports whether the rule runs for these inputs. Nil means always.
-	Enabled func(Inputs) bool
+	Enabled func(RuleInputs) bool
 
 	// Checks supplies stateless checks of published workflow views. The
 	// adapter traverses workflows and, for rules that support actions,
 	// composite bodies, and attaches the rule's name to findings without one.
-	Checks func(Inputs) Checks
+	Checks func(RuleInputs) Checks
 	// Walker supplies a stateful traversal. The base carries the rule's name
 	// and description and is embedded in the returned visitor.
-	Walker func(Inputs, workflowvisit.Base) workflowvisit.Rule
+	Walker func(RuleInputs, workflowvisit.Base) workflowvisit.Rule
 	// Script analyzes document scripts.
 	Script ScriptCheck
 
@@ -91,8 +61,8 @@ func Options[T any]() func() any {
 }
 
 // Fixed supplies checks that need no inputs.
-func Fixed(checks Checks) func(Inputs) Checks {
-	return func(Inputs) Checks { return checks }
+func Fixed(checks Checks) func(RuleInputs) Checks {
+	return func(RuleInputs) Checks { return checks }
 }
 
 // Executable reports whether the rule runs anything.
@@ -133,43 +103,23 @@ func (r *Rule) Base() workflowvisit.Base {
 	return workflowvisit.NewBase(r.Name, r.Description)
 }
 
-// Declaration returns the rule's declaration with defaults applied. Each call
-// returns an independent value.
-func (r *Rule) Declaration() rule.Declaration {
-	descriptor := rule.Descriptor{
-		ExecutionFailure: r.ExecutionFailure,
-		DefaultLevel:     r.DefaultLevel,
-		DefaultEnabled:   r.DefaultEnabled,
-		Name:             r.Name,
-		Aliases:          r.Aliases,
-		Description:      r.Description,
-		Category:         r.Category,
-		Subcategory:      r.Subcategory,
-		Maturity:         r.Maturity,
-		Provider:         r.Provider,
-		Recommended:      r.Recommended,
-		Explanation:      r.Explanation,
-		Help:             r.Help,
-		DocumentationURL: r.DocumentationURL,
-		Examples:         r.Examples,
-		RequiredInputs:   r.RequiredInputs,
+// ResolvedDeclaration returns the rule's declaration with defaults applied.
+// Each call returns an independent value.
+func (r *Rule) ResolvedDeclaration() rule.Declaration {
+	declaration := r.Clone()
+	if declaration.Maturity == "" {
+		declaration.Maturity = rule.StableMaturity
 	}
-	if descriptor.Maturity == "" {
-		descriptor.Maturity = rule.StableMaturity
+	if declaration.Provider == "" {
+		declaration.Provider = defaultProvider
 	}
-	if descriptor.Provider == "" {
-		descriptor.Provider = defaultProvider
+	if declaration.Explanation == "" {
+		declaration.Explanation = sentence(declaration.Description)
 	}
-	if descriptor.Explanation == "" {
-		descriptor.Explanation = sentence(r.Description)
+	if declaration.DocumentationURL == "" {
+		declaration.DocumentationURL = documentationPrefix + declaration.Name
 	}
-	if descriptor.DocumentationURL == "" {
-		descriptor.DocumentationURL = documentationPrefix + r.Name
-	}
-	return rule.Declaration{
-		Descriptor: descriptor.Clone(), SupportsActions: r.SupportsActions, Scope: r.Scope, Options: r.Options,
-		LegacyGroup: r.LegacyGroup, Policy: r.Policy, MovedOptions: slices.Clone(r.MovedOptions), MigrationNote: r.MigrationNote,
-	}
+	return declaration
 }
 
 func sentence(text string) string {
@@ -181,36 +131,36 @@ func sentence(text string) string {
 
 // NewVisitor constructs the traversal for a rule that executes through Checks
 // or Walker. It does not run Prepare or consult Enabled.
-func (r *Rule) NewVisitor(in Inputs) workflowvisit.Rule {
-	return r.Registration(configuration.Rule{}).Build(in)
+func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
+	return r.Registration(rule.Declaration{}).Build(in)
 }
 
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
-	configuration.Rule
+	rule.Declaration
 	// Prepare distinguishes usable inputs, unavailable knowledge and operation
 	// failures before construction. Nil means no preparation is needed.
-	Prepare func(Inputs) (InputPreparation, error)
-	Build   func(Inputs) workflowvisit.Rule
+	Prepare func(RuleInputs) (InputPreparation, error)
+	Build   func(RuleInputs) workflowvisit.Rule
 	Script  checkinputs.Checker
-	Enabled func(Inputs) bool
+	Enabled func(RuleInputs) bool
 }
 
 // Registration binds the rule's execution to its configuration metadata.
 // A declaration-only rule yields a registration with no Build or Script.
-func (r *Rule) Registration(metadata configuration.Rule) Registration {
-	registration := Registration{Rule: metadata, Prepare: r.Prepare, Enabled: r.Enabled}
+func (r *Rule) Registration(metadata rule.Declaration) Registration {
+	registration := Registration{Declaration: metadata, Prepare: r.Prepare, Enabled: r.Enabled}
 	switch {
 	case r.Checks != nil:
-		registration.Build = func(c Inputs) workflowvisit.Rule {
+		registration.Build = func(c RuleInputs) workflowvisit.Rule {
 			return NewChecksVisitor(c.Rules, r.Name, r.Checks(c))
 		}
 	case r.Walker != nil:
-		registration.Build = func(c Inputs) workflowvisit.Rule {
+		registration.Build = func(c RuleInputs) workflowvisit.Rule {
 			return r.Walker(c, r.Base())
 		}
 	case r.Script != nil:
-		registration.Script = scriptChecker{declaration: r.Declaration(), check: r.Script}
+		registration.Script = scriptChecker{declaration: r.ResolvedDeclaration(), check: r.Script}
 	}
 	return registration
 }
@@ -222,10 +172,10 @@ type scriptChecker struct {
 }
 
 func (c scriptChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Descriptor: c.declaration.Clone(), Scope: c.declaration.Scope, SupportsActions: c.declaration.SupportsActions}
+	return checkinputs.Descriptor{Declaration: c.declaration.Clone()}
 }
 
-func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	diagnostics, err := c.check(ctx, input)
 	for i := range diagnostics {
 		if diagnostics[i].Rule == "" {

@@ -34,7 +34,7 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"
-			_, parseErrors := workflowparser.Parse([]byte(source))
+			_, parseErrors := workflowparser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

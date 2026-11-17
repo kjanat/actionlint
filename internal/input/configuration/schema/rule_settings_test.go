@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
@@ -14,7 +12,7 @@ func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
 	custom.Rule.Name = "custom-check"
 	bundled := installed(false)
 	bundled.Rule.Name, bundled.Rule.Category = "shellcheck", "correctness"
-	data, err := Document(moduleRoot, []manifests.Manifest{custom, bundled})
+	data, err := Document(moduleRoot, []ToolProvider{custom, bundled})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,12 +59,12 @@ func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
 func TestInstalledRuleUsesSharedSettingContract(t *testing.T) {
 	t.Parallel()
 	for _, typedOptions := range []bool{false, true} {
-		manifest := installed(false)
-		manifest.Rule.Name = "custom-check"
+		provider := installed(false)
+		provider.Rule.Name = "custom-check"
 		if typedOptions {
-			manifest.Rule.OptionsSchema = json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"required":["limit"],"additionalProperties":false}`)
+			provider.Rule.OptionsSchema = json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"required":["limit"],"additionalProperties":false}`)
 		}
-		schema := compile(t, manifest)
+		schema := compile(t, provider)
 		for _, override := range []bool{false, true} {
 			validate := func(value any) error {
 				entry := object{"lint": object{"rules": object{"conventions": object{"custom-check": value}}}}

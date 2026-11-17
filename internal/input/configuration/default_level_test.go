@@ -3,7 +3,7 @@ package configuration
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
@@ -34,7 +34,7 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 			} {
 				t.Run(test.name, func(t *testing.T) {
 					t.Parallel()
-					cfg, err := rules.Parse([]byte(test.yaml))
+					cfg, err := rules.ParseConfig([]byte(test.yaml))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -66,15 +66,15 @@ func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
 	}
 	base := rules
 	plugin := rule.Descriptor{Name: "plugin", Category: "security", Maturity: "stable", DefaultLevel: "warn"}
-	rules, err = rules.WithRegisteredRules(RuleRegistration{Descriptor: plugin})
+	rules, err = rules.WithRegisteredRules(RuleRegistration{Declaration: rule.Declaration{Descriptor: plugin}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := rules.Parse([]byte("lint: {rules: {correctness: error, suspicious: {optional: error, nursery: error}, security: {plugin: error}}}"))
+	cfg, err := rules.ParseConfig([]byte("lint: {rules: {correctness: error, suspicious: {optional: error, nursery: error}, security: {plugin: error}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := base.ResolveRegisteredRules(Presets{}, cfg, RuleRegistration{Descriptor: plugin})
+	resolved, err := base.ResolveRegisteredRules(Presets{}, cfg, RuleRegistration{Declaration: rule.Declaration{Descriptor: plugin}})
 	if err != nil {
 		t.Fatal(err)
 	}

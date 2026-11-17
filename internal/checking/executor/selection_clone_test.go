@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -33,10 +33,10 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.Input{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
+			input := checkinputs.AnalyzerInput{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
 			registration := checkinputs.Registration{Checker: testAnalyzer{
 				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "selection-clone"}},
-				run: func(_ context.Context, supplied checkinputs.Input) ([]results.Diagnostic, error) {
+				run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 					if (supplied.SelectedScripts == nil) != tc.wantNil {
 						t.Errorf("selected scripts nil=%v, want %v", supplied.SelectedScripts == nil, tc.wantNil)
 					}

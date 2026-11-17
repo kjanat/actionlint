@@ -15,7 +15,7 @@ func TestAssessmentWindowsAndAnnouncement(t *testing.T) {
 		}
 		return x
 	}
-	svc, _ := services.Parse("github.com", "")
+	svc, _ := services.ParseService("github.com", "")
 	p, e := NewPolicy("migration", "Prepare", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Before(90), Warning}, {OnEffective(), Error}}, "base.toml")
 	if e != nil {
 		t.Fatal(e)

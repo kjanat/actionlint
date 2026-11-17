@@ -9,9 +9,9 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -175,7 +175,7 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 func TestAuthoringEvaluatesShellCheckPreparation(t *testing.T) {
 	t.Parallel()
 	manifest := bundledManifest(t, "shellcheck")
-	tester, err := NewAuthoringTester(manifest, bundled.Program)
+	tester, err := NewAuthoringTester(manifest, bundledproviders.Program)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,7 +12,7 @@ import (
 
 func TestMissingPermissions(t *testing.T) {
 	t.Parallel()
-	if security.MissingPermissionsRule.Declaration().DefaultLevel != "error" || !security.MissingPermissionsRule.Declaration().Recommended {
+	if security.MissingPermissionsRule.ResolvedDeclaration().DefaultLevel != "error" || !security.MissingPermissionsRule.ResolvedDeclaration().Recommended {
 		t.Fatal("missing permissions must be an error by default")
 	}
 	const local = "    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
@@ -46,11 +46,11 @@ func TestMissingPermissions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := tc.trigger + tc.permissions + "jobs:\n" + tc.jobs
-			ast, errs := workflowparser.Parse([]byte(source))
+			ast, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
+			view := declaration.Bind("test", source, ast, false, "").Workflow()
 			var lines []int
 			for _, finding := range security.MissingPermissionsChecks(nil).Workflow(view) {
 				if finding.Severity != "" || finding.Start.Column != 3 {

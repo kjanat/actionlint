@@ -44,7 +44,7 @@ func TestRuleIfCond(t *testing.T) {
 				s.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
 			}
 
-			r := correctness.IfCondRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			r := correctness.IfCondRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitStep(fixturedecl.Step(&s)); err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestRuleIfCond(t *testing.T) {
 				}
 			}
 
-			r := correctness.IfCondRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			r := correctness.IfCondRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitJobPre(fixturedecl.Job(&j)); err != nil {
 				t.Fatal(err)
 			}

@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"golang.org/x/sys/execabs"
 )
@@ -41,7 +42,7 @@ jobs:
 				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
 			}
 			workflow += "permissions: {}\n"
-			var result *checking.Result
+			var result *report.Analysis
 			done := make(chan error, 1)
 			go func() {
 				var err error

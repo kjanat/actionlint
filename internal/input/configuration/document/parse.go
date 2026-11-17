@@ -33,9 +33,9 @@ func syntaxOf(path string) syntax {
 	}
 }
 
-// Parse reads one configuration document in the syntax selected by path.
+// ParseConfigDocument reads one configuration document in the syntax selected by path.
 // Every value is located in path.
-func Parse(path string, data []byte) (*Node, error) {
+func ParseConfigDocument(path string, data []byte) (*Node, error) {
 	var parsed *parsedSource
 	var err error
 	switch syntaxOf(path) {

@@ -8,7 +8,6 @@ func appendAnalysis(dst *Analysis, part Analysis) {
 	dst.RunnerResults = append(dst.RunnerResults, part.RunnerResults...)
 	dst.FileCount += part.FileCount
 	dst.Diagnostics = append(dst.Diagnostics, part.Diagnostics...)
-	dst.Sources = append(dst.Sources, part.Sources...)
 	dst.Documents = append(dst.Documents, part.Documents...)
 	dst.Configurations = append(dst.Configurations, part.Configurations...)
 	dst.Inputs = append(dst.Inputs, part.Inputs...)

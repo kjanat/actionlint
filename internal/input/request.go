@@ -8,11 +8,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-// Kind distinguishes explicit empty file sets from repository discovery.
-type Kind uint8
+// SourceKind distinguishes explicit empty file sets from repository discovery.
+type SourceKind uint8
 
 const (
-	Files Kind = iota
+	Files SourceKind = iota
 	Repository
 	Stdin
 	Prepared
@@ -23,7 +23,7 @@ const (
 type Request struct {
 	Selection *workspace.FileSelection
 	Sources   []workspace.InputFile
-	Kind      Kind
+	Kind      SourceKind
 	// Paths selects files and directories relative to the process directory.
 	// The check working directory controls configuration and display paths instead.
 	Paths                []string

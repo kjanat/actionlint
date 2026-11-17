@@ -58,7 +58,7 @@ jobs:
     steps:
       - run: echo ok
 `
-				workflow, errs := workflowparser.Parse([]byte(source))
+				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -111,7 +111,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

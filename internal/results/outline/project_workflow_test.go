@@ -22,7 +22,7 @@ jobs:
       - uses: ./.github/actions/setup
       - uses: $/.github/actions/setup
 `
-	workflow, errs := workflowparser.Parse([]byte(source))
+	workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
@@ -56,7 +56,7 @@ jobs:
     steps:
       - run: echo hi
 `
-	workflow, errs := workflowparser.Parse([]byte(source))
+	workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) == 0 || workflow.Jobs["call"].WorkflowCall != nil {
 		t.Fatal("fixture must contain rejected workflow call")
 	}
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - ` + tc.step + "\n"
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) == 0 {
 				t.Fatal("fixture must contain conflicting execution keys")
 			}
@@ -116,7 +116,7 @@ jobs:
       - wait: child
       - cancel: child
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("unexpected parse errors: %v", errors)
 	}

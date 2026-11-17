@@ -18,7 +18,7 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
@@ -81,7 +81,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginreference.Parse("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
+	ref, err := pluginreference.ParsePluginReference("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
 	if err != nil {
 		t.Fatal(err)
 	}

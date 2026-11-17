@@ -101,7 +101,7 @@ func TestScriptInterpolationRemainsWhenInjectionIsDisabled(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			configText := "lint: {rules: {correctness: {script-interpolation: " + tc.interpolation + "}, security: {script-injection: " + tc.injection + "}}}"
-			cfg, err := checking.ConfigurationRules().Parse([]byte(configText))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(configText))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -132,7 +132,7 @@ permissions: {}
 
 func TestSecretInterpolationRemainsWhenScriptInterpolationIsDisabled(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {script-interpolation: off}, security: {script-injection: on}}}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {script-interpolation: off}, security: {script-injection: on}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 			t.Run(expression+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
 				t.Parallel()
 				configText := "lint: {rules: {correctness: {unsound-ternary: " + levels.ternary + ", context-availability: " + levels.expression + "}, security: {script-injection: " + levels.expression + "}}}"
-				cfg, err := checking.ConfigurationRules().Parse([]byte(configText))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte(configText))
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -51,7 +51,7 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 	if len(strings.TrimSpace(string(content))) == 0 {
 		return Overlay{}, fmt.Errorf("input %s: expected a configuration value", input)
 	}
-	parsed, err := document.Parse("actionlint.yaml", content)
+	parsed, err := document.ParseConfigDocument("actionlint.yaml", content)
 	if err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}

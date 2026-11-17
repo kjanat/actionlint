@@ -63,7 +63,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github", "env"})
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +72,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 				t.Fatalf("want %d errors; got %v", tc.errors, findings)
 			}
 			// A previous branch must not narrow the caller's next expression.
-			node, err = exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.label}}"))
+			node, err = exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.label}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -103,14 +103,14 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github"})
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 0 {
 				t.Fatalf("unreachable event branch reported: %v", findings)
 			}
-			node, err = exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.issue.title}}"))
+			node, err = exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.issue.title}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

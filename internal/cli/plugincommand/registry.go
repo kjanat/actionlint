@@ -12,9 +12,9 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -158,7 +158,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 }
 
 func RequestedPlugin(name string, options RegistryOptions, existing []pluginreference.Reference) (pluginreference.Reference, error) {
-	ref, err := pluginreference.Parse(name)
+	ref, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
 		return pluginreference.Reference{}, commandargs.UsageError{Cause: err}
 	}
@@ -325,7 +325,7 @@ func removePlugin(ctx context.Context, project *plugininstall.Project, name, reg
 // DeclaredPlugin resolves command spelling against declarations and recorded
 // pins only. A shorthand from another registry never selects this declaration.
 func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
-	requested, err := pluginreference.Parse(name)
+	requested, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
 		return -1, commandargs.UsageError{Cause: err}
 	}
@@ -401,7 +401,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.St
 		}
 		return err
 	}
-	ref, err := pluginreference.Parse(name)
+	ref, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
 		return commandargs.UsageError{Cause: err}
 	}

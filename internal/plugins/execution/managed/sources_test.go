@@ -12,8 +12,11 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
@@ -29,7 +32,7 @@ var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.T) {
 	t.Parallel()
 	reference := sourcepos.Reference{Document: "captured-action", Revision: "captured-revision", Node: "run", Address: "runs.steps[0].run"}
-	script := tools.Script{Path: filepath.Join(t.TempDir(), "action.yml"), Content: []byte("captured action"), Fact: checkinputs.Script{Reference: reference}}
+	script := scriptexecution.Unit{Path: filepath.Join(t.TempDir(), "action.yml"), Content: []byte("captured action"), Reference: reference}
 	files := pluginSourceFiles{}
 	finding := results.Diagnostic{Path: "actions/example/action.yml", Reference: &reference, Message: "shell issue"}
 	got, err := files.finding("shellcheck", finding, script, 2)
@@ -56,19 +59,19 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	external := fixturefiles.Write(t, shared, "shared.sh", "SHARED=two\n")
-	cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(shared), strconv.Quote(filepath.Join(root, "missing"))))
+	cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(shared), strconv.Quote(filepath.Join(root, "missing"))))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var inputs []string
 	reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, AnalysisDir: root, Reader: reader}, Execution: tools.Execution{Directory: root, DirectoryKnown: true}, Key: &sourcepos.Position{Line: 6}, Value: &sourcepos.Position{Line: 6}}
-	sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
+	script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root, Analysis: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}, Run: &workflowlang.ExecRun{Run: &workflowlang.String{Pos: &sourcepos.Position{Line: 6}}, RunPos: &sourcepos.Position{Line: 6}}}
+	sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sources.close()
-	input := checkinputs.Input{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}}}}
+	input := checkinputs.AnalyzerInput{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}}}}
 	sources.configure(&input)
 	if input.Scripts[0].Runtime.Directory != "/workspace" || len(input.Files) != 2 {
 		t.Fatalf("wrong grants: %+v", input)
@@ -123,7 +126,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	if err := os.WriteFile(file, []byte("VALUE=changed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
+	fresh, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,19 +164,19 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
+			cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
 			if err != nil {
 				t.Fatal(err)
 			}
 			var inputs []string
 			reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &sourcepos.Position{Line: 1}, Value: &sourcepos.Position{Line: 1}}
-			sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
+			script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}, Run: &workflowlang.ExecRun{Run: &workflowlang.String{Pos: &sourcepos.Position{Line: 1}}, RunPos: &sourcepos.Position{Line: 1}}}
+			sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer sources.close()
-			input := checkinputs.Input{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}}}}
+			input := checkinputs.AnalyzerInput{Options: []byte("{}"), Scripts: []checkinputs.Script{{Runtime: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}}}}
 			sources.configure(&input)
 			if input.Scripts[0].Runtime.Directory != "/sources/2" || len(input.Files) != 2 {
 				t.Fatalf("working directory not granted: %s", input.Scripts[0].Runtime.Directory)
@@ -216,20 +219,20 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: outside, DirectoryKnown: true}}
-	if _, err := sourceRunner.sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config)); err == nil || !strings.Contains(err.Error(), "outside the configured read-access directories") {
+	script := scriptexecution.Unit{Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root}, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: &scriptmodel.Execution{Directory: outside, DirectoryKnown: true}}
+	if _, err := sourceRunner.sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config())); err == nil || !strings.Contains(err.Error(), "outside the configured read-access directories") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
-	cfg, err = (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
+	cfg, err = (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	script.Config = cfg
-	if files, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config)); err == nil || files != nil || !strings.Contains(err.Error(), "outside workspace root") {
+	script.Scope.Config = cfg
+	if files, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config())); err == nil || files != nil || !strings.Contains(err.Error(), "outside workspace root") {
 		t.Fatalf("configured outside cwd granted: files=%v error=%v", files, err)
 	}
 }
@@ -256,11 +259,11 @@ func TestPluginWorkingDirectoryUsesMostSpecificGrant(t *testing.T) {
 	if err := os.Mkdir(nested, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: nested, DirectoryKnown: true}}
+	script := scriptexecution.Unit{Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root}, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: &scriptmodel.Execution{Directory: nested, DirectoryKnown: true}}
 	files, err := sourceRunner.sourceFiles(t.Context(), script, []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}, {Kind: checkinputs.ToolDirectory, Path: nested}})
 	if err != nil {
 		t.Fatal(err)
@@ -297,12 +300,12 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
+			cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			var recorded []string
-			script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: workspace, Reader: inputfiles.New(t.Context(), nil, func(name string) { recorded = append(recorded, name) })}, Execution: tools.Execution{Directory: workspace, DirectoryKnown: true}}
+			script := scriptexecution.Unit{Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: workspace}, Reader: inputfiles.New(t.Context(), nil, func(name string) { recorded = append(recorded, name) })}, Execution: &scriptmodel.Execution{Directory: workspace, DirectoryKnown: true}}
 			resources := []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}, {Kind: checkinputs.ToolDirectory, Path: tc.requested}}
 			files, err := sourceRunner.sourceFiles(t.Context(), script, resources)
 			if !tc.allowed {
@@ -333,11 +336,11 @@ func TestMissingPluginSourcePathCannotGrantEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	missing := filepath.Join(escape, "missing")
-	cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {source-path: [%s]}}}", strconv.Quote(missing)))
+	cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {source-path: [%s]}}}", strconv.Quote(missing)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: workspace, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: workspace, DirectoryKnown: true}}
+	script := scriptexecution.Unit{Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: workspace}, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: &scriptmodel.Execution{Directory: workspace, DirectoryKnown: true}}
 	files, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, cfg))
 	if err != nil {
 		t.Fatal(err)

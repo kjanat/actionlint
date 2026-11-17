@@ -30,7 +30,7 @@ func (a *commandApp) runnerFlags(f *pflag.FlagSet) {
 func (c checkInvocation) runners() (runner.Options, error) {
 	options := runner.Options{Target: c.RunnerTarget, Provider: c.RunnerProvider, Scope: c.RunnerScope}
 	if c.RunnerService != "" || c.RunnerServiceVersion != "" {
-		service, err := services.Parse(c.RunnerService, c.RunnerServiceVersion)
+		service, err := services.ParseService(c.RunnerService, c.RunnerServiceVersion)
 		if err != nil {
 			return options, err
 		}

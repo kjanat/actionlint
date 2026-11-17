@@ -36,7 +36,7 @@ func lifecycleDate(t *testing.T, s string) lifecycle.Date {
 
 func lifecycleFinding(t *testing.T, asOf string, current bool) *finding.Finding {
 	t.Helper()
-	svc, err := services.Parse("github.com", "")
+	svc, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func lifecycleFinding(t *testing.T, asOf string, current bool) *finding.Finding 
 func lifecycleRulesConfig(t *testing.T, text string) *configuration.Config {
 	t.Helper()
 	rules := checking.ConfigurationRules()
-	cfg, err := rules.Parse([]byte(text))
+	cfg, err := rules.ParseConfig([]byte(text))
 	if err != nil {
 		t.Fatal(err)
 	}

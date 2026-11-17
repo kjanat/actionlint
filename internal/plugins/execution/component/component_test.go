@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -28,7 +29,7 @@ func pluginPath(name string) string {
 
 func loadPlugin(t *testing.T, name string, options component.Options) *component.Plugin {
 	t.Helper()
-	plugin, err := component.Load(t.Context(), pluginPath(name), options)
+	plugin, err := component.LoadComponentPlugin(t.Context(), pluginPath(name), options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func writeRepository(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *checking.Result {
+func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *report.Analysis {
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
@@ -174,7 +175,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 		"no-analyzer":      "plugin does not export kjanat:actionlint/analyzer@0.2.0",
 	} {
 		path := filepath.Join("testdata", "wat", name+".wasm")
-		plugin, err := component.Load(t.Context(), path, component.Options{})
+		plugin, err := component.LoadComponentPlugin(t.Context(), path, component.Options{})
 		if err == nil {
 			_ = plugin.Close(t.Context())
 			t.Fatalf("%s loaded", name)
@@ -183,17 +184,17 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 			t.Fatalf("%s: err=%v", name, err)
 		}
 	}
-	if _, err := component.Load(t.Context(), filepath.Join("testdata", "missing.wasm"), component.Options{}); !errors.Is(err, os.ErrNotExist) {
+	if _, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "missing.wasm"), component.Options{}); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing: err=%v", err)
 	}
-	if _, err := component.Load(t.Context(), filepath.Join("testdata", "wat", "no-analyzer.wat"), component.Options{}); err == nil || !strings.Contains(err.Error(), "no-analyzer.wat") {
+	if _, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "no-analyzer.wat"), component.Options{}); err == nil || !strings.Contains(err.Error(), "no-analyzer.wat") {
 		t.Fatalf("text: err=%v", err)
 	}
 }
 
 func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]results.Diagnostic, error) {
 	t.Helper()
-	return plugin.CheckDocument(t.Context(), checkinputs.Input{Path: "ci.yml", Options: json.RawMessage(options)})
+	return plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage(options)})
 }
 
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
@@ -253,12 +254,12 @@ func TestCancelledContextStopsAnalysis(t *testing.T) {
 		cancel()
 	}()
 	start := time.Now()
-	_, err := plugin.CheckDocument(ctx, checkinputs.Input{Path: "ci.yml", Options: json.RawMessage("hang")})
+	_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage("hang")})
 	if err == nil || !errors.Is(err, context.Canceled) || time.Since(start) > 5*time.Second {
 		t.Fatalf("err=%v after %s", err, time.Since(start))
 	}
 	cancel()
-	if _, err := plugin.CheckDocument(ctx, checkinputs.Input{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
+	if _, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -290,7 +291,7 @@ func TestConcurrentCallsAreSerialized(t *testing.T) {
 
 func TestClosedPluginRejectsCalls(t *testing.T) {
 	t.Parallel()
-	plugin, err := component.Load(t.Context(), pluginPath("misbehave"), component.Options{})
+	plugin, err := component.LoadComponentPlugin(t.Context(), pluginPath("misbehave"), component.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -461,7 +462,7 @@ func TestLoadRejectsShapeBeforeDescribe(t *testing.T) {
 	for _, name := range []string{"wrong-signature", "wrong-record", "wrong-enum"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "contracts", name+".wasm"), component.Options{})
+			plugin, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "contracts", name+".wasm"), component.Options{})
 			if plugin != nil {
 				_ = plugin.Close(t.Context())
 			}

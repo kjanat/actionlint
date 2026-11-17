@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -16,14 +16,14 @@ import (
 
 type callGraphCollector struct {
 	mu     sync.Mutex
-	inputs []checkinputs.Input
+	inputs []checkinputs.AnalyzerInput
 }
 
 func (*callGraphCollector) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}}
 }
 
-func (collector *callGraphCollector) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (collector *callGraphCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	collector.mu.Lock()
 	defer collector.mu.Unlock()
 	collector.inputs = append(collector.inputs, input)

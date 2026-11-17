@@ -24,7 +24,7 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ func TestDisallowSuppressionsInvalidConfig(t *testing.T) {
 	} {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
-			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  disallow-suppressions: " + value))
+			_, err := checking.ConfigurationRules().ParseConfig([]byte("policy:\n  disallow-suppressions: " + value))
 			if err == nil || !strings.Contains(err.Error(), "line") {
 				t.Fatalf("expected positioned config error, got %v", err)
 			}

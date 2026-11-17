@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	rulemodel "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	rulemodel "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -26,7 +26,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 	if line < 1 || line > document.LineCount() {
 		return results.Edit{}, false
 	}
-	directives, invalid := Parse(content, allowed, names)
+	directives, invalid := ParseInlineSuppressions(content, allowed, names)
 	for _, directive := range directives {
 		if line < directive.First || line > directive.Last {
 			continue
@@ -47,7 +47,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 		return validateEdit(content, edit, line, rule, allowed, invalid, 0, names)
 	}
 	target := line
-	if root, err := codec.Parse(content); err == nil {
+	if root, err := codec.ParseYAML(content); err == nil {
 		parser := workflowparser.NewSourceParser(content)
 		parser.IndexScalarSources(root)
 		var visit func(*codec.Node)
@@ -84,7 +84,7 @@ func validateEdit(content []byte, edit results.Edit, line int, rule string, allo
 		return results.Edit{}, false
 	}
 	updated := string(content[:first]) + edit.Replacement + string(content[last:])
-	directives, invalid := Parse([]byte(updated), allowed, names)
+	directives, invalid := ParseInlineSuppressions([]byte(updated), allowed, names)
 	if len(invalid) != len(previous) {
 		return results.Edit{}, false
 	}

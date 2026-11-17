@@ -38,7 +38,7 @@ func TestScriptInterpolationWorkflowProofs(t *testing.T) {
 				content += "        env:\n          " + tc.env + "\n"
 			}
 			content += "permissions: {}\n"
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestTemplateStringNeedsShellWordProof(t *testing.T) {
 				}
 				return source + "run: " + command + "\npermissions: {}\n"
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -164,7 +164,7 @@ func TestMutableInheritedEnvIsNotScriptWordProof(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\n" + tc.workflowEnv + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.jobEnv + "\n    steps:\n      - run: echo 'WORD=fi' >> \"$GITHUB_ENV\"\n      - " + tc.stepEnv + "\n        run: if true; then ${{ env.WORD }}; fi\n" + "\npermissions: {}\n"
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,7 +203,7 @@ func TestLogicalScriptWordProofs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}

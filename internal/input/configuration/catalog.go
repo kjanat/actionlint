@@ -1,25 +1,8 @@
 package configuration
 
 import (
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 )
-
-// Rule projects a declaration into configuration selection and legacy policy fields.
-// Execution stays with the checking implementation.
-type Rule struct {
-	rulescope.Descriptor
-	Group           string
-	SupportsActions bool
-	Scope           rulescope.ConfigurationScope
-	Options         func() any
-	// LegacyGroup, Policy, MovedOptions and MigrationNote describe how
-	// configuration written for earlier versions selects the rule. See
-	// [rulescope.Declaration].
-	LegacyGroup   string
-	Policy        string
-	MovedOptions  []rulescope.MovedOption
-	MigrationNote string
-}
 
 // policySetting projects a rule's resolved setting into the legacy policy
 // field that the rule replaced.
@@ -65,19 +48,13 @@ var policySettings = map[string]policySetting{
 const suppressionsPolicy = "disallow-suppressions"
 
 // suppressionsRule returns the rule that replaced the suppressions policy.
-func (ruleSet RuleSet) suppressionsRule() (Rule, bool) {
+func (ruleSet RuleSet) suppressionsRule() (rulescope.Declaration, bool) {
 	for _, entry := range ruleSet.entries {
 		if entry.Policy == suppressionsPolicy {
 			return ruleSet.FindRule(entry.Name)
 		}
 	}
-	return Rule{}, false
-}
-
-// policySetting returns the projection of the legacy policy the rule replaced.
-func (r Rule) policySetting() (policySetting, bool) {
-	setting, found := policySettings[r.Policy]
-	return setting, found
+	return rulescope.Declaration{}, false
 }
 
 // defaultPolicy projects a boolean policy that applies unless disabled.

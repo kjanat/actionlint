@@ -17,10 +17,11 @@ import (
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
@@ -31,27 +32,27 @@ import (
 
 // Register selects scripts by the supplied shell names. Backends with
 // language-specific preparation can supply their own registration.
-func Register(descriptor rule.Descriptor, shells []string, backend checkinputs.ScriptBackend) (tools.Registration, error) {
+func Register(descriptor rule.Descriptor, shells []string, backend checkinputs.ScriptBackend) (contract.Registration, error) {
 	return RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: descriptor, Shells: shells}, backend)
 }
 
 // RegisterEngine routes both shell snippets and declared action-input sites.
-func RegisterEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend) (tools.Registration, error) {
+func RegisterEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend) (contract.Registration, error) {
 	return registerEngine(descriptor, backend, engineOptions{})
 }
 
 // engineOptions configure a runner beyond its descriptor and backend.
 type engineOptions struct {
 	// enabled further restricts the scripts of a configuration.
-	enabled func(tools.Context) bool
+	enabled func(contract.Context) bool
 	// prepare replaces expression masking and plugin options for every
 	// selected script.
-	prepare func(context.Context, tools.Script) (preparation.Prepared, error)
+	prepare func(context.Context, scriptexecution.Unit) (preparation.Prepared, error)
 	// batch replaces prepare with a preparation bound to one batch, which
 	// may reject the settings of its scopes once. With it, run scripts
 	// reach the preparation even when no shell selects them; the profile
 	// skips the ones it does not prepare.
-	batch func(context.Context, tools.Batch) (func(context.Context, tools.Script) (preparation.Prepared, error), error)
+	batch func(context.Context, scriptexecution.Batch) (func(context.Context, scriptexecution.Unit) (preparation.Prepared, error), error)
 	// filename is the virtual name of run snippets; its extension also names
 	// action-input snippets. Empty keeps "actionlint-script".
 	filename string
@@ -73,20 +74,20 @@ type findingCapabilities struct {
 	severities map[string]manifests.Severity
 }
 
-func registerEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) (tools.Registration, error) {
+func registerEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) (contract.Registration, error) {
 	descriptor = descriptor.Clone()
 	if backend == nil {
-		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
+		return contract.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
 	}
 	if err := checkinputs.ValidateScriptInputs(descriptor.ScriptInputs); err != nil {
-		return tools.Registration{}, err
+		return contract.Registration{}, err
 	}
 	if descriptor.Rule.Name == "" || len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 && options.batch == nil {
-		return tools.Registration{}, errors.New("script engine requires a rule and script selectors")
+		return contract.Registration{}, errors.New("script engine requires a rule and script selectors")
 	}
 	selectors, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
 	if err != nil {
-		return tools.Registration{}, err
+		return contract.Registration{}, err
 	}
 	inputs := make(map[checkinputs.ScriptInput]struct{}, len(descriptor.ScriptInputs))
 	for _, input := range descriptor.ScriptInputs {
@@ -97,7 +98,7 @@ func registerEngine(descriptor checkinputs.ScriptEngineDescriptor, backend check
 	options.findings.fixes = options.findings.fixes || descriptor.Fixes
 	options.findings.reportedSources = options.findings.reportedSources || descriptor.ReportedSources
 	directory := slices.Contains(descriptor.Resources, checkinputs.ToolDirectory)
-	return tools.Registration{Descriptor: descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ScriptInputs: append([]checkinputs.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0 || directory, Build: func(c tools.Context) (tools.Runner, error) {
+	return contract.Registration{Descriptor: descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ScriptInputs: append([]checkinputs.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0 || directory, Build: func(c contract.Context) (contract.Runner, error) {
 		return runner{descriptor: descriptor.Rule, templateContract: descriptor.TemplateContract, shells: selectors, inputs: inputs, backend: backend, context: c, options: options, directory: directory}, nil
 	}}, nil
 }
@@ -122,7 +123,7 @@ type runner struct {
 	shells           map[string]struct{}
 	inputs           map[checkinputs.ScriptInput]struct{}
 	backend          checkinputs.ScriptBackend
-	context          tools.Context
+	context          contract.Context
 	options          engineOptions
 	// directory sends the working directory to an engine that requested the
 	// directory resource.
@@ -133,7 +134,7 @@ type runner struct {
 // takes preparation variables, reports the files the engine read and may run
 // checks at once, each holding a slot of the shared process pool.
 type processRunner interface {
-	Run(context.Context, checkinputs.ScriptRequest, map[string]string) (process.Result, error)
+	Run(context.Context, checkinputs.ScriptRequest, map[string]string) (process.DecodedCheck, error)
 	Concurrent() bool
 }
 
@@ -158,7 +159,7 @@ type check struct {
 	index    int
 	prepared preparation.Prepared
 	request  checkinputs.ScriptRequest
-	scope    *tools.Scope
+	scope    *scriptexecution.Scope
 }
 
 // outcome is the backend's answer to one check. Copies, set when the check
@@ -174,13 +175,13 @@ type outcome struct {
 
 // Analyze prepares the selected scripts, checks them, concurrently when the
 // backend allows, and maps the diagnostics back in script order.
-func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (r runner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	checks, failures := r.prepare(ctx, batch)
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(failures, err)
 	}
 	outcomes := r.check(ctx, checks)
-	var out []tools.ToolFinding
+	var out []contract.ToolFinding
 	for i, c := range checks {
 		findings, err := r.findings(c, batch.Scripts[c.index], outcomes[i])
 		out = append(out, findings...)
@@ -190,7 +191,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFin
 }
 
 // prepare selects, prepares and validates the scripts this tool checks.
-func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error) {
+func (r runner) prepare(ctx context.Context, batch scriptexecution.Batch) ([]check, error) {
 	var checks []check
 	var failures error
 	_, reporting := r.backend.(processRunner)
@@ -204,11 +205,11 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 		if err := ctx.Err(); err != nil {
 			return checks, failures
 		}
-		if !r.scriptEnabled(script.Config) || script.Config.RuleSet().DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
+		if !r.scriptEnabled(script.Config()) || script.Config().RuleSet().DiagnosticLevel(script.Config(), r.descriptor.Name) == "off" {
 			continue
 		}
 		if script.Input != nil {
-			if _, supported := r.inputs[*script.Input]; !supported {
+			if _, supported := r.inputs[script.Input.Site]; !supported {
 				continue
 			}
 		} else if len(r.shells) != 0 || r.options.batch == nil {
@@ -228,9 +229,9 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			}
 			options = prepared.Config
 		} else {
-			prepared.Source = mask.Expressions(script.Text)
-			if script.Config != nil {
-				settings, err := script.Config.Lint.Rules.RuleOptions(r.descriptor.Name)
+			prepared.Source = mask.Expressions(script.Text())
+			if script.Config() != nil {
+				settings, err := script.Config().Lint.Rules.RuleOptions(r.descriptor.Name)
 				if err != nil {
 					return checks, errors.Join(failures, err)
 				}
@@ -269,11 +270,11 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			}
 		}
 		request := checkinputs.ScriptRequest{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
-		request.Environment = checkinputs.ScriptEnvironments(script.Fact.Environment)
+		request.Environment = checkinputs.ScriptEnvironments(script.Environment)
 		// Process backends and engines that requested the directory resource
 		// receive the directory.
-		if (reporting || r.directory) && script.Execution.DirectoryKnown {
-			request.Directory = script.Execution.Directory
+		if directory, known := script.WorkingDirectory(); (reporting || r.directory) && known {
+			request.Directory = directory
 		}
 		checks = append(checks, check{index: i, prepared: prepared, request: request, scope: script.Scope})
 	}
@@ -313,8 +314,8 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 }
 
 // findings maps one check's diagnostics to findings in the workflow.
-func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.ToolFinding, error) {
-	var out []tools.ToolFinding
+func (r runner) findings(c check, script scriptexecution.Unit, result outcome) ([]contract.ToolFinding, error) {
+	var out []contract.ToolFinding
 	var failures error
 	if len(result.sources) != 0 {
 		failures = errors.Join(failures, r.recordSources(script, result.sources, result.directory))
@@ -368,7 +369,7 @@ func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.
 // generated startup line is dropped unless its severity is error. An
 // unmapped start falls back to the script key; an unmapped or reversed end is
 // dropped.
-func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.ScriptDiagnostic) (*tools.ToolFinding, error) {
+func (r runner) scriptFinding(c check, script scriptexecution.Unit, d checkinputs.ScriptDiagnostic) (*contract.ToolFinding, error) {
 	row, endRow := d.Location.Row, d.EndLocation.Row
 	hasEnd := d.EndLocation != (checkinputs.ScriptPosition{})
 	if lines := c.prepared.LineMap; lines != nil {
@@ -390,22 +391,22 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 			endRow, hasEnd = end.Line, end.Origin == preparation.LineScript
 		}
 	}
-	start, ok := script.Source.Position(row, d.Location.Column)
+	start, ok := script.Source().Position(row, d.Location.Column)
 	if !ok {
-		start, hasEnd = script.Key, false
+		start, hasEnd = script.Key(), false
 	}
 	var end sourcepos.Position
 	if hasEnd {
-		position, endOK := script.Source.EndPos(endRow, d.EndLocation.Column)
+		position, endOK := script.Source().EndPos(endRow, d.EndLocation.Column)
 		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Column >= start.Column) {
 			end = *position
 		} else {
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := tools.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
+	finding := contract.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
 	for _, fix := range d.Fixes {
-		if mapped, ok := scriptFix(script.Source, c.prepared, fix); ok {
+		if mapped, ok := scriptFix(script.Source(), c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)
 		}
 	}
@@ -447,9 +448,9 @@ func (r runner) debug(format string, args ...any) {
 }
 
 // filename is the virtual snippet name of a request.
-func (r runner) filename(script tools.Script) string {
+func (r runner) filename(script scriptexecution.Unit) string {
 	if script.Input != nil {
-		return inputFilename(*script.Input, strings.TrimPrefix(path.Ext(r.options.filename), "."))
+		return inputFilename(script.Input.Site, strings.TrimPrefix(path.Ext(r.options.filename), "."))
 	}
 	if r.options.filename != "" {
 		return r.options.filename
@@ -474,16 +475,16 @@ func inputFilename(site checkinputs.ScriptInput, extension string) string {
 	return "actionlint-input/" + site.Language + "/" + site.Action + "/" + site.Input + "." + extension
 }
 
-func scriptShell(script tools.Script) string {
-	shell := script.Execution.Shell
+func scriptShell(script scriptexecution.Unit) string {
+	shell, implicit := script.RuntimeShell()
 	if shell == "" && script.Shell != nil {
 		shell = *script.Shell
 	}
-	registry := script.Fact.Interpreters
+	registry := script.Interpreters
 	if registry == nil {
 		registry = interpreters.Builtin()
 	}
-	invocation := registry.Analyze(shell, script.Execution.ImplicitShell)
+	invocation := registry.Analyze(shell, implicit)
 	if invocation.Status == commands.Valid && invocation.Input == "file" && invocation.Language != "" {
 		return invocation.Language
 	}

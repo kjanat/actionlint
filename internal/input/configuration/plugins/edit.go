@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // References reads the effective plugin list and reports whether it was declared.
@@ -81,7 +81,7 @@ func editPlugins(editor *document.Editor, refs []pluginreference.Reference) ([]b
 	if err != nil {
 		return nil, err
 	}
-	after, err := document.Parse(editor.Path(), edited)
+	after, err := document.ParseConfigDocument(editor.Path(), edited)
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
 	}

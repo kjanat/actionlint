@@ -13,7 +13,7 @@ func TestNodeLifecycleReleaseSchedule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service, err := services.Parse("ghes", "3.18")
+	service, err := services.ParseService("ghes", "3.18")
 	if err != nil {
 		t.Fatal(err)
 	}

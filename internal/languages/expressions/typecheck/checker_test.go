@@ -34,7 +34,7 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 				checker.vars[receiver] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"declared": exprtypes.BoolType()}).Type()
 				checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
 				checker.availableContexts = append(checker.availableContexts, receiver)
-				expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(receiver + "." + property + "}}"))
+				expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(receiver + "." + property + "}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -109,7 +109,7 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 			if tc.key == "" {
 				checker.SetContextAvailability([]string{"github"})
 			}
-			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +149,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 		} {
 			t.Run(key+"/"+tc.input, func(t *testing.T) {
 				t.Parallel()
-				expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
+				expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -174,7 +174,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 	}
 	t.Run("variable takes precedence over function", func(t *testing.T) {
 		t.Parallel()
-		expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("always}}"))
+		expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("always}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1147,7 +1147,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			p := exprsyntax.NewParser()
-			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", tc.input)
 			}
@@ -1715,7 +1715,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			p := exprsyntax.NewParser()
-			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", tc.input)
 			}
@@ -1783,7 +1783,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 						names = append(names, name)
 					}
 					c.SetContextAvailability(names)
-					node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+					node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -2221,7 +2221,7 @@ func TestExprIsConstant(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			p := exprsyntax.NewParser()
-			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatalf("Parse error for input %q: %s", tc.input, err)
 			}

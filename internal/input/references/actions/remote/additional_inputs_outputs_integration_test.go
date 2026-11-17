@@ -66,7 +66,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !definition.AllowsAdditionalInputs() || definition.OutputsComplete() || !slices.Equal(definition.OutputNames(), []string{"data", "headers", "status"}) {
+			if !definition.AllowsAdditionalInputs() || definition.OutputsComplete() || !slices.Equal(definition.OutputIDs(), []string{"data", "headers", "status"}) {
 				t.Fatal("selection lost additional inputs or the declared output names")
 			}
 			route, exists := definition.Input("route")
@@ -89,11 +89,11 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
           DATA: ${{ steps.request.outputs.data }}
           UNKNOWN: ${{ steps.request.outputs.this_output_does_not_exist }}
 `
-			parsed, parseErrors := workflowparser.Parse([]byte(text))
+			parsed, parseErrors := workflowparser.ParseWorkflow([]byte(text))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			view := workflowdecl.Publish(text, parsed, false, "").Bind("request-contract").Workflow()
+			view := workflowdecl.Bind("request-contract", text, parsed, false, "").Workflow()
 			job, exists := view.Job("test")
 			if !exists {
 				t.Fatal("fixture job is missing")

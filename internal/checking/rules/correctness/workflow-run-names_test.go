@@ -26,11 +26,11 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			text := "on:\n  workflow_run:\n    workflows: " + tc.filters + "\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-			parsed, errors := workflowparser.Parse([]byte(text))
+			parsed, errors := workflowparser.ParseWorkflow([]byte(text))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			workflow := declaration.Publish(text, parsed, false, "").Bind("consumer").Workflow()
+			workflow := declaration.Bind("consumer", text, parsed, false, "").Workflow()
 			inventory := names.NewInventory([]string{"Build docs"}, tc.complete)
 			findings := workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow))
 			if tc.message == "" {

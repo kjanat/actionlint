@@ -35,7 +35,7 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				return content, nil
 			}, nil)
 			cache := actionfixture.NewCache(t, root, nil, reader)
-			var lookup workspaceactions.MetadataDocumentLookup = cache
+			var lookup workspaceactions.ActionMetadataDocumentLookup = cache
 			spec := "./broken"
 			if mapped {
 				lookup = workspaceactions.NewResolver(cache, map[string]string{"./generated": "./broken"})

@@ -7,13 +7,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	repository "actionlint.kjanat.dev/v2/internal/model/repository"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 type Selection struct {
@@ -28,7 +28,7 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
-func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action bool) (Selection, error) {
+func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (Selection, error) {
 	inputs.Rules = ruleSet
 	var selected Selection
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
@@ -47,7 +47,7 @@ func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action boo
 			}
 			switch outcome := outcome.(type) {
 			case define.PreparedInputs:
-				prepared = outcome.Inputs
+				prepared = outcome.RuleInputs
 			case define.UnavailableInputs:
 				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: descriptor.Name, Reason: outcome.Reason})
 				continue
@@ -71,10 +71,10 @@ func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action boo
 }
 
 // ConfigureRules binds invocation configuration and debug output after rule interception.
-func ConfigureRules(rules []workflowvisit.Rule, scope *binding.Scope, debug io.Writer) {
+func ConfigureRules(rules []workflowvisit.Rule, scope *rulebinding.Scope, debug io.Writer) {
 	for _, r := range rules {
 		config := scope.Rule(r.Name()).Config()
-		if configured, ok := r.(interface{ SetBindings(*binding.Scope) }); ok {
+		if configured, ok := r.(interface{ SetBindings(*rulebinding.Scope) }); ok {
 			configured.SetBindings(scope)
 		} else if configured, ok := r.(interface{ SetConfig(*configuration.Config) }); ok && config != nil {
 			configured.SetConfig(config)
@@ -105,7 +105,7 @@ func Templates(ruleSet configuration.RuleSet) []rule.Descriptor {
 	var rules []rule.Descriptor
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
 		if descriptor.Provider == "actionlint" && descriptor.Build == nil && descriptor.Script == nil {
-			rules = append(rules, descriptor.Clone())
+			rules = append(rules, descriptor.Descriptor.Clone())
 		}
 	}
 	return rules

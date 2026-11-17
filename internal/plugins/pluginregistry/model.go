@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
@@ -73,24 +73,24 @@ type manifest struct {
 }
 
 type submission struct {
-	SchemaVersion int            `json:"schema_version"`
-	Provider      string         `json:"provider"`
-	Repository    string         `json:"repository"`
-	Tag           string         `json:"tag"`
-	Asset         string         `json:"asset,omitempty"`
-	SHA256        string         `json:"sha256,omitempty"`
-	Kind          artifacts.Kind `json:"kind"`
-	Artifact      distribution   `json:"artifact,omitzero"`
+	SchemaVersion int                      `json:"schema_version"`
+	Provider      string                   `json:"provider"`
+	Repository    string                   `json:"repository"`
+	Tag           string                   `json:"tag"`
+	Asset         string                   `json:"asset,omitempty"`
+	SHA256        string                   `json:"sha256,omitempty"`
+	Kind          artifacts.ArtifactFormat `json:"kind"`
+	Artifact      distribution             `json:"artifact,omitzero"`
 }
 
 type declaration struct {
-	Kind          artifacts.Kind  `json:"kind"`
-	SHA256        string          `json:"sha256"`
-	PluginID      string          `json:"plugin_id"`
-	PluginVersion string          `json:"plugin_version"`
-	Repository    string          `json:"repository"`
-	Contract      string          `json:"contract"`
-	Metadata      json.RawMessage `json:"metadata"`
+	Kind          artifacts.ArtifactFormat `json:"kind"`
+	SHA256        string                   `json:"sha256"`
+	PluginID      string                   `json:"plugin_id"`
+	PluginVersion string                   `json:"plugin_version"`
+	Repository    string                   `json:"repository"`
+	Contract      string                   `json:"contract"`
+	Metadata      json.RawMessage          `json:"metadata"`
 }
 
 type record struct {
@@ -121,22 +121,22 @@ type record struct {
 // Pin records selection intent separately from the exact artifact. Lint and sync
 // use only the latter; only install/update contact the catalogue.
 type Pin struct {
-	Origin       string         `json:"source,omitempty"`
-	Registry     string         `json:"registry"`
-	Name         string         `json:"name"`
-	Repository   string         `json:"repository,omitempty"`
-	Alias        string         `json:"alias,omitempty"`
-	RepositoryID string         `json:"repository_id,omitempty"`
-	OwnerID      string         `json:"owner_id,omitempty"`
-	PluginID     string         `json:"plugin_id"`
-	Selector     string         `json:"selector"`
-	Version      string         `json:"version"`
-	Kind         artifacts.Kind `json:"kind"`
-	Asset        string         `json:"asset"`
-	URL          string         `json:"url"`
-	SHA256       string         `json:"sha256"`
-	Contract     string         `json:"contract"`
-	Metadata     string         `json:"metadata,omitempty"`
+	Origin       string                   `json:"source,omitempty"`
+	Registry     string                   `json:"registry"`
+	Name         string                   `json:"name"`
+	Repository   string                   `json:"repository,omitempty"`
+	Alias        string                   `json:"alias,omitempty"`
+	RepositoryID string                   `json:"repository_id,omitempty"`
+	OwnerID      string                   `json:"owner_id,omitempty"`
+	PluginID     string                   `json:"plugin_id"`
+	Selector     string                   `json:"selector"`
+	Version      string                   `json:"version"`
+	Kind         artifacts.ArtifactFormat `json:"kind"`
+	Asset        string                   `json:"asset"`
+	URL          string                   `json:"url"`
+	SHA256       string                   `json:"sha256"`
+	Contract     string                   `json:"contract"`
+	Metadata     string                   `json:"metadata,omitempty"`
 }
 
 // SameRelease compares immutable release evidence, ignoring alias spelling and

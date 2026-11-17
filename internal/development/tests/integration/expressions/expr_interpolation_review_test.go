@@ -83,7 +83,7 @@ jobs:
 		} {
 			t.Run(field.name+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}

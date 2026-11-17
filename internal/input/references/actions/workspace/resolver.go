@@ -23,14 +23,14 @@ import (
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// MetadataLookup supplies metadata to checks without exposing cache or resolver state.
-type MetadataLookup interface {
+// ActionMetadataLookup supplies metadata to checks without exposing cache or resolver state.
+type ActionMetadataLookup interface {
 	FindMetadata(string) (*actionmeta.Metadata, bool, error)
 }
 
-// MetadataDocumentLookup supplies metadata and its captured parse provenance
+// ActionMetadataDocumentLookup supplies metadata and its captured parse provenance
 // together, including the source of a failed parse.
-type MetadataDocumentLookup interface {
+type ActionMetadataDocumentLookup interface {
 	FindMetadataDocument(string) (*actionmeta.Metadata, bool, SourceDocument, error)
 }
 

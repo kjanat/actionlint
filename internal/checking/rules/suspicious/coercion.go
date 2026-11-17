@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
@@ -70,7 +70,7 @@ func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes
 	if l == exprtypes.KindAny || r == exprtypes.KindAny {
 		return false
 	}
-	composite := func(k exprtypes.Kind) bool { return k == exprtypes.KindArray || k == exprtypes.KindObject }
+	composite := func(k exprtypes.TypeKind) bool { return k == exprtypes.KindArray || k == exprtypes.KindObject }
 	if op.IsEqualityOp() {
 		return l != r && l != exprtypes.KindNull && r != exprtypes.KindNull && (composite(l) || composite(r))
 	}

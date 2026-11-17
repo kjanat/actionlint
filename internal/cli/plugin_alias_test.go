@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -87,7 +87,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	lockPath := filepath.Join(".github", "actionlint.plugins.lock.json")
-	cfg, err := checking.ConfigurationRules().Load(configPath)
+	cfg, err := checking.ConfigurationRules().LoadConfig(configPath)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName {
 		t.Fatalf("canonical declaration lost: %+v %v", cfg, err)
 	}
@@ -106,12 +106,12 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	}
 	registry.SetOffline(false)
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check@latest")
-	cfg, err = checking.ConfigurationRules().Load(configPath)
+	cfg, err = checking.ConfigurationRules().LoadConfig(configPath)
 	if err != nil || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("explicit latest alias did not update its existing declaration: %+v, %v", cfg, err)
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "v1.1.0")
-	cfg, err = checking.ConfigurationRules().Load(configPath)
+	cfg, err = checking.ConfigurationRules().LoadConfig(configPath)
 	if err != nil || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("canonical update lost exact declaration: %+v %v", cfg, err)
 	}

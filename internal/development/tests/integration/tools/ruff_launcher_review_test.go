@@ -79,7 +79,7 @@ permissions: {}
 					case "shell":
 						input = strings.Replace(source, "shell: python", "shell: bash", 1)
 					case "config":
-						parsed, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: false}"))
+						parsed, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: false}"))
 						if err != nil {
 							t.Fatal(err)
 						}

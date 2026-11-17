@@ -16,9 +16,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kjanat/wacogo"
@@ -28,7 +28,7 @@ const scriptFixture03 = "testdata/plugins/script-engine-0.3.0.wasm"
 
 func loadScriptFixture03(t *testing.T) *Plugin {
 	t.Helper()
-	p, err := Load(t.Context(), scriptFixture03, Options{})
+	p, err := LoadComponentPlugin(t.Context(), scriptFixture03, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	if err := os.WriteFile(path, changed, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Load(t.Context(), path, Options{})
+	p, err := LoadComponentPlugin(t.Context(), path, Options{})
 	if p != nil {
 		_ = p.Close(t.Context())
 	}
@@ -140,7 +140,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 // Its source is wide and long enough for the fixture's positions.
 func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte) {
 	t.Helper()
-	stdout, err := os.ReadFile(filepath.Join("..", "..", "manifests", "bundled", "shellcheck", "testdata", name, "stdout.json"))
+	stdout, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "bundledproviders", "shellcheck", "testdata", name, "stdout.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 			request.DirectoryFS = directoryGrant(t, request.Directory)
 			pool := hostprocess.NewProcessPool(t.Context(), 1)
 			command := pool.EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) { return stdout, nil })
-			backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
+			backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundledproviders.Program, Required: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -318,7 +318,7 @@ func TestTemplateEffects03ContractCurrent(t *testing.T) {
 // its findings carry fixes and reported sources besides their effects.
 func TestTemplateEffects03Check(t *testing.T) {
 	t.Parallel()
-	p, err := Load(t.Context(), templateFixture03, Options{})
+	p, err := LoadComponentPlugin(t.Context(), templateFixture03, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

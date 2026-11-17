@@ -106,9 +106,9 @@ func TestBundledCommitishResolvesMetadataWithoutExternalExecutable(t *testing.T)
 
 type forbiddenMetadataResolver struct{ t *testing.T }
 
-func (r forbiddenMetadataResolver) Resolve(context.Context, references.Request) (references.Result, error) {
+func (r forbiddenMetadataResolver) Resolve(context.Context, references.Request) (references.ResolutionRecord, error) {
 	r.t.Error("offline metadata invoked a resolver")
-	return references.Result{}, errors.New("unexpected resolver call")
+	return references.ResolutionRecord{}, errors.New("unexpected resolver call")
 }
 
 func TestBundledCommitishUnavailableMetadataDoesNotFailAnalysis(t *testing.T) {

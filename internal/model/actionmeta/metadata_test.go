@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func testDiffActionMetadata(t *testing.T, want, have *Metadata, opts ...cmp.Option) {
@@ -59,14 +61,14 @@ inputs:
 `,
 			want: Metadata{
 				Name: "Test",
-				Inputs: Inputs{
-					"input1":           {"input1", false, false, ""},
-					"input2":           {"input2", false, false, ""},
-					"input3":           {"input3", false, false, ""},
-					"input4":           {"input4", false, false, ""},
-					"input5":           {"input5", true, false, ""},
-					"input_snake-case": {"input_snake-case", false, false, ""},
-					"camelcaseinput":   {"camelCaseInput", false, false, ""},
+				Inputs: calls.Inputs{
+					"input1":           {Name: "input1", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"input2":           {Name: "input2", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"input3":           {Name: "input3", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"input4":           {Name: "input4", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"input5":           {Name: "input5", Required: true, Deprecated: false, DeprecationMessage: ""},
+					"input_snake-case": {Name: "input_snake-case", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"camelcaseinput":   {Name: "camelCaseInput", Required: false, Deprecated: false, DeprecationMessage: ""},
 				},
 				InputDefaults: []*KeyValue{
 					{Name: "input3", Value: ExprString{Value: "default", Line: 11, Column: 14}},
@@ -92,11 +94,11 @@ inputs:
 `,
 			want: Metadata{
 				Name: "Test",
-				Inputs: Inputs{
-					"token":  {"token", false, false, ""},
-					"region": {"region", false, false, ""},
-					"flag":   {"flag", false, false, ""},
-					"plain":  {"plain", false, false, ""},
+				Inputs: calls.Inputs{
+					"token":  {Name: "token", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"region": {Name: "region", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"flag":   {Name: "flag", Required: false, Deprecated: false, DeprecationMessage: ""},
+					"plain":  {Name: "plain", Required: false, Deprecated: false, DeprecationMessage: ""},
 				},
 				InputDefaults: []*KeyValue{
 					{Name: "token", Value: ExprString{Value: "${{ secrets.TOKEN }}", Line: 5, Column: 14}},
@@ -115,9 +117,9 @@ outputs:
 `,
 			want: Metadata{
 				Name: "Test",
-				Outputs: Outputs{
-					"output1": {"output1"},
-					"output2": {"output2"},
+				Outputs: calls.Outputs{
+					"output1": {Name: "output1"},
+					"output2": {Name: "output2"},
 				},
 			},
 		},
@@ -141,11 +143,11 @@ inputs:
 `,
 			want: Metadata{
 				Name: "Test",
-				Inputs: Inputs{
-					"input1": {"input1", false, true, "foo"},
-					"input2": {"input2", true, true, "foo bar"},
-					"input3": {"input3", false, true, ""},
-					"input4": {"input4", false, true, ""},
+				Inputs: calls.Inputs{
+					"input1": {Name: "input1", Required: false, Deprecated: true, DeprecationMessage: "foo"},
+					"input2": {Name: "input2", Required: true, Deprecated: true, DeprecationMessage: "foo bar"},
+					"input3": {Name: "input3", Required: false, Deprecated: true, DeprecationMessage: ""},
+					"input4": {Name: "input4", Required: false, Deprecated: true, DeprecationMessage: ""},
 				},
 			},
 		},
@@ -199,7 +201,7 @@ runs:
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			have, err := Parse("action.yml", []byte(tc.input))
+			have, err := ParseActionMetadata("action.yml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +241,7 @@ outputs: "foo"`,
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			_, err := Parse("action.yml", []byte(tc.input))
+			_, err := ParseActionMetadata("action.yml", []byte(tc.input))
 			if err == nil {
 				t.Fatal("error did not occur")
 			}
@@ -261,14 +263,17 @@ func TestActionMetadataAcceptsUnknownInputFields(t *testing.T) {
 		t.Run(using, func(t *testing.T) {
 			t.Parallel()
 			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
-			md, err := Parse("action.yml", src)
+			md, err := ParseActionMetadata("action.yml", src)
 			if err != nil {
 				t.Fatalf("runner ignores the upstream description typo: %v", err)
 			}
 			if md.Name != "Lighthouse CI Action" || md.Runs.Using != using || md.Runs.Main != "dist/index.js" {
 				t.Fatalf("decoded metadata was lost: %+v", md)
 			}
-			if md.Inputs["temporarypublicstorage"] == nil || md.Outputs["links"] == nil {
+			if _, ok := md.Inputs["temporarypublicstorage"]; !ok {
+				t.Fatalf("decoded inputs were lost: %+v", md)
+			}
+			if _, ok := md.Outputs["links"]; !ok {
 				t.Fatalf("decoded inputs or outputs were lost: %+v", md)
 			}
 			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Line != 5 {

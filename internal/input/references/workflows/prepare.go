@@ -28,7 +28,7 @@ func (c *Cache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) er
 		return err
 	}
 	var pending []string
-	_, dependencies := snapshot.Declarations()
+	_, dependencies := snapshot.Bound().Declarations()
 	for _, dependency := range dependencies {
 		if dependency.Kind == "workflow" {
 			pending = append(pending, dependency.Uses)
@@ -48,7 +48,7 @@ func (c *Cache) LoadCalls(ctx context.Context, referencesToLoad []string) error 
 	for _, spec := range referencesToLoad {
 		if IsRemoteReference(spec) {
 			prefetch.Go(func() error {
-				_, err := c.remote.Load(ctx, spec)
+				_, err := c.remote.LoadWorkflowMetadata(ctx, spec)
 				return err
 			})
 		}
@@ -63,7 +63,7 @@ func (c *Cache) LoadCalls(ctx context.Context, referencesToLoad []string) error 
 			return err
 		}
 		if IsRemoteReference(pending[index]) {
-			if _, err := c.remote.Load(ctx, pending[index]); err != nil {
+			if _, err := c.remote.LoadWorkflowMetadata(ctx, pending[index]); err != nil {
 				if failure, ok := errors.AsType[metadataError](err); ok && failure.kind == failureParse {
 					continue
 				}

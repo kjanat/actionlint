@@ -18,7 +18,7 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service, err := services.Parse("github.com", "")
+	service, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +43,11 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 		t.Run(tc.uses+"/"+tc.version, func(t *testing.T) {
 			t.Parallel()
 			text := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with:\n          node-version: '%s'\n", tc.uses, tc.version)
-			parsed, errs := workflowparser.Parse([]byte(text))
+			parsed, errs := workflowparser.ParseWorkflow([]byte(text))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := workflowdecl.Publish(text, parsed, false, "").Bind("runtime-lifecycle").Workflow()
+			workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 			job, ok := workflow.Job("test")
 			if !ok {
 				t.Fatal("missing job")
@@ -76,11 +76,11 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: |\n            16\n"
-	parsed, errs := workflowparser.Parse([]byte(text))
+	parsed, errs := workflowparser.ParseWorkflow([]byte(text))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Publish(text, parsed, false, "").Bind("runtime-lifecycle").Workflow()
+	workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 	job, ok := workflow.Job("test")
 	if !ok {
 		t.Fatal("missing job")
@@ -102,11 +102,11 @@ func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, errs := workflowparser.Parse(content)
+	parsed, errs := workflowparser.ParseWorkflow(content)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Publish(string(content), parsed, false, "").Bind("release-workflow").Workflow()
+	workflow := workflowdecl.Bind("release-workflow", string(content), parsed, false, "").Workflow()
 	job, ok := workflow.Job("verify")
 	if !ok {
 		t.Fatal("missing release verification job")

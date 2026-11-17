@@ -1,30 +1,23 @@
 package output
 
 import (
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// Result supplies report data and captured snippets for rendering. The caller
-// sets command completion in CheckResult before requesting JSON output.
-type Result struct {
+// RenderedReport supplies report data and published findings for rendering. The
+// caller sets command completion in CheckResult before requesting JSON output.
+type RenderedReport struct {
 	report.CheckResult
-	Findings []RenderedFinding
+	Findings []results.PublishedDiagnostic
 	Rules    []Rule
 }
 
-// FromAnalysis prepares display data without choosing command status. It converts
-// half-open source spans to inclusive columns for text and template output.
-func FromAnalysis(analysis report.Analysis) Result {
-	r := Result{
+// FromAnalysis prepares display data without choosing command status.
+func FromAnalysis(analysis report.Analysis) RenderedReport {
+	return RenderedReport{
 		CheckResult: report.FromAnalysis(analysis),
+		Findings:    analysis.Diagnostics,
 		Rules:       analysis.Rules,
 	}
-	for i, d := range analysis.Diagnostics {
-		finding := RenderedFinding{Diagnostic: d, canonicalSnippet: d.Snippet}
-		if i < len(analysis.Sources) {
-			finding.Source = analysis.Sources[i]
-		}
-		r.Findings = append(r.Findings, finding)
-	}
-	return r
 }

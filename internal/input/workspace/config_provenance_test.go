@@ -156,7 +156,7 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (configreport.Origin{Source: "default", State: "missing"}) {
 				t.Fatalf("implicit knowledge level acquired a source origin: %+v", got)
 			}
-			cfg, err := checking.ConfigurationRules().Load(leaf)
+			cfg, err := checking.ConfigurationRules().LoadConfig(leaf)
 			if err != nil || cfg.RequiresCommitHash() != (value == "true") {
 				t.Fatalf("policy behavior changed: %+v %v", cfg, err)
 			}

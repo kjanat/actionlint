@@ -54,7 +54,7 @@ type authoringFixture struct {
 	Stdout            *string                      `json:"stdout,omitempty"`
 	Variables         map[string]string            `json:"variables,omitempty"`
 	ExitCode          *int                         `json:"exit_code,omitempty"`
-	Expect            *process.Result              `json:"expect,omitempty"`
+	Expect            *process.DecodedCheck        `json:"expect,omitempty"`
 	ExpectConfig      json.RawMessage              `json:"expect_config,omitempty"`
 	ExpectVars        map[string]string            `json:"expect_vars,omitempty"`
 	ExpectError       string                       `json:"expect_error,omitempty"`
@@ -67,7 +67,7 @@ type authoringCaseResult struct {
 	Passed      bool                    `json:"passed"`
 	Config      json.RawMessage         `json:"config"`
 	Variables   map[string]string       `json:"variables"`
-	Result      *process.Result         `json:"result,omitempty"`
+	Result      *process.DecodedCheck   `json:"result,omitempty"`
 	Error       string                  `json:"error,omitempty"`
 }
 
@@ -139,7 +139,7 @@ func loadAuthorManifest(ctx context.Context, streams commandstreams.Streams, pat
 		if err != nil {
 			return manifests.Manifest{}, nil, err
 		}
-		manifest, err := manifests.Parse(data)
+		manifest, err := manifests.ParsePluginManifest(data)
 		if err != nil {
 			return manifests.Manifest{}, nil, err
 		}
@@ -212,7 +212,7 @@ func loadAuthorTests(ctx context.Context, streams commandstreams.Streams, paths 
 	if len(input.Manifest) == 0 || len(input.Manifest) > authoringManifestLimit {
 		return manifests.Manifest{}, nil, nil, errors.New("plugin test manifest is missing or exceeds 1 MiB")
 	}
-	manifest, err := manifests.Parse(input.Manifest)
+	manifest, err := manifests.ParsePluginManifest(input.Manifest)
 	if err != nil {
 		return manifests.Manifest{}, nil, nil, err
 	}

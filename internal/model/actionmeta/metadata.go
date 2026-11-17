@@ -11,40 +11,12 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
-
-// Input is input metadata in "inputs" section in action.yml metadata file.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
-type Input struct {
-	// Name is a name of this input.
-	Name string `json:"name"`
-	// Required is true when this input is mandatory to run the action.
-	Required bool `json:"required"`
-	// Deprecated is true when this input is marked as deprecated.
-	Deprecated bool `json:"deprecated"`
-	// DeprecationMessage is a deprecation message for the deprecated input.
-	DeprecationMessage string `json:"deprecation-message"`
-}
-
-// Inputs is a map from input ID to its metadata. Keys are in lower case since input
-// names are case-insensitive.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
-type Inputs map[string]*Input
-
-// Output is output metadata in "outputs" section in action.yml metadata file.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-composite-actions
-type Output struct {
-	Name string `json:"name"`
-}
-
-// Outputs is a map from output ID to its metadata. Keys are in lower case since output
-// names are case-insensitive.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-composite-actions
-type Outputs map[string]*Output
 
 // ExprString is a string value from action metadata that may contain
 // ${{ }} expressions, together with the position of the value node in the metadata file.
@@ -213,10 +185,10 @@ type Metadata struct {
 	// Description is "description" field of action.yaml.
 	Description string `yaml:"description" json:"-"`
 	// Inputs is "inputs" field of action.yaml.
-	Inputs Inputs `yaml:"inputs" json:"inputs"`
+	Inputs calls.Inputs `yaml:"inputs" json:"inputs"`
 	// Outputs is "outputs" field of action.yaml. Key is name of output. Description is omitted
 	// since actionlint does not use it.
-	Outputs Outputs `yaml:"outputs" json:"outputs"`
+	Outputs calls.Outputs `yaml:"outputs" json:"outputs"`
 	// SkipOutputs is flag to specify a bit loose typing to outputs object. If it is set to
 	// true, the outputs object accepts any properties along with strictly typed props.
 	SkipOutputs bool `yaml:"-" json:"skip_outputs"`
@@ -245,13 +217,13 @@ func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// Parse decodes an action manifest.
+// ParseActionMetadata decodes an action manifest.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
 // A fatal decode takes diagnostic precedence when expansion admission also fails.
-func Parse(path string, content []byte) (*Metadata, error) {
+func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{}
 	owned := bytes.Clone(content)
-	root, err := codec.Parse(owned)
+	root, err := codec.ParseYAML(owned)
 	if err == nil && root.Kind != 0 {
 		err = Decode(root, metadata)
 		// Schema errors can leave useful declarations and unvisited step fields.

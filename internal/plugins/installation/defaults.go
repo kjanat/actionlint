@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -56,7 +56,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 		}) {
 			continue
 		}
-		ref, err := pluginreference.Parse(id)
+		ref, err := pluginreference.ParsePluginReference(id)
 		if err != nil {
 			return nil, err
 		}

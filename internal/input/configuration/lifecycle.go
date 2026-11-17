@@ -22,9 +22,9 @@ type LifecyclePolicy struct {
 	Notifications []LifecycleNotification `yaml:"notifications" jsonschema:"required,minItems=1,description=Notification stages for matching events."`
 }
 type LifecycleMatch struct {
-	Subjects []lifecycle.Subject   `yaml:"subjects" jsonschema:"required,minItems=1,description=Subject kinds matched by this policy."`
-	Events   []lifecycle.EventKind `yaml:"events" jsonschema:"required,minItems=1,description=Event kinds matched by this policy."`
-	Services []services.Kind       `yaml:"services,omitempty" jsonschema:"description=Services matched by this policy. Omit to match all services."`
+	Subjects []lifecycle.Subject    `yaml:"subjects" jsonschema:"required,minItems=1,description=Subject kinds matched by this policy."`
+	Events   []lifecycle.EventKind  `yaml:"events" jsonschema:"required,minItems=1,description=Event kinds matched by this policy."`
+	Services []services.ServiceKind `yaml:"services,omitempty" jsonschema:"description=Services matched by this policy. Omit to match all services."`
 }
 type LifecycleNotification struct {
 	Starts   LifecycleStart     `yaml:"starts" jsonschema:"required,description=Date at which this notification begins."`

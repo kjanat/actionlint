@@ -19,7 +19,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -52,7 +52,7 @@ type Options struct {
 	RemoteWorkflows workflowinputs.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
-	Tools      []tools.Registration
+	Tools      []contract.Registration
 	Resolver   references.Resolver
 	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
 	SuggestCommitPins bool
@@ -94,12 +94,8 @@ type SourceOverlay struct {
 	Content []byte
 }
 
-// Result is independent of the engine's traversal and mutable session state.
-// Rendering and application-specific exit policies consume the same findings.
-type Result = report.Analysis
-
 // Check manages the analysis runtime and returns findings collected before any error.
-func Check(ctx context.Context, options Options, input inputmodel.Request) (result *Result, err error) {
+func Check(ctx context.Context, options Options, input inputmodel.Request) (result *report.Analysis, err error) {
 	options, err = prepareEnforcedLifecycle(ctx, options)
 	if err != nil {
 		return nil, err
@@ -146,7 +142,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		resolutions := references.NewResolutionSession(options.Resolver)
 		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
 			Checker: security.NewResolvedReferenceCheck(),
-			Prepare: func(ctx context.Context, input checkinputs.Input) (checkinputs.Input, error) {
+			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err
@@ -222,7 +218,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 
 	if options.LoadScriptEngine != nil {
-		request.LoadScriptEngine = engines.Load
+		request.LoadScriptEngine = engines.LoadModuleBackend
 	}
 	if options.Verbose {
 		request.LogLevel = LogLevelVerbose
@@ -265,7 +261,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		}
 	}
 	for _, registration := range options.Tools {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Name)
 	}
 	selectionLog := func(args ...any) {
 		if options.LogSelection && request.LogLevel >= LogLevelVerbose {
@@ -361,12 +357,12 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
 // It does not discover configuration or read the supplied source paths.
-func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*Result, error) {
+func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, inputmodel.Request{Kind: inputmodel.Prepared, Sources: sources})
 }
 
-func analyzePrepared(ctx context.Context, request analysisRequest) (*Result, error) {
+func analyzePrepared(ctx context.Context, request analysisRequest) (*report.Analysis, error) {
 	analyzed, err := runAnalysis(ctx, request)
 	if analyzed == nil {
 		return nil, err

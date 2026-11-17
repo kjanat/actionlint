@@ -4,11 +4,11 @@ import (
 	"slices"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -35,11 +35,11 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	t.Parallel()
 	const source = "name: Native\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: work\n        run: echo ok\n"
-	parsed, errs := workflowparser.Parse([]byte(source))
+	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := declaration.Publish(source, parsed, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, parsed, false, "").Workflow()
 	job, found := workflow.Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")

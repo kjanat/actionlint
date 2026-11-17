@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -88,7 +89,7 @@ func (a *commandApp) reportError(err error) int {
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
 				result.ActionMetadata = commandstatus.AnalysisResult(*failure.result).ActionMetadata
-				result.Diagnostics = failure.result.Diagnostics
+				result.Diagnostics = results.Diagnostics(failure.result.Diagnostics)
 				result.Documents = failure.result.Documents
 				count := failure.result.FileCount
 				result.FileCount = &count

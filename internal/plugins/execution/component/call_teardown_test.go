@@ -19,7 +19,7 @@ import (
 
 func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	t.Parallel()
-	p, err := Load(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
+	p, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 
 func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	t.Parallel()
-	p, err := Load(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
+	p, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 // A budget panic must retain errors collected while unwinding the invocation.
 func TestCallScopeMemoryPanicPreservesCleanupFailure(t *testing.T) {
 	t.Parallel()
-	p, err := Load(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
+	p, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

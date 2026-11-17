@@ -5,13 +5,15 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-func analysisForRender(t *testing.T, prefix string) *checking.Result {
+func analysisForRender(t *testing.T, prefix string) *report.Analysis {
 	t.Helper()
 	source := prefix + `on: push
 jobs:
@@ -23,9 +25,9 @@ permissions: {}
 	return analysisForRenderSource(t, source)
 }
 
-func analysisForRenderSource(t *testing.T, source string) *checking.Result {
+func analysisForRenderSource(t *testing.T, source string) *report.Analysis {
 	t.Helper()
-	config, err := checking.ConfigurationRules().Parse([]byte("repository: {runners: []}\n"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("repository: {runners: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +61,9 @@ jobs:
     steps: [{run: 'echo ok'}]
 permissions: {}
 `)
-			analysis.Diagnostics[0].End = tc.end
+			moved := analysis.Diagnostics[0].Diagnostic
+			moved.End = tc.end
+			analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
 			for _, format := range []outputFormat{formatDefault, formatGitHub, formatMarkdown} {
 				got, err := renderAnalysis(format, analysis, ".", ".")
 				if err != nil {
@@ -177,8 +181,9 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 	if err != nil || !strings.Contains(got, "\n     |\n1234 |     runs-on:") {
 		t.Fatalf("wide line number gutter: %q, %v", got, err)
 	}
-	analysis.Diagnostics[0].Start.Line = 2000
-	analysis.Diagnostics[0].End.Line = 2000
+	moved := analysis.Diagnostics[0].Diagnostic
+	moved.Start.Line, moved.End.Line = 2000, 2000
+	analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || strings.Contains(got, "runs-on:") || strings.Contains(got, "^") {
@@ -189,7 +194,7 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 
 func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
 	t.Parallel()
-	analysis := &checking.Result{}
+	analysis := &report.Analysis{}
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || got != "" {

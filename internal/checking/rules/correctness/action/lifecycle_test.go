@@ -15,7 +15,7 @@ import (
 func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 	t.Parallel()
 	const source = "name: example\ndescription: example\nruns:\n  using: node20\n  main: index.js\n"
-	meta, err := actionmeta.Parse("action.yml", []byte(source))
+	meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service, err := services.Parse("github.com", "")
+	service, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -46,7 +46,7 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 
 func TestParserRejectsInvalidMappingKeys(t *testing.T) {
 	t.Parallel()
-	doc, err := codec.Parse([]byte(`!!int first: {nested: !!bool nope}
+	doc, err := codec.ParseYAML([]byte(`!!int first: {nested: !!bool nope}
 !!bool second: value
 '': empty
 valid: kept
@@ -81,7 +81,7 @@ VALID: duplicate
 	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			doc, err := codec.Parse([]byte(source))
+			doc, err := codec.ParseYAML([]byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -109,7 +109,7 @@ jobs:
       - run: &%s echo test
       - run: *%s
 `, name, name)
-			_, errs := Parse([]byte(src))
+			_, errs := ParseWorkflow([]byte(src))
 			if name != "git+opts" {
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -153,7 +153,7 @@ func TestParserAliasTypeLocations(t *testing.T) {
 first: *value
 second: *value
 `
-			doc, err := codec.Parse([]byte(src))
+			doc, err := codec.ParseYAML([]byte(src))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -345,7 +345,7 @@ next: value
 		input := `run: |
   echo $foo
 `
-		root, err := codec.Parse([]byte(input))
+		root, err := codec.ParseYAML([]byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -374,7 +374,7 @@ next: value
   echo $foo
 run: *script
 `
-		root, err := codec.Parse([]byte(input))
+		root, err := codec.ParseYAML([]byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -406,7 +406,7 @@ run: *script
 
   echo $foo
 `
-		root, err := codec.Parse([]byte(input))
+		root, err := codec.ParseYAML([]byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -435,7 +435,7 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			input := "on: push\nenv:\n  SCRIPT: &script " + tc.scalar + "jobs:\n  block:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n  flow:\n    runs-on: ubuntu-latest\n    steps: [{run: *script}]\n"
-			workflow, diagnostics := Parse([]byte(input))
+			workflow, diagnostics := ParseWorkflow([]byte(input))
 			if len(diagnostics) != 0 || workflow == nil {
 				t.Fatalf("Parse diagnostics=%v", diagnostics)
 			}
@@ -464,7 +464,7 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 				}
 			}
 			// Prove the fixture detects indexing projected aliases: the final flow use overwrites the anchor context.
-			root, err := codec.Parse([]byte(input))
+			root, err := codec.ParseYAML([]byte(input))
 			if err != nil {
 				t.Fatal(err)
 			}

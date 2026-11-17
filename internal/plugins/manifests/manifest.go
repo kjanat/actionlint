@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // SchemaVersion is the only manifest schema version this host reads.
@@ -147,8 +147,8 @@ const (
 
 // ConfigShorthand is a key written directly under tools.<name> that sets one
 // property of the provider's configuration. Its type lives in the leaf
-// configschema package, which configuration decoding shares.
-type ConfigShorthand = configschema.Shorthand
+// model/toolsettings package, which configuration decoding shares.
+type ConfigShorthand = toolsettings.Shorthand
 
 // ReadsConfigFiles reports whether the provider reads native configuration
 // files, so tools.<name>.config may name a path instead of inline settings.

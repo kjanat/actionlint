@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -43,7 +43,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	descriptor := adapter.Analyzer.Descriptor()
 	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
 	prepared := make(map[bindingmodel.ID]checkexecutor.PreparedRegistration)
-	for _, scope := range batch.Scopes() {
+	for _, scope := range batch.Scopes {
 		var identity bindingmodel.ID
 		options := adapter.Options
 		if scope.Bindings != nil {
@@ -67,10 +67,10 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	graph := batch.Invocations()
+	graph := batch.CallGraph
 	var findings []*findingmodel.Finding
 	var failures []error
-	for index, unit := range batch.Scripts() {
+	for index, unit := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			failures = append(failures, err)
 			break
@@ -83,7 +83,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			failures = append(failures, fmt.Errorf("%w: script fact %d is unavailable", ErrInvalidBatch, index))
 			break
 		}
-		input := checkinputs.Input{
+		input := checkinputs.AnalyzerInput{
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			AvailableInputs: available,

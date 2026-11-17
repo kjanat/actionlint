@@ -5,10 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -26,7 +26,9 @@ var MissingPermissionsRule = &define.Rule{
 	Options:      func() any { return &configuration.MissingPermissionsOptions{} },
 	Examples:     []rule.Example{{Description: "This job uses no token permissions.", Before: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", After: "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"}},
 	Prepare:      preparePermissionRequirements,
-	Checks:       func(c define.Inputs) define.Checks { return MissingPermissionsChecks(c.RequiredPermissionLocations) },
+	Checks: func(c define.RuleInputs) define.Checks {
+		return MissingPermissionsChecks(c.RequiredPermissionLocations)
+	},
 }
 
 func MissingPermissionsChecks(locations []configuration.PermissionLocation) define.Checks {
@@ -81,11 +83,11 @@ func permissionLocationDescription(allowWorkflow bool) string {
 	return "on this job"
 }
 
-func preparePermissionRequirements(c define.Inputs) (define.InputPreparation, error) {
+func preparePermissionRequirements(c define.RuleInputs) (define.InputPreparation, error) {
 	locations, err := c.Config.PermissionDeclarationLocations()
 	if err != nil {
 		return nil, err
 	}
 	c.RequiredPermissionLocations = locations
-	return define.PreparedInputs{Inputs: c}, nil
+	return define.PreparedInputs{RuleInputs: c}, nil
 }

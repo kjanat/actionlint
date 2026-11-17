@@ -24,7 +24,7 @@ func TestSuppressionsPolicyInspection(t *testing.T) {
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +53,7 @@ func TestSuppressionsPolicyConstruction(t *testing.T) {
 			if len(rules) != 0 {
 				yaml += ", rules: [cache-operation, cache-write-untrusted]"
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte(yaml + "}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(yaml + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

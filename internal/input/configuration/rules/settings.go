@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.
@@ -171,7 +171,7 @@ func encodeOptions(options any) (any, error) {
 		if !json.Valid(raw) {
 			return nil, errors.New("json.RawMessage options are not valid JSON")
 		}
-		parsed, err := document.Parse("options.json", raw)
+		parsed, err := document.ParseConfigDocument("options.json", raw)
 		if err != nil {
 			return nil, err
 		}

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
@@ -42,7 +42,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 				t.Fatal(err)
 			}
 			capturedReads := reads
-			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: "shellcheck"}
+			registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}, ReplacesTool: "shellcheck"}
 			rules, err := checking.ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
 				t.Fatal(err)

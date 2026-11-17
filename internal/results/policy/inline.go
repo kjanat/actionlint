@@ -28,7 +28,7 @@ type inlineAudit struct {
 
 func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
 	allowedRules := processor.SuppressionRules(additional...)
-	directives, invalid := suppression.Parse(source, allowedRules, processor.RuleSet.Names())
+	directives, invalid := suppression.ParseInlineSuppressions(source, allowedRules, processor.RuleSet.Names())
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(processor.RuleSet.ResolveAlias(name))
 		return suppression.Decision{

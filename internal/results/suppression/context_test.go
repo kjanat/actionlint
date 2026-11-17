@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestFlowStepSelectors(t *testing.T) {
@@ -124,7 +124,7 @@ func TestSuppressionYAMLLineEndings(t *testing.T) {
 			if index := Contexts(source, nil); !index.Match(4, 9, "test", "", "") {
 				t.Fatalf("step context lost source line for separator %q: %#v", ending.text, index)
 			}
-			directives, findings := Parse(source, []string{"rule"}, rule.Names{})
+			directives, findings := ParseInlineSuppressions(source, []string{"rule"}, rule.Names{})
 			if len(findings) != 0 || len(directives) != 1 {
 				t.Fatalf("directives=%#v findings=%#v", directives, findings)
 			}

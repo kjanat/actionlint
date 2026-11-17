@@ -10,18 +10,18 @@ import (
 // ParseStatus describes the metadata decoder's outcome; diagnostics report validity.
 // Runs is nil when no execution runtime was decoded.
 type Action struct {
-	Path        string     `json:"path"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	ParseStatus string     `json:"parse_status"`
-	Inputs      []Input    `json:"inputs"`
-	Outputs     []Output   `json:"outputs"`
-	Runs        ActionRuns `json:"runs"`
+	Path        string                `json:"path"`
+	Name        string                `json:"name,omitempty"`
+	Description string                `json:"description,omitempty"`
+	ParseStatus string                `json:"parse_status"`
+	Inputs      []ActionInputOutline  `json:"inputs"`
+	Outputs     []ActionOutputOutline `json:"outputs"`
+	Runs        ActionRuns            `json:"runs"`
 }
 
-// Input preserves declared required/default values independently.
+// ActionInputOutline preserves declared required/default values independently.
 // A default does not erase an explicitly declared required: true.
-type Input struct {
+type ActionInputOutline struct {
 	ID          string              `json:"id"`
 	Description string              `json:"description,omitempty"`
 	Required    *bool               `json:"required,omitempty"`
@@ -29,8 +29,8 @@ type Input struct {
 	Start       *sourcepos.Position `json:"start,omitempty"`
 }
 
-// Output preserves an output declaration and optional expression.
-type Output struct {
+// ActionOutputOutline preserves an output declaration and optional expression.
+type ActionOutputOutline struct {
 	ID          string              `json:"id"`
 	Description string              `json:"description,omitempty"`
 	Value       *string             `json:"value,omitempty"`

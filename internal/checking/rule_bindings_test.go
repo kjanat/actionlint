@@ -33,7 +33,7 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 			}
 			remote := "name: shared\ndescription: test\nruns:\n  using: composite\n  steps:\n" + comment + "    - uses: docker://alpine:3\n"
 			provider, _ := remoteCompositeProvider(t, map[string]string{"example/shared": remote})
-			config, err := ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {container-runner: off}}}\noverrides:\n  - includes: ['first/**']\n    lint: {rules: {correctness: {container-runner: " + test.first + "}}}\n  - includes: ['second/**']\n    lint: {rules: {correctness: {container-runner: error}}}\n"))
+			config, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {container-runner: off}}}\noverrides:\n  - includes: ['first/**']\n    lint: {rules: {correctness: {container-runner: " + test.first + "}}}\n  - includes: ['second/**']\n    lint: {rules: {correctness: {container-runner: error}}}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func TestLocalMetadataAdvisoryUsesTargetBinding(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
 	writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - if: startsWith(true, 'true')\n      shell: bash\n      run: echo ok\n")
-	config, err := ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {coercion: off}}}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {suspicious: {coercion: error}}}\n"))
+	config, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {coercion: off}}}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {suspicious: {coercion: error}}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

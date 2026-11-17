@@ -69,7 +69,7 @@ jobs:
 			var found []results.Diagnostic
 			for _, finding := range result.Diagnostics {
 				if finding.Rule == "shellcheck" {
-					found = append(found, finding)
+					found = append(found, finding.Diagnostic)
 				}
 			}
 			if tc.finding == "" && len(found) == 0 {

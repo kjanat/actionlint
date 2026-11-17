@@ -147,7 +147,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowparser.Parse([]byte(source))
+			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -241,7 +241,7 @@ func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
 		{"matrix.target[matrix.index]", false, false},
 		{"matrix.target[matrix.index]", true, true},
 	} {
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,7 +272,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowparser.Parse([]byte(source))
+			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -306,7 +306,7 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -345,7 +345,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,7 +12,7 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
-		kind         exprtypes.Kind
+		kind         exprtypes.TypeKind
 		open         bool
 	}{
 		{"known axis", `item: [1, 2]`, exprtypes.KindNumber, false},
@@ -25,7 +25,7 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}

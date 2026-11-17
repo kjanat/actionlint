@@ -22,7 +22,7 @@ func TestParserOwnedExpressionSpans(t *testing.T) {
 	} {
 		t.Run(tc.text, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.text + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.text + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,45 +1,42 @@
 package checking
 
 import (
-	"encoding/json"
-	"fmt"
 	"slices"
-	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 var builtins = registration.Declarations()
 
-// providerRules reads rule descriptors from the bundled provider manifests.
-// Invalid embedded metadata causes a panic. This package reads only the rule
-// field to avoid importing the provider model and its analyzer dependency.
-// TestProviderRulesComeFromManifests compares the result with provider.Bundled.
-var providerRules = sync.OnceValue(func() []rule.Descriptor {
-	names := bundled.Names()
-	rules := make([]rule.Descriptor, 0, len(names))
-	for _, name := range names {
-		data, _ := bundled.Manifest(name)
-		var manifest struct {
-			Rule rule.Descriptor `json:"rule"`
-		}
-		if err := json.Unmarshal(data, &manifest); err != nil || manifest.Rule.Name != name {
-			panic(fmt.Sprintf("bundled tool provider %s: invalid rule: %v", name, err))
-		}
-		rules = append(rules, manifest.Rule)
+// bundledManifests returns the bundled provider manifests.
+// Invalid embedded metadata causes a panic.
+func bundledManifests() []pluginmanifests.Manifest {
+	manifests, err := pluginmanifests.Bundled()
+	if err != nil {
+		panic(err)
+	}
+	return manifests
+}
+
+// providerRules lists the bundled providers' rules in directory order.
+func providerRules() []rule.Descriptor {
+	manifests := bundledManifests()
+	rules := make([]rule.Descriptor, len(manifests))
+	for i, manifest := range manifests {
+		rules[i] = manifest.Rule
 	}
 	return rules
-})
+}
 
 // BuiltinRuleDeclarations returns the built-in rules and their configuration requirements.
 // Each descriptor's slices belong to the caller.
 func BuiltinRuleDeclarations() []rule.Declaration {
 	declarations := slices.Clone(builtins)
 	for i := range declarations {
-		declarations[i].Descriptor = declarations[i].Clone()
+		declarations[i] = declarations[i].Clone()
 	}
 	return declarations
 }
@@ -62,7 +59,7 @@ func FindRule(name string) (rule.Descriptor, bool) {
 	name = ResolveRuleAlias(name)
 	for _, r := range builtins {
 		if r.Name == name {
-			return r.Clone(), true
+			return r.Descriptor.Clone(), true
 		}
 	}
 	for _, r := range providerRules() {

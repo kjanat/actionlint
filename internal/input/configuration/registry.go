@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"slices"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // RuleSet contains the declarations available to one configuration loader.
 // Construction copies metadata; later operations do not change the set.
 // Its zero value declares no rules.
 type RuleSet struct {
-	entries         []Rule
+	entries         []rulemeta.Declaration
 	names           rulemeta.Names
 	registered      map[string]bool
 	optionOverrides map[string]json.RawMessage
@@ -31,12 +31,12 @@ func (cfg *Config) RuleSet() RuleSet {
 	return cfg.Lint.Rules.ruleSet
 }
 
-// NewRuleSet validates names and projects declarations into configuration rules.
+// NewRuleSet validates names and indexes declarations for configuration.
 // Callers supply built-in and plugin declarations; this package loads no implementations.
 func NewRuleSet(declarations []rulemeta.Declaration) (RuleSet, error) {
 	descriptors := make([]rulemeta.Descriptor, len(declarations))
 	for i, declaration := range declarations {
-		descriptors[i] = declaration.Clone()
+		descriptors[i] = declaration.Descriptor.Clone()
 		if !rulemeta.ValidCategory(declaration.Category) {
 			return RuleSet{}, fmt.Errorf("rule %q declares unknown category %q", declaration.Name, declaration.Category)
 		}
@@ -59,15 +59,9 @@ func NewRuleSet(declarations []rulemeta.Declaration) (RuleSet, error) {
 	if err != nil {
 		return RuleSet{}, err
 	}
-	result := RuleSet{names: names, entries: make([]Rule, len(declarations))}
+	result := RuleSet{names: names, entries: make([]rulemeta.Declaration, len(declarations))}
 	for i, declaration := range declarations {
-		result.entries[i] = Rule{
-			Descriptor: descriptors[i], Group: declaration.Category,
-			SupportsActions: declaration.SupportsActions, Scope: declaration.Scope,
-			Options:     declaration.Options,
-			LegacyGroup: declaration.LegacyGroup, Policy: declaration.Policy,
-			MovedOptions: slices.Clone(declaration.MovedOptions), MigrationNote: declaration.MigrationNote,
-		}
+		result.entries[i] = declaration.Clone()
 	}
 	return result, nil
 }
@@ -84,12 +78,11 @@ func (ruleSet RuleSet) WithDefaults(descriptor rulemeta.Descriptor) rulemeta.Des
 	return descriptor
 }
 
-// Rules returns configuration rules with caller-owned metadata slices.
-func (ruleSet RuleSet) Rules() []Rule {
-	result := slices.Clone(ruleSet.entries)
-	for i := range result {
-		result[i].Descriptor = result[i].Clone()
-		result[i].MovedOptions = slices.Clone(result[i].MovedOptions)
+// Rules returns declarations with caller-owned metadata slices.
+func (ruleSet RuleSet) Rules() []rulemeta.Declaration {
+	result := make([]rulemeta.Declaration, len(ruleSet.entries))
+	for i, entry := range ruleSet.entries {
+		result[i] = entry.Clone()
 	}
 	return result
 }
@@ -98,7 +91,7 @@ func (ruleSet RuleSet) Rules() []Rule {
 func (ruleSet RuleSet) RuleInfos() []rulemeta.Descriptor {
 	descriptors := make([]rulemeta.Descriptor, len(ruleSet.entries))
 	for i, entry := range ruleSet.entries {
-		descriptors[i] = entry.Clone()
+		descriptors[i] = entry.Descriptor.Clone()
 	}
 	return descriptors
 }
@@ -107,16 +100,14 @@ func (ruleSet RuleSet) RuleInfos() []rulemeta.Descriptor {
 func (ruleSet RuleSet) ResolveAlias(name string) string { return ruleSet.names.ResolveAlias(name) }
 
 // FindRule looks up a current name or alias and returns detached metadata.
-func (ruleSet RuleSet) FindRule(name string) (Rule, bool) {
+func (ruleSet RuleSet) FindRule(name string) (rulemeta.Declaration, bool) {
 	name = ruleSet.ResolveAlias(name)
 	for _, entry := range ruleSet.entries {
 		if entry.Name == name {
-			entry.Descriptor = entry.Clone()
-			entry.MovedOptions = slices.Clone(entry.MovedOptions)
-			return entry, true
+			return entry.Clone(), true
 		}
 	}
-	return Rule{}, false
+	return rulemeta.Declaration{}, false
 }
 
 // Suppressible reports whether a selector names a declared rule or an additional plugin rule.

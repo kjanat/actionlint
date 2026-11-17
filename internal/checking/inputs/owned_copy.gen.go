@@ -5,13 +5,13 @@ package inputs
 import (
 	slices "slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	commands "actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	scripts "actionlint.kjanat.dev/v2/internal/model/scripts"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-func copyOwnedInput(in Input) Input {
+func copyOwnedAnalyzerInput(in AnalyzerInput) AnalyzerInput {
 	out := in
 	out.AvailableInputs = slices.Clone(in.AvailableInputs)
 	out.Options = slices.Clone(in.Options)
@@ -29,7 +29,7 @@ func copyOwnedInput(in Input) Input {
 
 func copyOwnedDescriptor(in Descriptor) Descriptor {
 	out := in
-	out.Descriptor = copyOwnedDescriptor_985dd41517f164f2713eab7b878b699b(in.Descriptor)
+	out.Declaration = copyOwnedDeclaration_8330cd32a4cc9485ddfc2572bc3a1898(in.Declaration)
 	out.InvocationDefinitions = copyOwnedValue_c3d263bd63537c696454d0abea20febe(in.InvocationDefinitions)
 	return out
 }
@@ -67,13 +67,10 @@ func copyOwnedValue_af7332f132c73a2a02720d5025c89d84(in []facts.Mapping) []facts
 	return out
 }
 
-func copyOwnedDescriptor_985dd41517f164f2713eab7b878b699b(in rule.Descriptor) rule.Descriptor {
+func copyOwnedDeclaration_8330cd32a4cc9485ddfc2572bc3a1898(in rule.Declaration) rule.Declaration {
 	out := in
-	out.DefaultEnabled = copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in.DefaultEnabled)
-	out.Aliases = slices.Clone(in.Aliases)
-	out.OptionsSchema = slices.Clone(in.OptionsSchema)
-	out.Examples = slices.Clone(in.Examples)
-	out.RequiredInputs = slices.Clone(in.RequiredInputs)
+	out.Descriptor = copyOwnedDescriptor_2fc9d66e34a8ead13f312beaf63d9474(in.Descriptor)
+	out.MovedOptions = slices.Clone(in.MovedOptions)
 	return out
 }
 
@@ -108,12 +105,14 @@ func copyOwnedMapping_dde8c40e029a564111b72896b3ea9ae7(in facts.Mapping) facts.M
 	return out
 }
 
-func copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in *bool) *bool {
-	if in == nil {
-		return nil
-	}
-	out := *in
-	return (*bool)(&out)
+func copyOwnedDescriptor_2fc9d66e34a8ead13f312beaf63d9474(in rule.Descriptor) rule.Descriptor {
+	out := in
+	out.DefaultEnabled = copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in.DefaultEnabled)
+	out.Aliases = slices.Clone(in.Aliases)
+	out.OptionsSchema = slices.Clone(in.OptionsSchema)
+	out.Examples = slices.Clone(in.Examples)
+	out.RequiredInputs = slices.Clone(in.RequiredInputs)
+	return out
 }
 
 func copyOwnedDefinition_b2c9b0e796b4e38073673c39340f07da(in commands.Definition) commands.Definition {
@@ -139,6 +138,14 @@ func copyOwnedValue_9d383f1d3b80e41e3942e4cb7c78216b(in *scripts.Execution) *scr
 	}
 	out := *in
 	return (*scripts.Execution)(&out)
+}
+
+func copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in *bool) *bool {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return (*bool)(&out)
 }
 
 func copyOwnedValue_f8816292f2c693f9baa89b7f9a8336ed(in []commands.Option) []commands.Option {

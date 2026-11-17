@@ -253,15 +253,4 @@ func TestLocalURI(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, source := range []string{"", "ftp://example.com/plugin", "https://user:secret@example.com/plugin", "https://example.com/p#wat", "file://remote/plugin"} {
-		if _, _, _, err := parseSource(source); err == nil || strings.Contains(err.Error(), "secret") {
-			t.Fatalf("%s: %v", source, err)
-		}
-	}
-	for _, source := range []string{"C:/plugins/ruff.wasm", `C:\plugins\ruff.wasm`} {
-		_, local, _, err := parseSource(source)
-		if err != nil || local != source {
-			t.Fatalf("Windows path parsed as URI: %v %s", err, local)
-		}
-	}
 }

@@ -55,7 +55,7 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 			packageArgs := append([]string{"run", "--locked", "--target-dir", target, "--bin", "package", "-j", "1"}, featureArgs...)
 			packageArgs = append(packageArgs, "--", input, output)
 			run(t, packageArgs...)
-			p, err := Load(t.Context(), filepath.Join(output, "plugin.wasm"), Options{})
+			p, err := LoadComponentPlugin(t.Context(), filepath.Join(output, "plugin.wasm"), Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

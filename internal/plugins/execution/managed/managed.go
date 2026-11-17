@@ -12,12 +12,13 @@ import (
 	"errors"
 	"fmt"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
@@ -27,11 +28,11 @@ import (
 
 // Bind lets a managed document analyzer replace a provider whose manifest
 // names an integration contract. Other providers are returned unchanged.
-func Bind(base tools.Registration, p scripts.Provider) tools.Registration {
+func Bind(base contract.Registration, p scripts.Provider) contract.Registration {
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shellprofile.ID {
 		return base
 	}
-	base.WithAnalyzer = func(guest checkinputs.Checker) (tools.Registration, error) {
+	base.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
 		return withAnalyzer(base, p, guest)
 	}
 	return base
@@ -52,12 +53,12 @@ func defaultSelection(sel scripts.Selection, name string) bool {
 
 // withAnalyzer selects a document analyzer or the provider's transport per
 // document, accounting for settings in overrides and composite actions.
-func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs.Checker) (tools.Registration, error) {
+func withAnalyzer(base contract.Registration, p scripts.Provider, guest checkinputs.Checker) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
 	integrator, ok := guest.(checkinputs.ToolIntegrator)
 	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != m.Integration.Contract || integrator.ToolIntegration().Tool != m.Integration.Tool {
-		return tools.Registration{}, fmt.Errorf("analyzer does not advertise the %s configuration contract", name)
+		return contract.Registration{}, fmt.Errorf("analyzer does not advertise the %s configuration contract", name)
 	}
 	sel := p.Selection
 	if !defaultSelection(sel, name) {
@@ -65,7 +66,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	}
 	settingsResolver, err := integrationconfig.New(m, p.Programs)
 	if err != nil {
-		return tools.Registration{}, err
+		return contract.Registration{}, err
 	}
 	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver}
 	next := base
@@ -73,7 +74,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	integration := *integrator.ToolIntegration()
 	next.ToolIntegration = &integration
 	next.NeedsProcess = func(ctx context.Context, cfg, project *configuration.Config) (bool, error) {
-		if !base.Enabled(tools.Context{Config: cfg}) {
+		if !base.Enabled(contract.Context{Config: cfg}) {
 			return false, nil
 		}
 		declined, err := route.declined(ctx, integrator, cfg)
@@ -86,13 +87,13 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 		// not only by tool gates as in backend.ConfigCandidates.
 		if declined == nil && project != nil && len(project.Overrides) != 0 {
 			candidates, err := configuration.ConfigVariants(project, func(candidate *configuration.Config) (string, error) {
-				return route.negotiationKey(ctx, candidate, base.Enabled(tools.Context{Config: candidate}))
+				return route.negotiationKey(ctx, candidate, base.Enabled(contract.Context{Config: candidate}))
 			})
 			if err != nil {
 				return false, err
 			}
 			for _, candidate := range candidates {
-				if !base.Enabled(tools.Context{Config: candidate}) {
+				if !base.Enabled(contract.Context{Config: candidate}) {
 					continue
 				}
 				if declined, err = route.declined(ctx, integrator, candidate); err != nil {
@@ -111,9 +112,9 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 		}
 		return base.NeedsProcess(ctx, cfg, project)
 	}
-	next.Required = func(tools.Context) bool { return true }
-	next.Build = func(c tools.Context) (tools.Runner, error) {
-		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func(cfg *configuration.Config) (tools.Runner, error) {
+	next.Required = func(contract.Context) bool { return true }
+	next.Build = func(c contract.Context) (contract.Runner, error) {
+		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func(cfg *configuration.Config) (contract.Runner, error) {
 			if sel.ManagedOnly {
 				return nil, errors.New("plugin declined configuration; native fallback is not enabled")
 			}
@@ -195,7 +196,7 @@ func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, e
 	return options, nil
 }
 
-func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *configuration.Config, script *tools.Script) (*checkinputs.ToolNegotiation, error) {
+func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *configuration.Config, script *scriptexecution.Unit) (*checkinputs.ToolNegotiation, error) {
 	if cfg != nil && cfg.Tools[r.name].Backend != nil {
 		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
 	}
@@ -233,20 +234,20 @@ type documentRunner struct {
 	documentRoute
 	guest      checkinputs.Checker
 	integrator checkinputs.ToolIntegrator
-	context    tools.Context
-	native     func(*configuration.Config) (tools.Runner, error)
+	context    contract.Context
+	native     func(*configuration.Config) (contract.Runner, error)
 }
 
-func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (r documentRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	if err := r.validateDocumentBatch(batch); err != nil {
 		return nil, err
 	}
-	var findings []tools.ToolFinding
+	var findings []contract.ToolFinding
 	var failure error
-	nativeBatch := tools.Batch{CallGraph: batch.CallGraph}
+	nativeBatch := scriptexecution.Batch{CallGraph: batch.CallGraph}
 	var nativeIndices []int
-	nativeScopes := map[*tools.Scope]bool{}
-	negotiatedScopes := map[*tools.Scope]bool{}
+	nativeScopes := map[*scriptexecution.Scope]bool{}
+	negotiatedScopes := map[*scriptexecution.Scope]bool{}
 	for i, script := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
@@ -254,11 +255,12 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 		if script.Input != nil {
 			continue
 		}
-		cfg := script.Config
+		cfg := script.Config()
 		if !r.enabled(cfg) {
 			continue
 		}
-		prepared, err := shellprofile.BuildShellScriptInput(script.Fact, nil)
+		fact, _ := batch.Fact(i, true)
+		prepared, err := shellprofile.BuildShellScriptInput(fact, nil)
 		if err != nil {
 			failure = errors.Join(failure, err)
 			continue
@@ -287,7 +289,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 		if script.Path == "" {
 			script.Path, script.Content = r.context.Document.Path, []byte(r.context.Document.Content)
 		}
-		input := r.input(script, batch.CallGraph)
+		input := r.input(fact, batch.CallGraph)
 		input.Options = negotiated.Options
 		files, fileErr := r.sourceFiles(ctx, script, negotiated.Resources)
 		if fileErr != nil {
@@ -330,7 +332,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 	if len(nativeIndices) != 0 || len(nativeBatch.Scopes) != 0 {
 		var cfg *configuration.Config
 		if len(nativeBatch.Scripts) != 0 {
-			cfg = nativeBatch.Scripts[0].Config
+			cfg = nativeBatch.Scripts[0].Config()
 		} else {
 			cfg = nativeBatch.Scopes[0].Config
 		}
@@ -360,7 +362,7 @@ func (r documentRunner) severity(severity string) string {
 	return string(mapped)
 }
 
-func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
+func (r documentRunner) validateDocumentBatch(batch scriptexecution.Batch) error {
 	if len(batch.Scripts) == 0 {
 		return nil
 	}
@@ -374,27 +376,27 @@ func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
 		if script.Input != nil {
 			continue
 		}
-		occurrence := script.Fact.Occurrence
-		if err := checkinputs.ValidateOccurrence(batch.CallGraph, occurrence); err != nil {
-			return fmt.Errorf("%s document batch script %d: %w", r.name, index, err)
-		}
-		if occurrence.Kind != invocation.ScriptRun || script.Fact.Reference != occurrence.Declaration {
+		fact, exists := batch.Fact(index, true)
+		if !exists {
 			return fmt.Errorf("%s document batch script %d: %w: missing or foreign prepared occurrence", r.name, index, checkinputs.ErrInvalidCallGraph)
+		}
+		if err := checkinputs.ValidateOccurrence(batch.CallGraph, fact.Occurrence); err != nil {
+			return fmt.Errorf("%s document batch script %d: %w", r.name, index, err)
 		}
 	}
 	return nil
 }
 
-func (r documentRunner) input(script tools.Script, graph invocation.Graph) checkinputs.Input {
+func (r documentRunner) input(script checkinputs.Script, graph invocation.Graph) checkinputs.AnalyzerInput {
 	input := r.context.Document
 	input.AvailableInputs = []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}
 	input.CallGraph = graph
-	input.SelectedScripts = []invocation.ID{script.Fact.Occurrence.ID}
-	if graph.Valid() && script.Fact.Occurrence.Owner == graph.RootID() {
-		input.Scripts = []checkinputs.Script{script.Fact}
+	input.SelectedScripts = []invocation.ID{script.Occurrence.ID}
+	if graph.Valid() && script.Occurrence.Owner == graph.RootID() {
+		input.Scripts = []checkinputs.Script{script}
 	} else {
-		input.Invoked = []checkinputs.Script{script.Fact}
+		input.Invoked = []checkinputs.Script{script}
 	}
-	input.BuildShellScriptInput = shellprofile.NewShellScriptInputBuilder([]checkinputs.Script{script.Fact})
+	input.BuildShellScriptInput = shellprofile.NewShellScriptInputBuilder([]checkinputs.Script{script})
 	return input
 }

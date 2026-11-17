@@ -141,7 +141,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	rs := checking.ConfigurationRules()
-	cfg, err := rs.Parse(b)
+	cfg, err := rs.ParseConfig(b)
 	if err != nil {
 		t.Fatal(err)
 	}

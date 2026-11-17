@@ -15,7 +15,7 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
@@ -81,7 +81,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{request}); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(project.Manifest.Path)
+	cfg, err := checking.ConfigurationRules().LoadConfig(project.Manifest.Path)
 	if err != nil {
 		t.Fatal(err)
 	}

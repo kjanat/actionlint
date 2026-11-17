@@ -19,12 +19,12 @@ func FromGitHubServerURL(raw string) (Service, error) {
 	host := strings.ToLower(server.Hostname())
 	switch {
 	case host == "github.com":
-		return Parse(string(GitHubCom), "")
+		return ParseService(string(GitHubCom), "")
 	case strings.HasSuffix(host, ".ghe.com"):
-		return Parse(string(GitHubDataResidency), "")
+		return ParseService(string(GitHubDataResidency), "")
 	case host == "github.us" || strings.HasSuffix(host, ".github.us"):
 		return Service{}, nil
 	default:
-		return Parse(string(GitHubEnterpriseServer), "")
+		return ParseService(string(GitHubEnterpriseServer), "")
 	}
 }

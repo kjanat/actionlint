@@ -1,13 +1,11 @@
 package correctness
 
 import (
-	"iter"
-
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -37,19 +35,12 @@ func checkIdentifiers(job declaration.Job) []reporting.StepFinding {
 		input.Needs = append(input.Needs, name(value))
 	}
 	owners := map[sourcepos.Position]declaration.Step{}
-	var collect func(iter.Seq[declaration.Step])
-	collect = func(steps iter.Seq[declaration.Step]) {
-		for step := range steps {
-			if step.ID != nil {
-				input.Steps = append(input.Steps, name(step.ID))
-				owners[sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(step.ID.Position()))] = step
-			}
-			if parallel, ok := step.ParallelSteps(); ok {
-				collect(parallel)
-			}
+	for step := range job.AllSteps() {
+		if step.ID != nil {
+			input.Steps = append(input.Steps, name(step.ID))
+			owners[sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(step.ID.Position()))] = step
 		}
 	}
-	collect(job.Steps())
 	out := reporting.FromDiagnostics(identifier.Check(input))
 	for i := range out {
 		out[i].Step = owners[out[i].Start]

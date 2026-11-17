@@ -19,7 +19,7 @@ func ActionType(definition actionmeta.Definition) exprtypes.ObjectType {
 	if !definition.OutputsComplete() {
 		object.SetMapped(exprtypes.StringType())
 	}
-	for _, name := range definition.OutputNames() {
+	for _, name := range definition.OutputIDs() {
 		object.SetProperty(name, exprtypes.StringType())
 	}
 	return object.Build()

@@ -7,13 +7,14 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 	t.Parallel()
-	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{"token": {Name: "token", Required: true}}}
+	meta := &actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
 		exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &sourcepos.Position{Line: 1, Column: 1}}}
 		if dynamic {
@@ -173,7 +174,7 @@ runs:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(tc.source))
 			var findings []*findingmodel.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
@@ -193,7 +194,7 @@ func TestActionStepValueShapes(t *testing.T) {
 		t.Run(declaration, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - " + declaration + "\n")
-			meta, err := actionmeta.Parse("action.yml", source)
+			meta, err := actionmeta.ParseActionMetadata("action.yml", source)
 			if err != nil {
 				t.Fatal(err)
 			}

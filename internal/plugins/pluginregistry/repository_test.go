@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -30,7 +30,7 @@ func TestRepositoryDeclarationCatalogueConsistency(t *testing.T) {
 				t.Fatal(err)
 			}
 			r.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-			_, declarationErr := pluginreference.Parse(name)
+			_, declarationErr := pluginreference.ParsePluginReference(name)
 			plugins, catalogueErr := registryClient(t, r).Search(t.Context(), "")
 			if (declarationErr == nil) != (catalogueErr == nil) {
 				t.Fatalf("declaration/catalogue disagree: %v / %v", declarationErr, catalogueErr)

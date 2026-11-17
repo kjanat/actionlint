@@ -33,7 +33,7 @@ func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
 
 func TestFileOverrideRuleSettings(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`lint:
   rules:
     correctness: off
     policy:
@@ -79,7 +79,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err = checking.ConfigurationRules().Parse(encoded)
+		cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ overrides:
     lint: null
   - includes: ['.github/workflows/noop.yml']
 `
-	cfg, err := checking.ConfigurationRules().Parse([]byte(source))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ overrides:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err = checking.ConfigurationRules().Parse(encoded)
+			cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -153,7 +153,7 @@ func TestInvalidFileOverrides(t *testing.T) {
 		"{includes: ['../*']}", "{includes: ['a/../b']}", "{includes: ['[']}",
 		"{includes: [1]}", "{includes: ['**'], typo: true}", "{includes: ['**'], lint: {typo: true}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("overrides: [" + value + "]")); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("overrides: [" + value + "]")); err == nil {
 			t.Errorf("accepted %s", value)
 		}
 	}
@@ -179,7 +179,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 				if programmatic && tc.lint == nil {
 					continue
 				}
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [expression-reference]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {disable: [expression-reference]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -195,7 +195,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					cfg, err = checking.ConfigurationRules().Parse(encoded)
+					cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 					if err != nil {
 						t.Fatal(err)
 					}

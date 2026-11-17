@@ -121,7 +121,7 @@ jobs:
 				var findings []diagmodel.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
-						findings = append(findings, d)
+						findings = append(findings, d.Diagnostic)
 					}
 				}
 				if len(findings) != 1 || findings[0].Start.Line != 11 || findings[0].Code != "SC2086" {

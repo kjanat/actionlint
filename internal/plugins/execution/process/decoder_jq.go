@@ -77,41 +77,41 @@ func stringVariables(vars map[string]string) map[string]any {
 }
 
 // Decode implements Decoder.
-func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) (Result, error) {
+func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) {
 	if err := checkInput(stdout); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	var input any
 	switch j.input {
 	case JQJSON:
 		if err := jsonv2.Unmarshal(stdout, &input); err != nil {
-			return Result{}, fmt.Errorf("decode tool output: %w", err)
+			return DecodedCheck{}, fmt.Errorf("decode tool output: %w", err)
 		}
 	case JQText:
 		input = string(stdout)
 	}
 	output, err := j.program.Apply(ctx, input, stringVariables(vars))
 	if err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	return decodeJQResult(output)
 }
 
 // decodeJQResult validates transform output against the result schema
 // before decoding it, so a malformed program fails instead of dropping data.
-func decodeJQResult(data []byte) (Result, error) {
+func decodeJQResult(data []byte) (DecodedCheck, error) {
 	schema, err := resultSchema()
 	if err != nil {
-		return Result{}, fmt.Errorf("transform result schema: %w", err)
+		return DecodedCheck{}, fmt.Errorf("transform result schema: %w", err)
 	}
 	var document any
 	if err := jsonv2.Unmarshal(data, &document); err != nil {
-		return Result{}, fmt.Errorf("decode jq transform output: %w", err)
+		return DecodedCheck{}, fmt.Errorf("decode jq transform output: %w", err)
 	}
 	if err := schema.Validate(document); err != nil {
-		return Result{}, fmt.Errorf("invalid jq transform output: %w", err)
+		return DecodedCheck{}, fmt.Errorf("invalid jq transform output: %w", err)
 	}
-	var result Result
+	var result DecodedCheck
 	strict := jsonv2.RejectUnknownMembers(true)
 	if jsontext.Value(data).Kind() == '[' {
 		err = jsonv2.Unmarshal(data, &result.Diagnostics, strict)
@@ -119,10 +119,10 @@ func decodeJQResult(data []byte) (Result, error) {
 		err = jsonv2.Unmarshal(data, &result, strict)
 	}
 	if err != nil {
-		return Result{}, fmt.Errorf("decode jq transform output: %w", err)
+		return DecodedCheck{}, fmt.Errorf("decode jq transform output: %w", err)
 	}
 	if err := checkCount(len(result.Diagnostics)); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	return result, nil
 }

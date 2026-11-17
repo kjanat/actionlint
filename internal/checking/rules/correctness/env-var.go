@@ -2,14 +2,14 @@ package correctness
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -31,14 +31,7 @@ func checkEnvironmentMapping(env *workflowlang.Env) []reporting.StepFinding {
 	if env == nil {
 		return nil
 	}
-	var entries []workflowfacts.Entry
-	resolved := declaration.Environment(env)
-	for key := range resolved.KeyedEntries() {
-		if name, known := key.ScalarString(); known {
-			entries = append(entries, workflowfacts.Entry{Name: name, State: mapping.KnownKey, Start: key.Origin().Span.Start})
-		}
-	}
-	return reporting.FromDiagnostics(environmentNameDiagnostics(entries))
+	return reporting.FromDiagnostics(environmentNameDiagnostics(slices.Collect(declaration.Environment(env).Declarations())))
 }
 
 func checkWorkflowEnvironment(w declaration.Workflow) []reporting.StepFinding {
@@ -65,13 +58,13 @@ func checkJobEnvironment(job declaration.Job) []reporting.StepFinding {
 }
 
 // environmentNameDiagnostics reports resolved environment names that contain '&', '=' or whitespace.
-func environmentNameDiagnostics(entries []workflowfacts.Entry) []results.Diagnostic {
+func environmentNameDiagnostics(entries []mapping.Declaration) []results.Diagnostic {
 	var findings []results.Diagnostic
 	for _, entry := range entries {
 		if entry.State == mapping.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
 			continue
 		}
-		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Start})
+		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Origin.Span.Start})
 	}
 	return findings
 }

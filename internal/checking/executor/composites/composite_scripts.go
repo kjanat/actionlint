@@ -7,8 +7,8 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
@@ -35,9 +35,6 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, pa
 	}
 	if err := analysis.cancelled(); err != nil {
 		return err
-	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("action call source snapshot is unavailable")
 	}
 	declaration := call
 	actionView, ok := declaration.Action()
@@ -269,9 +266,6 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.Step, 
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("metadata step source snapshot is unavailable")
-	}
 	declaration := step
 	for _, pass := range analysis.passes {
 		if parent, enabled := pass.(workflowvisit.MetadataParticipant); enabled {
@@ -306,7 +300,7 @@ func (analysis *compositeAnalyzer) describeCall(step workflowdecl.Step) (source.
 	return site, facts, err
 }
 
-func invocationOutput(bindings *binding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
+func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.

@@ -140,7 +140,7 @@ func productionRunnerRule(t *testing.T, snapshot parsing.SourceSnapshot, knowled
 	rules := checking.ConfigurationRules()
 	for _, descriptor := range ruleexec.Registrations(rules) {
 		if descriptor.Name == "runner-label" {
-			return descriptor.Build(define.Inputs{Rules: rules, SourceSnapshot: snapshot, Runners: knowledge})
+			return descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: knowledge})
 		}
 	}
 	t.Fatal("production runner-label adapter unavailable")

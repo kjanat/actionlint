@@ -18,12 +18,14 @@ type declarationSet struct {
 	dependencies []workflowfacts.Dependency
 }
 
-func (b *Bound) declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
-	if b == nil || b.record == nil || b.record.workflow == nil {
+// Declarations returns the mappings and dependencies the document declares. A
+// nil Bound declares none.
+func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
+	if b == nil || b.workflow == nil {
 		return nil, nil
 	}
 	var set declarationSet
-	workflow := b.record.workflow
+	workflow := b.workflow
 	set.env("env", b.references.Document, workflow.Env)
 	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
 		set.job(b, workflow.Jobs[id], b.references.Jobs[id])
@@ -48,19 +50,12 @@ func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref sourcepos.Refe
 	if job.Strategy != nil && job.Strategy.Matrix != nil {
 		d.mapping(scope+".strategy.matrix", ref, MatrixMapping(job.Strategy.Matrix))
 	}
-	d.steps(b, job.Steps)
-}
-
-func (d *declarationSet) steps(b *Bound, nodes []*workflowlang.Step) {
-	for _, step := range nodes {
+	for step := range workflowlang.AllSteps(job.Steps) {
 		ref := b.references.Steps[step]
 		d.env(ref.Address+".env", ref, step.Env)
-		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecAction:
+		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok {
 			d.dependency(exec.Uses, "action", ref)
 			d.mapping(ref.Address+".with", ref, ResolvedInputs(exec))
-		case *workflowlang.ExecParallel:
-			d.steps(b, exec.Steps)
 		}
 	}
 }
@@ -84,12 +79,7 @@ func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref
 }
 
 func (d *declarationSet) mapping(scope string, owner sourcepos.Reference, values mapping.Mapping) {
-	record := workflowfacts.Mapping{Scope: scope, Reference: owner, Complete: values.Complete()}
-	for declaration := range values.Declarations() {
-		record.Entries = append(record.Entries, workflowfacts.Entry{
-			Name: declaration.Name, State: declaration.State, Source: declaration.Source,
-			Evaluated: declaration.Evaluated, Start: declaration.Origin.Span.Start,
-		})
-	}
-	d.mappings = append(d.mappings, record)
+	d.mappings = append(d.mappings, workflowfacts.Mapping{
+		Scope: scope, Reference: owner, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
+	})
 }

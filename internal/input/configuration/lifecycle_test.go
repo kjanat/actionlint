@@ -116,7 +116,7 @@ func TestRepositoryNullThenPartialRetainsUnknownFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	svc, err := services.Parse("ghes", "")
+	svc, err := services.ParseService("ghes", "")
 	if err != nil {
 		t.Fatal(err)
 	}

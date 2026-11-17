@@ -24,21 +24,14 @@ func (p *Parser) IndexDependencySpans(workflow *workflowlang.Workflow) {
 			workflow.ExpressionSources[value.SourceScalar.Pos] = scalar
 		}
 	}
-	var steps func([]*workflowlang.Step)
-	steps = func(nodes []*workflowlang.Step) {
-		for _, step := range nodes {
-			switch exec := step.Exec.(type) {
-			case *workflowlang.ExecAction:
-				add(exec.Uses)
-			case *workflowlang.ExecParallel:
-				steps(exec.Steps)
-			}
-		}
-	}
 	for _, job := range workflow.Jobs {
 		if job.WorkflowCall != nil {
 			add(job.WorkflowCall.Uses)
 		}
-		steps(job.Steps)
+		for step := range workflowlang.AllSteps(job.Steps) {
+			if exec, ok := step.Exec.(*workflowlang.ExecAction); ok {
+				add(exec.Uses)
+			}
+		}
 	}
 }

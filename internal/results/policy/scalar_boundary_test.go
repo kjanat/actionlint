@@ -55,7 +55,7 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 					}
 				}
 				source := []byte(strings.ReplaceAll(tc.source, "\n", ending))
-				if _, err := codec.Parse(source); err != nil {
+				if _, err := codec.ParseYAML(source); err != nil {
 					t.Fatalf("invalid YAML fixture: %v", err)
 				}
 				var findings []*findingmodel.Finding
@@ -90,7 +90,7 @@ func TestInlineSuppressionDedentedCommentBeforeScalarBody(t *testing.T) {
     body_marker
   uses: sibling
 `
-		if _, err := codec.Parse([]byte(source)); err == nil {
+		if _, err := codec.ParseYAML([]byte(source)); err == nil {
 			t.Fatalf("dedented comment unexpectedly allowed before scalar body: %s", source)
 		}
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func ownedActionFixture(action *workflowlang.ExecAction) *workflowlang.ExecAction {
-	workflow := workflowdecl.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{{Exec: action}}}}}, false, "").Bind("unit-action").Workflow()
+	workflow := workflowdecl.Bind("unit-action", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{{Exec: action}}}}}, false, "").Workflow()
 	job, _ := workflow.Job("test")
 	for step := range job.Steps() {
 		action, _ := step.Action()

@@ -17,8 +17,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -59,7 +59,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	if err != nil {
 		return nil, err
 	}
-	leaf, err := document.Parse(migration.Path, migration.Content)
+	leaf, err := document.ParseConfigDocument(migration.Path, migration.Content)
 	if err != nil {
 		return nil, err
 	}

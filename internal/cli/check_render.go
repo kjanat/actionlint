@@ -16,7 +16,7 @@ type resultRenderer struct {
 	renderer *render.Renderer
 }
 
-func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderers []resultRenderer, result render.Result) error {
+func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderers []resultRenderer, result render.RenderedReport) error {
 	for _, output := range renderers {
 		if err := renderCheckFormat(ctx, out, r, output.format, legacy, output.renderer, result); err != nil {
 			return err
@@ -25,7 +25,7 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 	return nil
 }
 
-func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, format render.Format, legacy bool, renderer *render.Renderer, result render.Result) error {
+func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, format render.Format, legacy bool, renderer *render.Renderer, result render.RenderedReport) error {
 	jsonColor := r.Color
 	r.resolveGitHubActionsColor(out, format)
 	jsonDestination := out

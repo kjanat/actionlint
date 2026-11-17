@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // pluginTableFields orders the members of one plugin declaration for a TOML

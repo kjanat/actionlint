@@ -27,7 +27,7 @@ func enginePath(name string) string {
 
 func loadEngine(t *testing.T, path string, options corewasm.Options) *corewasm.Engine {
 	t.Helper()
-	engine, err := corewasm.Load(t.Context(), path, options)
+	engine, err := corewasm.LoadModuleEngine(t.Context(), path, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 		}
 		return nil
 	}))
-	engine, err := corewasm.Load(loadCtx, enginePath("echo"), corewasm.Options{})
+	engine, err := corewasm.LoadModuleEngine(loadCtx, enginePath("echo"), corewasm.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestLoadRefusesIncompatibleModules(t *testing.T) {
 		"abi-version":    "module reports ABI version 2; this host implements 1",
 		"no-check":       "metadata advertises no check version this host supports (versions 1 and 3)",
 	} {
-		engine, err := corewasm.Load(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{})
+		engine, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{})
 		if err == nil {
 			_ = engine.Close(t.Context())
 			t.Fatalf("%s loaded", name)
@@ -234,14 +234,14 @@ func TestLoadRefusesIncompatibleModules(t *testing.T) {
 			t.Fatalf("%s: err=%v", name, err)
 		}
 	}
-	if _, err := corewasm.Load(t.Context(), filepath.Join("testdata", "missing.wasm"), corewasm.Options{}); !errors.Is(err, os.ErrNotExist) {
+	if _, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("testdata", "missing.wasm"), corewasm.Options{}); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing: err=%v", err)
 	}
 }
 
 func TestClosedEngineRejectsCalls(t *testing.T) {
 	t.Parallel()
-	engine, err := corewasm.Load(t.Context(), enginePath("echo"), corewasm.Options{})
+	engine, err := corewasm.LoadModuleEngine(t.Context(), enginePath("echo"), corewasm.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			start := time.Now()
-			engine, err := corewasm.Load(ctx, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
+			engine, err := corewasm.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
@@ -283,7 +283,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 			initialized.Do(func() { initializedDeadline, _ = ctx.Deadline() })
 		})
 	}))
-	engine, err := corewasm.Load(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
+	engine, err := corewasm.LoadModuleEngine(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestCompilationHonorsCallerCancellation(t *testing.T) {
 				}
 				return listener
 			}))
-			engine, err := corewasm.Load(loadCtx, enginePath("echo"), corewasm.Options{})
+			engine, err := corewasm.LoadModuleEngine(loadCtx, enginePath("echo"), corewasm.Options{})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}

@@ -181,12 +181,12 @@ jobs:
       - run: echo
 `
 
-			w, _ := workflowparser.Parse([]byte(src))
+			w, _ := workflowparser.ParseWorkflow([]byte(src))
 			if w == nil {
 				t.Fatal("workflow was not parsed")
 			}
 			fromAST := ResolvePermissions(w.Permissions)
-			fromView := ResolvePermissions(declaration.Publish(src, w, false, "").Bind("permissions-fixture").Workflow().Permissions)
+			fromView := ResolvePermissions(declaration.Bind("permissions-fixture", src, w, false, "").Workflow().Permissions)
 			if diff := cmp.Diff(fromAST, fromView); diff != "" {
 				t.Fatal("AST/view mismatch: " + diff)
 			}
@@ -210,7 +210,7 @@ permissions:
   Contents: read
   issues: Write
 `)
-	w, _ := workflowparser.Parse(src)
+	w, _ := workflowparser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed")
 	}
@@ -288,7 +288,7 @@ func TestDefaultPermissionLevels(t *testing.T) {
 
 func permissionSourceNode(t *testing.T, data []byte) *codec.Node {
 	t.Helper()
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestResolvePermissionsAbsentView(t *testing.T) {
 	if got := ResolvePermissions(nil); got.Kind != PermissionsAbsent {
 		t.Fatalf("absent permissions = %#v", got)
 	}
-	invalid := declaration.Publish("", &workflowlang.Workflow{Permissions: &workflowlang.Permissions{}}, false, "").Bind("permissions-fixture").Workflow().Permissions
+	invalid := declaration.Bind("permissions-fixture", "", &workflowlang.Workflow{Permissions: &workflowlang.Permissions{}}, false, "").Workflow().Permissions
 	if got := ResolvePermissions(invalid); got.Kind != PermissionsInvalid {
 		t.Fatalf("invalid permissions = %#v", got)
 	}

@@ -2,12 +2,12 @@ package conventions
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -22,8 +22,8 @@ var MissingActionMetadataRule = &define.Rule{
 	Policy:      "require-action-metadata",
 	Explanation: "Report remote action metadata that could not be inspected. Disabled downloads and offline cache misses are recorded in coverage without a lint finding.",
 	Help:        "Check access to the referenced repository and its action.yml or action.yaml.",
-	Checks:      func(c define.Inputs) define.Checks { return MissingActionMetadataChecks(c.RemoteActions) },
-	Enabled: func(c define.Inputs) bool {
+	Checks:      func(c define.RuleInputs) define.Checks { return MissingActionMetadataChecks(c.RemoteActions) },
+	Enabled: func(c define.RuleInputs) bool {
 		return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
 	},
 }

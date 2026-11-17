@@ -2,9 +2,9 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -19,7 +19,7 @@ var RunnerLabelRule = &define.Rule{
 	MovedOptions: []rule.MovedOption{{Option: "labels", Repository: "runners"}},
 	Recommended:  true,
 	Help:         "Correct the runner label or declare repository-specific labels in repository.runners.",
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		labels := runnerlang.LabelSet{}
 		if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 			labels = runnerlang.KnownLabels(known.Values())

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -32,7 +32,7 @@ func (scriptAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
-func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, results.Diagnostic{Message: "observed script", Start: script.Start})
@@ -61,11 +61,11 @@ func TestPublicAnalysisContract(t *testing.T) {
 
 func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("config-variables: [KNOWN]\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("config-variables: [KNOWN]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, findings := workflowparser.Parse([]byte(workflow))
+	tree, findings := workflowparser.ParseWorkflow([]byte(workflow))
 	if tree == nil || tree.Jobs["build"] == nil || len(findings) != 0 {
 		t.Fatalf("tree=%v findings=%v", tree, findings)
 	}

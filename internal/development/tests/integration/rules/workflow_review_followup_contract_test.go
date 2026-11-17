@@ -24,13 +24,13 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if strings.HasPrefix(pattern, "${{") {
 			reference = pattern
 		}
-		workflow, errs := workflowparser.Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
+		workflow, errs := workflowparser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `))
 		if workflow == nil || len(errs) != 0 {
 			t.Fatalf("parse %q: %v", reference, errs)
 		}
-		rule := correctness.GlobRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+		rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
 			t.Fatal(err)
 		}

@@ -39,7 +39,7 @@ jobs:
 					indent + "plain: *script",
 					"",
 				}, "\n")
-				workflow, errors := Parse([]byte(content))
+				workflow, errors := ParseWorkflow([]byte(content))
 				if len(errors) != 0 {
 					t.Fatalf("parse errors: %+v", errors)
 				}
@@ -71,7 +71,7 @@ jobs:
 				if len(anchor.Source.Comments) != 1 || anchor.Source.Comments[0].Text != "# anchor comment" {
 					t.Fatalf("anchor comments changed: %+v", anchor.Source.Comments)
 				}
-				for _, input := range []*workflowlang.Input{anchor, alias, plain} {
+				for _, input := range []*workflowlang.ActionArgument{anchor, alias, plain} {
 					pos, mapped := input.Source.Position(1, 1)
 					if input.Value.Value != "echo café" || !mapped || *pos != (source.Position{Line: anchorLine, Column: len(indent) + 18}) || !slices.Equal(input.Source.Spans, anchor.Source.Spans) {
 						t.Fatalf("anchored text/spans changed: value=%+v source=%+v position=%+v", input.Value, input.Source, pos)

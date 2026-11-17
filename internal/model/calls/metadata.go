@@ -1,4 +1,6 @@
-// Package calls models reusable-workflow metadata and argument bindings.
+// Package calls models the declared interface of a callable (the inputs,
+// outputs and secrets of actions and reusable workflows), reusable-workflow
+// metadata and argument bindings.
 package calls
 
 import (
@@ -18,7 +20,7 @@ import (
 // a finding inside on.workflow_call: GitHub refuses to call such a workflow.
 // Findings elsewhere in the workflow belong to the callee's own diagnostics.
 func ParseMetadata(src []byte) (*Metadata, error) {
-	doc, err := codec.Parse(src)
+	doc, err := codec.ParseYAML(src)
 	if err != nil {
 		return nil, err
 	}
@@ -102,45 +104,6 @@ func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workfl
 	return metadata
 }
 
-// Input describes an input declared by a local reusable workflow.
-type Input struct {
-	// Name is a name of the input defined in the reusable workflow.
-	Name string
-	// Required is true when 'required' field of the input is set to true and no default value is set.
-	Required bool
-	// Type is the declared type of the input. GitHub accepts only boolean,
-	// number and string; any other or omitted type is
-	// WorkflowCallEventInputTypeInvalid and accepts every value.
-	Type workflowlang.WorkflowCallEventInputType
-}
-
-// Inputs maps lowercase input names to reusable workflow input metadata.
-// Workflow call input names are case insensitive.
-type Inputs map[string]Input
-
-// Secret describes a secret declared by a local reusable workflow.
-type Secret struct {
-	// Name is a name of the secret in the reusable workflow.
-	Name string
-	// Required indicates whether the secret is required by its reusable workflow. When this value
-	// is true, workflow calls must set this secret unless they inherit secrets.
-	Required bool
-}
-
-// Secrets maps lowercase secret names to reusable workflow secret metadata.
-// Workflow call secret names are case insensitive.
-type Secrets map[string]Secret
-
-// Output describes an output declared by a local reusable workflow.
-type Output struct {
-	// Name is a name of the output in the reusable workflow.
-	Name string
-}
-
-// Outputs maps lowercase output names to reusable workflow output metadata.
-// Workflow call output names are case insensitive.
-type Outputs map[string]Output
-
 // Metadata describes reusable-workflow inputs, outputs, secrets and job access.
 // Clone detaches its maps and slices when a consumer needs its own copy.
 type Metadata struct {
@@ -200,27 +163,18 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 		local = ""
 		uses = ""
 	}
-	operations := collectCacheOperations(nil, steps)
+	var operations []string
+	for step := range workflowlang.AllSteps(steps) {
+		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok && exec.Uses != nil {
+			if name := references.CacheAction(exec.Uses.Value); name != "" {
+				operations = append(operations, name)
+			}
+		}
+	}
 	if mode == nil && local == "" && len(operations) == 0 {
 		return CacheAccess{}, false
 	}
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
-}
-
-func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {
-	for _, step := range steps {
-		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecAction:
-			if exec.Uses != nil {
-				if name := references.CacheAction(exec.Uses.Value); name != "" {
-					operations = append(operations, name)
-				}
-			}
-		case *workflowlang.ExecParallel:
-			operations = collectCacheOperations(operations, exec.Steps)
-		}
-	}
-	return operations
 }
 
 // JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.

@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -75,22 +76,36 @@ func lowerInputKinds(facts []rulemeta.InputKind) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerSpan(span scriptmodel.Span) *wacogo.ValRecord {
-	documentEnd := wacogo.ValOptionNone()
-	if span.DocumentEnd.Line != 0 {
-		documentEnd = wacogo.ValOptionSome(lowerPosition(span.DocumentEnd))
+// lowerSpans lowers byte-offset spans of text to the WIT span records, which
+// address one text line by line and character columns.
+func lowerSpans(text string, spans []sourcemap.Span) []wacogo.Val {
+	lineSpans := sourcemap.LineSpans(text, spans)
+	values := make([]wacogo.Val, 0, len(lineSpans))
+	// LineSpans orders spans by Start, so the line scan only moves forward.
+	line, lineStart, scanned := 1, 0, 0
+	for _, span := range lineSpans {
+		for i := scanned; i < span.Start; i++ {
+			if text[i] == '\n' {
+				line, lineStart = line+1, i+1
+			}
+		}
+		scanned = max(scanned, span.Start)
+		documentEnd := wacogo.ValOptionNone()
+		if span.DocumentEnd.Line != 0 {
+			documentEnd = wacogo.ValOptionSome(lowerPosition(span.DocumentEnd))
+		}
+		start := utf8.RuneCountInString(text[lineStart:span.Start]) + 1
+		end := utf8.RuneCountInString(text[lineStart:span.End]) + 1
+		values = append(values, wacogo.NewValRecord(
+			field("line", lowerU32(line)), field("start", lowerU32(start)), field("end", lowerU32(end)),
+			field("document", lowerPosition(span.Document)), field("document-end", documentEnd),
+		))
 	}
-	return wacogo.NewValRecord(
-		field("line", lowerU32(span.Line)), field("start", lowerU32(span.Start)), field("end", lowerU32(span.End)),
-		field("document", lowerPosition(span.Document)), field("document-end", documentEnd),
-	)
+	return values
 }
 
 func lowerScript(script checkinputs.Script) *wacogo.ValRecord {
-	spans := make([]wacogo.Val, 0, len(script.Spans))
-	for _, span := range script.Spans {
-		spans = append(spans, lowerSpan(span))
-	}
+	spans := lowerSpans(script.Text, script.Spans)
 	occurrence := wacogo.ValOptionNone()
 	if script.Occurrence.ID != "" {
 		occurrence = wacogo.ValOptionSome(wacogo.ValString(script.Occurrence.ID))
@@ -127,7 +142,7 @@ func lowerMappings(mappings []workflowfacts.Mapping) *wacogo.ValList {
 			entries = append(entries, wacogo.NewValRecord(
 				field("name", wacogo.ValString(entry.Name)), field("state", wacogo.NewValEnum(keyStateDiscriminants[entry.State])),
 				field("source", wacogo.ValString(entry.Source)), field("evaluated", wacogo.ValBool(entry.Evaluated)),
-				field("start", lowerPosition(entry.Start)),
+				field("start", lowerPosition(entry.Origin.Span.Start)),
 			))
 		}
 		values = append(values, wacogo.NewValRecord(
@@ -138,7 +153,7 @@ func lowerMappings(mappings []workflowfacts.Mapping) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerInput(input checkinputs.Input) *wacogo.ValRecord {
+func lowerInput(input checkinputs.AnalyzerInput) *wacogo.ValRecord {
 	selected := wacogo.ValOptionNone()
 	if input.SelectedScripts != nil {
 		ids := make([]wacogo.Val, 0, len(input.SelectedScripts))
@@ -421,7 +436,7 @@ func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {
 	return liftAnalysisForInput(v, nil)
 }
 
-func liftAnalysisForInput(v wacogo.Val, input *checkinputs.Input) ([]results.Diagnostic, error) {
+func liftAnalysisForInput(v wacogo.Val, input *checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	result, err := liftRecord(v, "analysis outcome")
 	if err != nil {
 		return nil, err

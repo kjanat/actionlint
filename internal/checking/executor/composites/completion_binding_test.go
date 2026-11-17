@@ -3,12 +3,12 @@ package composites
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
@@ -23,15 +23,15 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	}{{"off", 0}, {"error", 1}} {
 		t.Run(test.level, func(t *testing.T) {
 			t.Parallel()
-			source, err := rules.Parse([]byte("lint: {rules: {correctness: {metadata-files: off}}}"))
+			source, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: off}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			occurrence, err := rules.Parse([]byte("lint: {rules: {correctness: {metadata-files: " + test.level + "}}}"))
+			occurrence, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: " + test.level + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			registry := binding.NewRegistry(rules)
+			registry := rulebinding.NewRegistry(rules)
 			prepared := registry.Prepare(source, source, occurrence)
 			fixture := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: []}}\n", nil, nil)
 			graph, err := invocation.NewBuilder(invocation.EntryWorkflow, fixture.root.Reference(), invocation.DefaultBudget())
@@ -41,7 +41,7 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 			analysis := compositeAnalyzer{bindings: prepared, compositionSession: &compositionSession{
 				invocations: graph,
 				passes:      []workflowvisit.Pass{&failingMetadataParticipant{Base: workflowvisit.NewBase("metadata-files", "")}},
-				bindSource: func(parent *binding.Scope, _ string) (*binding.Scope, error) {
+				bindSource: func(parent *rulebinding.Scope, _ string) (*rulebinding.Scope, error) {
 					return registry.Prepare(parent.Caller(), source, parent.Composite()), nil
 				},
 			}}

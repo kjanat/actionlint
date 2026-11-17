@@ -24,7 +24,7 @@ func TestGitHubReferenceValues(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, input string
-		kind        exprtypes.Kind
+		kind        exprtypes.TypeKind
 		want        any
 	}{
 		{"literal null", "null", exprtypes.KindNull, nil},
@@ -108,7 +108,7 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 	for _, tc := range []struct {
 		input string
 		want  bool
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 		kinds []findingKind
 	}{
 		{"fromJSON('[]') == 0", false, exprtypes.KindBool, nil},
@@ -158,7 +158,7 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 			}
 		})
 	}
-	if _, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(`"double quoted"}}`)); err == nil {
+	if _, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(`"double quoted"}}`)); err == nil {
 		t.Fatal("double-quoted expression string was accepted")
 	}
 }
@@ -205,7 +205,7 @@ func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
 	// filesystem contents, execution status, object identity, or JSON formatting.
 	for _, tc := range []struct {
 		input string
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 	}{
 		{"contains(github.event.issue.labels.*.name, 'bug')", exprtypes.KindBool},
 		{"join(github.event.issue.labels.*.name, ', ')", exprtypes.KindString},
@@ -261,7 +261,7 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 
 func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (exprsyntax.Node, exprtypes.Type) {
 	t.Helper()
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

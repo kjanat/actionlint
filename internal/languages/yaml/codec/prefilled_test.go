@@ -293,7 +293,7 @@ func decodePrefilledSource[T any](t *testing.T, data []byte, target *T, selected
 		return decodeCursorSource(data, target)
 	}
 	data = append(append([]byte(nil), data...), []byte("selected: seen\n")...)
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		return err
 	}

@@ -44,11 +44,11 @@ func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
     types: [completed]
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.GlobRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
 	t.Parallel()
-	rule := correctness.GlobRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &source.Position{Line: 1, Column: 1}}}}}}
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)

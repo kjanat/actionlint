@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -24,7 +24,7 @@ func (*ResolvedReferenceCheck) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "remote-resolution", Description: "Report available commit pins from resolved action and workflow references", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}
 }
 
-func (*ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (*ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, result := range input.ResolvedDependencies {
 		if err := ctx.Err(); err != nil {

@@ -68,7 +68,7 @@ func TestResolverProcessHelper(t *testing.T) {
 	if mode == "no-repository-id" {
 		repositoryID = repofacts.ID{}
 	}
-	result := references.Result{Version: 1, Repository: request.Repository, RepositoryID: repositoryID, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
+	result := references.ResolutionRecord{Version: 1, Repository: request.Repository, RepositoryID: repositoryID, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
 	if mode == "wrong-repository" {
 		result.Repository = "other/repository"
 	}
@@ -140,7 +140,7 @@ func TestProcessCoalescesConcurrentRequests(t *testing.T) {
 	request := references.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
 	const callers = 8
 	start := make(chan struct{})
-	results := make(chan references.Result, callers)
+	results := make(chan references.ResolutionRecord, callers)
 	failures := make(chan error, callers)
 	var ready sync.WaitGroup
 	ready.Add(callers)

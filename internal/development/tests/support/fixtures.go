@@ -11,6 +11,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
@@ -196,11 +197,11 @@ func Main(m *testing.M) {
 }
 
 // Diagnostics projects completed report values without exposing traversal state.
-func Diagnostics(result *checking.Result, err error) ([]results.Diagnostic, error) {
+func Diagnostics(result *report.Analysis, err error) ([]results.Diagnostic, error) {
 	if err != nil {
 		return nil, err
 	}
-	return result.Diagnostics, nil
+	return results.Diagnostics(result.Diagnostics), nil
 }
 
 // WorkflowDiagnostics checks a fixture with an explicit in-memory configuration.
@@ -214,7 +215,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 	var cfg *configuration.Config
 	if config != "" {
 		var err error
-		cfg, err = checking.ConfigurationRules().Parse([]byte(config))
+		cfg, err = checking.ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,11 +224,11 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 	if err != nil {
 		t.Fatal(err)
 	}
-	return result.Diagnostics
+	return results.Diagnostics(result.Diagnostics)
 }
 
 // Composite writes a caller fixture and checks it through application input selection.
-func Composite(t *testing.T, root, steps string, options checking.Options) *checking.Result {
+func Composite(t *testing.T, root, steps string, options checking.Options) *report.Analysis {
 	t.Helper()
 	workflow := fixturefiles.Write(t, root, ".github/workflows/composite.yml", `on: push
 jobs:

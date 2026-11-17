@@ -69,7 +69,7 @@ func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
 func (s *parsedSource) index() {
 	s.indexed = true
 	s.scalars = make(map[source.Position]*codec.Node)
-	root, err := codec.Parse([]byte(s.text))
+	root, err := codec.ParseYAML([]byte(s.text))
 	if err != nil {
 		return
 	}

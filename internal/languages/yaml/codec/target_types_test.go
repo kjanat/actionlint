@@ -117,7 +117,7 @@ func TestCursorRejectsRecursiveHookTargetWithoutCallingHook(t *testing.T) {
 func TestSelectedNodeKeepsCallerGraphIdentity(t *testing.T) {
 	t.Parallel()
 	const source = "node:\n  nested: value\nhook: seen\n"
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestCursorAndSelectRejectYAMLHookSignaturesBeforeCalling(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			for _, selected := range []bool{false, true} {
-				root, err := codec.Parse([]byte("hook: value\n"))
+				root, err := codec.ParseYAML([]byte("hook: value\n"))
 				if err != nil {
 					t.Fatal(err)
 				}

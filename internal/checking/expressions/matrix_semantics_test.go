@@ -39,7 +39,7 @@ func TestMatrixCombinationInsertionValidation(t *testing.T) {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
 				matrix := "item: [one], " + section + ": [" + strconv.Quote("${{ "+tc.expression+" }}") + "]"
-				workflow, errs := workflowparser.Parse([]byte(`on: push
+				workflow, errs := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -72,7 +72,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 		t.Run(section, func(t *testing.T) {
 			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '%s', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n", section)
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -110,7 +110,7 @@ func TestMatrixSequenceInsertion(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.Parse([]byte(`on: push
+			workflow, errs := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

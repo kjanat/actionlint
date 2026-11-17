@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -27,7 +27,7 @@ func (a suppressionAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
-func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, results.Diagnostic{Path: input.Path, Rule: a.name, Start: script.Start, Message: "plugin finding"})
@@ -99,7 +99,7 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 			if !strings.Contains(err.Error(), "unknown diagnostic rule") {
 				t.Fatal(err)
 			}
-			if _, err := ConfigurationRules().Load(filepath.Join(root, "config.yaml")); err == nil {
+			if _, err := ConfigurationRules().LoadConfig(filepath.Join(root, "config.yaml")); err == nil {
 				t.Fatal("standalone config decoding accepted an unregistered rule")
 			}
 		})
@@ -134,10 +134,10 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
 	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
 	rules := ConfigurationRules()
-	registry := binding.NewRegistry(rules)
+	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(nil, nil, nil)
 	finding.Binding = scope.Rule(finding.Rule).ID()
-	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*binding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
+	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
 	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
 	snapshot, err := fixture.Capture(path, source, sourcepos.YAML)
 	if err != nil {

@@ -64,7 +64,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	root := t.TempDir()
 	writeReviewFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo inner\n")
 	writeReviewFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
-	cfg, err := ConfigurationRules().Parse([]byte("tools: {shellcheck: true, ruff: false}\noverrides:\n  - includes: ['inner/action.yml']\n    tools: {shellcheck: false}\n"))
+	cfg, err := ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: true, ruff: false}\noverrides:\n  - includes: ['inner/action.yml']\n    tools: {shellcheck: false}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

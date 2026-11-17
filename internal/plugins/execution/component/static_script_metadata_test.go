@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -21,7 +21,7 @@ func TestReadScriptMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := Load(t.Context(), "testdata/plugins/ruff-action-input.wasm", Options{})
+	plugin, err := LoadComponentPlugin(t.Context(), "testdata/plugins/ruff-action-input.wasm", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

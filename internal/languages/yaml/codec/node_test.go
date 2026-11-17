@@ -8,7 +8,7 @@ import (
 
 func TestOwnedGraphAndNestedDecode(t *testing.T) {
 	t.Parallel()
-	root, err := Parse([]byte("base: &a {value: null}\ncopy: *a\n"))
+	root, err := ParseYAML([]byte("base: &a {value: null}\ncopy: *a\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

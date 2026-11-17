@@ -16,10 +16,10 @@ func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 		"policy: {disallow-suppressions: {rules: [no-sudo]}}",
 		"lint: {rules: {policy: {disallow-suppressions: {level: error, options: {rules: [no-sudo]}}}}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(source), "no-sudo"); err != nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(source), "no-sudo"); err != nil {
 			t.Fatal(err)
 		}
-		cfg, err := checking.ConfigurationRules().Parse([]byte(source))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(source))
 		if err == nil {
 			_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 		}

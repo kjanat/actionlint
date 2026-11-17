@@ -7,10 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -45,7 +45,7 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
 	check := conventions.MissingActionMetadataChecks(nil)
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.Declaration()})
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.ResolvedDeclaration()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 	t.Parallel()
 	for _, content := range []string{"on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "jobs: ["} {
 		parsed := parsing.Workflow([]byte(content))
-		input, err := CheckInput(Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
+		input, err := CheckInput(Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
@@ -125,12 +125,12 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if using == "docker" {
 				body = "image: Dockerfile"
 			}
-			meta, err := actionmeta.Parse("action.yml", []byte("name: example\ndescription: example\nruns:\n  using: "+using+"\n  "+body+"\n"))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: example\ndescription: example\nruns:\n  using: "+using+"\n  "+body+"\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
-			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
+			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes) != 1 || len(result.Batch.Scripts) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
 		})
@@ -139,8 +139,8 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 
 func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptexecution.Batch) ([]*findingmodel.Finding, error) {
 	a.t.Helper()
-	if !*a.visited || len(batch.Scripts()) != 1 {
-		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts()))
+	if !*a.visited || len(batch.Scripts) != 1 {
+		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts))
 	}
 	a.calls++
 	return nil, a.failure
@@ -184,7 +184,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			}
 			options.SourceSnapshots = registry
 			result, err := Workflow(options, snapshot)
-			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts()) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
+			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
 				t.Fatalf("error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)
 			}
 		})

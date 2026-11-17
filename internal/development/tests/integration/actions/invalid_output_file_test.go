@@ -10,6 +10,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestInvalidOutputFileStandaloneAndCalledComposite(t *testing.T) {
@@ -33,7 +34,7 @@ runs:
 		t.Run(map[bool]string{false: "standalone", true: "called"}[called], func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			var result *checking.Result
+			var result *report.Analysis
 			if called {
 				root, _ = testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				fixturefiles.Write(t, root, "inner/action.yml", action)
@@ -48,7 +49,7 @@ runs:
 			var matches []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "invalid-output-file" {
-					matches = append(matches, diagnostic)
+					matches = append(matches, diagnostic.Diagnostic)
 				}
 			}
 			if len(matches) != 1 || matches[0].Start.Line != 8 || matches[0].Start.Column != 21 || !strings.HasSuffix(filepath.ToSlash(matches[0].Path), "action.yml") {

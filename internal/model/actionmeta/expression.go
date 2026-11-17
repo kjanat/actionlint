@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
@@ -51,12 +52,12 @@ type ExpressionReadResult struct {
 }
 
 // ValidateExpression checks syntax and availability without assuming invocation-specific types.
-func ValidateExpression(s string, bare bool, field string, inputs Inputs) []ExpressionProblem {
+func ValidateExpression(s string, bare bool, field string, inputs calls.Inputs) []ExpressionProblem {
 	return ReadExpressions(s, bare, field, inputs).Problems
 }
 
 // ReadExpressions parses the expressions allowed in an action field and checks available names.
-func ReadExpressions(s string, bare bool, field string, inputs Inputs) ExpressionReadResult {
+func ReadExpressions(s string, bare bool, field string, inputs calls.Inputs) ExpressionReadResult {
 	var parsed []ParsedExpression
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
@@ -87,7 +88,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 		base += i + 3
 		expressionOffset := base
 		lex := exprsyntax.NewLexer(s)
-		expr, err := exprsyntax.NewParser().Parse(lex)
+		expr, err := exprsyntax.NewParser().ParseExpression(lex)
 		if err != nil {
 			violation := ExpressionProblem{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if positionsKnown {

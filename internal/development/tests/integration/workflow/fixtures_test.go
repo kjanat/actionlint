@@ -65,7 +65,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

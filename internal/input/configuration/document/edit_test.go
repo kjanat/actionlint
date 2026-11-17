@@ -61,7 +61,7 @@ func TestEditorRewriteTOMLReplacesOnlyMembers(t *testing.T) {
 	if !strings.HasPrefix(text, "#:schema ./schema.json\nfiles = ['a'] # kept\n") || strings.Count(text, "# old setting") != 1 || strings.Contains(text, "old = true") {
 		t.Fatalf("unexpected rewrite:\n%s", text)
 	}
-	reparsed, err := Parse("x.toml", got)
+	reparsed, err := ParseConfigDocument("x.toml", got)
 	if err != nil {
 		t.Fatal(err)
 	}

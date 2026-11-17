@@ -15,14 +15,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func ruffFindingsWithInterpolation(t *testing.T, findings []results.Diagnostic, interpolationLines ...int) []results.Diagnostic {
+func ruffFindingsWithInterpolation(t *testing.T, findings []results.PublishedDiagnostic, interpolationLines ...int) []results.Diagnostic {
 	t.Helper()
 	var ruff []results.Diagnostic
 	wantLines := slices.Clone(interpolationLines)
 	for _, finding := range findings {
 		switch finding.Rule {
 		case "ruff":
-			ruff = append(ruff, finding)
+			ruff = append(ruff, finding.Diagnostic)
 		case "script-interpolation":
 			line := slices.Index(wantLines, finding.Start.Line)
 			if finding.Code != "unknown-script-value" || line < 0 {
@@ -197,7 +197,7 @@ func TestRuffVersionedShellGrammar(t *testing.T) {
 	}{
 		{"", true}, {"tools: {ruff: {target-version: py314}}", false},
 	} {
-		config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+		config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 		if err != nil {
 			t.Fatal(err)
 		}

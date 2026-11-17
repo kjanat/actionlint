@@ -64,17 +64,17 @@ type listingResolver struct {
 	calls int
 }
 
-func (r *listingResolver) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (r *listingResolver) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	r.mu.Lock()
 	r.calls++
 	r.mu.Unlock()
 	access := references.RepositoryAccessFromContext(ctx)
 	if access == nil {
-		return references.Result{}, errors.New("no repository access")
+		return references.ResolutionRecord{}, errors.New("no repository access")
 	}
 	session, err := access.Open(ctx, request)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	candidates := []string{"refs/tags/" + request.Ref, "refs/heads/" + request.Ref}
 	if request.Ref == "HEAD" || strings.HasPrefix(request.Ref, "refs/") {
@@ -87,7 +87,7 @@ func (r *listingResolver) Resolve(ctx context.Context, request references.Reques
 	for _, name := range candidates {
 		id, found, err := session.Reference(ctx, name)
 		if err != nil {
-			return references.Result{}, err
+			return references.ResolutionRecord{}, err
 		}
 		if found {
 			selected, object = name, id
@@ -95,25 +95,25 @@ func (r *listingResolver) Resolve(ctx context.Context, request references.Reques
 		}
 	}
 	if object == "" {
-		return references.Result{}, errors.New("reference not found")
+		return references.ResolutionRecord{}, errors.New("reference not found")
 	}
 	kind, found, err := session.Object(ctx, object)
 	if err != nil || !found {
-		return references.Result{}, errors.Join(errors.New("selected object not found"), err)
+		return references.ResolutionRecord{}, errors.Join(errors.New("selected object not found"), err)
 	}
 	commit := object
 	if tag, ok := kind.(references.RepositoryPeeledTag); ok {
 		commit = tag.Commit
 		if _, found, err := session.Object(ctx, commit); err != nil || !found {
-			return references.Result{}, errors.Join(errors.New("peeled commit not found"), err)
+			return references.ResolutionRecord{}, errors.Join(errors.New("peeled commit not found"), err)
 		}
 	}
 	log, err := session.Finish(ctx)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	identity := session.Repository()
-	return references.Result{Version: 1, Repository: identity.Name, RepositoryID: identity.ID, Commit: commit, SelectedObject: object, SelectedRef: selected, ObservedAt: identity.ObservedAt, FetchLog: log}, nil
+	return references.ResolutionRecord{Version: 1, Repository: identity.Name, RepositoryID: identity.ID, Commit: commit, SelectedObject: object, SelectedRef: selected, ObservedAt: identity.ObservedAt, FetchLog: log}, nil
 }
 
 func (r *listingResolver) resolutions() int {

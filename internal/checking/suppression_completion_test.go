@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
@@ -24,7 +24,7 @@ func (suppressionCompletionProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Path == "failing.yml" {
 		return nil, probe.failure
 	}
@@ -89,7 +89,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := ConfigurationRules().Parse([]byte(tc.config))
+			cfg, err := ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}

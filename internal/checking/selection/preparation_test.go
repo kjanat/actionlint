@@ -10,10 +10,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	fixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	nameinput "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -21,7 +21,7 @@ import (
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
-func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (namemodel.Declared, error)) define.Inputs {
+func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (namemodel.Declared, error)) define.RuleInputs {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, ".github", "workflows", "consumer.yml")
@@ -36,12 +36,12 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		t.Fatal(err)
 	}
 	rules := checking.ConfigurationRules()
-	config, err := rules.Parse([]byte("lint: {rules: {correctness: {workflow-run-names: " + level + "}}}"))
+	config, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {workflow-run-names: " + level + "}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return define.Inputs{
-		Bindings: binding.NewRegistry(rules).Prepare(config, config, config),
+	return define.RuleInputs{
+		Bindings: rulebinding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
 		WorkflowNames: nameinput.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
@@ -88,7 +88,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 					t.Fatalf("loads=%d, want %d; preparation mutated its input", loads, wantLoads)
 				}
 				workflow, _ := inputs.SourceSnapshot.WorkflowView()
-				rule := registration.Build(prepared.Inputs)
+				rule := registration.Build(prepared.RuleInputs)
 				if err := rule.VisitWorkflowPre(workflow); err != nil {
 					t.Fatal(err)
 				}

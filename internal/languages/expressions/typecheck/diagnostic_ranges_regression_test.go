@@ -19,7 +19,7 @@ func TestGroupedCallDiagnosticSpans(t *testing.T) {
 			{"((contains('a')))" + suffix, "number of arguments", "contains"},
 			{"fromJSON('{\"a\":1}')['b']" + suffix, "property \"b\"", "fromJSON('{\"a\":1}')['b']"},
 		} {
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expr + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expr + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

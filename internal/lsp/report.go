@@ -80,14 +80,13 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 		}
 	}
 	diagnostics := make([]results.Diagnostic, 0, len(result.Diagnostics))
-	for i, original := range result.Diagnostics {
-		d := original
+	for _, published := range result.Diagnostics {
+		d, evidence := published.Diagnostic, published.Source
 		originalPath := address(d.Path)
-		if i >= len(result.Sources) || result.Sources[i].Unavailable.Present() {
+		if evidence.Unavailable.Present() {
 			missing[originalPath] = struct{}{}
 			continue
 		}
-		evidence := result.Sources[i]
 		if evidence.RawScript && (!utf8.Valid(evidence.Content) || bytes.HasPrefix(evidence.Content, []byte("\ufeff")) || bytes.ContainsAny(evidence.Content, "\r\u0085\u2028\u2029")) {
 			missing[originalPath] = struct{}{}
 			continue

@@ -17,7 +17,7 @@ import (
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
-	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, UP034]}}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {select: [F, UP034]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ jobs:
 func assertRuffStdinDirectory(t *testing.T, root, working string) {
 	t.Helper()
 	command := testutil.RequireTool(t, "ruff")
-	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, INP001]}}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {select: [F, INP001]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ permissions: {}
 func TestRuffRepeatableSelectionFlags(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
-	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,7 @@ package configuration
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestLifecycleFixedDiagnosticLevel(t *testing.T) {
@@ -29,7 +29,7 @@ func TestLifecycleFixedDiagnosticLevel(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, e := rules.Parse([]byte(tc.config))
+			cfg, e := rules.ParseConfig([]byte(tc.config))
 			if e != nil {
 				t.Fatal(e)
 			}

@@ -19,7 +19,7 @@ func TestMovedRuleMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := rules.Parse(migrated.Content)
+			cfg, err := rules.ParseConfig(migrated.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -45,7 +45,7 @@ func TestMovedRuleMigrationInOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Parse(migrated.Content)
+	cfg, err := checking.ConfigurationRules().ParseConfig(migrated.Content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestMovedRuleMigrationAcceptsMatchingSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Parse(result.Content)
+			cfg, err := checking.ConfigurationRules().ParseConfig(result.Content)
 			if err != nil {
 				t.Fatal(err)
 			}

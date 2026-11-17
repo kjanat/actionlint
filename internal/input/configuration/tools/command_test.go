@@ -55,8 +55,8 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 			t.Fatal(err)
 		}
 		data, err := encodeBackendConfig(&backend)
-		original, parseErr := document.Parse("test.yaml", []byte(input))
-		roundTrip, roundTripErr := document.Parse("test.yaml", data)
+		original, parseErr := document.ParseConfigDocument("test.yaml", []byte(input))
+		roundTrip, roundTripErr := document.ParseConfigDocument("test.yaml", data)
 		if err != nil || parseErr != nil || roundTripErr != nil || !reflect.DeepEqual(original.Value(), roundTrip.Value()) {
 			t.Fatalf("%q encoded as %q, err=%v", input, data, err)
 		}
@@ -96,7 +96,7 @@ func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	absolute := filepath.Join(root, "opt", "shellcheck.wasm")
-	node, err := document.Parse("test.yaml", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n  shellcheck:\n    backend:\n      wasm: {path: '"+strings.ReplaceAll(absolute, "'", "''")+"'}\noverrides:\n  - includes: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          process: {executable: ./bin/ruff}\n"))
+	node, err := document.ParseConfigDocument("test.yaml", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n  shellcheck:\n    backend:\n      wasm: {path: '"+strings.ReplaceAll(absolute, "'", "''")+"'}\noverrides:\n  - includes: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          process: {executable: ./bin/ruff}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestNormalizePathsPreservesPluginURIs(t *testing.T) {
 	t.Parallel()
 	for _, uri := range []string{"https://example.com/ruff.wasm.gz#sha256=abc", "file:///opt/ruff.wasm", "http://localhost:8123/ruff"} {
 		input := "tools:\n  ruff:\n    backend:\n      wasm: {path: '" + uri + "'}\noverrides:\n  - files: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: '" + uri + "'}\n"
-		node, err := document.Parse("test.yaml", []byte(input))
+		node, err := document.ParseConfigDocument("test.yaml", []byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -11,8 +11,11 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	backendroute "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
@@ -125,33 +128,38 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
 	}}
 	nativeCalls := 0
-	registration := backendroute.WithConfiguredEngine(tools.Registration{
-		Descriptor: rule.Descriptor{Name: "ruff"},
-		Build: func(tools.Context) (tools.Runner, error) {
-			return coreBatchRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+	registration := backendroute.WithConfiguredEngine(contract.Registration{
+		Name: "ruff",
+		Build: func(contract.Context) (contract.Runner, error) {
+			return coreBatchRunner(func(_ context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 				nativeCalls++
-				if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
+				if len(batch.Scripts) != 2 || batch.Scripts[0].Text() != "print(1)" || batch.Scripts[1].Text() != "print(2)" {
 					t.Fatalf("legacy core shell selectors lost supported runs: %+v", batch.Scripts)
 				}
 				return nil, nil
 			}), nil
 		},
-	}, func(tools.Context) (checkinputs.ScriptBackend, error) { return described, nil })
-	runner, err := registration.Build(tools.Context{})
+	}, func(contract.Context) (checkinputs.ScriptBackend, error) { return described, nil })
+	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	python, bash := "python", "bash"
-	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
-		{Text: "print(1)", Shell: &python},
-		{Text: "print(2)", Execution: tools.Execution{Shell: `C:\Python\python.exe {0}`}},
+	_, err = runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{
+		{Run: runBody("print(1)"), Shell: &python},
+		{Run: runBody("print(2)"), Execution: &scriptmodel.Execution{Shell: `C:\Python\python.exe {0}`, ShellKnown: true}},
 		// Quoting does not change the runner's first-space executable split.
-		{Text: "not a runnable quoted executable", Execution: tools.Execution{Shell: `"C:\Program Files\Python\python.exe" {0}`}},
-		{Text: "echo no", Shell: &bash},
+		{Run: runBody("not a runnable quoted executable"), Execution: &scriptmodel.Execution{Shell: `"C:\Program Files\Python\python.exe" {0}`, ShellKnown: true}},
+		{Run: runBody("echo no"), Shell: &bash},
 	}})
 	if err != nil || nativeCalls != 1 {
 		t.Fatalf("native calls=%d err=%v", nativeCalls, err)
 	}
+}
+
+// runBody returns a run step whose body is text.
+func runBody(text string) *workflowlang.ExecRun {
+	return &workflowlang.ExecRun{Run: &workflowlang.String{Value: text}}
 }
 
 type coreDescribedBackend struct {
@@ -163,9 +171,9 @@ func (b coreDescribedBackend) ScriptDescriptor() checkinputs.ScriptEngineDescrip
 	return b.descriptor
 }
 
-type coreBatchRunner func(context.Context, tools.Batch) ([]tools.ToolFinding, error)
+type coreBatchRunner func(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error)
 
-func (r coreBatchRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (r coreBatchRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	return r(ctx, batch)
 }
 
@@ -182,7 +190,7 @@ func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
 
 func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 	t.Parallel()
-	_, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "utf16", ""), corewasm.Options{})
+	_, err := corewasm.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "utf16", ""), corewasm.Options{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported position encoding") {
 		t.Fatalf("err=%v", err)
 	}
@@ -191,7 +199,7 @@ func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 func TestMetadataDocumentVersions(t *testing.T) {
 	t.Parallel()
 	for _, version := range []int{-1, 0, 1, 2} {
-		engine, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "unicode", "", version), corewasm.Options{})
+		engine, err := corewasm.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "unicode", "", version), corewasm.Options{})
 		if version == 0 || version == 1 {
 			if err != nil {
 				t.Fatalf("version %d: %v", version, err)
@@ -207,7 +215,7 @@ func TestMetadataDocumentVersions(t *testing.T) {
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
 	t.Parallel()
-	if _, err := corewasm.Load(t.Context(), "not-opened.wasm", corewasm.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+	if _, err := corewasm.LoadModuleEngine(t.Context(), "not-opened.wasm", corewasm.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
@@ -219,7 +227,7 @@ func TestBootstrapGuestCallsHaveDeadline(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
-			_, err := corewasm.Load(ctx, negotiationFixture(t, "check", "unicode", operation), corewasm.Options{Timeout: 20 * time.Millisecond})
+			_, err := corewasm.LoadModuleEngine(ctx, negotiationFixture(t, "check", "unicode", operation), corewasm.Options{Timeout: 20 * time.Millisecond})
 			if err == nil || !strings.Contains(err.Error(), "exceeded its time limit") {
 				t.Fatalf("err=%v", err)
 			}

@@ -45,7 +45,7 @@ func FindRepositoryFiles(ctx context.Context, directory string, noIgnore bool) (
 	if root == "" {
 		return FileSelection{}, nil
 	}
-	observed := &Inputs{}
+	observed := &InputFiles{}
 	paths, err := discovery.Documents(ctx, root, files.New(ctx, nil, observed.Add), discovery.Discovery{NoIgnore: noIgnore})
 	if err != nil {
 		return FileSelection{}, err

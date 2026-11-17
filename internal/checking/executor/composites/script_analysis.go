@@ -34,9 +34,6 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.Step, 
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
-	if !analysis.sourceSnapshot.Present() {
-		return errors.New("script source snapshot is unavailable")
-	}
 	if action, ok := declaration.Action(); ok {
 		return analysis.collectActionInputs(declaration, action)
 	}
@@ -75,10 +72,10 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.Step, 
 			jobShell, workflowShell, runnerShell = value.Value{}, value.Value{}, value.Value{}
 			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
-		request.Execution = scriptexecution.Execution{
-			Shell:     execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell),
-			Directory: runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), jobDir, workflowDir), analysis.reader),
-		}
+		request.Execution = execution.ScriptExecution(
+			execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell),
+			runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), jobDir, workflowDir), analysis.reader),
+		)
 	}
 	analysis.scripts = append(analysis.scripts, request)
 	return nil

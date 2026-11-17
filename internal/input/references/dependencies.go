@@ -48,7 +48,7 @@ func (session *ResolutionSession) ResolveDependencies(ctx context.Context, depen
 	return resolved, nil
 }
 
-func (session *ResolutionSession) resolve(ctx context.Context, request Request) (Result, error) {
+func (session *ResolutionSession) resolve(ctx context.Context, request Request) (ResolutionRecord, error) {
 	repository := strings.ToLower(request.Repository)
 	session.mu.Lock()
 	request.ExpectedRepositoryID = session.repositoryIDs[repository]

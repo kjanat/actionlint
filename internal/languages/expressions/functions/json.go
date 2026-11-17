@@ -48,7 +48,7 @@ func (unsupportedFunctionJSON) functionJSONRead() {}
 func (InvalidJSON) functionJSONRead() {}
 
 func readFunctionJSON(text string) functionJSONRead {
-	parsed, err := runnerjson.Parse(text)
+	parsed, err := runnerjson.ParseJSON(text)
 	if errors.Is(err, runnerjson.ErrUnsupportedValue) {
 		return unsupportedFunctionJSON{parsed: parsed}
 	}

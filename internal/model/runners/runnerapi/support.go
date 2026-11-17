@@ -37,9 +37,9 @@ const (
 )
 
 type ServiceScope struct {
-	Kind          services.Kind `json:"kind"`
-	MinVersion    string        `json:"min_version,omitempty"`
-	BeforeVersion string        `json:"before_version,omitempty"`
+	Kind          services.ServiceKind `json:"kind"`
+	MinVersion    string               `json:"min_version,omitempty"`
+	BeforeVersion string               `json:"before_version,omitempty"`
 }
 type (
 	SupportChange struct {

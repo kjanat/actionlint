@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestAnalyzerDescriptorDetachesNestedMetadata(t *testing.T) {

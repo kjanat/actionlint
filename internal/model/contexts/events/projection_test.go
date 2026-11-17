@@ -66,7 +66,7 @@ func TestPayloadExpressions(t *testing.T) {
 			c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(c, FromTriggers(tc.triggers))
 			c.SetContextAvailability([]string{"github"})
-			n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
+			n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -105,7 +105,7 @@ func TestDefaultVariants(t *testing.T) {
 
 func TestRepositoryDispatchTypesReachProjection(t *testing.T) {
 	t.Parallel()
-	w, errs := workflowparser.Parse([]byte(`on:
+	w, errs := workflowparser.ParseWorkflow([]byte(`on:
   repository_dispatch:
     types: [custom]
   issues:
@@ -120,9 +120,9 @@ jobs:
 		t.Fatal(errs)
 	}
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contextspec.SetEventPayloadType(c, Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
+	contextspec.SetEventPayloadType(c, Type(declaration.Bind("unit-event-payload", "", w, false, "").Workflow()))
 	c.SetContextAvailability([]string{"github"})
-	n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
+	n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

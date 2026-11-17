@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestRegisteredRuleConfigurationScopes(t *testing.T) {
@@ -24,12 +24,12 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}
+			registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}}
 			rules, err := ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
 				t.Fatal(err)
 			}
-			project, err := rules.Parse([]byte("lint:\n  rules:\n    correctness: {plugin-check: warn}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {plugin-check: error}\n"))
+			project, err := rules.ParseConfig([]byte("lint:\n  rules:\n    correctness: {plugin-check: warn}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {plugin-check: error}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -60,7 +60,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 
 func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 	t.Parallel()
-	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
+	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}}
 	setting, err := configuration.NewSetting("error", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 	t.Parallel()
-	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
+	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}}
 	if _, err := ConfigurationRules().WithRegisteredRules(registration); err == nil {
 		t.Fatal("unknown configuration scope was accepted")
 	}
@@ -109,7 +109,7 @@ func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
 	} {
 		t.Run(tc.schema+"/"+tc.options, func(t *testing.T) {
 			t.Parallel()
-			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}, Options: json.RawMessage(tc.options)}
+			registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}}, Options: json.RawMessage(tc.options)}
 			_, err := ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, &configuration.Config{}, registration)
 			if (err == nil) != tc.valid {
 				t.Fatalf("options=%s schema=%s: %v", tc.options, tc.schema, err)
@@ -124,7 +124,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 		for _, name := range []string{"forbidden-suppression", "disallow-suppressions"} {
 			t.Run(category+"/"+name, func(t *testing.T) {
 				t.Parallel()
-				project, err := ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: true}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {%s: {%s: off}}}\n", category, name))
+				project, err := ConfigurationRules().ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: true}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {%s: {%s: off}}}\n", category, name))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -160,7 +160,7 @@ func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 
 func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	t.Parallel()
-	project, err := ConfigurationRules().Parse([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
+	project, err := ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,15 +201,14 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	t.Parallel()
 	registration := configuration.RuleRegistration{
-		Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true},
-		Scope:      rule.SourceConfiguration, SupportsActions: true,
-		ToolSettings: &configschema.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
+		Declaration:  rule.Declaration{Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true},
+		ToolSettings: &toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 	}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := rules.Parse([]byte(`tools:
+	project, err := rules.ParseConfig([]byte(`tools:
   custom-script:
     backend: {wasm: {path: workflow.wasm}}
 lint: {rules: {correctness: {action: warn}}}

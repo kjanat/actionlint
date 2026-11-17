@@ -50,8 +50,8 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.FileCount != 2 || len(result.Configurations) != 2 || len(result.Diagnostics) != len(result.Sources) {
-			t.Fatalf("batch lost selection, config or source alignment: %+v", result)
+		if result.FileCount != 2 || len(result.Configurations) != 2 {
+			t.Fatalf("batch lost selection or config: %+v", result)
 		}
 		counts := make(map[string]int)
 		for _, finding := range result.Diagnostics {

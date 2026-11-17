@@ -130,12 +130,12 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 func TestTOMLConfigReportsPositions(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	_, err := checking.ConfigurationRules().Load(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
+	_, err := checking.ConfigurationRules().LoadConfig(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
 	location, located := errors.AsType[*configuration.SourceError](err)
 	if err == nil || !located || location.Line != 4 || location.Column != 10 {
 		t.Fatalf("type error: %v", err)
 	}
-	_, err = checking.ConfigurationRules().Load(writeConfig(t, dir, "broken.toml", "config-variables = [\"A\"]\nconfig-variables = [\"B\"]\n"))
+	_, err = checking.ConfigurationRules().LoadConfig(writeConfig(t, dir, "broken.toml", "config-variables = [\"A\"]\nconfig-variables = [\"B\"]\n"))
 	if err == nil || !strings.Contains(err.Error(), ":2:1:") || !strings.Contains(err.Error(), "key config-variables is already defined") {
 		t.Fatalf("duplicate key: %v", err)
 	}

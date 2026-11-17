@@ -42,7 +42,7 @@ func TestNetworkPolicyDefaultsCanBeOverridden(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte(tc.project))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.project))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -101,7 +101,7 @@ func TestNetworkPolicyRestrictionsCannotBeCleared(t *testing.T) {
 				t.Fatalf("settings = %+v, error = %v", applied, err)
 			}
 			for _, requested := range []string{`{"services":["jsdelivr"]}`, `{"allow-unknown-repositories":true}`} {
-				cfg, err := checking.ConfigurationRules().Parse([]byte(`{"network":{"metadata-mirrors":` + requested + `}}`))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`{"network":{"metadata-mirrors":` + requested + `}}`))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -264,7 +264,7 @@ func TestNetworkPolicyInspectionReportsEffectiveSettingsAndOrigins(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := checking.ConfigurationRules().Parse(data)
+	encoded, err := checking.ConfigurationRules().ParseConfig(data)
 	if err != nil {
 		t.Fatal(err)
 	}

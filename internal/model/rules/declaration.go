@@ -34,7 +34,7 @@ type Declaration struct {
 	Scope           ConfigurationScope
 	// Options constructs a fresh value for option decoding and schema generation.
 	// Nil means the rule accepts no options.
-	Options func() any
+	Options func() any `clone:"shared"`
 	// LegacyGroup names the configuration group that held the rule before
 	// semantic categories replaced provider, maturity and policy groups.
 	// Empty means the rule's category.
@@ -48,6 +48,13 @@ type Declaration struct {
 	// MigrationNote explains a change of meaning to users whose legacy
 	// configuration selects the rule's name.
 	MigrationNote string
+}
+
+// Clone isolates mutable declaration payloads from consumers.
+func (d Declaration) Clone() Declaration {
+	d.Descriptor = d.Descriptor.Clone()
+	d.MovedOptions = slices.Clone(d.MovedOptions)
+	return d
 }
 
 // MovedOption names a legacy rule option and the repository fact that

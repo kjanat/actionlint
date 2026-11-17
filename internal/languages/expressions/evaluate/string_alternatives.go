@@ -96,7 +96,7 @@ func TemplateStringAlternatives(source string) ([]string, bool) {
 		}
 		source = source[index+3:]
 		lexer := exprsyntax.NewLexer(source)
-		expr, err := exprsyntax.NewParser().Parse(lexer)
+		expr, err := exprsyntax.NewParser().ParseExpression(lexer)
 		if err != nil {
 			return nil, false
 		}

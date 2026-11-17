@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
 
@@ -27,7 +27,7 @@ func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
@@ -153,7 +153,7 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, "workflow.yml")
 			captured := reportfixture.CapturedSource(t, path, test.content, test.model)
-			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []results.DiagnosticSource{{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			analysis, err := FromReport(result, root, map[string]Document{path: {Text: string(test.content)}})
 			if test.admitted {
 				if err != nil || len(analysis.Diagnostics) != 1 {

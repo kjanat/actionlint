@@ -17,7 +17,7 @@ import (
 func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	meta, err := actionmeta.Parse(filepath.Join(root, "action.yml"), []byte("name: test\ndescription: test\nruns: {using: node24, main: index.js, pre: absent.js}\n"))
+	meta, err := actionmeta.ParseActionMetadata(filepath.Join(root, "action.yml"), []byte("name: test\ndescription: test\nruns: {using: node24, main: index.js, pre: absent.js}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,7 @@ type Process struct {
 	arguments  []string
 	timeout    time.Duration
 	mu         sync.Mutex
-	cache      map[references.Request]references.Result
+	cache      map[references.Request]references.ResolutionRecord
 	pending    map[references.Request]*pendingResolution
 }
 
@@ -44,7 +44,7 @@ func NewProcess(executable string, arguments []string, timeout time.Duration) *P
 
 type pendingResolution struct {
 	done   chan struct{}
-	result references.Result
+	result references.ResolutionRecord
 	err    error
 }
 
@@ -63,9 +63,9 @@ func (b *boundedOutput) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (p *Process) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (p *Process) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	if err := ctx.Err(); err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	p.mu.Lock()
 	cached, exists := p.cache[request]
@@ -78,10 +78,10 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 		p.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return references.Result{}, ctx.Err()
+			return references.ResolutionRecord{}, ctx.Err()
 		case <-call.done:
 			if err := ctx.Err(); err != nil {
-				return references.Result{}, err
+				return references.ResolutionRecord{}, err
 			}
 			accounting.RecordResolverCall(ctx, nil, true)
 			return call.result, call.err
@@ -99,7 +99,7 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 	call.result, call.err = result, err
 	if err == nil {
 		if p.cache == nil {
-			p.cache = make(map[references.Request]references.Result)
+			p.cache = make(map[references.Request]references.ResolutionRecord)
 		}
 		p.cache[request] = call.result
 	}
@@ -109,18 +109,18 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 	return result, err
 }
 
-func (p *Process) resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (p *Process) resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	if err := network.RequireOnline(ctx); err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	var receipt *references.RequestReport
 	defer func() { accounting.RecordResolverCall(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
-		return references.Result{}, errors.New("unsupported resolution request")
+		return references.ResolutionRecord{}, errors.New("unsupported resolution request")
 	}
 	data, err := jsonv2.Marshal(request)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
@@ -132,9 +132,9 @@ func (p *Process) resolve(ctx context.Context, request references.Request) (refe
 	// Provider stderr can contain credentials or request internals. The structured
 	// result carries public errors; an abnormal exit reports only process status.
 	if err := command.Run(); err != nil {
-		return references.Result{}, fmt.Errorf("resolver process: %w", err)
+		return references.ResolutionRecord{}, fmt.Errorf("resolver process: %w", err)
 	}
-	var result references.Result
+	var result references.ResolutionRecord
 	if err := jsonv2.Unmarshal(output.data, &result); err != nil {
 		return result, fmt.Errorf("invalid resolver response: %w", err)
 	}

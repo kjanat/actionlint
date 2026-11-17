@@ -34,7 +34,7 @@ func TestConfigInitFormats(t *testing.T) {
 			if format == configuration.FormatJSONC && (!json.Valid(jsonc.ToJSON(content)) || !strings.Contains(string(content), "// Rule defaults")) {
 				t.Fatalf("missing JSONC reference:\n%s", content)
 			}
-			cfg, err := checking.ConfigurationRules().Load(path)
+			cfg, err := checking.ConfigurationRules().LoadConfig(path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -133,7 +133,7 @@ func TestConfigInitJSONReceipt(t *testing.T) {
 	if !filepath.IsAbs(receipt.Path) || filepath.Base(receipt.Path) != "actionlint.toml" {
 		t.Fatalf("incorrect path: %q", receipt.Path)
 	}
-	if _, err := checking.ConfigurationRules().Load(receipt.Path); err != nil {
+	if _, err := checking.ConfigurationRules().LoadConfig(receipt.Path); err != nil {
 		t.Fatal(err)
 	}
 }

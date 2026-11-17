@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type capturedScriptGuest struct{ fallbackGuest }
 
-func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Scripts[0].Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Message: "captured script"}}, nil
 }
@@ -26,14 +26,14 @@ func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
 	guest := &capturedScriptGuest{}
 	runner := documentRunner{
 		documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-		context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+		context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 	}
 	findings, err := runner.Analyze(t.Context(), batch)
 	if err != nil || len(findings) != 1 {
 		t.Fatalf("captured finding lost: findings=%+v error=%v", findings, err)
 	}
 	finding := findings[0]
-	if finding.Path != batch.Scripts[0].Path || finding.Reference == nil || *finding.Reference != batch.Scripts[0].Fact.Reference || finding.Message != "captured script" || string(finding.Source.Content) != "captured content" {
+	if finding.Path != batch.Scripts[0].Path || finding.Reference == nil || *finding.Reference != batch.Scripts[0].Reference || finding.Message != "captured script" || string(finding.Source.Content) != "captured content" {
 		t.Fatalf("finding has the wrong source: %+v", finding)
 	}
 }
@@ -42,7 +42,7 @@ func TestSourceGrantsTranslateScriptsAndInvokedRuntimeWithoutMutatingFacts(t *te
 	t.Parallel()
 	scriptRuntime := &scriptmodel.Execution{Directory: "script-host", DirectoryKnown: true}
 	invokedRuntime := &scriptmodel.Execution{Directory: "invoked-host", DirectoryKnown: true}
-	input := checkinputs.Input{
+	input := checkinputs.AnalyzerInput{
 		Scripts: []checkinputs.Script{{Runtime: scriptRuntime}, {}},
 		Invoked: []checkinputs.Script{{Runtime: invokedRuntime}, {}},
 	}

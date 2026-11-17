@@ -35,6 +35,14 @@ type reusableWorkflowMetadataResult struct {
 	captured capture.CapturedDocument
 }
 
+// outcome returns the metadata or the recorded failure.
+func (r reusableWorkflowMetadataResult) outcome() (*calls.Metadata, error) {
+	if r.failure.failed() {
+		return nil, r.failure
+	}
+	return r.metadata, nil
+}
+
 // failureKind says which step of loading a reusable workflow failed.
 type failureKind uint8
 
@@ -105,10 +113,8 @@ func (c *Cache) Lookup(key string) (*calls.Metadata, error, bool) {
 			return nil, err, true
 		}
 	}
-	if result.failure.failed() {
-		return nil, result.failure, true
-	}
-	return result.metadata, nil, true
+	metadata, err := result.outcome()
+	return metadata, err, true
 }
 
 // Store records a copy of parsed metadata for a repository-relative
@@ -169,11 +175,11 @@ func (c *Cache) Seed(snapshot parsing.SourceSnapshot) error {
 	return nil
 }
 
-// Load reads and parses a repository-local workflow unless it is already cached.
+// LoadWorkflowMetadata reads and parses a repository-local workflow unless it is already cached.
 // Non-local references and a disabled repository scope return no metadata.
 // ctx cancels this caller's wait; the capture store owns backing IO.
 // Concurrent callers receive detached metadata or the cached failure.
-func (c *Cache) Load(ctx context.Context, spec string) (*calls.Metadata, error) {
+func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -222,7 +228,7 @@ func (c *Cache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Meta
 	if !ok {
 		return nil, nil
 	}
-	m, err := c.Load(ctx, localSpec)
+	m, err := c.LoadWorkflowMetadata(ctx, localSpec)
 	if failure, ok := errors.AsType[metadataError](err); ok {
 		return nil, failure.at(sourceSpec)
 	}

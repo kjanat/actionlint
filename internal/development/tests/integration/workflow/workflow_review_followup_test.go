@@ -96,7 +96,7 @@ func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 permissions: {}
 `
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if workflow == nil || reference != "" && len(errs) != 0 {
 				t.Fatalf("parse: %v", errs)
 			}

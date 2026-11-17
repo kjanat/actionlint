@@ -54,7 +54,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		seen[descriptor.Tool] = true
 		found := false
 		for i, tool := range options.Tools {
-			if tool.Descriptor.Name != descriptor.Tool {
+			if tool.Name != descriptor.Tool {
 				continue
 			}
 			if tool.WithAnalyzer == nil {

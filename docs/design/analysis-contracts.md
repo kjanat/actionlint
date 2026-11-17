@@ -31,6 +31,17 @@ implementations in one ordered catalogue. The public rule index and execution
 registrations derive from that catalogue. Bundled external tools supply their
 declarations through manifests.
 
+The declaration types, rule names, aliases, categories and maturities are
+defined in `internal/model/rules`. Packages under `internal/model`,
+`internal/input` and `internal/results` use them without importing
+`internal/checking`. Tool settings schemas, bundled tool provider manifests
+and plugin references are defined in `internal/model` too, so these packages
+do not depend on `internal/plugins` either.
+`TestLowerLayersDoNotDependOnHigherLayers` in
+`internal/development/tests/integration/layering` fails if production code in
+one of these packages imports `internal/checking` or `internal/plugins`,
+directly or through another package.
+
 `checking.ConfigurationRules` collects rule declarations for the CLI and editor
 integrations. Configuration loading receives these declarations as a
 `configuration.RuleSet`, without importing the rule implementations. The schema
@@ -46,7 +57,7 @@ Merge behavior belongs to the configuration field declaration, including lists
 merged by an identifier. Inheritance and matching file overrides use the same
 overlay operation. Selecting action rules preserves the other lint settings.
 
-`internal/checking/binding` prepares each rule's caller, source or composite
+`internal/input/configuration/rulebinding` prepares each rule's caller, source or composite
 configuration once for an occurrence. Execution and publication use that prepared
 decision. Two calls to the same remote action can therefore retain different
 settings. The execution environment captures the assessment date once per check.

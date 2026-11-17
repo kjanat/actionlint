@@ -84,7 +84,7 @@ func TestScriptEnvironmentVariable(t *testing.T) {
 		{"runner.workspace", ""},
 		{"format('{0}', github.workspace)", ""},
 	} {
-		expression, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + " }}"))
+		expression, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + " }}"))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -1,4 +1,4 @@
-package scripts
+package scripts_test
 
 import (
 	"context"
@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -23,7 +24,7 @@ func (a invocationSourceAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -49,24 +50,24 @@ type deploymentAliasTool struct {
 	content []byte
 }
 
-func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+func (a deploymentAliasTool) Analyze(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	a.t.Helper()
 	if len(batch.Scripts) != len(a.paths) {
 		a.t.Fatal("native adapter lost script occurrences")
 	}
-	var findings []tools.ToolFinding
+	var findings []contract.ToolFinding
 	for i, script := range batch.Scripts {
-		if script.Path != a.paths[i] || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != filepath.Dir(a.paths[i]) {
+		if script.Path != a.paths[i] || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.Deployment.ActionPath() != filepath.Dir(a.paths[i]) {
 			a.t.Fatalf("native adapter reused another deployment: %+v", script)
 		}
-		findings = append(findings, tools.ToolFinding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: *script.Value, Script: i, Source: results.DiagnosticSource{Content: script.Content}})
+		findings = append(findings, contract.ToolFinding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: *script.Value(), Script: i, Source: results.DiagnosticSource{Content: script.Content}})
 	}
 	return findings, nil
 }
 
 func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 	t.Parallel()
-	_, collection, snapshot, path := actionBatchFixture(t, false)
+	_, collection, snapshot, path := scripts.ActionBatchFixture(t, false)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -81,16 +82,16 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	aliasDeployment, err := NewDeployment(collection.Declarations, snapshot, path, alias, false)
+	aliasDeployment, err := scripts.NewDeployment(collection.Declarations, snapshot, path, alias, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	graph, collection := nestedActionBatch(t, collection, snapshot, collection.Scopes[0].Deployment, aliasDeployment)
-	batch, err := NewBatch(graph, collection)
+	graph, collection := scripts.NestedActionBatch(t, collection, snapshot, collection.Scopes[0].Deployment, aliasDeployment)
+	batch, err := scripts.NewBatch(graph, collection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	units := batch.Scripts()
+	units := batch.Scripts
 	want := []string{path, path, alias, alias}
 	if len(units) != len(want) || units[0].Reference != units[2].Reference || units[1].Reference != units[3].Reference || units[0].Scope.Context.ID() == units[2].Scope.Context.ID() {
 		t.Fatal("fixture did not reuse declarations under distinct invocations")
@@ -110,14 +111,14 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		}
 		byCall[call.Site()] = want[i]
 	}
-	for name, adapter := range map[string]func(*testing.T) Analyzer{
-		"fact": func(t *testing.T) Analyzer {
+	for name, adapter := range map[string]func(*testing.T) scripts.Analyzer{
+		"fact": func(t *testing.T) scripts.Analyzer {
 			t.Helper()
-			return FactAnalyzer{Analyzer: invocationSourceAnalyzer{t: t, paths: byCall}}
+			return scripts.FactAnalyzer{Analyzer: invocationSourceAnalyzer{t: t, paths: byCall}}
 		},
-		"native": func(t *testing.T) Analyzer {
+		"native": func(t *testing.T) scripts.Analyzer {
 			t.Helper()
-			return Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}}
+			return contract.Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

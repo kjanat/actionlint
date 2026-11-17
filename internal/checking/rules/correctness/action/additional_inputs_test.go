@@ -25,11 +25,11 @@ func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: octokit/request-action@v3.x\n        with: " + test.inputs + "\n"
-			parsed, errors := workflowparser.Parse([]byte(text))
+			parsed, errors := workflowparser.ParseWorkflow([]byte(text))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			view := workflowdecl.Publish(text, parsed, false, "").Bind("additional-inputs").Workflow()
+			view := workflowdecl.Bind("additional-inputs", text, parsed, false, "").Workflow()
 			job, exists := view.Job("test")
 			if !exists {
 				t.Fatal("fixture job is missing")

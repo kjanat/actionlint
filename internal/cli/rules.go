@@ -11,7 +11,7 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 
-	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemetadata "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func commandRules() []rulemetadata.Descriptor {

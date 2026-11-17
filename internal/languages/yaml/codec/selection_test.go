@@ -59,7 +59,7 @@ func newSelectionCounts() *selectionCounts {
 func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 	t.Parallel()
 	const source = "picked: &node {self: *node}\ncopy: *node\n"
-	root, err := Parse([]byte(source))
+	root, err := ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ picked: *items
 	var baseline struct {
 		Picked []selectionInput `yaml:"picked"`
 	}
-	root, err := Parse([]byte(source))
+	root, err := ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ picked: *items
 
 func TestSelectSchemaErrorsAndClosedCursor(t *testing.T) {
 	t.Parallel()
-	root, err := Parse([]byte("first: one\nsecond: two\n"))
+	root, err := ParseYAML([]byte("first: one\nsecond: two\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +233,7 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream error = %v, want alias budget error", wantErr)
 	}
-	root, err := Parse(data)
+	root, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			root, err := Parse([]byte("value: ok\n"))
+			root, err := ParseYAML([]byte("value: ok\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

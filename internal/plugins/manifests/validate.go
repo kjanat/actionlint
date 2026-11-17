@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -29,11 +29,11 @@ var manifestSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compileSchema("https://actionlint.kjanat.dev/schemas/tool-provider-manifest-1.json", manifestSchemaJSON)
 })
 
-// Parse decodes and validates one manifest. Duplicate object keys, unknown
+// ParsePluginManifest decodes and validates one manifest. Duplicate object keys, unknown
 // members and values outside the schema are rejected; so are selectors,
 // template effects, version patterns and configuration schemas the host
 // could not use.
-func Parse(data []byte) (Manifest, error) {
+func ParsePluginManifest(data []byte) (Manifest, error) {
 	if len(data) > maxManifestBytes {
 		return Manifest{}, fmt.Errorf("tool provider manifest exceeds %d bytes", maxManifestBytes)
 	}

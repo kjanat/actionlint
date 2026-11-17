@@ -8,12 +8,12 @@ import (
 	"slices"
 	"strings"
 
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/managed"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 // Selections chooses how each bundled provider runs, keyed by its rule name.
@@ -25,7 +25,7 @@ type Selections map[string]scripts.Selection
 // contract and routes repository-selected engines. The bundled data is a
 // build input that tests validate, so a defect in it panics, as does a
 // selection naming no bundled provider.
-func Registrations(selections Selections) []tools.Registration {
+func Registrations(selections Selections) []contract.Registration {
 	registrations, err := bundledRegistrations(selections)
 	if err != nil {
 		panic(err)
@@ -33,7 +33,7 @@ func Registrations(selections Selections) []tools.Registration {
 	return registrations
 }
 
-func bundledRegistrations(selections Selections) ([]tools.Registration, error) {
+func bundledRegistrations(selections Selections) ([]contract.Registration, error) {
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		return nil, err
@@ -48,9 +48,9 @@ func bundledRegistrations(selections Selections) ([]tools.Registration, error) {
 		slices.Sort(unknown)
 		return nil, fmt.Errorf("no bundled tool provider is named %s", strings.Join(unknown, ", "))
 	}
-	registrations := make([]tools.Registration, 0, len(manifests))
+	registrations := make([]contract.Registration, 0, len(manifests))
 	for _, manifest := range manifests {
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: bundled.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
+		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: bundledproviders.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
 		if err != nil {
 			return nil, fmt.Errorf("bundled tool provider %s: %w", manifest.Rule.Name, err)
 		}

@@ -30,7 +30,7 @@ func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
 	if !ok || view.Using() != "node20" {
 		t.Fatalf("canonical run kind unavailable: using=%q present=%v", view.Using(), ok)
 	}
-	calls := result.Batch.Invocations().Calls()
+	calls := result.Batch.CallGraph.Calls()
 	if len(calls) != 2 || calls[0].Outcome.Kind() != invocation.OutcomeOpaque || calls[0].Outcome.Reason() != invocation.ReasonNonComposite || calls[1].Outcome.Kind() != invocation.OutcomeOpaque || calls[1].Outcome.Reason() != invocation.ReasonNonComposite {
 		t.Fatalf("non-composite outcome changed: %+v", calls)
 	}
@@ -55,7 +55,7 @@ func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(snapshot.CanonicalReferences().Steps); got != 1 {
+	if got := len(snapshot.Bound().SourceIndex().Steps); got != 1 {
 		t.Fatalf("frozen provenance lost recovered step references: got %d, want 1", got)
 	}
 }
@@ -74,7 +74,7 @@ func TestActionRunKindIgnoresMetadataCallbackMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls := result.Batch.Invocations().Calls()
+	calls := result.Batch.CallGraph.Calls()
 	if len(calls) != 1 || calls[0].Outcome.Kind() != invocation.OutcomeOpaque || calls[0].Outcome.Reason() != invocation.ReasonNonComposite || calls[0].Outcome.Detail() != "node20" {
 		t.Fatalf("callback mutation changed the source run kind: %+v", calls)
 	}

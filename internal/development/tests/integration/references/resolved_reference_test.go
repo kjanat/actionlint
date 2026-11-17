@@ -91,9 +91,9 @@ func TestDisabledResolutionDoesNotCallProvider(t *testing.T) {
 	}
 }
 
-func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (references.Result, error) {
+func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (references.ResolutionRecord, error) {
 	f.requests = append(f.requests, r)
-	result := references.Result{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: knownRepositoryID(42), ObservedAt: "2026-10-16T00:00:00Z"}
+	result := references.ResolutionRecord{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: knownRepositoryID(42), ObservedAt: "2026-10-16T00:00:00Z"}
 	if len(f.ids) >= len(f.requests) {
 		result.RepositoryID = f.ids[len(f.requests)-1]
 	}
@@ -110,7 +110,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 	provider := &fakeResolver{}
 	rule := newReferenceCheck(provider)
 	ref := sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
-	input := checkinputs.Input{Path: "workflow.yml", Reference: ref, Dependencies: []workflowfacts.Dependency{
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []workflowfacts.Dependency{
 		{Reference: ref, Uses: "owner/repo/path@v1", Kind: "action", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 24}},
 		{Reference: ref, Uses: "owner/repo/.github/workflows/build.yml@v1", Kind: "workflow"},
 		{Uses: "./local", Kind: "action"},
@@ -136,8 +136,8 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	t.Parallel()
 	provider := &fakeResolver{ids: []repofacts.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
-	first := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
-	second := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
+	first := checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
+	second := checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
 	if findings, err := rule.CheckDocument(t.Context(), first); err != nil || len(findings) != 1 {
 		t.Fatalf("initial resolution failed: %v, %v", findings, err)
 	}
@@ -158,7 +158,7 @@ func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 	provider := &fakeResolver{ids: []repofacts.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
 	rule := newReferenceCheck(provider)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2", "owner/repo@v3", "OWNER/REPO@v4"} {
-		findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
+		findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
 		if err != nil || len(findings) != 1 {
 			t.Fatalf("%s: %v, %v", uses, findings, err)
 		}
@@ -178,7 +178,7 @@ func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
 	t.Parallel()
 	provider := &fakeResolver{ids: []repofacts.ID{knownRepositoryID(42), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
-	input := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
+	input := checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
 	findings, err := rule.CheckDocument(t.Context(), input)
 	if err == nil || len(findings) != 1 {
 		t.Fatalf("inconsistent pins accepted or partial findings lost: %v, %v", findings, err)
@@ -191,14 +191,14 @@ type concurrentIdentityResolver struct {
 	count   atomic.Uint64
 }
 
-func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	id := r.count.Add(1)
 	r.started <- struct{}{}
 	select {
 	case <-r.release:
-		return references.Result{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(id), Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+		return references.ResolutionRecord{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(id), Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 	case <-ctx.Done():
-		return references.Result{}, ctx.Err()
+		return references.ResolutionRecord{}, ctx.Err()
 	}
 }
 
@@ -215,7 +215,7 @@ func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
 	results := make(chan outcome, 2)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2"} {
 		go func() {
-			findings, err := rule.CheckDocument(ctx, checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
+			findings, err := rule.CheckDocument(ctx, checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
 			results <- outcome{findings: findings, err: err}
 		}()
 	}
@@ -253,7 +253,7 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 			t.Parallel()
 			provider := &fakeResolver{err: errors.New("unsupported reference reached provider")}
 			rule := newReferenceCheck(provider)
-			findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
+			findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
 			if err != nil || len(findings) != 0 || len(provider.requests) != 0 {
 				t.Fatalf("unsupported reference resolved: requests=%v findings=%v error=%v", provider.requests, findings, err)
 			}
@@ -269,7 +269,7 @@ func TestConsumerPreservesSubpathAndRef(t *testing.T) {
 			provider := &fakeResolver{}
 			rule := newReferenceCheck(provider)
 			uses := "Owner/Repo/.github/workflows/build.yml@feature/release"
-			findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: kind}}})
+			findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: kind}}})
 			if err != nil || len(findings) != 1 || len(provider.requests) != 1 {
 				t.Fatalf("valid reference not resolved: %v %v %+v", findings, err, provider.requests)
 			}
@@ -291,7 +291,7 @@ func newReferenceCheck(provider references.Resolver) referenceCheck {
 	return referenceCheck{session: references.NewResolutionSession(provider), rule: security.NewResolvedReferenceCheck()}
 }
 
-func (check referenceCheck) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (check referenceCheck) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	resolved, preparationErr := check.session.ResolveDependencies(ctx, input.Dependencies)
 	input.ResolvedDependencies = resolved
 	findings, checkErr := check.rule.CheckDocument(ctx, input)

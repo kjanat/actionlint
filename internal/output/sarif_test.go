@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -33,7 +33,7 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 				t.Fatal(err)
 			}
 			var out bytes.Buffer
-			if err := renderer.Render(&out, Result{Diagnostics: []results.Diagnostic{finding}}); err != nil {
+			if err := renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{finding}}); err != nil {
 				t.Fatal(err)
 			}
 			var document struct {
@@ -71,7 +71,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		err = renderer.Render(&out, Result{Diagnostics: []results.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}})
+		err = renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +115,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 				t.Fatal(err)
 			}
 			var out bytes.Buffer
-			if err := renderer.Render(&out, Result{Diagnostics: []results.Diagnostic{finding}}); err != nil {
+			if err := renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{finding}}); err != nil {
 				t.Fatal(err)
 			}
 			var document struct {
@@ -269,7 +269,7 @@ func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 	}
 	var output bytes.Buffer
 	related := results.Related{Message: "previous declaration", Path: "other workflow.yml", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 2, Column: 7}}
-	err = renderer.Render(&output, Result{Diagnostics: []results.Diagnostic{{Rule: metadata.Name, Message: "duplicate", Path: "workflow.yml", Start: sourcepos.Position{Line: 3, Column: 1}, End: sourcepos.Position{Line: 3, Column: 4}, Related: []results.Related{related}}}})
+	err = renderer.Render(&output, RenderedReport{Diagnostics: []results.Diagnostic{{Rule: metadata.Name, Message: "duplicate", Path: "workflow.yml", Start: sourcepos.Position{Line: 3, Column: 1}, End: sourcepos.Position{Line: 3, Column: 4}, Related: []results.Related{related}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

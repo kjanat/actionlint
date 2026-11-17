@@ -56,7 +56,7 @@ func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvi
 
 func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	t.Parallel()
-	metadata, err := actionmeta.Parse("action.yml", []byte("name: fixture\ndescription: fixture\nruns: {using: composite, steps: []}\n"))
+	metadata, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: fixture\ndescription: fixture\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

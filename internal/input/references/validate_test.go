@@ -33,7 +33,7 @@ func TestValidateResultComparesKnownRepositoryIDs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			request := Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: test.expected}
-			result := Result{Version: 1, RepositoryID: test.observed, Repository: test.repository, Commit: strings.Repeat("a", 40), ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
+			result := ResolutionRecord{Version: 1, RepositoryID: test.observed, Repository: test.repository, Commit: strings.Repeat("a", 40), ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
 			if err := ValidateResult(request, result); (err == nil) != test.valid {
 				t.Fatalf("ValidateResult = %v, want valid %t", err, test.valid)
 			}
@@ -43,7 +43,7 @@ func TestValidateResultComparesKnownRepositoryIDs(t *testing.T) {
 
 func TestResultJSONOmitsUnknownRepositoryID(t *testing.T) {
 	t.Parallel()
-	data, err := json.Marshal(Result{Version: 1, Repository: "owner/repo", Commit: strings.Repeat("a", 40), ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)})
+	data, err := json.Marshal(ResolutionRecord{Version: 1, Repository: "owner/repo", Commit: strings.Repeat("a", 40), ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)})
 	if err != nil || strings.Contains(string(data), "repository_id") {
 		t.Fatalf("result = %s, %v", data, err)
 	}

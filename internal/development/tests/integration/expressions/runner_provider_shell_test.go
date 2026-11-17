@@ -55,7 +55,7 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 			if tc.stepShell != "" {
 				content += "        shell: " + tc.stepShell + "\n"
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("plugins: []\ntools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("plugins: []\ntools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}

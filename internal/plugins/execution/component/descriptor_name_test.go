@@ -37,7 +37,7 @@ func TestDescriptorNameFitsInlineSuppressionSelector(t *testing.T) {
 			if err := os.WriteFile(path, bytes.ReplaceAll(data, []byte("no-sudo"), []byte(test.name)), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			plugin, err := component.Load(t.Context(), path, component.Options{})
+			plugin, err := component.LoadComponentPlugin(t.Context(), path, component.Options{})
 			if plugin != nil {
 				defer plugin.Close(context.Background())
 			}

@@ -68,7 +68,7 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 				t.Fatal("reference did not return the expected parsed YAML mapping")
 			}
 			want := response.Engines[0].YAML.Items[0].Value
-			root, err := codec.Parse([]byte(request.Input))
+			root, err := codec.ParseYAML([]byte(request.Input))
 			if err != nil {
 				t.Fatal(err)
 			}

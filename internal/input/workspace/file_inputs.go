@@ -87,7 +87,7 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 			explicit[fileIdentity(path)] = true
 		}
 	}
-	listed := &Inputs{}
+	listed := &InputFiles{}
 	reader := inputfiles.New(ctx, nil, listed.Add)
 	seen, directories := make(map[string]bool), make(map[string]bool)
 	options := discovery.Discovery{NoIgnore: noIgnore, Repositories: true, SkipDirectory: func(path string) bool {

@@ -57,7 +57,7 @@ func semanticMappingValue(node *String) value.Value {
 	return MappingScalar(node.Value, node.SourceScalar, origin)
 }
 
-func InputMapping(action *ExecAction) *mapping.Inputs {
+func InputMapping(action *ExecAction) *mapping.DeclaredMapping {
 	if action == nil {
 		return nil
 	}
@@ -72,17 +72,17 @@ func mappingSourceText(source *String) string {
 	return source.Value
 }
 
-func actionMappingValues(source *ActionInputMapping) *mapping.Inputs {
+func actionMappingValues(source *ActionInputMapping) *mapping.DeclaredMapping {
 	if source == nil {
 		return nil
 	}
-	result := &mapping.Inputs{
+	result := &mapping.DeclaredMapping{
 		Expression: semanticMappingValue(source.Expression),
-		Values:     make(map[string]mapping.Input, len(source.Inputs)),
+		Values:     make(map[string]mapping.DeclaredEntry, len(source.Inputs)),
 	}
 	for name, input := range source.Inputs {
 		if input != nil {
-			result.Values[name] = mapping.Input{
+			result.Values[name] = mapping.DeclaredEntry{
 				Name: SemanticValue(input.Name), Value: semanticMappingValue(input.Value),
 				Source: mappingSourceText(input.Name),
 			}

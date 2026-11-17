@@ -72,7 +72,7 @@ func TestMissingPermissionsMigration(t *testing.T) {
 			if !migrated.Changed || !strings.Contains(string(migrated.Content), "missing-permissions:") {
 				t.Fatalf("migration did not replace the rule: %s", migrated.Content)
 			}
-			cfg, err := checking.ConfigurationRules().Parse(migrated.Content)
+			cfg, err := checking.ConfigurationRules().ParseConfig(migrated.Content)
 			if err != nil {
 				t.Fatal(err)
 			}

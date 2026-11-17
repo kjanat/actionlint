@@ -96,7 +96,11 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	if err != nil {
 		return err
 	}
-	document, err := schema.Document(schema.Schema, manifests)
+	providers := make([]schema.ToolProvider, 0, len(manifests))
+	for _, manifest := range manifests {
+		providers = append(providers, manifest.ConfigurationSchemaProvider())
+	}
+	document, err := schema.Document(schema.Schema, providers)
 	if err != nil {
 		return err
 	}

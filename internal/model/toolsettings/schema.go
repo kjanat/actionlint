@@ -1,8 +1,9 @@
-// Package configschema compiles and applies the JSON schemas tool providers
-// declare for tools.<name>.config. It imports no actionlint package, so
-// configuration decoding can validate tool settings without depending on any
-// tool host.
-package configschema
+// Package toolsettings describes the settings a tool provider accepts under
+// tools.<name>: the JSON schema for tools.<name>.config, the shorthand keys
+// that set one of its properties, and whether a configuration file path is
+// accepted. It imports no actionlint package, so configuration decoding can
+// validate tool settings without depending on the plugin layer.
+package toolsettings
 
 import (
 	"bytes"

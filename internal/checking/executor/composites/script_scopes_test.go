@@ -54,7 +54,7 @@ jobs:
 	}
 	batch := prepareCollectedScripts(t, collector)
 	var shells []string
-	for _, script := range batch.Scripts() {
+	for _, script := range batch.Scripts {
 		if script.Shell != nil {
 			shells = append(shells, *script.Shell)
 		} else {
@@ -65,7 +65,7 @@ jobs:
 		t.Fatal(shells)
 	}
 	// Composite declarations receive explicit shells from the indexed AST.
-	meta, err := actionmeta.Parse("action.yml", []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo composite\n"))
+	meta, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo composite\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ jobs:
 		t.Fatal(err)
 	}
 	actionBatch := prepareCollectedScripts(t, actionCollector)
-	if got := actionBatch.Scripts()[0].Shell; got == nil || *got != "bash" {
+	if got := actionBatch.Scripts[0].Shell; got == nil || *got != "bash" {
 		t.Fatalf("composite explicit shell was not bound: %v", got)
 	}
 }

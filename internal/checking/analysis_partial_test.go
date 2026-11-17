@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -37,7 +38,7 @@ permissions: {}
 		t.Fatalf("cancellation lost partial result or cause: %v, %v", result, err)
 	}
 	for _, rule := range []string{"expression-reference", "shellcheck"} {
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && d.Path == "cancelled.yml" }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == rule && d.Path == "cancelled.yml" }) {
 			t.Errorf("cancellation lost completed %s finding: %v", rule, result.Diagnostics)
 		}
 	}
@@ -85,7 +86,7 @@ permissions: {}
 				if failingFirst {
 					slices.Reverse(sources)
 				}
-				var result *checking.Result
+				var result *report.Analysis
 				var analysisErr error
 				if adapter == "sources" {
 					result, analysisErr = checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}, sources)

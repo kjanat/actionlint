@@ -12,7 +12,7 @@ import (
 func lifecycleRunnerKnowledge(t *testing.T, date string, candidates []runnerapi.Candidate, policies []runnerapi.SupportPolicy) (*Knowledge, workflowdecl.Job) {
 	t.Helper()
 	workflow := runnerWorkflow(t, "queue")
-	service, err := services.Parse("github.com", "")
+	service, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}

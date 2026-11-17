@@ -69,7 +69,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		// Report normalization failures as the settings decoder does, without
 		// the source-loading context that Load adds.
 		var normalizeErr error
-		loaded, err := document.Load(sources.root, sources.files, func(path string) ([]byte, error) {
+		loaded, err := document.LoadConfigDocument(sources.root, sources.files, func(path string) ([]byte, error) {
 			return nil, fmt.Errorf("captured configuration source %q is missing", path)
 		}, func(_ string, source *document.Node) (*document.Node, error) {
 			normalized, err := ruleSet.normalizeRuleLint(source.Value())

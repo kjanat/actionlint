@@ -1,4 +1,4 @@
-package configschema
+package toolsettings
 
 // Shorthand is a key written directly under tools.<name> that sets one
 // property of the provider's configuration. Manifests declare shorthands in

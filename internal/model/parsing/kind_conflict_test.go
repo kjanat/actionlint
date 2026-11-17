@@ -55,7 +55,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				if failures[0] != nil {
 					t.Fatal(failures[0])
 				}
-				references := snapshots[0].CanonicalReferences().Steps
+				references := snapshots[0].Bound().SourceIndex().Steps
 				if len(references) == 0 {
 					t.Fatal("initial declaration has no indexed step")
 				}

@@ -67,7 +67,7 @@ permissions: {}
 					t.Fatal(err)
 				}
 			}
-			workflow, diagnostics := workflowparser.Parse(callee)
+			workflow, diagnostics := workflowparser.ParseWorkflow(callee)
 			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
@@ -84,7 +84,7 @@ permissions: {}
 				if fromAST {
 					seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 				}
-				metadata, err := cache.Load(t.Context(), "./callee.yaml")
+				metadata, err := cache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 				if err != nil {
 					t.Fatalf("AST=%v: duplicate root declaration prevented metadata extraction: %v", fromAST, err)
 				}
@@ -191,7 +191,7 @@ permissions: {}
 						t.Fatal(err)
 					}
 				}
-				workflow, diagnostics := workflowparser.Parse(callee)
+				workflow, diagnostics := workflowparser.ParseWorkflow(callee)
 				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
@@ -231,7 +231,7 @@ permissions: {}
 						}
 						previousDiagnostics = errs
 					}
-					metadata, err := cache.Load(t.Context(), "./callee.yaml")
+					metadata, err := cache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 					if err != nil || metadata == nil {
 						t.Fatalf("AST=%v: invalid root key prevented metadata extraction: %v", fromAST, err)
 					}

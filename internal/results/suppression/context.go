@@ -27,7 +27,7 @@ type Index []context
 
 // Contexts indexes the first YAML document. Invalid YAML has no structural scopes.
 func Contexts(source []byte, resolve func(string) *string) Index {
-	document, err := codec.Parse(source)
+	document, err := codec.ParseYAML(source)
 	if err != nil || len(document.Content) == 0 {
 		return nil
 	}

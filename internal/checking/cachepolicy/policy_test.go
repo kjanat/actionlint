@@ -25,11 +25,11 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 
 func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	t.Helper()
-	parsed, syntaxErrors := workflowparser.Parse([]byte(source))
+	parsed, syntaxErrors := workflowparser.ParseWorkflow([]byte(source))
 	findings := make([]results.Diagnostic, 0, len(syntaxErrors))
 	for _, issue := range syntaxErrors {
 		finding := findingmodel.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
-		findings = append(findings, finding.Canonical([]byte(source)))
+		findings = append(findings, finding.Publish([]byte(source)).Diagnostic)
 	}
 	if parsed == nil {
 		return findings
@@ -377,7 +377,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 }
 
 func policyWorkflowView(workflow *workflowlang.Workflow) declaration.Workflow {
-	return declaration.Publish("", workflow, false, "").Bind("policy-fixture").Workflow()
+	return declaration.Bind("policy-fixture", "", workflow, false, "").Workflow()
 }
 
 func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []results.Diagnostic {

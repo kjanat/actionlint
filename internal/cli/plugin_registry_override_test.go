@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -40,7 +40,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
 		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(configPath)
+	cfg, err := checking.ConfigurationRules().LoadConfig(configPath)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry() != mirror || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
@@ -120,7 +120,7 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 func TestRegistryInstallDirectURLDeclarationSelection(t *testing.T) {
 	t.Parallel()
 	const source = "https://plugins.example/check.wasm#sha256="
-	old, err := pluginreference.Parse(source + strings.Repeat("1", 64))
+	old, err := pluginreference.ParsePluginReference(source + strings.Repeat("1", 64))
 	if err != nil {
 		t.Fatal(err)
 	}

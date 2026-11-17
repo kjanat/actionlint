@@ -1,8 +1,8 @@
 package checking
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
@@ -16,29 +16,29 @@ type ruleConfigurations struct {
 	rules          configuration.RuleSet
 	sources        map[string]*configuration.Config
 	actions        map[string]*configuration.Config
-	bindings       map[string]*binding.Scope
+	bindings       map[string]*rulebinding.Scope
 	entry          *configuration.Config
-	registry       *binding.Registry
-	remoteBindings map[remoteBinding]*binding.Scope
+	registry       *rulebinding.Registry
+	remoteBindings map[remoteBinding]*rulebinding.Scope
 }
 
 type remoteBinding struct {
-	parent *binding.Scope
+	parent *rulebinding.Scope
 	path   string
 }
 
 func newRuleConfigurations(project *configuration.Config, root string, presets configuration.Presets, rules configuration.RuleSet, registrations []configuration.RuleRegistration) *ruleConfigurations {
-	return &ruleConfigurations{project: project, root: root, presets: presets, registrations: registrations, rules: rules, sources: map[string]*configuration.Config{}, actions: map[string]*configuration.Config{}, bindings: map[string]*binding.Scope{}, registry: binding.NewRegistry(rules)}
+	return &ruleConfigurations{project: project, root: root, presets: presets, registrations: registrations, rules: rules, sources: map[string]*configuration.Config{}, actions: map[string]*configuration.Config{}, bindings: map[string]*rulebinding.Scope{}, registry: rulebinding.NewRegistry(rules)}
 }
 
-func (c *ruleConfigurations) bindEntry(path string, config *configuration.Config) *binding.Scope {
+func (c *ruleConfigurations) bindEntry(path string, config *configuration.Config) *rulebinding.Scope {
 	c.entry = config
 	scope := c.registry.Prepare(config, config, config)
 	c.bindings[path] = scope
 	return scope
 }
 
-func (c *ruleConfigurations) bindSource(path string) (*binding.Scope, error) {
+func (c *ruleConfigurations) bindSource(path string) (*rulebinding.Scope, error) {
 	if scope, found := c.bindings[path]; found {
 		return scope, nil
 	}
@@ -55,7 +55,7 @@ func (c *ruleConfigurations) bindSource(path string) (*binding.Scope, error) {
 	return scope, nil
 }
 
-func (c *ruleConfigurations) bindInvocation(parent *binding.Scope, path string) (*binding.Scope, error) {
+func (c *ruleConfigurations) bindInvocation(parent *rulebinding.Scope, path string) (*rulebinding.Scope, error) {
 	if !source.RemoteAddress(path) {
 		return c.bindSource(path)
 	}
@@ -69,7 +69,7 @@ func (c *ruleConfigurations) bindInvocation(parent *binding.Scope, path string) 
 	}
 	scope := c.registry.Prepare(c.entry, settings, parent.Composite())
 	if c.remoteBindings == nil {
-		c.remoteBindings = make(map[remoteBinding]*binding.Scope)
+		c.remoteBindings = make(map[remoteBinding]*rulebinding.Scope)
 	}
 	c.remoteBindings[key] = scope
 	return scope, nil

@@ -49,7 +49,7 @@ func FromAnalysis(analysis Analysis) CheckResult {
 	r.Documents = analysis.Documents
 	r.IncompleteChecks = append([]IncompleteCheck(nil), analysis.IncompleteChecks...)
 	if analysis.Diagnostics != nil {
-		r.Diagnostics = analysis.Diagnostics
+		r.Diagnostics = results.Diagnostics(analysis.Diagnostics)
 	}
 	for _, coverage := range analysis.ActionMetadata {
 		r.ActionMetadata = append(r.ActionMetadata, coverage.Report())

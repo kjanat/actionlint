@@ -142,7 +142,7 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	checker.SetContextAvailability([]string{"custom"})
 	delete(contexts, "CUSTOM")
 	parser := exprsyntax.Parser{}
-	custom, err := parser.Parse(exprsyntax.NewLexer("custom}}"))
+	custom, err := parser.ParseExpression(exprsyntax.NewLexer("custom}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -39,7 +39,7 @@ var ErrexitStatusRule = &define.Rule{
 }
 
 // checkErrexitStatus reports status reads that Bash errexit makes unable to capture a failure.
-func checkErrexitStatus(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func checkErrexitStatus(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return scanRuntimeScripts(ctx, input, func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
 		for _, span := range scripts.ErrexitStatusReads(script.Text, invocation, script.Interpreters) {
 			report(span, "Bash errexit exits if the preceding command fails, so this status read cannot capture that failure. Use an explicit condition or an OR handler if the script must continue")

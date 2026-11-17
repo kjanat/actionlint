@@ -19,16 +19,16 @@ const (
 	maxMetadataBytes = 1 << 20
 )
 
-// Kind is the format of an artifact. Sniff detects the WebAssembly kinds
+// ArtifactFormat is the format of an artifact. Sniff detects the WebAssembly kinds
 // from the bytes; SniffPackage also recognizes process-provider JSON.
 // A provider's executables are blobs its manifest names, not artifacts.
-type Kind string
+type ArtifactFormat string
 
 const (
-	Core      Kind = "core"
-	Component Kind = "component"
+	Core      ArtifactFormat = "core"
+	Component ArtifactFormat = "component"
 	// ProviderManifest is a tool provider manifest, JSON.
-	ProviderManifest Kind = "manifest"
+	ProviderManifest ArtifactFormat = "manifest"
 )
 
 // ArtifactProvenance describes the distributed artifact and its top-level custom metadata.
@@ -37,7 +37,7 @@ const (
 // untrusted declarative data, not evidence of ABI compatibility.
 type ArtifactProvenance struct {
 	Source     string          `json:"source"`
-	Kind       Kind            `json:"kind"`
+	Kind       ArtifactFormat  `json:"kind"`
 	SHA256     string          `json:"sha256"`
 	Size       int             `json:"size"`
 	ModuleSize int             `json:"module_size"`
@@ -63,7 +63,7 @@ type Artifact struct {
 // SniffPackage recognizes a Wasm module or a process-provider manifest without
 // compiling or executing it. Runtime schema validation belongs to the provider
 // loader; this boundary checks the package framing and discovery metadata.
-func SniffPackage(data []byte) (Kind, json.RawMessage, error) {
+func SniffPackage(data []byte) (ArtifactFormat, json.RawMessage, error) {
 	if !bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
 		return Sniff(data)
 	}
@@ -104,11 +104,11 @@ func ProviderMetadata(data []byte) (json.RawMessage, error) {
 // Sniff reads only the module envelope and top-level custom sections. Nested
 // modules in components cannot supply metadata for their enclosing component.
 // It detects only the WebAssembly kinds, Core and Component.
-func Sniff(data []byte) (Kind, json.RawMessage, error) {
+func Sniff(data []byte) (ArtifactFormat, json.RawMessage, error) {
 	if len(data) < 8 || !bytes.Equal(data[:4], []byte{0, 'a', 's', 'm'}) {
 		return "", nil, errors.New("not a WebAssembly binary")
 	}
-	var kind Kind
+	var kind ArtifactFormat
 	switch string(data[4:8]) {
 	case "\x01\x00\x00\x00":
 		kind = Core

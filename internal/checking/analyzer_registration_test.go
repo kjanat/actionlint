@@ -20,7 +20,7 @@ func (*registrationBoundaryTrap) Descriptor() checkinputs.Descriptor {
 	panic("metadata called before registration validation")
 }
 
-func (*registrationBoundaryTrap) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (*registrationBoundaryTrap) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	panic("analysis called before registration validation")
 }
 

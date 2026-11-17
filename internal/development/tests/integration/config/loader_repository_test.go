@@ -20,7 +20,7 @@ func configuredWorkflowPermissions(cfg *configuration.Config) string {
 
 func TestRepositoryFactsAreIndependentOfRules(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`repository:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`repository:
   default-workflow-permissions: write
   runners: [gpu, custom-*]
   variables: {PROVENANCE: "true", NAME_ONLY: null}
@@ -71,7 +71,7 @@ func TestRepositoryRejectsInvalidFacts(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			if _, err := checking.ConfigurationRules().Parse([]byte(source)); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(source)); err == nil {
 				t.Fatal("invalid repository facts accepted")
 			}
 		})
@@ -98,7 +98,7 @@ func TestRepositoryOverrideAvailability(t *testing.T) {
 	} {
 		t.Run(test.source, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte(test.source))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(test.source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +117,7 @@ func TestRepositoryResetSurvivesPartialFileOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	host := repository.Snapshot{DefaultWorkflowPermissions: permissions}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("repository: null\noverrides:\n  - includes: [release.yml]\n    repository: {secrets: [TOKEN]}\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("repository: null\noverrides:\n  - includes: [release.yml]\n    repository: {secrets: [TOKEN]}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

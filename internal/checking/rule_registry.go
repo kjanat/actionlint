@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // CombineRuleDeclarations combines built-in and plugin declarations and rejects duplicate names.

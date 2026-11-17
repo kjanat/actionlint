@@ -11,7 +11,7 @@ func TestInlineProgramManifestContract(t *testing.T) {
 	t.Parallel()
 	document := strings.Replace(minimal, `"entry": "lint",`, `"entry": "lint", "program":{"filename":"actionlint.mjs","inline":"export {};"},`, 1)
 	document = strings.Replace(document, `"args": ["--format=json", "{flag:dialect:--shell}", "{user-args}", "-"]`, `"args":["{program-file}"]`, 1)
-	manifest, err := manifests.Parse([]byte(document))
+	manifest, err := manifests.ParsePluginManifest([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestInlineProgramManifestContract(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := manifests.Parse([]byte(invalid)); err == nil {
+			if _, err := manifests.ParsePluginManifest([]byte(invalid)); err == nil {
 				t.Fatal("invalid program contract accepted")
 			}
 		})

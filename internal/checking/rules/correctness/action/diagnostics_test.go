@@ -24,7 +24,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,7 +56,7 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}

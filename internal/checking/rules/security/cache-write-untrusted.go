@@ -17,11 +17,11 @@ var CacheWriteUntrustedRule = &define.Rule{
 	Recommended: true,
 	Explanation: "Report cache write access reachable from low-trust triggers. Untrusted code or input can poison caches consumed by privileged workflows.",
 	Help:        "Set cache-mode to read or none, restrict the job with an event guard, or document a reviewed exception with an inline suppression.",
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
 		return CacheWriteUntrustedChecks(workflow)
 	},
-	Enabled: func(c define.Inputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") },
+	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") },
 }
 
 // CacheWriteUntrustedChecks reports write-capable cache declarations reachable

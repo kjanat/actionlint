@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"testing"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
@@ -32,7 +35,7 @@ func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 	}
 	descriptor.ScriptInputs[0].Language = "python"
 	registration.ScriptInputs[0].Input = "other"
-	runner, err := registration.Build(tools.Context{})
+	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,11 +48,11 @@ func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 		{Action: "other/repository", Input: site.Input, Language: site.Language},
 		{Action: site.Action, Input: "other", Language: site.Language},
 	} {
-		if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &candidate}}}); err != nil {
+		if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Input: actionInput(candidate, "", nil)}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Execution: tools.Execution{Shell: "javascript"}}}}); err != nil {
+	if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Execution: &scriptmodel.Execution{Shell: "javascript", ShellKnown: true}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if backend.calls.Load() != 1 {

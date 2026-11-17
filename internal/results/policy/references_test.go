@@ -15,12 +15,12 @@ import (
 func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
-	workflow, parseErrors := workflowparser.Parse(content)
+	workflow, parseErrors := workflowparser.ParseWorkflow(content)
 	if len(parseErrors) != 0 {
 		t.Fatal(parseErrors)
 	}
 	first, second := workflow.Jobs["test"].Steps[0], workflow.Jobs["test"].Steps[1]
-	bound := workflowdecl.Publish(string(content), workflow, false, "").Bind("ci.yml")
+	bound := workflowdecl.Bind("ci.yml", string(content), workflow, false, "")
 	job, present := bound.Workflow().Job("test")
 	if !present {
 		t.Fatal("owned job unavailable")
@@ -62,7 +62,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 func TestParsedMixedCaseJobReference(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
-	workflow, findings := workflowparser.Parse(content)
+	workflow, findings := workflowparser.ParseWorkflow(content)
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}

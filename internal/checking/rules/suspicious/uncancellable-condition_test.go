@@ -50,12 +50,12 @@ func TestUncancellableCondition(t *testing.T) {
 			if tc.stepIf != "" {
 				source += "        if: " + tc.stepIf + "\n"
 			}
-			ast, errs := workflowparser.Parse([]byte(source))
+			ast, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
-			check := suspicious.UncancellableConditionRule.Checks(define.Inputs{})
+			view := declaration.Bind("test", source, ast, false, "").Workflow()
+			check := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{})
 			for _, job := range view.Jobs() {
 				got := check.Job(job)
 				if len(got) != tc.jobs {
@@ -96,13 +96,13 @@ func TestUncancellableConditionFix(t *testing.T) {
 			if strings.HasPrefix(scalar, "&gate") {
 				content = strings.Replace(content, "steps: [{run: echo ok}]", "steps: [{run: echo ok, if: *gate}]", 1)
 			}
-			ast, errs := workflowparser.Parse([]byte(content))
+			ast, errs := workflowparser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
+			view := declaration.Bind("test", content, ast, false, "").Workflow()
 			for _, job := range view.Jobs() {
-				findings := suspicious.UncancellableConditionRule.Checks(define.Inputs{}).Job(job)
+				findings := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{}).Job(job)
 				if len(findings) != 1 || len(findings[0].Fixes) != 1 {
 					t.Fatalf("missing fix: %+v", findings)
 				}
@@ -123,13 +123,13 @@ func TestUncancellableConditionFix(t *testing.T) {
 				if strings.Contains(content, "&gate") && !strings.Contains(fixed, "&gate") {
 					t.Fatalf("lost anchor: %s", fixed)
 				}
-				updated, parseErrs := workflowparser.Parse([]byte(fixed))
+				updated, parseErrs := workflowparser.ParseWorkflow([]byte(fixed))
 				if len(parseErrs) != 0 {
 					t.Fatalf("invalid fix %s: %v", fixed, parseErrs)
 				}
-				checked := declaration.Publish(fixed, updated, false, "").Bind("fixed").Workflow()
+				checked := declaration.Bind("fixed", fixed, updated, false, "").Workflow()
 				for _, fixedJob := range checked.Jobs() {
-					if got := suspicious.UncancellableConditionRule.Checks(define.Inputs{}).Job(fixedJob); len(got) != 0 {
+					if got := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{}).Job(fixedJob); len(got) != 0 {
 						t.Fatalf("fix leaves finding: %+v", got)
 					}
 					if !strings.Contains(fixedJob.If.Text(), "!cancelled()") {
@@ -166,14 +166,14 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 				content += "    if: " + tc.jobIf + "\n"
 			}
 			content += "    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
-			ast, errs := workflowparser.Parse([]byte(content))
+			ast, errs := workflowparser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
+			view := declaration.Bind("test", content, ast, false, "").Workflow()
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
-					check := suspicious.UncancellableConditionRule.Checks(define.Inputs{})
+					check := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{})
 					var findings []reporting.StepFinding
 					if check.Step != nil {
 						findings = check.Step(step)

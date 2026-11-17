@@ -69,7 +69,7 @@ overrides:
 				if ignore {
 					text += "paths: {'**': {ignore: ['dependency finding']}}\n"
 				}
-				cfg, err := ConfigurationRules().Parse([]byte(text))
+				cfg, err := ConfigurationRules().ParseConfig([]byte(text))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -101,7 +101,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 			t.Run(tc.name+"/"+dependency, func(t *testing.T) {
 				t.Parallel()
 				root := t.TempDir()
-				cfg, err := ConfigurationRules().Parse([]byte("overrides: [{includes: ['./.github/workflows/**'], lint: {" + tc.lint + "}}]"))
+				cfg, err := ConfigurationRules().ParseConfig([]byte("overrides: [{includes: ['./.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -197,7 +197,7 @@ runs:
       with:
         nonexistent-input: value
 `)
-			cfg, err := ConfigurationRules().Parse([]byte("overrides: [{includes: ['.github/workflows/**'], lint: {" + tc.lint + "}}]"))
+			cfg, err := ConfigurationRules().ParseConfig([]byte("overrides: [{includes: ['.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

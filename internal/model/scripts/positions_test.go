@@ -4,17 +4,19 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestDeclarationPosition(t *testing.T) {
 	t.Parallel()
-	script := scriptmodel.Declaration{Text: "echo a\nx\\ny\n", Spans: []scriptmodel.Span{
-		{Line: 1, Start: 1, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
-		{Line: 2, Start: 1, End: 2, Document: sourcepos.Position{Line: 4, Column: 9}},
-		{Line: 2, Start: 2, End: 3, Document: sourcepos.Position{Line: 4, Column: 10}, DocumentEnd: sourcepos.Position{Line: 4, Column: 12}},
-		{Line: 2, Start: 3, End: 4, Document: sourcepos.Position{Line: 4, Column: 12}},
-		{Line: 3, Start: 1, End: 1, Document: sourcepos.Position{Line: 4, Column: 13}},
+	// "echo a" and its line feed are copied, "\t" is a two-character escape, and
+	// the final line feed is synthesized.
+	script := scriptmodel.Declaration{Text: "echo a\nx\ty\n", Spans: []sourcemap.Span{
+		{Start: 0, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
+		{Start: 7, End: 8, Document: sourcepos.Position{Line: 4, Column: 9}},
+		{Start: 8, End: 9, Document: sourcepos.Position{Line: 4, Column: 10}, DocumentEnd: sourcepos.Position{Line: 4, Column: 12}},
+		{Start: 9, End: 10, Document: sourcepos.Position{Line: 4, Column: 12}},
 	}}
 	for _, tc := range []struct {
 		line, column int
@@ -24,15 +26,18 @@ func TestDeclarationPosition(t *testing.T) {
 	}{
 		{1, 1, false, sourcepos.Position{Line: 3, Column: 9}, true},
 		{1, 6, false, sourcepos.Position{Line: 3, Column: 14}, true},
-		{1, 7, false, sourcepos.Position{}, false},
+		{1, 7, false, sourcepos.Position{Line: 3, Column: 15}, true},
 		{1, 7, true, sourcepos.Position{Line: 3, Column: 15}, true},
+		{1, 8, false, sourcepos.Position{}, false},
 		{1, 1, true, sourcepos.Position{}, false},
 		{2, 2, false, sourcepos.Position{Line: 4, Column: 10}, true},
 		{2, 3, true, sourcepos.Position{Line: 4, Column: 12}, true},
 		{2, 3, false, sourcepos.Position{Line: 4, Column: 12}, true},
+		{2, 4, false, sourcepos.Position{}, false},
 		{3, 1, true, sourcepos.Position{Line: 4, Column: 13}, true},
 		{3, 1, false, sourcepos.Position{}, false},
 		{4, 1, false, sourcepos.Position{}, false},
+		{0, 1, false, sourcepos.Position{}, false},
 	} {
 		got, ok := script.Position(tc.line, tc.column, tc.exclusive)
 		if ok != tc.ok || got != tc.want {
@@ -43,9 +48,9 @@ func TestDeclarationPosition(t *testing.T) {
 
 func TestDeclarationOffsetPosition(t *testing.T) {
 	t.Parallel()
-	script := scriptmodel.Declaration{Text: "echo é\nx\n", Spans: []scriptmodel.Span{
-		{Line: 1, Start: 1, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
-		{Line: 2, Start: 1, End: 2, Document: sourcepos.Position{Line: 4, Column: 9}},
+	script := scriptmodel.Declaration{Text: "echo é\nx\n", Spans: []sourcemap.Span{
+		{Start: 0, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
+		{Start: 8, End: 9, Document: sourcepos.Position{Line: 4, Column: 9}},
 	}}
 	for _, tc := range []struct {
 		offset    int

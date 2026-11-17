@@ -138,7 +138,7 @@ func liftRunnerSupportPolicy(value wacogo.Val) (runner.SupportPolicy, error) {
 	if err != nil {
 		return policy, err
 	}
-	policy.Service.Kind = services.Kind(kind)
+	policy.Service.Kind = services.ServiceKind(kind)
 	for name, dest := range map[string]*string{"min-version": &policy.Service.MinVersion, "before-version": &policy.Service.BeforeVersion} {
 		value, err := liftScriptOptionalString(service.Field(name), name)
 		if err != nil {

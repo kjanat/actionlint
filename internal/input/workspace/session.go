@@ -173,7 +173,7 @@ func (a *InputPreparer) Repository(dir string) (*Selection, error) {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 	}
-	metadata := &Inputs{}
+	metadata := &InputFiles{}
 	paths, err := discovery.Documents(a.ctx, project.RootDir(), files.New(a.ctx, nil, metadata.Add), discovery.Discovery{NoIgnore: a.noIgnore})
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (a *InputPreparer) Repository(dir string) (*Selection, error) {
 }
 
 func (a *InputPreparer) Directory(dir string, project *Project) (*Selection, error) {
-	listed := &Inputs{}
+	listed := &InputFiles{}
 	paths, err := WorkflowPaths(files.New(a.ctx, nil, listed.Add), dir)
 	if err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func (a *InputPreparer) discoveredFiles(paths, metadata []string, project *Proje
 	result, err := a.readFiles(paths, project, nil)
 	if result != nil {
 		// Protect excluded discovery candidates from report replacement too.
-		inputs := &Inputs{}
+		inputs := &InputFiles{}
 		for _, path := range result.Inputs {
 			inputs.Add(path)
 		}
@@ -267,7 +267,7 @@ func (a *InputPreparer) Empty() (*Selection, error) {
 		return nil, err
 	}
 	result := &Selection{Sources: []InputFile{}}
-	inputs := &Inputs{}
+	inputs := &InputFiles{}
 	inputs.Add(a.defaultConfigPath)
 	for _, path := range a.networkPolicy.Files() {
 		inputs.Add(path)
@@ -395,7 +395,7 @@ func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project)
 		projects = append(projects, source.Project)
 	}
 	result := &Selection{Sources: sources}
-	inputs := &Inputs{}
+	inputs := &InputFiles{}
 	for _, source := range sources {
 		path := source.InputPath
 		if path != "" && path != "<stdin>" && !filepath.IsAbs(path) {

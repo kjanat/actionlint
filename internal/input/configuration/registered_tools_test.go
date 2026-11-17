@@ -4,24 +4,24 @@ import (
 	"encoding/json"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestRegisteredToolSettingsForFiles(t *testing.T) {
 	t.Parallel()
-	metadata := configschema.Settings{
+	metadata := toolsettings.Settings{
 		Schema:     json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
-		Shorthands: map[string]configschema.Shorthand{"limit": {Path: []string{"limit"}, Precedence: configschema.PrecedenceShorthand}},
+		Shorthands: map[string]toolsettings.Shorthand{"limit": {Path: []string{"limit"}, Precedence: toolsettings.PrecedenceShorthand}},
 	}
-	registration := RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata}
+	registration := RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata}
 	rules, err := (RuleSet{}).WithRegisteredRules(registration)
 	if err != nil {
 		t.Fatal(err)
 	}
 	metadata.Shorthands["limit"].Path[0] = "broken"
 	clear(metadata.Schema)
-	cfg, err := rules.Parse([]byte("tools:\n  file-tool: {limit: 3}\noverrides:\n  - includes: ['inner/**']\n    tools:\n      file-tool: {limit: 7}\n"))
+	cfg, err := rules.ParseConfig([]byte("tools:\n  file-tool: {limit: 3}\noverrides:\n  - includes: ['inner/**']\n    tools:\n      file-tool: {limit: 7}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,17 +38,17 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 			t.Fatalf("%s: limit = %#v, want %d", tc.path, got, tc.want)
 		}
 	}
-	if _, err := (RuleSet{}).Parse([]byte("tools: {file-tool: {limit: 3}}")); err == nil {
+	if _, err := (RuleSet{}).ParseConfig([]byte("tools: {file-tool: {limit: 3}}")); err == nil {
 		t.Fatal("provider metadata leaked into another rule set")
 	}
 }
 
 func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 	t.Parallel()
-	metadata := configschema.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
+	metadata := toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
 	rules, err := (RuleSet{}).WithRegisteredRules(
-		RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
-		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
+		RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata},
+		RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 		t.Run(overridden, func(t *testing.T) {
 			t.Parallel()
 			text := "tools: {file-tool: {config: {limit: 3}}, other-tool: {config: {limit: 9}}}\noverrides: [{includes: ['**'], tools: {" + overridden + ": {enabled: false}}}]\n"
-			cfg, err := rules.Parse([]byte(text))
+			cfg, err := rules.ParseConfig([]byte(text))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -45,7 +45,7 @@ func TestSelectedItemsShareAliasExpansionBudgetAndStopAfterFatal(t *testing.T) {
 	data := splitAliasBudgetSource()
 	var baseline upstreamAliasBudgetTarget
 	wantErr := upstream.Unmarshal(data, &baseline)
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 		t.Fatalf("upstream baseline error = %v, want document-wide alias limit", wantErr)
 	}
 
-	root, parseErr := codec.Parse(data)
+	root, parseErr := codec.ParseYAML(data)
 	if parseErr != nil {
 		t.Fatalf("parse owned graph: %v", parseErr)
 	}
@@ -246,7 +246,7 @@ func TestNestedHookAliasBudgetMatchesPlainDecode(t *testing.T) {
 				t.Fatalf("upstream rejected valid input: %v", plainErr)
 			}
 
-			root, parseErr := codec.Parse([]byte(tc.source))
+			root, parseErr := codec.ParseYAML([]byte(tc.source))
 			if parseErr != nil {
 				t.Fatal(parseErr)
 			}

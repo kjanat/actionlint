@@ -71,7 +71,7 @@ func (f *Files) parse(address, readPath string, read func(string) ([]byte, error
 	if err != nil {
 		return nil, nil, fmt.Errorf("read config %q: %w", address, err)
 	}
-	parsed, err := Parse(readPath, data)
+	parsed, err := ParseConfigDocument(readPath, data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("config %q: %w", address, err)
 	}
@@ -83,11 +83,11 @@ func (f *Files) parse(address, readPath string, read func(string) ([]byte, error
 	return data, parsed, nil
 }
 
-// Load merges path over the files it extends, depth first, according to
+// LoadConfigDocument merges path over the files it extends, depth first, according to
 // plan. Sources held by files are used as already loaded; read supplies the
 // others, and files keeps them for later loads. Within one load each file is
 // read and parsed once.
-func Load(path string, files *Files, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
+func LoadConfigDocument(path string, files *Files, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
 	var order []string

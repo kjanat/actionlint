@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
@@ -166,7 +166,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")
-	migrated, err := checking.ConfigurationRules().Load(path)
+	migrated, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil {
 		t.Fatal(err)
 	}

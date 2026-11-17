@@ -16,7 +16,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			config, err := rules.Parse([]byte("tools: {shellcheck: " + tc.base + "}\noverrides: [{includes: [ci.yml], tools: {shellcheck: " + tc.override + "}}]\n"))
+			config, err := rules.ParseConfig([]byte("tools: {shellcheck: " + tc.base + "}\noverrides: [{includes: [ci.yml], tools: {shellcheck: " + tc.override + "}}]\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -37,7 +37,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				config, err = rules.Parse(encoded)
+				config, err = rules.ParseConfig(encoded)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -49,7 +49,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 func TestParsedOverrideRetainsCapturedPrecedence(t *testing.T) {
 	t.Parallel()
 	rules := RuleSet{}
-	cfg, err := rules.Parse([]byte("overrides: [{includes: ['**'], lint: {enabled: false}}]\n"))
+	cfg, err := rules.ParseConfig([]byte("overrides: [{includes: ['**'], lint: {enabled: false}}]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

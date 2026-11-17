@@ -168,7 +168,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 		t.Run(tc.message, func(t *testing.T) {
 			t.Parallel()
 			err := testFinding(&sourcepos.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
-			err.Diagnostic.Path = "filename.txt"
+			err.Path = "filename.txt"
 
 			var buf bytes.Buffer
 			testPrettyPrint(err, &buf, []byte(tc.source))
@@ -221,22 +221,22 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 			err := testFinding(&sourcepos.Position{Line: 1, Column: tc.column}, "kind", tc.message)
-			err.Diagnostic.Path = "filename.txt"
+			err.Path = "filename.txt"
 			f := testFields(err, []byte(tc.source))
 			if f.Message != tc.message {
 				t.Fatalf("wanted %q but have %q", tc.message, f.Message)
 			}
-			if f.Line != err.Diagnostic.Start.Line {
-				t.Fatalf("wanted %d but have %d", err.Diagnostic.Start.Line, f.Line)
+			if f.Line != err.Start.Line {
+				t.Fatalf("wanted %d but have %d", err.Start.Line, f.Line)
 			}
 			if f.Column != tc.column {
 				t.Fatalf("wanted %d but have %d", tc.column, f.Column)
 			}
-			if f.Filepath != err.Diagnostic.Path {
-				t.Fatalf("wanted %q but have %q", err.Diagnostic.Path, f.Filepath)
+			if f.Filepath != err.Path {
+				t.Fatalf("wanted %q but have %q", err.Path, f.Filepath)
 			}
-			if f.Kind != err.Diagnostic.Rule {
-				t.Fatalf("wanted %q but have %q", err.Diagnostic.Rule, f.Kind)
+			if f.Kind != err.Rule {
+				t.Fatalf("wanted %q but have %q", err.Rule, f.Kind)
 			}
 			if f.Snippet != tc.snippet {
 				t.Fatalf("wanted %q but have %q", tc.snippet, f.Snippet)
@@ -252,7 +252,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 9999}, "kind", "this is message")
-	err.Diagnostic.Path = "filename.yaml"
+	err.Path = "filename.yaml"
 	f := testFields(err, []byte("this is source"))
 	if strings.Contains(f.Snippet, "\n") {
 		t.Fatalf("snippet should contain indicator but it has: %q", f.Snippet)
@@ -262,7 +262,7 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 6}, "kind", "this is message")
-	err.Diagnostic.End = sourcepos.Position{Line: 1, Column: 10}
+	err.End = sourcepos.Position{Line: 1, Column: 10}
 	f := testFields(err, []byte("echo $foo bar"))
 	if f.Snippet != "echo $foo bar\n     ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -275,7 +275,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 8}, "kind", "this is message")
-	err.Diagnostic.End = sourcepos.Position{Line: 1, Column: 12}
+	err.End = sourcepos.Position{Line: 1, Column: 12}
 	f := testFields(err, []byte("echo é $foo"))
 	if f.Snippet != "echo é $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -367,7 +367,7 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 
 func TestErrorPrintFormattedErrors(t *testing.T) {
 	t.Parallel()
-	errs := []*RenderedFinding{
+	errs := []*diagmodel.PublishedDiagnostic{
 		testFinding(&sourcepos.Position{Line: 1, Column: 1}, "kind1", "error1"),
 		testFinding(&sourcepos.Position{Line: 1, Column: 0}, "kind2", "error2"),
 	}
@@ -523,18 +523,21 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 }
 
 // Fixtures construct presentation inputs directly; no engine or compatibility API is involved.
-func testFinding(pos *sourcepos.Position, kind, message string) *RenderedFinding {
-	return &RenderedFinding{Diagnostic: diagmodel.Diagnostic{Start: *pos, Rule: kind, Message: message}}
+func testFinding(pos *sourcepos.Position, kind, message string) *diagmodel.PublishedDiagnostic {
+	return &diagmodel.PublishedDiagnostic{Start: *pos, Rule: kind, Message: message}
 }
 
-func testFields(f *RenderedFinding, source []byte) *TemplateFields {
-	f.Source.Content = source
-	return f.TemplateFields()
+// publishedFinding publishes d with content as the text its positions refer to.
+func publishedFinding(d diagmodel.Diagnostic, content []byte) diagmodel.PublishedDiagnostic {
+	return diagmodel.Publish(d, diagmodel.DiagnosticSource{Content: content})
 }
 
-func testPrettyPrint(f *RenderedFinding, out io.Writer, source []byte) {
-	f.Source.Content = source
-	f.PrettyPrint(out)
+func testFields(f *diagmodel.PublishedDiagnostic, source []byte) *TemplateFields {
+	return TemplateFieldsOf(publishedFinding(f.Diagnostic, source))
+}
+
+func testPrettyPrint(f *diagmodel.PublishedDiagnostic, out io.Writer, source []byte) {
+	PrettyPrint(out, publishedFinding(f.Diagnostic, source))
 }
 
 func newTestFormatter(format string) (*Formatter, error) {

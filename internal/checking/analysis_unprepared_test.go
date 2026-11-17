@@ -7,9 +7,9 @@ import (
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -19,7 +19,7 @@ func (sourceOnlyProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Content != p.content || len(input.AvailableInputs) != 1 {
 		return nil, errors.New("source-only input changed")
 	}
@@ -45,7 +45,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 			if name == "partial workflow" && len(parsed.SyntaxErrors) == 0 {
 				t.Fatal("fixture did not reproduce a recovered parse")
 			}
-			input, err := composites.CheckInput(composites.Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
+			input, err := composites.CheckInput(composites.Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 				t.Fatalf("missing preparation error: %v", err)
 			}

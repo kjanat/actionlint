@@ -3,12 +3,12 @@ package registration
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/expressions"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // All lists every native rule in presentation order. Each rule is defined
@@ -79,7 +79,7 @@ var All = []*define.Rule{
 func Declarations() []rule.Declaration {
 	out := make([]rule.Declaration, len(All))
 	for i, native := range All {
-		out[i] = native.Declaration()
+		out[i] = native.ResolvedDeclaration()
 	}
 	return out
 }
@@ -103,7 +103,7 @@ func Registrations(rules configuration.RuleSet) []define.Registration {
 			out[i] = native.Registration(metadata)
 			continue
 		}
-		out[i] = define.Registration{Rule: metadata}
+		out[i] = define.Registration{Declaration: metadata}
 	}
 	return out
 }

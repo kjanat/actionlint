@@ -228,7 +228,7 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 	return g.fetchSelectedFile(ctx, ref, kind, filenames, resolved.RepositoryID, commit, object, route, resolved.ObservedAt)
 }
 
-func selectResolution(ref actions.Reference, kind string, resolved references.Result, learned repofacts.ID) (string, string, actions.Route, *availability.Unavailability) {
+func selectResolution(ref actions.Reference, kind string, resolved references.ResolutionRecord, learned repofacts.ID) (string, string, actions.Route, *availability.Unavailability) {
 	invalid := availability.InvalidResolverResult()
 	if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID.Conflicts(learned) || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 {
 		return "", "", actions.Route{}, &invalid

@@ -27,7 +27,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		{"correctness: {expression-reference: off}", "correctness: default", "on"},
 		{"correctness: {level: off}", "correctness: {level: default}", "on"},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + tc.base + "}}\noverrides: [{includes: ['**'], lint: {rules: {" + tc.overlay + "}}}]"))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + tc.base + "}}\noverrides: [{includes: ['**'], lint: {rules: {" + tc.overlay + "}}}]"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err = checking.ConfigurationRules().Parse(encoded)
+			cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +51,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		root := t.TempDir()
 		fixturefiles.Write(t, root, "base.yml", "lint: {rules: {"+tc.base+"}}")
 		path := fixturefiles.Write(t, root, "child.yml", "extends: [base.yml]\nlint: {rules: {"+tc.overlay+"}}")
-		got, err := checking.ConfigurationRules().Load(path)
+		got, err := checking.ConfigurationRules().LoadConfig(path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,11 +69,11 @@ func TestFileOverrideAnalysisIsolation(t *testing.T) {
   - includes: ['.github/workflows/suppressed.yml']
     lint: {rules: {disable: [expression-reference, if-cond]}}
 `
-	cfg, err := checking.ConfigurationRules().Parse([]byte(configuration))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(configuration))
 	if err != nil {
 		t.Fatal(err)
 	}
-	untouched, err := checking.ConfigurationRules().Parse([]byte(configuration))
+	untouched, err := checking.ConfigurationRules().ParseConfig([]byte(configuration))
 	if err != nil {
 		t.Fatal(err)
 	}

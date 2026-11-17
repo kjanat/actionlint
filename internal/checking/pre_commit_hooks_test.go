@@ -50,7 +50,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				return result.Diagnostics
+				return diagmodel.Diagnostics(result.Diagnostics)
 			}
 			if diagnostics := run(); len(diagnostics) != 0 {
 				t.Fatalf("valid baseline failed: %+v", diagnostics)

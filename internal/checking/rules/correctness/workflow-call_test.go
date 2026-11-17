@@ -24,11 +24,11 @@ jobs:
   inherited:
     uses: ./callee.yml
 `
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Publish(source, decoded, false, "").Bind("caller").Workflow()
+	workflow := declaration.Bind("caller", source, decoded, false, "").Workflow()
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()

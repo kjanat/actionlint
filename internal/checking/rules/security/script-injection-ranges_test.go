@@ -24,7 +24,7 @@ func TestUntrustedExpressionSpans(t *testing.T) {
 			if serialized {
 				source = "toJSON(" + expression + ")"
 			}
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,8 +56,8 @@ func TestExpressionSpanParserReuse(t *testing.T) {
 		"foo &&\n", "((1))", "github.event[github.event.issue.title].body",
 	} {
 		source += "}}"
-		node, err := p.Parse(exprsyntax.NewLexer(source))
-		fresh, freshErr := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source))
+		node, err := p.ParseExpression(exprsyntax.NewLexer(source))
+		fresh, freshErr := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source))
 		if err != nil {
 			if freshErr == nil || *err != *freshErr {
 				t.Fatalf("reuse changed error for %q: %+v / %+v", source, err, freshErr)

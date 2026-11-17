@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -44,7 +44,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{{
+			input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
 				Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 7, Column: 24},
 			}}}
@@ -96,7 +96,7 @@ permissions: {}
 		var findings []results.Diagnostic
 		for _, finding := range result.Diagnostics {
 			if finding.Rule == "pinned-actions" {
-				findings = append(findings, finding)
+				findings = append(findings, finding.Diagnostic)
 			}
 		}
 		return findings

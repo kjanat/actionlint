@@ -30,7 +30,7 @@ func TestUnknownNodeRepresentationRejected(t *testing.T) {
 
 func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
 	t.Parallel()
-	root, err := Parse([]byte("key: value\n"))
+	root, err := ParseYAML([]byte("key: value\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

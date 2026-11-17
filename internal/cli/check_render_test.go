@@ -41,10 +41,10 @@ func TestRenderColor(t *testing.T) {
 func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 	t.Parallel()
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	finding := render.RenderedFindingOf(results.Diagnostic{
+	finding := results.Publish(results.Diagnostic{
 		Rule: "expression-reference", Message: "unknown variable", Path: "ci.yml",
 		Start: sourcepos.Position{Line: 1, Column: 3}, End: sourcepos.Position{Line: 1, Column: 6},
-	}, []byte("  bad"))
+	}, results.DiagnosticSource{Content: []byte("  bad")})
 	stop := make(chan struct{})
 	failures := make(chan error, 4)
 	var renders sync.WaitGroup
@@ -62,7 +62,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 				default:
 				}
 				var out strings.Builder
-				if err := renderer.Render(&out, render.Result{Findings: []render.RenderedFinding{finding}}); err != nil {
+				if err := renderer.Render(&out, render.RenderedReport{Findings: []results.PublishedDiagnostic{finding}}); err != nil {
 					failures <- err
 					return
 				}

@@ -2,31 +2,22 @@ package workflow
 
 import (
 	"fmt"
+	"iter"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
 type scriptSourceLine struct {
 	Start int
 	End   int
-}
-
-type ScriptSourceSpan struct {
-	Start      int
-	End        int
-	YamlLine   int
-	YamlColumn int
-	// Nonzero for a decoded escape whose source width differs from its value.
-	YamlEndColumn int
-	YamlEndLine   int
 }
 
 // ScriptSource maps spans in a decoded run script back to positions in the YAML source. Bytes that
@@ -37,7 +28,7 @@ type ScriptSource struct {
 	ScalarEnd    source.Position
 	Value        string
 	Lines        []scriptSourceLine
-	Spans        []ScriptSourceSpan
+	Spans        []sourcemap.Span
 	Literal      bool
 	Comments     []ScalarComment
 }
@@ -83,63 +74,11 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*source.Position
 	if !ok {
 		return nil, false
 	}
-	offset := l.Start + rel
-	// Block chomping and quoted folding can append unmapped newlines or spaces.
-	// An EOF diagnostic belongs at the end of the final mapped physical line.
-	if endPosition && offset == len(s.Value) && len(s.Spans) != 0 {
-		index := len(s.Spans) - 1
-		for index > 0 && s.Spans[index].Start == s.Spans[index].End {
-			index--
-		}
-		last := s.Spans[index]
-		if last.End < offset && strings.Trim(s.Value[last.End:], " \n") == "" {
-			column := last.YamlColumn + utf8.RuneCountInString(s.Value[last.Start:last.End])
-			if last.YamlEndColumn != 0 {
-				column = last.YamlEndColumn
-			}
-			line := last.YamlLine
-			if last.YamlEndLine != 0 {
-				line = last.YamlEndLine
-			}
-			return &source.Position{Line: line, Column: column}, true
-		}
-	}
-	i := s.spanIndex(offset, endPosition)
-	if i == len(s.Spans) {
+	position, ok := sourcemap.Locate(s.Value, s.Spans, l.Start+rel, endPosition)
+	if !ok {
 		return nil, false
 	}
-	span := s.Spans[i]
-	if offset < span.Start || (endPosition && offset == span.Start) {
-		return nil, false
-	}
-	column := span.YamlColumn + utf8.RuneCountInString(s.Value[span.Start:offset])
-	if span.YamlEndColumn != 0 {
-		column = span.YamlColumn
-		if endPosition && offset == span.End {
-			column = span.YamlEndColumn
-		}
-	}
-	line = span.YamlLine
-	if endPosition && offset == span.End && span.YamlEndLine != 0 {
-		line = span.YamlEndLine
-	}
-	return &source.Position{Line: line, Column: column}, true
-}
-
-// spanIndex returns the first span ending after offset, or at offset for an end
-// position. Spans are sorted by End; len(s.Spans) means no span qualifies.
-func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
-	low, high := 0, len(s.Spans)
-	for low < high {
-		mid := int(uint(low+high) >> 1)
-		end := s.Spans[mid].End
-		if end > offset || (endPosition && end == offset) {
-			high = mid
-		} else {
-			low = mid + 1
-		}
-	}
-	return low
+	return &position, true
 }
 
 // SourceScalar is an immutable, pointer-free snapshot of a YAML node at parse time.
@@ -147,7 +86,7 @@ func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
 type SourceScalar struct {
 	HasSource bool
 	Evaluated bool
-	Kind      codec.Kind
+	Kind      codec.NodeKind
 	Tag       string
 	Value     string
 	Pos       source.Position
@@ -653,9 +592,9 @@ func (e *ExecRun) Kind() ExecKind {
 	return ExecKindRun
 }
 
-// Input describes an input passed to an action.
+// ActionArgument describes an input passed to an action.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepswith
-type Input struct {
+type ActionArgument struct {
 	// Name is the input name.
 	Name *String
 	// Value is the input value.
@@ -667,7 +606,7 @@ type Input struct {
 // ActionInputMapping is a literal or expression-valued action input mapping.
 type ActionInputMapping struct {
 	// Inputs contains named input values.
-	Inputs     map[string]*Input
+	Inputs     map[string]*ActionArgument
 	Expression *String
 	// Insertions contains nested mapping directives.
 	Insertions []*ActionInputMapping
@@ -680,7 +619,7 @@ type ExecAction struct {
 	// Uses is nil when its value could not be parsed as a nonempty string.
 	Uses *String
 	// Inputs maps lowercase names to action inputs from 'with'. Names are case insensitive.
-	Inputs map[string]*Input
+	Inputs map[string]*ActionArgument
 	// InputsExpression supplies the complete action inputs mapping.
 	InputsExpression *String
 	// InputInsertions supplies additional action inputs through mapping directives.
@@ -742,6 +681,30 @@ type ExecParallel struct {
 // Kind returns the step execution kind.
 func (e *ExecParallel) Kind() ExecKind {
 	return ExecKindParallel
+}
+
+// AllSteps yields steps in source order, each parallel group before the steps
+// inside it. It skips nil steps. Walks that need the nesting itself, such as
+// outlines and fingerprints, recurse over ExecParallel instead.
+func AllSteps(steps []*Step) iter.Seq[*Step] {
+	return func(yield func(*Step) bool) {
+		walkSteps(steps, yield)
+	}
+}
+
+func walkSteps(steps []*Step, yield func(*Step) bool) bool {
+	for _, step := range steps {
+		if step == nil {
+			continue
+		}
+		if !yield(step) {
+			return false
+		}
+		if parallel, ok := step.Exec.(*ExecParallel); ok && parallel != nil && !walkSteps(parallel.Steps, yield) {
+			return false
+		}
+	}
+	return true
 }
 
 // RawYAMLValueKind identifies the kind of a raw YAML value.
@@ -1368,75 +1331,4 @@ func FindWorkflowCallEvent(w *Workflow) (*WorkflowCallEvent, bool) {
 		}
 	}
 	return nil, false
-}
-
-// ScriptLineSpan maps the text columns [Start, End) of one decoded script line to the YAML source.
-// YamlEndLine and YamlEndColumn are nonzero for a decoded escape sequence.
-type ScriptLineSpan struct {
-	Line          int
-	Start         int
-	End           int
-	YamlLine      int
-	YamlColumn    int
-	YamlEndLine   int
-	YamlEndColumn int
-}
-
-// LineSpans projects the mapped spans onto text lines. A trailing newline or folded whitespace
-// without a source maps its exclusive end to the end of the final mapped text.
-func (s *ScriptSource) LineSpans() []ScriptLineSpan {
-	if s == nil {
-		return nil
-	}
-	var result []ScriptLineSpan
-	var last *ScriptSourceSpan
-	for i, line := range s.Lines {
-		limit := line.End
-		if limit < len(s.Value) {
-			limit++
-		}
-		for j := range s.Spans {
-			span := &s.Spans[j]
-			start, end := max(span.Start, line.Start), min(span.End, limit)
-			if span.Start >= span.End || start >= end {
-				continue
-			}
-			last = span
-			item := ScriptLineSpan{
-				Line:       i + 1,
-				Start:      utf8.RuneCountInString(s.Value[line.Start:start]) + 1,
-				End:        utf8.RuneCountInString(s.Value[line.Start:end]) + 1,
-				YamlLine:   span.YamlLine,
-				YamlColumn: span.YamlColumn + utf8.RuneCountInString(s.Value[span.Start:start]),
-			}
-			if span.YamlEndColumn != 0 {
-				item.YamlColumn, item.YamlEndLine, item.YamlEndColumn = span.YamlColumn, span.YamlEndLine, span.YamlEndColumn
-				if item.YamlEndLine == 0 {
-					item.YamlEndLine = span.YamlLine
-				}
-			}
-			result = append(result, item)
-			if end == limit && limit > line.End && i+1 < len(s.Lines) {
-				separator := ScriptLineSpan{Line: i + 2, Start: 1, End: 1, YamlLine: span.YamlLine, YamlColumn: span.YamlColumn + utf8.RuneCountInString(s.Value[span.Start:end])}
-				if span.YamlEndColumn != 0 {
-					separator.YamlLine, separator.YamlColumn = item.YamlEndLine, span.YamlEndColumn
-				}
-				result = append(result, separator)
-			}
-		}
-	}
-	if last != nil && last.End < len(s.Value) && strings.Trim(s.Value[last.End:], " \n") == "" {
-		tail := s.Lines[len(s.Lines)-1]
-		column := last.YamlColumn + utf8.RuneCountInString(s.Value[last.Start:last.End])
-		if last.YamlEndColumn != 0 {
-			column = last.YamlEndColumn
-		}
-		line := last.YamlLine
-		if last.YamlEndLine != 0 {
-			line = last.YamlEndLine
-		}
-		at := utf8.RuneCountInString(s.Value[tail.Start:]) + 1
-		result = append(result, ScriptLineSpan{Line: len(s.Lines), Start: at, End: at, YamlLine: line, YamlColumn: column})
-	}
-	return result
 }

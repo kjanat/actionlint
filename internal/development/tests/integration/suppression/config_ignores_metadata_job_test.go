@@ -57,7 +57,7 @@ permissions: {}
 			{"[{rule: action, job: a, step: inner}, {rule: action, job: b, step: inner}]", 0},
 			{"[{rule: action, job: a, step: outer}, {rule: action, job: b, step: outer}]", 1},
 		} {
-			config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
 			if err != nil {
 				t.Fatal(err)
 			}

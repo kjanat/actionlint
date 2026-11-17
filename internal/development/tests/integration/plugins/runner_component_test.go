@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 
@@ -27,7 +27,7 @@ import (
 
 func loadRunnerFixture(t *testing.T) *componenthost.Plugin {
 	t.Helper()
-	p, err := componenthost.Load(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", componenthost.Options{ReservedRules: checking.BuiltinRuleNames()})
+	p, err := componenthost.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", componenthost.Options{ReservedRules: checking.BuiltinRuleNames()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Execution}}
 }
 
-func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.scripts = append(o.scripts, input.Scripts...)
 	return nil, nil
 }
@@ -154,7 +154,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	t.Parallel()
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("repository: {runners: [" + label + "]}"))
 	if err != nil {
 		t.Fatal(err)
 	}

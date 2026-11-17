@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // RulesWithPluginPaths discovers selected providers without analyzing a document.
@@ -26,7 +26,7 @@ func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition plugi
 // RulesWithPlugins lists managed document replacements under their existing tool
 // rule. Explicit standalone components keep their independently declared rule.
 func RulesWithPlugins(ctx context.Context, sources pluginselection.Sources) (result []rule.Descriptor, err error) {
-	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err
 	}

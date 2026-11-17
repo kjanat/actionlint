@@ -33,10 +33,10 @@ func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Batch.Scripts()) != 1 {
-		t.Fatalf("prepared scripts = %d, want 1", len(result.Batch.Scripts()))
+	if len(result.Batch.Scripts) != 1 {
+		t.Fatalf("prepared scripts = %d, want 1", len(result.Batch.Scripts))
 	}
-	reference := result.Batch.Scripts()[0].Reference
+	reference := result.Batch.Scripts[0].Reference
 	declaration, exists := registry.Declaration(reference)
 	if !exists || !declaration.Present() || declaration.Reference() != reference || !registry.Owns(declaration) {
 		t.Fatal("nested action declaration was not added to the workflow snapshot registry")
@@ -109,7 +109,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			scripts := result.Batch.Scripts()
+			scripts := result.Batch.Scripts
 			if len(scripts) != 1 || !scripts[0].Run.Run.SourceScalar.HasSource || scripts[0].Run.Source == nil || scripts[0].Run.Run.Text() != "" {
 				t.Fatalf("empty workflow script lost its occurrence or physical source: %+v", scripts)
 			}
@@ -141,7 +141,7 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	units := result.Batch.Scripts()
+	units := result.Batch.Scripts
 	if len(units) != 2 || units[0].Reference != units[1].Reference || units[0].Owner == nil || units[1].Owner == nil || units[0].Owner == units[1].Owner {
 		t.Fatalf("depth-two invocations did not retain one declaration with distinct owners: %+v", units)
 	}
@@ -149,8 +149,8 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	for i, unit := range units {
 		fact, exists := result.Batch.Fact(i, false)
 		_, expectedJob := wantJobs[unit.Origin.Job]
-		graphScript, existsInGraph := result.Batch.Invocations().Script(unit.Occurrence)
-		path, hasPath := result.Batch.Invocations().Path(graphScript.Owner)
+		graphScript, existsInGraph := result.Batch.CallGraph.Script(unit.Occurrence)
+		path, hasPath := result.Batch.CallGraph.Path(graphScript.Owner)
 		if !exists || !existsInGraph || !hasPath || len(path) != 2 || fact.JobID != unit.Origin.Job || unit.Owner.Job != unit.Origin.Job || !expectedJob {
 			t.Fatalf("script %d lost source-derived original job ID: unit=%+v fact=%+v", i, unit, fact)
 		}
@@ -159,8 +159,8 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 			t.Fatalf("script %d lost deployment display path, source, or config: path=%q metadata=%q sources=%v", i, unit.Path, metadata.Path(), result.Sources)
 		}
 	}
-	if result.Batch.Scopes()[1].Bindings.Composite() != outerConfig {
-		t.Fatalf("outer invocation config changed: %+v", result.Batch.Scopes())
+	if result.Batch.Scopes[1].Bindings.Composite() != outerConfig {
+		t.Fatalf("outer invocation config changed: %+v", result.Batch.Scopes)
 	}
 	if !wantJobs["Release"] || !wantJobs["Verify"] {
 		t.Fatalf("prepared jobs did not preserve both original identifiers: %+v", wantJobs)
@@ -178,7 +178,7 @@ func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	units := result.Batch.Scripts()
+	units := result.Batch.Scripts
 	if len(units) != 1 {
 		t.Fatalf("standalone nested scripts = %d, want 1", len(units))
 	}
@@ -253,7 +253,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	}
 	analysis.context = analysis.invocations.RootContext()
 	batch := prepareCollectedScripts(t, analysis)
-	unit := batch.Scripts()[0]
+	unit := batch.Scripts[0]
 	fact, exists := batch.Fact(0, false)
 	if !exists || unit.Origin.Job != "Build" || unit.Owner.Job != "Build" || fact.JobID != "Build" {
 		t.Fatalf("nested prepared output trusted mutable collector job state: unit=%+v fact=%+v", unit, fact)
@@ -262,7 +262,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 
 func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	t.Parallel()
-	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
+	meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,8 +292,8 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: registry, Scopes: analysis.scriptScopes})
-	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes()) != 0 {
-		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes())
+	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes) != 0 {
+		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes)
 	}
 }
 
@@ -323,7 +323,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch := prepareCollectedScripts(t, analysis)
-	unit := batch.Scripts()[0]
+	unit := batch.Scripts[0]
 	fact, exists := batch.Fact(0, false)
 	if !exists || unit.Origin.Job != "Build" || fact.JobID != "Build" {
 		t.Fatalf("prepared output trusted mutable collector job state: unit=%+v fact=%+v", unit, fact)
@@ -351,7 +351,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := result.Batch.Scripts()
+	scripts := result.Batch.Scripts
 	if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 		t.Fatalf("scripts = %+v, want only the surrounding valid runs", scripts)
 	}

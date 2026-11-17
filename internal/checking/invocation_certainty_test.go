@@ -53,7 +53,7 @@ jobs:
 			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
-					findings = append(findings, diagnostic)
+					findings = append(findings, diagnostic.Diagnostic)
 				}
 			}
 			if len(findings) != 1 || !strings.Contains(findings[0].Message, `script "`+tc.want+`"`) {

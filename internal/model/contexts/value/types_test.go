@@ -11,7 +11,7 @@ func TestTypeWithFallbackSeparatesValuesFromEvaluationState(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		item Value
-		want exprtypes.Kind
+		want exprtypes.TypeKind
 	}{
 		{"null", FromJSON(nil, Origin{}), exprtypes.KindNull},
 		{"boolean", FromJSON(true, Origin{}), exprtypes.KindBool},
@@ -51,7 +51,7 @@ func TestTypeWithFallbackUsesOnlyCorrespondingUnknownParts(t *testing.T) {
 	if !ok || !object.IsStrict() || object.Len() != 4 {
 		t.Fatal(object)
 	}
-	for name, kind := range map[string]exprtypes.Kind{"known": exprtypes.KindString, "unknown": exprtypes.KindNumber, "untyped": exprtypes.KindAny} {
+	for name, kind := range map[string]exprtypes.TypeKind{"known": exprtypes.KindString, "unknown": exprtypes.KindNumber, "untyped": exprtypes.KindAny} {
 		if ty, found := object.Property(name); !found || ty.Kind() != kind {
 			t.Fatalf("%s=%v, want %v", name, ty, kind)
 		}
@@ -63,7 +63,7 @@ func TestTypeWithFallbackUsesOnlyCorrespondingUnknownParts(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		item Value
-		kind exprtypes.Kind
+		kind exprtypes.TypeKind
 	}{
 		{Seq(Origin{}), exprtypes.KindAny},
 		{Seq(Origin{}, FromJSON(1, Origin{}), FromJSON(2, Origin{})), exprtypes.KindNumber},

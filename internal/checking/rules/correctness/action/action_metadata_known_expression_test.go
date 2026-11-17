@@ -76,7 +76,7 @@ runs:
 				prefix = strings.Replace(base, "uses: actions/checkout@v6", "run: echo ok", 1)
 			}
 			source := []byte(prefix + "      " + tc.field + ": " + tc.value + "\n")
-			meta, err := actionmeta.Parse("action.yml", source)
+			meta, err := actionmeta.ParseActionMetadata("action.yml", source)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -6,20 +6,21 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 // Fact projects a validated script; false means the batch or index is unavailable.
+// With includeExecution, a run script always has a Runtime; it is empty when
+// the analysis did not resolve execution.
 func (batch Batch) Fact(index int, includeExecution bool) (checkinputs.Script, bool) {
-	if !batch.Valid() || index < 0 || index >= len(batch.data.scripts) {
+	if !batch.Valid() || index < 0 || index >= len(batch.Scripts) {
 		return checkinputs.Script{}, false
 	}
-	unit := batch.data.scripts[index]
-	occurrence, exists := batch.data.graph.Script(unit.Occurrence)
+	unit := batch.Scripts[index]
+	occurrence, exists := batch.CallGraph.Script(unit.Occurrence)
 	if !exists || occurrence.Declaration != unit.Reference || (occurrence.Kind == invocation.ScriptActionInput) != (unit.Input != nil) {
 		return checkinputs.Script{}, false
 	}
-	script := fact(unit, batch.data.graph, includeExecution)
+	script := fact(unit, batch.CallGraph, includeExecution)
 	script.Occurrence = occurrence
 	return script, true
 }
@@ -41,10 +42,11 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) checkinputs.
 	script.Environment = slices.Clone(unit.Environment)
 	script.Interpreters = unit.Interpreters
 	if includeExecution && unit.Input == nil {
-		script.Runtime = &scriptmodel.Execution{
-			Shell: unit.Execution.Shell.Name, ShellKnown: unit.Execution.Shell.Name != "", ShellImplicit: unit.Execution.Shell.Implicit,
-			Directory: unit.Execution.Directory.Path, DirectoryKnown: unit.Execution.Directory.Kind == workflowexecution.DirectoryKnown,
+		var runtime scriptmodel.Execution
+		if unit.Execution != nil {
+			runtime = *unit.Execution
 		}
+		script.Runtime = &runtime
 	}
 	return script
 }

@@ -16,12 +16,33 @@ type Alias struct {
 // The zero value accepts no declared names and passes unknown names through.
 type Names struct {
 	targets map[string]string
+	// keep, when set, limits the index to the rules whose current name it accepts.
+	keep func(target string) bool
 }
 
 // Contains reports whether a current name or alias was declared in this index.
 func (n Names) Contains(name string) bool {
-	_, found := n.targets[name]
+	_, found := n.target(name)
 	return found
+}
+
+// Restrict returns a view of n that holds only the rules whose current name
+// keep accepts, with their aliases. The view shares n's index.
+func (n Names) Restrict(keep func(target string) bool) Names {
+	if n.keep == nil {
+		return Names{targets: n.targets, keep: keep}
+	}
+	outer := n.keep
+	return Names{targets: n.targets, keep: func(target string) bool { return outer(target) && keep(target) }}
+}
+
+// target returns the current name declared for name in this index.
+func (n Names) target(name string) (string, bool) {
+	target, found := n.targets[name]
+	if !found || n.keep != nil && !n.keep(target) {
+		return "", false
+	}
+	return target, true
 }
 
 // NewNames rejects duplicate names and aliases, including aliases that shadow
@@ -54,7 +75,7 @@ func NewNames(descriptors []Descriptor) (Names, error) {
 // ResolveAlias returns the current name for a declared spelling.
 // Unknown names pass through unchanged.
 func (n Names) ResolveAlias(name string) string {
-	if target, exists := n.targets[name]; exists {
+	if target, exists := n.target(name); exists {
 		return target
 	}
 	return name

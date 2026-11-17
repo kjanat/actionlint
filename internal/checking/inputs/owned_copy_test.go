@@ -5,11 +5,13 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestInputDetachedKeepsCapabilitiesAndIsolatesData(t *testing.T) {
@@ -20,9 +22,9 @@ func TestInputDetachedKeepsCapabilitiesAndIsolatesData(t *testing.T) {
 	}
 	environment := scripts.EnvironmentAlternatives("bash", []runner.OS{runner.Linux}, scripts.EnvironmentLayer{Names: []string{"ORIGINAL"}})
 	calls := 0
-	input := Input{
-		Scripts:               []Script{{Spans: []scripts.Span{{End: 7}}, Runtime: &scripts.Execution{Shell: "bash"}, Environment: environment, Interpreters: registry}},
-		Mappings:              []facts.Mapping{{Entries: []facts.Entry{{Name: "original"}}}},
+	input := AnalyzerInput{
+		Scripts:               []Script{{Spans: []sourcemap.Span{{End: 7}}, Runtime: &scripts.Execution{Shell: "bash"}, Environment: environment, Interpreters: registry}},
+		Mappings:              []facts.Mapping{{Entries: []mapping.Declaration{{Name: "original"}}}},
 		Files:                 []FileSystem{{Path: "/original", FS: fstest.MapFS{"file": &fstest.MapFile{Data: []byte("content")}}}},
 		BuildShellScriptInput: func(context.Context, invocation.ID, *string) (*ShellScriptInput, error) { calls++; return nil, nil },
 	}

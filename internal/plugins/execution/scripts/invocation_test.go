@@ -3,8 +3,9 @@ package scripts
 import (
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 )
@@ -20,7 +21,7 @@ func TestScriptRoutingUsesSharedInvocationLanguage(t *testing.T) {
 		{"actions-shell rust {0}", "actions-shell"},
 		{`"/path with spaces/bash" {0}`, `path`},
 	} {
-		got := scriptShell(tools.Script{Execution: tools.Execution{Shell: tc.command}, Fact: checkinputs.Script{Interpreters: registry}})
+		got := scriptShell(scriptexecution.Unit{Execution: &scriptmodel.Execution{Shell: tc.command, ShellKnown: true}, Interpreters: registry})
 		if got != tc.want {
 			t.Fatalf("%q: got %q, want %q", tc.command, got, tc.want)
 		}

@@ -84,7 +84,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 7
 `
-	w, errors := workflowparser.Parse([]byte(source))
+	w, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}

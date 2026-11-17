@@ -14,7 +14,7 @@ import (
 )
 
 type ceilingCheck struct {
-	cache    MetadataLookup
+	cache    ReusableWorkflowMetadataLookup
 	debug    func(string, ...any)
 	findings []results.Diagnostic
 }
@@ -31,7 +31,7 @@ func (r *ceilingCheck) Debug(format string, args ...any) {
 
 // CheckCeiling verifies that callee jobs cannot exceed the caller's cache grant.
 // It follows nested local calls and reports failures at the original call site.
-func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, metadata *calls.Metadata, lookup MetadataLookup, debug func(string, ...any)) []results.Diagnostic {
+func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, metadata *calls.Metadata, lookup ReusableWorkflowMetadataLookup, debug func(string, ...any)) []results.Diagnostic {
 	if call == nil || call.Uses == nil || metadata == nil {
 		return nil
 	}

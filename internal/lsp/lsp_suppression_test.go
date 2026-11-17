@@ -11,9 +11,9 @@ import (
 	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -178,9 +178,11 @@ func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
 	raw := []byte("echo $VALUE\n")
 	for _, available := range []bool{true, false} {
 		captured := reportfixture.CapturedSource(t, workflow, yaml, sourcepos.YAML)
-		result := &checking.Result{
-			Diagnostics:     []results.Diagnostic{{Path: script, Rule: "plugin-check", Start: sourcepos.Position{Line: 1, Column: 1}}},
-			Sources:         []results.DiagnosticSource{{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}}},
+		result := &report.Analysis{
+			Diagnostics: []results.PublishedDiagnostic{{
+				Path: script, Rule: "plugin-check", Start: sourcepos.Position{Line: 1, Column: 1},
+				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}},
+			}},
 			CapturedSources: map[string]report.CapturedSource{script: reportfixture.CapturedSource(t, script, raw, sourcepos.YAML)},
 			Rules:           []rule.Descriptor{{Name: "plugin-check"}},
 		}

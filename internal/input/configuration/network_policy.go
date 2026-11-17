@@ -111,7 +111,7 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 	p := &NetworkPolicy{defaultOrigins: map[string]document.Location{}}
 	var defaults *document.Node
 	for _, path := range paths {
-		loaded, err := document.Load(path, nil, read, func(origin string, source *document.Node) (*document.Node, error) {
+		loaded, err := document.LoadConfigDocument(path, nil, read, func(origin string, source *document.Node) (*document.Node, error) {
 			object, ok := source.Value().(map[string]any)
 			if !ok {
 				return source, errors.New("network policy must be an object")

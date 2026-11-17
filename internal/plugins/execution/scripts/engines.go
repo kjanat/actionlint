@@ -39,9 +39,9 @@ func NewScriptEngines(load func(context.Context, string) (checkinputs.ScriptBack
 	}
 }
 
-// Load returns the engine for a module path, loading it on first use.
+// LoadModuleBackend returns the engine for a module path, loading it on first use.
 // Loaders for distinct paths may run concurrently.
-func (s *ScriptEngines) Load(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
+func (s *ScriptEngines) LoadModuleBackend(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
 	if s == nil || s.load == nil {
 		return nil, errors.New("this host has no WebAssembly engine loader")
 	}

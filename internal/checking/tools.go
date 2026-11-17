@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -14,10 +14,10 @@ type ToolRequirements = workspace.ExternalToolRequirements
 // toolNames lists the rule names of registered tool providers. Unlike the
 // rule names configuration loading binds, it holds no document analyzer, so
 // tools.<name> entries bind to tool providers only.
-func toolNames(registrations []tools.Registration) []string {
+func toolNames(registrations []contract.Registration) []string {
 	names := make([]string, 0, len(registrations))
 	for _, registration := range registrations {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Name)
 	}
 	return names
 }
@@ -39,7 +39,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 		}
 	}
 	for _, registration := range options.Tools {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Name)
 	}
 	rules, err := ConfigurationRules().WithRegisteredRules(registrations...)
 	if err != nil {
@@ -59,7 +59,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 			if r.NeedsProcess == nil {
 				continue
 			}
-			owned, err := (tools.Context{Config: cfg, ProjectConfig: project}).Detached()
+			owned, err := (contract.Context{Config: cfg, ProjectConfig: project}).Detached()
 			if err != nil {
 				return nil, err
 			}
@@ -68,7 +68,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 				return nil, err
 			}
 			if needed {
-				names = append(names, r.Descriptor.Name)
+				names = append(names, r.Name)
 			}
 		}
 		return names, nil

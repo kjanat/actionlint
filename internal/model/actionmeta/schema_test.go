@@ -96,7 +96,7 @@ description: audit
 				if !found {
 					lines = append(lines, prefix+" "+invalid)
 				}
-				meta, err := Parse("action.yml", []byte(strings.Join(lines, "\n")+"\n"))
+				meta, err := ParseActionMetadata("action.yml", []byte(strings.Join(lines, "\n")+"\n"))
 				if err != nil {
 					return
 				}

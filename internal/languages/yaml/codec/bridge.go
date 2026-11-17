@@ -112,9 +112,9 @@ func translate(err error) error {
 	return err
 }
 
-// Parse reads the first YAML document into an owned syntax graph.
+// ParseYAML reads the first YAML document into an owned syntax graph.
 // Empty input returns a non-nil zero-kind node; malformed YAML returns nil and its parse error.
-func Parse(data []byte) (*Node, error) {
+func ParseYAML(data []byte) (*Node, error) {
 	var node upstream.Node
 	if err := upstream.Unmarshal(data, &node); err != nil {
 		return nil, translate(err)

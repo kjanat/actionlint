@@ -65,7 +65,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := actionmeta.Parse(alias, content)
+	metadata, err := actionmeta.ParseActionMetadata(alias, content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := actionmeta.Parse(path, content)
+	metadata, err := actionmeta.ParseActionMetadata(path, content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	if err := rule.CheckStandaloneMetadata(metadata, parsing.SourceSnapshot{}, actionmeta.ReferencedFiles{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
-	other, err := actionmeta.Parse(path, append([]byte("# another revision\n"), content...))
+	other, err := actionmeta.ParseActionMetadata(path, append([]byte("# another revision\n"), content...))
 	if err != nil {
 		t.Fatal(err)
 	}

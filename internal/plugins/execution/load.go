@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -58,7 +58,7 @@ type ScriptEngineRegistration struct {
 	Descriptor checkinputs.ScriptEngineDescriptor
 }
 
-func Load(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
+func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
 	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition, DisableTools: sources.DisableTools}
 	if sources.Releases != nil {
 		for _, pin := range sources.Releases.Plugins {

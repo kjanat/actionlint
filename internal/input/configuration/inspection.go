@@ -59,7 +59,7 @@ func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, sele
 	copy(metadata, registrations)
 	names := make([]string, 0, len(registrations))
 	for _, registration := range registrations {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Declaration.Name)
 	}
 	return ruleSet.inspectContext(ctx, selection, withOrigin, readFile, metadata, policy, names...)
 }

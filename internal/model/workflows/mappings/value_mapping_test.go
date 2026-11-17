@@ -9,7 +9,7 @@ import (
 
 func TestMappingDistinguishesAbsentFromExplicitScalars(t *testing.T) {
 	t.Parallel()
-	inputs := &Inputs{Values: map[string]Input{
+	inputs := &DeclaredMapping{Values: map[string]DeclaredEntry{
 		"null":  {Name: text("null"), Value: value.YAMLScalar("null", "!!null", value.Origin{})},
 		"false": {Name: text("false"), Value: value.YAMLScalar("false", "!!bool", value.Origin{})},
 		"zero":  {Name: text("zero"), Value: value.YAMLScalar("0", "!!int", value.Origin{})},
@@ -40,12 +40,12 @@ func TestMappingDistinguishesAbsentFromExplicitScalars(t *testing.T) {
 
 func TestMappingIncompleteAndDuplicateLookupsAreDynamic(t *testing.T) {
 	t.Parallel()
-	base := &Inputs{Values: map[string]Input{"known": {Name: text("known"), Value: text("value")}}}
-	incomplete := Resolve(&Inputs{Values: base.Values, Expression: value.DynamicValue("${{ inputs.mapping }}", value.KindUnknown, value.Origin{})})
+	base := &DeclaredMapping{Values: map[string]DeclaredEntry{"known": {Name: text("known"), Value: text("value")}}}
+	incomplete := Resolve(&DeclaredMapping{Values: base.Values, Expression: value.DynamicValue("${{ inputs.mapping }}", value.KindUnknown, value.Origin{})})
 	if got := incomplete.Lookup("known").State(); got != value.Dynamic {
 		t.Fatalf("known key beside dynamic mapping state=%v, want Dynamic", got)
 	}
-	duplicate := Resolve(&Inputs{Values: map[string]Input{
+	duplicate := Resolve(&DeclaredMapping{Values: map[string]DeclaredEntry{
 		"name": {Name: text("name"), Value: text("first")},
 		"NAME": {Name: text("NAME"), Value: text("second")},
 	}})
@@ -67,7 +67,7 @@ func TestMappingIncompleteAndDuplicateLookupsAreDynamic(t *testing.T) {
 
 func TestMappingIterationPreservesCaseDistinctNames(t *testing.T) {
 	t.Parallel()
-	resolved := Resolve(&Inputs{Values: map[string]Input{
+	resolved := Resolve(&DeclaredMapping{Values: map[string]DeclaredEntry{
 		"PATH": {Name: text("PATH"), Value: text("upper")},
 		"path": {Name: text("path"), Value: text("lower")},
 	}})
@@ -89,7 +89,7 @@ func TestEvaluatedExpressionKeyRemainsDataAndResolutionIsDetached(t *testing.T) 
 	t.Parallel()
 	props := []value.Prop{{Name: "${{ inputs.name }}", Value: value.FromJSON("old", value.Origin{})}}
 	object := value.Map(value.Origin{}, props...)
-	resolved := Resolve(&Inputs{Expression: object})
+	resolved := Resolve(&DeclaredMapping{Expression: object})
 	props[0].Name = "changed"
 	if got, ok := resolved.Lookup("${{ inputs.name }}").Text(); !ok || got != "old" {
 		t.Fatalf("expression-looking key was evaluated or source mutation leaked: %q, %v", got, ok)
@@ -103,7 +103,7 @@ func TestKeyedEntriesKeepKeyAndValueOriginsSeparate(t *testing.T) {
 	t.Parallel()
 	keyOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 4, Column: 3}}}
 	itemOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 4, Column: 10}}}
-	resolved := Resolve(&Inputs{Values: map[string]Input{
+	resolved := Resolve(&DeclaredMapping{Values: map[string]DeclaredEntry{
 		"Name": {Name: value.YAMLScalar("Name", "!!str", keyOrigin), Value: value.YAMLScalar("source", "!!str", itemOrigin)},
 	}})
 	for key, item := range resolved.KeyedEntries() {
@@ -129,8 +129,8 @@ func TestDeclarationsPreserveUnknownInvalidAndSourceKeys(t *testing.T) {
 	invalidOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 5, Column: 7}}}
 	objectOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 6, Column: 12}}, FromExpression: true}
 	object := value.FromJSON(map[string]any{"derived": "data"}, objectOrigin)
-	resolved := Resolve(&Inputs{
-		Values: map[string]Input{
+	resolved := Resolve(&DeclaredMapping{
+		Values: map[string]DeclaredEntry{
 			"literal":  {Name: value.YAMLScalar("literal", "!!str", literalOrigin), Value: text("one"), Source: "literal"},
 			"constant": {Name: value.FromJSON("constant", constantOrigin), Value: text("two"), Source: "${{ 'constant' }}"},
 			"runtime":  {Name: value.DynamicValue("${{ inputs.key }}", value.KindUnknown, runtimeOrigin), Value: text("three"), Source: "${{ inputs.key }}"},
@@ -178,7 +178,7 @@ func TestDeclarationsPreserveUnknownInvalidAndSourceKeys(t *testing.T) {
 
 func TestDynamicWholeMappingMarksIncompleteWithoutInventingDeclaration(t *testing.T) {
 	t.Parallel()
-	resolved := Resolve(&Inputs{Expression: value.DynamicValue("${{ inputs.mapping }}", value.KindUnknown, value.Origin{})})
+	resolved := Resolve(&DeclaredMapping{Expression: value.DynamicValue("${{ inputs.mapping }}", value.KindUnknown, value.Origin{})})
 	if resolved.Complete() {
 		t.Fatal("dynamic whole mapping must be incomplete")
 	}

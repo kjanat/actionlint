@@ -77,7 +77,7 @@ func TestGraphRejectsInvalidStructure(t *testing.T) {
 
 func TestRecursiveAliasGraphEncodesWithoutExpanding(t *testing.T) {
 	t.Parallel()
-	node, err := Parse([]byte("&a [*a]\n"))
+	node, err := ParseYAML([]byte("&a [*a]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -38,7 +38,7 @@ var InvalidOutputFileRule = &define.Rule{
 }
 
 // checkInvalidOutputFile checks output files whose contents can be determined from the script.
-func checkInvalidOutputFile(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {

@@ -79,7 +79,7 @@ func TestRemoteWorkflowUnavailableInvalidAndCanceled(t *testing.T) {
 				}
 				return NewRemoteFile(request, strings.Repeat("a", 40), []byte("on: [invalid\n"))
 			}))
-			metadata, err := remote.Load(ctx, spec)
+			metadata, err := remote.LoadWorkflowMetadata(ctx, spec)
 			if metadata != nil {
 				t.Fatalf("invalid or unavailable metadata accepted: %+v", metadata)
 			}
@@ -133,10 +133,10 @@ func TestRemoteWorkflowRejectsDifferentContentAtSameCommit(t *testing.T) {
 		}
 		return NewRemoteFile(spec, strings.Repeat("a", 40), []byte(content))
 	}))
-	if _, err := remote.Load(t.Context(), "example/workflows/.github/workflows/build.yml@v1"); err != nil {
+	if _, err := remote.LoadWorkflowMetadata(t.Context(), "example/workflows/.github/workflows/build.yml@v1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := remote.Load(t.Context(), "example/workflows/.github/workflows/build.yml@v2"); err == nil || !strings.Contains(err.Error(), "changed content") {
+	if _, err := remote.LoadWorkflowMetadata(t.Context(), "example/workflows/.github/workflows/build.yml@v2"); err == nil || !strings.Contains(err.Error(), "changed content") {
 		t.Fatalf("conflicting immutable data accepted: %v", err)
 	}
 }

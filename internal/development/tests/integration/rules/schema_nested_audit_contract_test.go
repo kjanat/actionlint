@@ -29,11 +29,11 @@ jobs:
     steps:
       - run: echo test
 `
-	w, errs := workflowparser.Parse([]byte(src))
+	w, errs := workflowparser.ParseWorkflow([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -59,11 +59,11 @@ jobs:
     steps:
       - run: echo test
 `
-		w, errs := workflowparser.Parse([]byte(src))
+		w, errs := workflowparser.ParseWorkflow([]byte(src))
 		if len(errs) != 0 {
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
-		rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+		rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 			t.Fatal(err)
 		}
@@ -90,11 +90,11 @@ jobs:
     steps:
       - run: echo test
 `
-			w, errs := workflowparser.Parse([]byte(src))
+			w, errs := workflowparser.ParseWorkflow([]byte(src))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +117,7 @@ func TestSchemaNestedStackedPullRequests(t *testing.T) {
 	}{{"stacked", true}, {"unsupported", false}} {
 		t.Run(tc.activity, func(t *testing.T) {
 			t.Parallel()
-			w, errs := workflowparser.Parse([]byte(`on:
+			w, errs := workflowparser.ParseWorkflow([]byte(`on:
   pull_request:
     types: ` + tc.activity + `
   pull_request_target:
@@ -131,7 +131,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -154,7 +154,7 @@ func TestSchemaNestedStepIDBoundaries(t *testing.T) {
 	}{{"_user", true}, {"__reserved", false}, {strings.Repeat("a", 99), true}, {strings.Repeat("a", 100), false}} {
 		t.Run(tc.id, func(t *testing.T) {
 			t.Parallel()
-			w, errs := workflowparser.Parse([]byte(`on: push
+			w, errs := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -165,7 +165,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitJobPre(fixturedecl.Job(w.Jobs["test"])); err != nil {
 				t.Fatal(err)
 			}

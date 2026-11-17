@@ -7,8 +7,8 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 

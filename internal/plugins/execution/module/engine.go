@@ -17,9 +17,9 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	scriptcoords "actionlint.kjanat.dev/v2/internal/input/source/scripts"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scriptcoords"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
@@ -137,10 +137,10 @@ type Engine struct {
 	done   chan struct{}
 }
 
-// Load reads a raw or gzip-compressed core module, checks the version 1
+// LoadModuleEngine reads a raw or gzip-compressed core module, checks the version 1
 // exports, negotiates the operation versions it advertises and keeps one
 // instance ready.
-func Load(ctx context.Context, path string, options Options) (*Engine, error) {
+func LoadModuleEngine(ctx context.Context, path string, options Options) (*Engine, error) {
 	if options.MemoryPages > 65536 {
 		return nil, fmt.Errorf("engine memory limit %d exceeds WebAssembly maximum of 65536 pages", options.MemoryPages)
 	}

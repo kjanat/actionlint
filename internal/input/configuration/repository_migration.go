@@ -124,7 +124,7 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 				continue
 			}
 			name := descriptor.Name
-			group := cloneMapping(field(rules, descriptor.Group))
+			group := cloneMapping(field(rules, descriptor.Category))
 			setting := field(group, name)
 			if !isMapping(setting) {
 				continue
@@ -141,10 +141,10 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 				}
 				value, err := migrateRepositoryValue(option.Repository, value, option.Option)
 				if err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Category, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
 				}
-				if err := install(option.Repository, value, "lint.rules."+descriptor.Group+"."+name+".options."+option.Option); err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
+				if err := install(option.Repository, value, "lint.rules."+descriptor.Category+"."+name+".options."+option.Option); err != nil {
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Category, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
 				}
 				removeField(options, option.Option)
 			}
@@ -154,7 +154,7 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 				setField(setting, "options", options)
 			}
 			setField(group, name, setting)
-			setField(rules, descriptor.Group, group)
+			setField(rules, descriptor.Category, group)
 		}
 		if isMapping(rules) && len(members(rules)) != 0 {
 			setField(lint, "rules", rules)

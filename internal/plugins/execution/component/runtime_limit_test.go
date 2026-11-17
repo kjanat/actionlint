@@ -17,7 +17,7 @@ func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {
 	for _, name := range []string{"oversized-descriptor-values", "oversized-descriptor-bytes"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "plugins", name+".wasm"), component.Options{})
+			plugin, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "plugins", name+".wasm"), component.Options{})
 			if err == nil {
 				_ = plugin.Close(context.Background())
 				t.Fatal("loaded a descriptor exceeding host allocation limits")

@@ -24,7 +24,7 @@ func TestLegacyExpressionMigrationReportsIndependentSelectors(t *testing.T) {
 		if !migration.Changed || len(migration.Notes) != 1 || !strings.Contains(migration.Notes[0], "independent rule IDs") {
 			t.Fatalf("missing upgrade notice for %s: %+v", control, migration)
 		}
-		cfg, err := checking.ConfigurationRules().Parse(migration.Content)
+		cfg, err := checking.ConfigurationRules().ParseConfig(migration.Content)
 		if err != nil {
 			t.Fatal(err)
 		}

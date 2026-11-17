@@ -15,7 +15,7 @@ func TestCursorOperationsRejectForeignChildAfterSourceMutation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			foreign, err := Parse([]byte("other: foreign\n"))
+			foreign, err := ParseYAML([]byte("other: foreign\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -57,7 +57,7 @@ func TestCursorOperationsRejectForeignChildAfterSourceMutation(t *testing.T) {
 
 func TestCursorRejectsForeignGraphBeforeConstruction(t *testing.T) {
 	t.Parallel()
-	root, err := Parse([]byte("value: original\n"))
+	root, err := ParseYAML([]byte("value: original\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestCursorRejectsForeignGraphBeforeConstruction(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	foreign, err := Parse([]byte("other: foreign\n"))
+	foreign, err := ParseYAML([]byte("other: foreign\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

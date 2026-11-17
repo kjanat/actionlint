@@ -10,7 +10,7 @@ import (
 
 func TestNode20HostedMigration(t *testing.T) {
 	t.Parallel()
-	service, _ := services.Parse("github.com", "")
+	service, _ := services.ParseService("github.com", "")
 	date, _ := lifecycle.ParseDate("2026-09-23")
 	for _, using := range []string{"node20", "NODE20"} {
 		problem := RuntimeProblem(using, LifecycleContext{Service: service, AsOf: date})
@@ -79,7 +79,7 @@ func TestRuntimeSupportEvidenceUsesServiceAndDate(t *testing.T) {
 		{"ghes", "2026-09-23", true, false},
 		{"unknown", "2026-09-23", true, false},
 	} {
-		service, err := services.Parse(tc.service, "")
+		service, err := services.ParseService(tc.service, "")
 		if err != nil {
 			t.Fatal(err)
 		}

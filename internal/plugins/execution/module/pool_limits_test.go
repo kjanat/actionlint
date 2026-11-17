@@ -16,7 +16,7 @@ import (
 
 func pooledEngine(t *testing.T) *Engine {
 	t.Helper()
-	engine, err := Load(t.Context(), filepath.Join("testdata", "engines", "echo.wasm"), Options{})
+	engine, err := LoadModuleEngine(t.Context(), filepath.Join("testdata", "engines", "echo.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

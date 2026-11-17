@@ -2,9 +2,9 @@ package conventions
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -19,10 +19,10 @@ var JobTimeoutRule = &define.Rule{
 	Policy:      "require-job-timeout",
 	Help:        "Set timeout-minutes on the job within the configured bounds.",
 	Options:     define.Options[configuration.JobTimeoutPolicy](),
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		return JobTimeoutChecks(TimeoutPolicyFrom(c.Config.RequiresJobTimeout()))
 	},
-	Enabled: func(c define.Inputs) bool { return c.Config.RequiresJobTimeout().Enabled() },
+	Enabled: func(c define.RuleInputs) bool { return c.Config.RequiresJobTimeout().Enabled() },
 }
 
 type TimeoutPolicy struct {

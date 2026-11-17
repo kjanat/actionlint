@@ -40,7 +40,7 @@ policy:
 			t.Fatalf("legacy key remains: %s\n%s", key, result.Content)
 		}
 	}
-	cfg, err := checking.ConfigurationRules().Parse(result.Content)
+	cfg, err := checking.ConfigurationRules().ParseConfig(result.Content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 			if !bytes.Contains(result.Content, []byte("level: null")) {
 				t.Fatalf("migration erased the explicit null: %s", result.Content)
 			}
-			cfg, err := checking.ConfigurationRules().Parse(result.Content)
+			cfg, err := checking.ConfigurationRules().ParseConfig(result.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -171,7 +171,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if err := plan.Apply(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Load(path)
+			cfg, err := checking.ConfigurationRules().LoadConfig(path)
 			if err != nil || configuration.VariableNames(cfg.Facts()) == nil || cfg.RequiresCommitHash() {
 				t.Fatalf("migration semantics: %+v %v", cfg, err)
 			}
@@ -307,7 +307,7 @@ func TestMigrationYAMLBooleanSpellings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Parse(migration.Content)
+			cfg, err := checking.ConfigurationRules().ParseConfig(migration.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -369,7 +369,7 @@ policy: {require-job-timeout: false}
 		t.Fatal(err)
 	}
 	for range 2 {
-		cfg, err := checking.ConfigurationRules().Load(path)
+		cfg, err := checking.ConfigurationRules().LoadConfig(path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -421,7 +421,7 @@ overrides:
         correctness:
           expression-reference: {level: on, options: {secrets: [RELEASE_TOKEN]}}
 `)
-	cfg, err := checking.ConfigurationRules().Parse(source)
+	cfg, err := checking.ConfigurationRules().ParseConfig(source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +429,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err = checking.ConfigurationRules().Parse(data)
+	cfg, err = checking.ConfigurationRules().ParseConfig(data)
 	if err != nil {
 		t.Fatal(err)
 	}

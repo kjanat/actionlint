@@ -15,7 +15,7 @@ func TestRuffConfiguration(t *testing.T) {
 		"tools: {ruff: {select: []}}",
 		"tools: {ruff: {ignore: []}}",
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(text))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(text))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -23,7 +23,7 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		again, err := checking.ConfigurationRules().Parse(data)
+		again, err := checking.ConfigurationRules().ParseConfig(data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -51,7 +51,7 @@ func TestRuffConfiguration(t *testing.T) {
 		"tools: {ruff: {select: {F: true}}}",
 		"tools: {ruff: {ignore: ['']}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(text)); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err == nil {
 			t.Fatalf("accepted %s", text)
 		}
 	}
@@ -64,7 +64,7 @@ func TestRuffTargetVersionConfiguration(t *testing.T) {
 			t.Parallel()
 			setting := "ruff: {target-version: '" + version + "'}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-				_, err := checking.ConfigurationRules().Parse([]byte(text))
+				_, err := checking.ConfigurationRules().ParseConfig([]byte(text))
 				if err != nil {
 					t.Fatalf("ParseConfig(%q): %v", text, err)
 				}
@@ -116,7 +116,7 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 			for _, key := range []string{"select", "ignore"} {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-					_, err := checking.ConfigurationRules().Parse([]byte(text))
+					_, err := checking.ConfigurationRules().ParseConfig([]byte(text))
 					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /lint/"+key+"/0: minLength")) {
 						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 					}

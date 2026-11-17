@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -48,7 +49,7 @@ func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.Refere
 	return rule.errs
 }
 
-func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.ExpressionProblem {
+func (rule *validator) expressionFindings(s string, bare bool, field string, inputs calls.Inputs) []actionmeta.ExpressionProblem {
 	read := actionmeta.ReadExpressions(s, bare, field, inputs)
 	return append(read.Problems, expressionSemanticFindings(read.Expressions, field, rule.advisories)...)
 }
@@ -467,18 +468,13 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlan
 			if meta.AllowsAdditionalInputs() {
 				continue
 			}
-			ns := make([]string, 0, len(meta.InputNames()))
-			for _, inputID := range meta.InputNames() {
-				i, _ := meta.Input(inputID)
-				ns = append(ns, i.Name)
-			}
 			rule.Errorf(
 				pos,
 				actionmeta.CodeUnknownInput,
 				"input %q is not defined in action %s. available inputs are %s",
 				name,
 				description,
-				messages.SortedQuotes(ns),
+				messages.SortedQuotes(meta.InputNames()),
 			)
 		} else if m.Deprecated && !m.Required {
 			// Note: Using required inputs cannot be avoided. So we don't report it as error (though this should not
@@ -497,27 +493,19 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlan
 	}
 
 	// Check mandatory inputs are specified
-	for _, id := range meta.InputNames() {
-		i, _ := meta.Input(id)
-		if i.Required && known {
-			if inputs.Lookup(id).State() == value.Missing {
-				ns := make([]string, 0, len(meta.InputNames()))
-				for _, inputID := range meta.InputNames() {
-					i, _ := meta.Input(inputID)
-					if i.Required {
-						ns = append(ns, i.Name)
-					}
-				}
-				rule.Errorf(
-					sourcepos.NilUnlessPresent(exec.Uses.Position()),
-					actionmeta.CodeRequiredInput,
-					"missing input %q which is required by action %s. all required inputs are %s",
-					i.Name,
-					description,
-					messages.SortedQuotes(ns),
-				)
-			}
-		}
+	if !known {
+		return
+	}
+	supplied := func(id string) bool { return inputs.Lookup(id).State() != value.Missing }
+	for _, i := range meta.MissingRequiredInputs(supplied) {
+		rule.Errorf(
+			sourcepos.NilUnlessPresent(exec.Uses.Position()),
+			actionmeta.CodeRequiredInput,
+			"missing input %q which is required by action %s. all required inputs are %s",
+			i.Name,
+			description,
+			messages.SortedQuotes(meta.RequiredInputNames()),
+		)
 	}
 }
 

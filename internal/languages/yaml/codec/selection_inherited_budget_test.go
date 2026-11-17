@@ -12,7 +12,7 @@ import (
 func TestSelectInheritedAliasBudgetPrefixesMatchUpstream(t *testing.T) {
 	t.Parallel()
 	source := "payload: &payload [" + strings.TrimSuffix(strings.Repeat("value, ", 650), ", ") + "]\nitems:\n" + strings.Repeat("  - *payload\n", 3)
-	root, err := Parse([]byte(source))
+	root, err := ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

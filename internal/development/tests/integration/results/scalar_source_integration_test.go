@@ -74,7 +74,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 				}
 				var rendered bytes.Buffer
 				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				render.RenderedFindingOf(failure.Diagnostic, []byte(src)).PrettyPrint(&rendered)
+				render.PrettyPrint(&rendered, failure.Publish([]byte(src)))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}
@@ -94,7 +94,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 				fmt.Fprintf(&source, "K%d: '${{ github.actor }}',", i)
 			}
 			source.WriteString("}\n")
-			root, err := codec.Parse([]byte(source.String()))
+			root, err := codec.ParseYAML([]byte(source.String()))
 			if err != nil {
 				b.Fatal(err)
 			}

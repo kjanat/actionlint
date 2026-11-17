@@ -19,7 +19,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err := checking.ConfigurationRules().WriteDefaultFile(f, "1.17.0"); err != nil {
 		t.Fatal(err)
 	}
-	c, err := checking.ConfigurationRules().Load(f)
+	c, err := checking.ConfigurationRules().LoadConfig(f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if got := checking.ConfigurationRules().DiagnosticLevel(c, "missing-local-action"); got != "on" {
 		t.Fatalf("generated config changes recommended rules: %s", got)
 	}
-	baseline, err := checking.ConfigurationRules().Parse([]byte("{}"))
+	baseline, err := checking.ConfigurationRules().ParseConfig([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}

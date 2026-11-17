@@ -22,7 +22,7 @@ func (*settingsAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 }
 
-func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]diagmodel.Diagnostic, error) {
+func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]diagmodel.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
 	return []diagmodel.Diagnostic{{Message: "custom finding", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
@@ -48,7 +48,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte(test.configuration), "custom-check")
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(test.configuration), "custom-check")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -68,7 +68,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 			}
 		})
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {plugins: {custom-check: {level: on, options: {count: 0}}}}}"), "custom-check")
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {plugins: {custom-check: {level: on, options: {count: 0}}}}}"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}

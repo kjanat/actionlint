@@ -20,7 +20,7 @@ func (relatedProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "example"}
 }
 
-func (p relatedProbe) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+func (p relatedProbe) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Rule: "example", Message: "primary", Path: "workflow.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: p.locations}}, nil
 }
 
@@ -47,7 +47,7 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := checkinputs.Input{Path: "workflow.yml", Revision: revision, Coordinates: sourcepos.YAML}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Revision: revision, Coordinates: sourcepos.YAML}
 	locations := []results.Related{{Message: "same request", Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	native, nativeErr := checkexecutor.Run(t.Context(), input, []checkinputs.Registration{{Checker: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)

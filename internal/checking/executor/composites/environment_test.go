@@ -45,7 +45,7 @@ runs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	units := result.Batch.Scripts()
+	units := result.Batch.Scripts
 	if len(units) != 4 {
 		t.Fatalf("scripts = %d, want 4", len(units))
 	}

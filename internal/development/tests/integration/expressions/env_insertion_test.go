@@ -129,7 +129,7 @@ permissions: {}
 	if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 		t.Fatalf("valid mapping alias rejected: %v", errs)
 	}
-	_, errs := workflowparser.Parse([]byte(`on: push
+	_, errs := workflowparser.ParseWorkflow([]byte(`on: push
 env: &recursive
   ${{ insert }}: *recursive
 jobs:

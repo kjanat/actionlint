@@ -4,12 +4,12 @@ import (
 	"strconv"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
-func selectedGraphInput(tb testing.TB, count int) Input {
+func selectedGraphInput(tb testing.TB, count int) AnalyzerInput {
 	tb.Helper()
 	scripts := make([]invocationfixture.Script, count)
 	for index := range scripts {
@@ -17,7 +17,7 @@ func selectedGraphInput(tb testing.TB, count int) Input {
 	}
 	graph := invocationfixture.Graph(tb, scripts...)
 	selected := graph.Scripts()[0]
-	return Input{
+	return AnalyzerInput{
 		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
 		SelectedScripts: []invocation.ID{selected.ID}, Scripts: []Script{{Reference: selected.Declaration, Occurrence: selected}},
 	}

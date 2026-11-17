@@ -9,16 +9,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 type configurationNoopRunner struct{}
 
-func (configurationNoopRunner) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
+func (configurationNoopRunner) Analyze(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error) {
 	return nil, nil
 }
 
@@ -33,12 +34,12 @@ func TestToolRequirementsCannotMutateSiblingConfiguration(t *testing.T) {
 		}
 	}
 	seen := 0
-	providers := []tools.Registration{
-		{Descriptor: rule.Descriptor{Name: "mutator", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
+	providers := []contract.Registration{
+		{Name: "mutator", Category: "correctness", NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			cfg.Lint.Enabled, project.Lint.Enabled = new(false), new(false)
 			return false, nil
 		}},
-		{Descriptor: rule.Descriptor{Name: "observer", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
+		{Name: "observer", Category: "correctness", NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			seen++
 			if cfg.Lint.Enabled == nil || !*cfg.Lint.Enabled || project.Lint.Enabled == nil || !*project.Lint.Enabled {
 				t.Error("tool requirement callback mutated another provider's configuration")
@@ -59,12 +60,12 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 	for _, callback := range []string{"enabled", "build", "required", "input selectors"} {
 		t.Run(callback, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint:\n  enabled: true\n"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  enabled: true\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			calls := 0
-			mutate := func(c tools.Context) {
+			mutate := func(c contract.Context) {
 				calls++
 				for _, selected := range []*configuration.Config{c.Config, c.ProjectConfig} {
 					if selected != nil {
@@ -72,10 +73,10 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 					}
 				}
 			}
-			provider := tools.Registration{
-				Descriptor: rule.Descriptor{Name: "ownership-test", Category: "correctness"},
-				Scope:      rule.SourceConfiguration, SupportsActions: true,
-				Build: func(c tools.Context) (tools.Runner, error) {
+			provider := contract.Registration{
+				Name: "ownership-test", Category: "correctness",
+				Scope: rule.SourceConfiguration, SupportsActions: true,
+				Build: func(c contract.Context) (contract.Runner, error) {
 					if callback == "build" {
 						mutate(c)
 					}
@@ -84,14 +85,14 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 					}
 					return configurationNoopRunner{}, nil
 				},
-				Enabled: func(c tools.Context) bool {
+				Enabled: func(c contract.Context) bool {
 					if callback == "enabled" {
 						mutate(c)
 					}
 					return true
 				},
-				Required: func(c tools.Context) bool { mutate(c); return false },
-				InputSelectors: func(c tools.Context) ([]checkinputs.ScriptInput, error) {
+				Required: func(c contract.Context) bool { mutate(c); return false },
+				InputSelectors: func(c contract.Context) ([]checkinputs.ScriptInput, error) {
 					if callback == "input selectors" {
 						mutate(c)
 					}
@@ -99,7 +100,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 				},
 			}
 			root := t.TempDir()
-			options := checking.Options{WorkingDir: root, Tools: []tools.Registration{provider}}
+			options := checking.Options{WorkingDir: root, Tools: []contract.Registration{provider}}
 			options.Runners.AsOf, _ = lifecycle.ParseDate("2026-11-01")
 			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{
 				Path: filepath.Join(root, "ci.yml"), Config: cfg,

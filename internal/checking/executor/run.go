@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
@@ -16,7 +16,7 @@ import (
 
 // Run isolates each analyzer's input and joins all started work.
 // Findings and errors follow registration order.
-func Run(ctx context.Context, input checkinputs.Input, registrations []checkinputs.Registration) ([]results.Diagnostic, error) {
+func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []checkinputs.Registration) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ type PreparedRegistration struct {
 
 type preparedRegistration struct {
 	analyzer        checkinputs.Checker
-	prepare         func(context.Context, checkinputs.Input) (checkinputs.Input, error)
+	prepare         func(context.Context, checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error)
 	descriptor      checkinputs.Descriptor
 	options         []byte
 	availableInputs []rulemeta.InputKind
@@ -117,7 +117,7 @@ func validateAvailableInputs(available []rulemeta.InputKind) ([]rulemeta.InputKi
 
 // RunOne isolates one invocation of a prepared registration, preserving partial
 // findings and cancellation. Input kinds must match the set validated by Prepare.
-func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedRegistration) ([]results.Diagnostic, error) {
+func RunOne(ctx context.Context, input checkinputs.AnalyzerInput, registration PreparedRegistration) ([]results.Diagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

@@ -39,16 +39,16 @@ type candidateRecord struct {
 }
 
 type declaration struct {
-	Kind          artifacts.Kind  `json:"kind"`
-	SHA256        string          `json:"sha256"`
-	PluginID      string          `json:"plugin_id"`
-	PluginVersion string          `json:"plugin_version"`
-	Repository    string          `json:"repository"`
-	Contract      string          `json:"contract"`
-	Metadata      json.RawMessage `json:"metadata"`
+	Kind          artifacts.ArtifactFormat `json:"kind"`
+	SHA256        string                   `json:"sha256"`
+	PluginID      string                   `json:"plugin_id"`
+	PluginVersion string                   `json:"plugin_version"`
+	Repository    string                   `json:"repository"`
+	Contract      string                   `json:"contract"`
+	Metadata      json.RawMessage          `json:"metadata"`
 }
 
-func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
+func newOCICandidate(t *testing.T, kind artifacts.ArtifactFormat) ociCandidateFixture {
 	t.Helper()
 	cache := t.TempDir()
 	registry := ocitest.New(t)
@@ -156,7 +156,7 @@ func (f ociCandidateFixture) cachedOptions() artifacts.Options {
 
 func TestCandidateOCIRootDigestAndMetadataAdmission(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []artifacts.Kind{artifacts.Core, artifacts.Component, artifacts.ProviderManifest} {
+	for _, kind := range []artifacts.ArtifactFormat{artifacts.Core, artifacts.Component, artifacts.ProviderManifest} {
 		t.Run(string(kind), func(t *testing.T) {
 			t.Parallel()
 			f := newOCICandidate(t, kind)

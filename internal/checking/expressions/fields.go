@@ -106,8 +106,8 @@ func (rule *Checker) checkActionInputs(action *workflowlang.ExecAction, uses *wo
 		return
 	}
 	actionSpec := uses.Text()
-	var checkMapping func(map[string]*workflowlang.Input, *workflowlang.String, []*workflowlang.ActionInputMapping)
-	checkMapping = func(inputs map[string]*workflowlang.Input, expression *workflowlang.String, insertions []*workflowlang.ActionInputMapping) {
+	var checkMapping func(map[string]*workflowlang.ActionArgument, *workflowlang.String, []*workflowlang.ActionInputMapping)
+	checkMapping = func(inputs map[string]*workflowlang.ActionArgument, expression *workflowlang.String, insertions []*workflowlang.ActionInputMapping) {
 		rule.checkWorkflowExpression(expression, "with", key, schema.StringMap)
 		for _, id := range slices.Sorted(maps.Keys(inputs)) {
 			input := inputs[id]

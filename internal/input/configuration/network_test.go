@@ -25,7 +25,7 @@ func TestMetadataMirrorConfiguration(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := rules.Parse([]byte(`{"network":{"metadata-mirrors":` + tc.input + `}}`))
+			cfg, err := rules.ParseConfig([]byte(`{"network":{"metadata-mirrors":` + tc.input + `}}`))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,7 +46,7 @@ func TestMetadataMirrorConfiguration(t *testing.T) {
 		})
 	}
 	for _, invalid := range []string{`{"services":["typo"]}`, `{"services":"jsdelivr"}`, `{"allow-unknown-repositories":"yes"}`, `{"allow-unknown-repository":true}`} {
-		if _, err := rules.Parse([]byte(`{"network":{"metadata-mirrors":` + invalid + `}}`)); err == nil {
+		if _, err := rules.ParseConfig([]byte(`{"network":{"metadata-mirrors":` + invalid + `}}`)); err == nil {
 			t.Errorf("accepted invalid configuration %s", invalid)
 		}
 	}
@@ -73,7 +73,7 @@ func TestMetadataMirrorConfigurationExtends(t *testing.T) {
 			if err := os.WriteFile(path, []byte("extends = ['base.toml']\n"+tc.override), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Load(path)
+			cfg, err := checking.ConfigurationRules().LoadConfig(path)
 			if err != nil {
 				t.Fatal(err)
 			}

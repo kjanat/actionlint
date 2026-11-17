@@ -3,8 +3,8 @@ package policy_test
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -23,7 +23,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := rules.Parse([]byte("lint: {rules: {correctness: {example: on}}}"))
+			cfg, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {example: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

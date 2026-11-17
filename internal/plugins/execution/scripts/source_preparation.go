@@ -5,31 +5,32 @@ import (
 	"maps"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 )
 
-func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script tools.Script, prepared preparation.Prepared, settings integrationconfig.Settings, via route) (preparation.Prepared, error) {
+func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script scriptexecution.Unit, prepared preparation.Prepared, settings integrationconfig.Settings, via route) (preparation.Prepared, error) {
 	if transform == nil || prepared.Skip != "" {
 		return prepared, nil
 	}
 	language := scriptShell(script)
 	if script.Input != nil {
-		language = script.Input.Language
+		language = script.Input.Site.Language
 	}
-	declarations, known := shellprofile.EnvironmentStartup("", script.Fact.Environment)
+	declarations, known := shellprofile.EnvironmentStartup("", script.Environment)
 	switch language {
 	case "bash", "sh", "dash", "ksh", "busybox":
 	default:
 		declarations = ""
 	}
+	_, directoryKnown := script.WorkingDirectory()
 	plan, err := transform.Plan(ctx, preparation.SourcePlanInput{
-		Source: script.Text, Language: language,
+		Source: script.Text(), Language: language,
 		EnvironmentStartup: declarations, EnvironmentKnown: known,
 		Settings:   settings,
-		Filesystem: via == routeProcess && script.Execution.DirectoryKnown,
+		Filesystem: via == routeProcess && directoryKnown,
 		Engine:     via == routeEngine, Input: script.Input != nil,
 	})
 	if err != nil {

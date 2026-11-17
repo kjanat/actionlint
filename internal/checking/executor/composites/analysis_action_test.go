@@ -20,7 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Result, error) {
+func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Composition, error) {
 	t.Helper()
 	content, available := metadata.OriginalSource()
 	if !available {
@@ -106,7 +106,7 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if result.EntrySnapshot != snapshot {
 		t.Fatal("action entry result replaced the canonical snapshot")
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || !scopes[0].Composite || len(scripts) != 1 {
 		t.Fatalf("mutable metadata changed action classification or expansion: scopes=%+v scripts=%+v", scopes, scripts)
 	}
@@ -130,7 +130,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(tempdir.Physical(t), "action.yml")
 			content := []byte("name: test\ndescription: test\nruns: &runs\n  using: composite\n  steps:\n    - shell: bash\n      run: echo before\n    - shell: bash\n      run: " + invalid.value + "\n    - shell: bash\n      run: echo after\n")
-			metadata, parseErr := actionmeta.Parse(path, content)
+			metadata, parseErr := actionmeta.ParseActionMetadata(path, content)
 			if metadata == nil {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
@@ -140,7 +140,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			scripts := result.Batch.Scripts()
+			scripts := result.Batch.Scripts
 			if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 				t.Fatalf("rejected run entered standalone script batch: %+v", scripts)
 			}
@@ -161,7 +161,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: empty\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ''\n")
-	metadata, err := actionmeta.Parse(path, content)
+	metadata, err := actionmeta.ParseActionMetadata(path, content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := result.Batch.Scripts()
+	scripts := result.Batch.Scripts
 	if len(result.Findings) != 0 || len(scripts) != 1 {
 		t.Fatalf("empty composite script lost: scripts=%d findings=%v", len(scripts), result.Findings)
 	}

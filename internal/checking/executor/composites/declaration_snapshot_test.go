@@ -47,7 +47,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 	for _, mappedFirst := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unmapped first", true: "mapped first"}[mappedFirst], func(t *testing.T) {
 			t.Parallel()
-			metadata, err := actionmeta.Parse(filepath.Join(sourceFixtureBase(t), "source", "action.yml"), source)
+			metadata, err := actionmeta.ParseActionMetadata(filepath.Join(sourceFixtureBase(t), "source", "action.yml"), source)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -113,7 +113,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				t.Fatalf("script occurrences = %d, want 2", len(analysis.scripts))
 			}
 			batch := prepareCollectedScripts(t, analysis)
-			units := batch.Scripts()
+			units := batch.Scripts
 			snapshot, err := snapshots.Action(files.PhysicalPath(metadata.Path()), metadata)
 			if err != nil {
 				t.Fatal(err)

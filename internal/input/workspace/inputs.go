@@ -7,15 +7,18 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-type Inputs struct {
+// InputFiles collects the absolute paths and remote addresses of the files an
+// analysis reads, such as configuration files and local WebAssembly modules.
+// It is safe for concurrent use.
+type InputFiles struct {
 	mu    sync.Mutex
 	paths map[string]struct{}
 }
 
-func (f *Inputs) Add(path string) {
+func (f *InputFiles) Add(path string) {
 	if path == "" || path == "<stdin>" {
 		return
 	}
@@ -30,7 +33,7 @@ func (f *Inputs) Add(path string) {
 	f.paths[path] = struct{}{}
 }
 
-func (f *Inputs) List() []string {
+func (f *InputFiles) List() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	paths := make([]string, 0, len(f.paths))
@@ -41,13 +44,13 @@ func (f *Inputs) List() []string {
 	return paths
 }
 
-func (f *Inputs) AddConfig(config *configuration.Config, provenance configuration.Provenance, project *Project, workingDir string) {
+func (f *InputFiles) AddConfig(config *configuration.Config, provenance configuration.Provenance, project *Project, workingDir string) {
 	if config != nil {
 		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
 			if module, ok := config.Tools[name].Backend.Wasm(); ok {
-				_, local, err := pluginartifact.NormalizeSource(module.Path(), workingDir)
-				if err == nil {
-					f.Add(local)
+				// An oci:// reference fails to parse and names no local file.
+				if location, err := pluginreference.ParseModuleLocation(module.Path()); err == nil {
+					f.Add(location.File(workingDir))
 				}
 			}
 		}

@@ -23,7 +23,7 @@ func TestLiteralFileSelectionScope(t *testing.T) {
 		{"files: {includes: []}", "testdata/ci.yml", false, false},
 		{"files: {includes: []}", "testdata/ci.yml", true, true},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 		if err != nil {
 			t.Fatal(err)
 		}

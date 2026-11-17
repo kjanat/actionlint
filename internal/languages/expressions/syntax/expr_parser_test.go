@@ -653,7 +653,7 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			p := NewParser()
-			n, err := p.Parse(NewLexer(tc.input + "}}"))
+			n, err := p.ParseExpression(NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", err)
 			}
@@ -811,7 +811,7 @@ func TestParseExpressionSyntaxError(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			p := NewParser()
-			_, err := p.Parse(NewLexer(tc.input + "}}"))
+			_, err := p.ParseExpression(NewLexer(tc.input + "}}"))
 			if err == nil {
 				t.Fatal("Parse error did not occur:", tc.input)
 			}
@@ -961,7 +961,7 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 			t.Parallel()
 			// Add 2 spaces so start position of token must be offset 2
 			p := NewParser()
-			e, err := p.Parse(NewLexer("  " + tc.input + "}}"))
+			e, err := p.ParseExpression(NewLexer("  " + tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", err)
 			}
@@ -988,7 +988,7 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 func TestParseReturnFirstErrorOnMultipleErrors(t *testing.T) {
 	t.Parallel()
 	p := NewParser()
-	_, want := p.Parse(NewLexer(".}}"))
+	_, want := p.ParseExpression(NewLexer(".}}"))
 	if want == nil {
 		t.Fatal("error did not occur")
 	}

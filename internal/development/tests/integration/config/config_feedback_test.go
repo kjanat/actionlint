@@ -14,7 +14,7 @@ import (
 
 func TestCommitHashExceptionsPreserveOtherFindings(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`lint:
   rules:
     policy:
       require-commit-hash:

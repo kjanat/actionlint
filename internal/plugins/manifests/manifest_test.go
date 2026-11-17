@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 // minimal is the smallest valid process manifest; cases below patch it.
@@ -33,7 +33,7 @@ const minimal = `{
 
 func TestParseMinimalManifest(t *testing.T) {
 	t.Parallel()
-	m, err := manifests.Parse([]byte(minimal))
+	m, err := manifests.ParsePluginManifest([]byte(minimal))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestLegacyFixAvailabilityIsIgnored(t *testing.T) {
 	t.Parallel()
 	for _, label := range []string{"none", "safe", "suggested"} {
 		data := strings.Replace(minimal, `"rule": {`, `"rule": {"fix_availability": "`+label+`",`, 1)
-		manifest, err := manifests.Parse([]byte(data))
+		manifest, err := manifests.ParsePluginManifest([]byte(data))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,7 +64,7 @@ func TestVersionProbeLiteralArguments(t *testing.T) {
 	t.Parallel()
 	document := strings.Replace(minimal, `"config": {"render": "none"}`,
 		`"config": {"render": "none"}, "version": {"args": ["-Command", "(Get-Module PSScriptAnalyzer).Version.ToString()"], "pattern": "^([0-9.]+)$"}`, 1)
-	manifest, err := manifests.Parse([]byte(document))
+	manifest, err := manifests.ParsePluginManifest([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestParseRejects(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := manifests.Parse([]byte(document))
+			_, err := manifests.ParsePluginManifest([]byte(document))
 			if err == nil {
 				t.Fatal("accepted invalid manifest")
 			}
@@ -144,21 +144,21 @@ func TestParseTemplateEffects(t *testing.T) {
 	t.Parallel()
 	document := strings.Replace(minimal, `"config": {"render": "none"}`,
 		`"config": {"render": "none"}, "version": {"args": ["--version"], "pattern": "^lint (\\S+)", "template_effects": "1.0.0"}, "template_effects": {"E501": "line-length"}`, 1)
-	if _, err := manifests.Parse([]byte(document)); err == nil {
+	if _, err := manifests.ParsePluginManifest([]byte(document)); err == nil {
 		t.Fatal("accepted template effects without the template-effects contract")
 	}
 	document = strings.Replace(document, `"fixes": false`, `"template_contract": "kjanat:actionlint/template-effects@0.1.0", "fixes": false`, 1)
-	if _, err := manifests.Parse([]byte(document)); err != nil {
+	if _, err := manifests.ParsePluginManifest([]byte(document)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := manifests.Parse([]byte(strings.Replace(document, `"line-length"`, `"reformatted"`, 1))); err == nil {
+	if _, err := manifests.ParsePluginManifest([]byte(strings.Replace(document, `"line-length"`, `"reformatted"`, 1))); err == nil {
 		t.Error("accepted an unknown template effect")
 	}
 }
 
 func TestParseRejectsOversizedManifest(t *testing.T) {
 	t.Parallel()
-	if _, err := manifests.Parse([]byte(strings.Repeat(" ", 1<<20+1))); err == nil {
+	if _, err := manifests.ParsePluginManifest([]byte(strings.Repeat(" ", 1<<20+1))); err == nil {
 		t.Error("accepted manifest over the size limit")
 	}
 }
@@ -168,15 +168,15 @@ func TestParseConfigShorthands(t *testing.T) {
 	document := strings.Replace(minimal, `"capabilities"`,
 		`"config_schema": {"type": "object", "properties": {"lint": {"type": "object", "properties": {"level": {"type": "integer"}}}}},
 		"config_shorthands": {"level": {"path": ["lint", "level"], "precedence": "shorthand"}}, "capabilities"`, 1)
-	m, err := manifests.Parse([]byte(document))
+	m, err := manifests.ParsePluginManifest([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
 	level, ok := m.ConfigShorthands["level"]
-	if !ok || len(m.ConfigShorthands) != 1 || !slices.Equal(level.Path, []string{"lint", "level"}) || level.Precedence != configschema.PrecedenceShorthand {
+	if !ok || len(m.ConfigShorthands) != 1 || !slices.Equal(level.Path, []string{"lint", "level"}) || level.Precedence != toolsettings.PrecedenceShorthand {
 		t.Fatalf("shorthands = %+v", m.ConfigShorthands)
 	}
-	schema, err := configschema.Compile(m.ConfigSchema)
+	schema, err := toolsettings.Compile(m.ConfigSchema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,14 +190,14 @@ func TestParseConfigShorthands(t *testing.T) {
 
 func TestReadsConfigFiles(t *testing.T) {
 	t.Parallel()
-	m, err := manifests.Parse([]byte(minimal))
+	m, err := manifests.ParsePluginManifest([]byte(minimal))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if m.ReadsConfigFiles() {
 		t.Fatal("manifest without config_files reads configuration files")
 	}
-	m, err = manifests.Parse([]byte(strings.Replace(minimal, `"config": {"render": "none"}`,
+	m, err = manifests.ParsePluginManifest([]byte(strings.Replace(minimal, `"config": {"render": "none"}`,
 		`"config": {"render": "none"}, "config_files": {"names": [".lintrc"]}`, 1)))
 	if err != nil {
 		t.Fatal(err)

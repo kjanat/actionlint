@@ -13,7 +13,7 @@ import (
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -64,7 +64,7 @@ func TestRegistryCLI(t *testing.T) {
 	configPath := filepath.Join(root, ".github", "actionlint.yaml")
 	readDeclarations := func() configuration.PluginDeclarations {
 		t.Helper()
-		cfg, err := checking.ConfigurationRules().Load(configPath, "no-sudo")
+		cfg, err := checking.ConfigurationRules().LoadConfig(configPath, "no-sudo")
 		if err != nil {
 			t.Fatal(err)
 		}

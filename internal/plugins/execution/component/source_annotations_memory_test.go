@@ -11,7 +11,7 @@ import (
 
 func TestSourceAnnotationsShareTheCallMemoryBudget(t *testing.T) {
 	t.Parallel()
-	plugin, err := Load(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
+	plugin, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestSourceAnnotationsShareTheCallMemoryBudget(t *testing.T) {
 	// Leave one page beyond the host imports for stdin and none for annotations.
 	plugin.memory.limit = callImportMemory(t, plugin) + 1<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
-	if _, err := plugin.CheckDocument(t.Context(), checkinputs.Input{}); !errors.Is(err, errMemoryBudget) {
+	if _, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{}); !errors.Is(err, errMemoryBudget) {
 		t.Fatalf("annotations ignored the shared memory budget: %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {

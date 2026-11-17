@@ -3,16 +3,16 @@ package scripts
 
 import (
 	"strings"
-	"unicode/utf8"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // Declaration is a script's source data, independent of how often it is invoked.
 // Shell is the declared shell, before applying runner defaults. Start and Spans
-// identify the original source at Path. JobID and StepID identify its declarations
-// when those declarations have IDs.
+// identify the original source at Path; Spans index the bytes of Text. JobID and
+// StepID identify its declarations when those declarations have IDs.
 type Declaration struct {
 	Reference sourcepos.Reference
 	JobID     string
@@ -21,20 +21,8 @@ type Declaration struct {
 	Shell     string
 	Start     sourcepos.Position
 	Path      string
-	Spans     []Span
+	Spans     []sourcemap.Span
 	Comments  []workflowfacts.SourceComment
-}
-
-// Span maps the text columns [Start, End) of one line of Text to the declaring
-// document. Document is the position of the first mapped character. DocumentEnd
-// is nonzero for a decoded escape sequence, whose source width differs from its
-// text width.
-type Span struct {
-	Line        int
-	Start       int
-	End         int
-	Document    sourcepos.Position
-	DocumentEnd sourcepos.Position
 }
 
 // Execution carries the shell and working directory the runner would use.
@@ -52,33 +40,29 @@ type Execution struct {
 // document. Exclusive selects the end of a range. Text without a source, such as
 // whitespace synthesized by YAML folding, reports false.
 func (s Declaration) Position(line, column int, exclusive bool) (sourcepos.Position, bool) {
-	for _, span := range s.Spans {
-		if span.Line != line {
-			continue
-		}
-		inside := column >= span.Start && column < span.End
-		if exclusive {
-			inside = column > span.Start && column <= span.End || span.Start == span.End && column == span.Start
-		}
-		if !inside {
-			continue
-		}
-		if span.DocumentEnd.Line != 0 {
-			if exclusive && column == span.End {
-				return span.DocumentEnd, true
-			}
-			return span.Document, true
-		}
-		return sourcepos.Position{Line: span.Document.Line, Column: span.Document.Column + column - span.Start}, true
+	if line < 1 {
+		return sourcepos.Position{}, false
 	}
-	return sourcepos.Position{}, false
+	start := 0
+	for range line - 1 {
+		next := strings.IndexByte(s.Text[start:], '\n')
+		if next < 0 {
+			return sourcepos.Position{}, false
+		}
+		start += next + 1
+	}
+	text := s.Text[start:]
+	if end := strings.IndexByte(text, '\n'); end >= 0 {
+		text = text[:end]
+	}
+	offset, ok := sourcepos.ByteOffsetAtColumn(text, column)
+	if !ok {
+		return sourcepos.Position{}, false
+	}
+	return s.OffsetPosition(start+offset, exclusive)
 }
 
-// OffsetPosition maps a byte offset of Text to the declaring document. It counts
-// lines and character columns before offset, then applies Position.
+// OffsetPosition maps a byte offset of Text to the declaring document.
 func (s Declaration) OffsetPosition(offset int, exclusive bool) (sourcepos.Position, bool) {
-	prefix := s.Text[:offset]
-	line := strings.Count(prefix, "\n") + 1
-	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
-	return s.Position(line, column, exclusive)
+	return sourcemap.Locate(s.Text, s.Spans, offset, exclusive)
 }

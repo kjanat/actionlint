@@ -49,7 +49,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, parseErrors := workflowparser.Parse([]byte(source))
+			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

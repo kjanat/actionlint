@@ -1,4 +1,4 @@
-package bundled_test
+package bundledproviders_test
 
 import (
 	"bytes"
@@ -14,9 +14,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"github.com/google/go-cmp/cmp"
 	"github.com/itchyny/gojq"
 )
@@ -57,11 +57,11 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 			}
 		}
 	}
-	err = fs.WalkDir(bundled.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
+	err = fs.WalkDir(bundledproviders.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !strings.HasSuffix(name, ".jq") {
 			return err
 		}
-		data, err := fs.ReadFile(bundled.FS(), name)
+		data, err := fs.ReadFile(bundledproviders.FS(), name)
 		if err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func TestRuffConfigTransform(t *testing.T) {
 	if index < 0 {
 		t.Fatal("ruff is not bundled")
 	}
-	program, ok := bundled.Program(manifests[index].Process.Config.Transform.Digest)
+	program, ok := bundledproviders.Program(manifests[index].Process.Config.Transform.Digest)
 	if !ok {
 		t.Fatal("ruff config transform is not bundled")
 	}
@@ -206,7 +206,7 @@ func outputDecoder(t *testing.T, manifest pluginmanifests.Manifest) process.Deco
 	if output.Format != pluginmanifests.FormatJSON || output.Transform == nil {
 		t.Fatalf("%s: bundled providers decode JSON with a transform, got %q", manifest.Rule.Name, output.Format)
 	}
-	program, ok := bundled.Program(output.Transform.Digest)
+	program, ok := bundledproviders.Program(output.Transform.Digest)
 	if !ok {
 		t.Fatalf("%s: missing output program", manifest.Rule.Name)
 	}

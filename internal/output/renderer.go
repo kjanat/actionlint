@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Renderer formats analysis results.
@@ -61,7 +63,7 @@ func (r *Renderer) SetWidth(width int) error {
 }
 
 // Render writes the result in the selected format.
-func (r *Renderer) Render(out io.Writer, result Result) error {
+func (r *Renderer) Render(out io.Writer, result RenderedReport) error {
 	for _, rule := range result.Rules {
 		r.rules.register(rule)
 	}
@@ -85,34 +87,33 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		if r.format == FormatPretty {
 			configPath := ""
 			// Omit repeated rule descriptions from individual findings.
-			if rule := r.rules.lookup(finding.Diagnostic.Rule); rule != nil {
+			if rule := r.rules.lookup(finding.Rule); rule != nil {
 				if rule.Category != "" {
 					configPath = "lint.rules." + rule.Category + "." + rule.Name
 				}
-				if finding.Diagnostic.Help == rule.Help {
-					finding.Diagnostic.Help = ""
+				if finding.Help == rule.Help {
+					finding.Help = ""
 				}
-				if finding.Diagnostic.Explanation == rule.Explanation {
-					finding.Diagnostic.Explanation = ""
+				if finding.Explanation == rule.Explanation {
+					finding.Explanation = ""
 				}
-				if finding.Diagnostic.DocumentationURL == rule.DocumentationURL {
-					finding.Diagnostic.DocumentationURL = ""
+				if finding.DocumentationURL == rule.DocumentationURL {
+					finding.DocumentationURL = ""
 				}
 			}
-			if err := finding.printPretty(out, r.width, r.hyperlinks, r.color, configPath); err != nil {
+			if err := printPretty(out, finding, r.width, r.hyperlinks, r.color, configPath); err != nil {
 				return err
 			}
 			continue
 		}
 		if r.formatter != nil {
-			fields = append(fields, finding.TemplateFields())
+			fields = append(fields, TemplateFieldsOf(finding))
 			continue
 		}
 		if r.oneline {
-			finding.Source.Content = nil
-			finding.canonicalSnippet = ""
+			finding.Excerpt = results.Excerpt{}
 		}
-		finding.prettyPrint(out, r.color)
+		prettyPrint(out, finding, r.color)
 	}
 	if r.formatter != nil {
 		return r.formatter.Print(out, fields)

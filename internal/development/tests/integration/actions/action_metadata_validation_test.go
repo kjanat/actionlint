@@ -44,7 +44,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 					if tc.name == "metadata file" && metadata.foreign {
 						tc.first = -1
 					}
-					config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
+					config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
 					if err != nil {
 						t.Fatal(err)
 					}

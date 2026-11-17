@@ -20,7 +20,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"github"})
 	contextspec.SetEventPayloadType(checker, event)
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.commits.*.message}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.commits.*.message}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		input string
-		kind  exprtypes.Kind
+		kind  exprtypes.TypeKind
 		want  any
 	}{
 		{"inputs.flag", exprtypes.KindBool, true},

@@ -6,10 +6,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -21,7 +21,7 @@ func Remove(content []byte, position sourcepos.Position, rules, allowed []string
 	if len(rules) == 0 {
 		return results.Edit{}, false
 	}
-	directives, _ := Parse(content, allowed, names)
+	directives, _ := ParseInlineSuppressions(content, allowed, names)
 	var declaration *Directive
 	for i := range directives {
 		if directives[i].Position == position {

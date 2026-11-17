@@ -152,7 +152,7 @@ lint:
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := checking.ConfigurationRules().Parse(data)
+	resolved, err := checking.ConfigurationRules().ParseConfig(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ lint:
 		if err != nil {
 			t.Fatal(err)
 		}
-		resolved, err := checking.ConfigurationRules().Parse(data)
+		resolved, err := checking.ConfigurationRules().ParseConfig(data)
 		if err != nil || checking.ConfigurationRules().DiagnosticLevel(resolved, "require-commit-hash") != "off" {
 			t.Fatalf("replaced policy survived: %+v %v", result.Config, err)
 		}

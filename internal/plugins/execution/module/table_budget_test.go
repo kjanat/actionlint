@@ -47,7 +47,7 @@ func TestTableBudgetRejectsUnboundedOrOversized(t *testing.T) {
 			if err := os.WriteFile(path, modified, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			engine, err := Load(t.Context(), path, Options{MemoryPages: 2})
+			engine, err := LoadModuleEngine(t.Context(), path, Options{MemoryPages: 2})
 			if engine != nil {
 				if closeErr := engine.Close(context.WithoutCancel(t.Context())); closeErr != nil {
 					t.Error(closeErr)
@@ -62,7 +62,7 @@ func TestTableBudgetRejectsUnboundedOrOversized(t *testing.T) {
 
 func TestTablesAndLinearMemoryShareInstanceBudget(t *testing.T) {
 	t.Parallel()
-	engine, err := Load(t.Context(), "testdata/wat/table-budget.wasm", Options{MemoryPages: 2})
+	engine, err := LoadModuleEngine(t.Context(), "testdata/wat/table-budget.wasm", Options{MemoryPages: 2})
 	if err != nil {
 		t.Fatal(err)
 	}

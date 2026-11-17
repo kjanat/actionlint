@@ -55,7 +55,7 @@ func TestSecretInterpolationValueFlow(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +74,7 @@ func TestSecretInterpolationValueFlow(t *testing.T) {
 
 func TestSecretInterpolationPreservesName(t *testing.T) {
 	t.Parallel()
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("secrets.MixedCaseToken}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("secrets.MixedCaseToken}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
 )

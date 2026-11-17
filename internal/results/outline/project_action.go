@@ -10,7 +10,7 @@ import (
 
 // FromAction projects decoded action metadata into a report outline.
 func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Action {
-	outline := Action{Path: path, ParseStatus: "failed", Inputs: []Input{}, Outputs: []Output{}, Runs: UnknownRuns{}}
+	outline := Action{Path: path, ParseStatus: "failed", Inputs: []ActionInputOutline{}, Outputs: []ActionOutputOutline{}, Runs: UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {
 		return outline
 	}
@@ -45,8 +45,8 @@ func actionOutlineString(node *codec.Node) string {
 	return ""
 }
 
-func actionInputOutlines(node *codec.Node) []Input {
-	inputs := []Input{}
+func actionInputOutlines(node *codec.Node) []ActionInputOutline {
+	inputs := []ActionInputOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != codec.MappingNode {
 		return inputs
@@ -54,7 +54,7 @@ func actionInputOutlines(node *codec.Node) []Input {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
-		input := Input{
+		input := ActionInputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
 			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowparser.PosAt(key)),
 		}
@@ -73,8 +73,8 @@ func actionInputOutlines(node *codec.Node) []Input {
 	return inputs
 }
 
-func actionOutputOutlines(node *codec.Node) []Output {
-	outputs := []Output{}
+func actionOutputOutlines(node *codec.Node) []ActionOutputOutline {
+	outputs := []ActionOutputOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != codec.MappingNode {
 		return outputs
@@ -82,7 +82,7 @@ func actionOutputOutlines(node *codec.Node) []Output {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
-		outputs = append(outputs, Output{
+		outputs = append(outputs, ActionOutputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
 			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowparser.PosAt(key)),
 		})

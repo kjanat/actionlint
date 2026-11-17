@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // schemaBindingError preserves detached schema paths for source attribution.
@@ -14,7 +14,7 @@ func schemaBindingError(err error) error {
 	if err == nil {
 		return nil
 	}
-	validation, ok := errors.AsType[*configschema.ValidationError](err)
+	validation, ok := errors.AsType[*toolsettings.ValidationError](err)
 	if !ok {
 		return err
 	}

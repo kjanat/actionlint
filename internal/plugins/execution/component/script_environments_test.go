@@ -72,7 +72,7 @@ func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Windows}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"miXedCase"}})
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}, Environment: environments}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}, Environment: environments}}}
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	for _, id := range []string{"", "entry", "call", "unselected", "another-invocation"} {
 		result, err := (scriptEnvironments{}).ForScript(ctx, id)
@@ -126,7 +126,7 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 
 func TestSuppliedScriptWithoutEnvironmentFactsReturnsAnEmptyList(t *testing.T) {
 	t.Parallel()
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}}}}
 	document := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	result, err := (scriptEnvironments{}).ForScript(document, "selected")
 	value, ok := result.(bind.ResultListEnvironmentStringOk)

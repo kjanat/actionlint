@@ -14,7 +14,7 @@ import (
 func parseWorkflowPanicFree(data []byte) *workflowmodel.Workflow {
 	// Avoid Parse() panicking. It panics when go-yaml panics
 	defer func() { _ = recover() }()
-	w, _ := workflowparser.Parse(data)
+	w, _ := workflowparser.ParseWorkflow(data)
 	return w
 }
 

@@ -73,7 +73,7 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 		{`'different message'`, false},
 		{`'('`, false},
 	} {
-		errs := []results1.Diagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
+		errs := []results1.PublishedDiagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
 		hints := quotedIgnoreHints([]string{tc.pattern}, errs)
 		if (len(hints) == 1) != tc.want {
 			t.Errorf("%q: hints=%v", tc.pattern, hints)

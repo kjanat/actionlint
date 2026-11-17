@@ -30,7 +30,7 @@ func ReadLocal(reader *files.Reader, path string) (Manifest, Programs, error) {
 	if err != nil {
 		return Manifest{}, nil, err
 	}
-	manifest, err := Parse(data)
+	manifest, err := ParsePluginManifest(data)
 	if err != nil {
 		return Manifest{}, nil, fmt.Errorf("%s: %w", path, err)
 	}

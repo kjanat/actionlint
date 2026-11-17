@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -22,7 +22,7 @@ func preparePublicationBatch(t *testing.T, batch policy.Batch, caller *configura
 func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *configuration.Config, sourceConfigs map[string]*configuration.Config, captureRoot string) policy.Batch {
 	t.Helper()
 	rules := checking.ConfigurationRules()
-	registry := binding.NewRegistry(rules)
+	registry := rulebinding.NewRegistry(rules)
 	batch.Processor = policy.Processor{RuleSet: rules}
 	if batch.Policy.Path == "" {
 		batch.Policy.Path = batch.InputPath
@@ -54,7 +54,7 @@ func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *configu
 		}
 	}
 	batch.Policy.Scope = registry.Prepare(caller, caller, caller)
-	batch.Policy.SourceBindings = make(map[string]*binding.Scope, len(sourceConfigs))
+	batch.Policy.SourceBindings = make(map[string]*rulebinding.Scope, len(sourceConfigs))
 	for path, cfg := range sourceConfigs {
 		batch.Policy.SourceBindings[path] = registry.Prepare(caller, cfg, cfg)
 	}

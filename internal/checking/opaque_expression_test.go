@@ -43,12 +43,12 @@ func TestAnalyzeOpaqueCompositeInputsPublishCapturedInspectExpression(t *testing
 						t.Fatal("declaring manifest has no sealed capture")
 					}
 					matched := 0
-					for index, finding := range result.Diagnostics {
+					for _, finding := range result.Diagnostics {
 						if finding.Rule != sink.rule {
 							continue
 						}
 						matched++
-						if finding.Reference == nil || finding.Reference.Document != captured.Revision.Document() || finding.Reference.Revision != captured.Revision.Digest() || !bytes.Equal(result.Sources[index].Content, []byte(content)) || finding.Start.Line < 1 || finding.Start.Column < 1 || result.Sources[index].Unavailable.Present() || result.Sources[index].RawScript {
+						if finding.Reference == nil || finding.Reference.Document != captured.Revision.Document() || finding.Reference.Revision != captured.Revision.Digest() || !bytes.Equal(finding.Source.Content, []byte(content)) || finding.Start.Line < 1 || finding.Start.Column < 1 || finding.Source.Unavailable.Present() || finding.Source.RawScript {
 							t.Fatalf("published sink lost captured YAML evidence: %+v", finding)
 						}
 					}

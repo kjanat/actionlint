@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // ErrRuleMetadataRequired means a category migration needs plugin descriptors.
@@ -149,19 +149,19 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 	registered := map[string]bool{}
 	for _, descriptor := range registrations {
 		registered[descriptor.Name] = true
-		if index := slices.IndexFunc(descriptors, func(d Rule) bool { return d.Name == descriptor.Name }); index >= 0 {
+		if index := slices.IndexFunc(descriptors, func(d rule.Declaration) bool { return d.Name == descriptor.Name }); index >= 0 {
 			descriptors[index].Descriptor = descriptor
 		} else {
-			descriptors = append(descriptors, Rule{Descriptor: descriptor, Group: descriptor.Category})
+			descriptors = append(descriptors, rule.Declaration{Descriptor: descriptor})
 		}
 	}
-	lookup := func(name string) (Rule, bool) {
+	lookup := func(name string) (rule.Declaration, bool) {
 		for _, descriptor := range descriptors {
 			if descriptor.Name == name {
 				return descriptor, true
 			}
 		}
-		return Rule{}, false
+		return rule.Declaration{}, false
 	}
 	next := cloneMapping(root)
 	lint := cloneMapping(field(root, "lint"))

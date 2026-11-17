@@ -546,7 +546,7 @@ jobs:
 			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
-					findings = append(findings, diagnostic)
+					findings = append(findings, diagnostic.Diagnostic)
 				}
 			}
 			if tc.want == "" {
@@ -606,7 +606,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("checkout repository assumption for %s: %+v", tc.event, result.Diagnostics)
 			}
@@ -650,7 +650,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
+			if found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
 		})
@@ -677,7 +677,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("workspace invocation of checkout-prefixed script missed: %+v", result.Diagnostics)
 	}
 }
@@ -734,7 +734,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
@@ -758,7 +758,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 	}
 	git("update-index", "--chmod=+x", "bad.sh")
@@ -766,7 +766,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("session reused stale Git index: %+v", result.Diagnostics)
 	}
 }

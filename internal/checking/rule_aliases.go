@@ -1,39 +1,24 @@
 package checking
 
 import (
-	"sync"
+	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
-
-var bundledRuleNames = sync.OnceValue(func() rule.Names {
-	index, err := rule.NewNames(ListRules())
-	if err != nil {
-		panic(err)
-	}
-	return index
-})
 
 // ResolveRuleAlias looks up historical spellings declared by the built-in rules.
 // Unknown names, including plugin IDs, pass through unchanged.
 func ResolveRuleAlias(name string) string { return RuleNames().ResolveAlias(name) }
 
 // RuleNames returns names and aliases of built-in rules and bundled tools.
-func RuleNames() rule.Names { return bundledRuleNames() }
+func RuleNames() rule.Names { return ConfigurationRules().Names() }
 
 // BuiltinRuleNames returns the names and aliases reserved for actionlint's native checks.
-func BuiltinRuleNames() rule.Names { return nativeRuleNames() }
+func BuiltinRuleNames() rule.Names { return RuleNames().Restrict(isNativeRule) }
 
-var nativeRuleNames = sync.OnceValue(func() rule.Names {
-	descriptors := make([]rule.Descriptor, 0, len(builtins))
-	for _, declaration := range builtins {
-		if declaration.Provider == "actionlint" {
-			descriptors = append(descriptors, declaration.Descriptor)
-		}
-	}
-	index, err := rule.NewNames(descriptors)
-	if err != nil {
-		panic(err)
-	}
-	return index
-})
+// isNativeRule reports whether name is a built-in rule that actionlint itself provides.
+func isNativeRule(name string) bool {
+	return slices.ContainsFunc(builtins, func(declaration rule.Declaration) bool {
+		return declaration.Name == name && declaration.Provider == "actionlint"
+	})
+}

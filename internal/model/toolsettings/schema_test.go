@@ -1,11 +1,11 @@
-package configschema_test
+package toolsettings_test
 
 import (
 	"errors"
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestCompileRefusesExternalReferences(t *testing.T) {
@@ -14,18 +14,18 @@ func TestCompileRefusesExternalReferences(t *testing.T) {
 		`{"$ref": "https://example.invalid/schema.json"}`,
 		`{"properties": {"rc": {"$ref": "file:///etc/schema.json"}}}`,
 	} {
-		if _, err := configschema.Compile([]byte(document)); err == nil {
+		if _, err := toolsettings.Compile([]byte(document)); err == nil {
 			t.Fatalf("compiled %s", document)
 		}
 	}
-	if _, err := configschema.Compile([]byte(`{"type": `)); err == nil {
+	if _, err := toolsettings.Compile([]byte(`{"type": `)); err == nil {
 		t.Fatal("compiled malformed JSON")
 	}
 }
 
 func TestValidateNamesFailingLocations(t *testing.T) {
 	t.Parallel()
-	schema, err := configschema.Compile([]byte(`{
+	schema, err := toolsettings.Compile([]byte(`{
   "type": "object",
   "additionalProperties": false,
   "properties": {"select": {"type": "array", "items": {"type": "string", "minLength": 1}}}
@@ -53,7 +53,7 @@ func TestValidateNamesFailingLocations(t *testing.T) {
 
 func TestValidationErrorsRetainDetachedPaths(t *testing.T) {
 	t.Parallel()
-	schema, err := configschema.Compile([]byte(`{"type":"object","additionalProperties":false,"properties":{"count":{"type":"integer"}}}`))
+	schema, err := toolsettings.Compile([]byte(`{"type":"object","additionalProperties":false,"properties":{"count":{"type":"integer"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestValidationErrorsRetainDetachedPaths(t *testing.T) {
 		{`{"extra/key":true}`, "", "extra/key"},
 	} {
 		err := schema.Validate([]byte(test.document))
-		failure, ok := errors.AsType[*configschema.ValidationError](err)
+		failure, ok := errors.AsType[*toolsettings.ValidationError](err)
 		if !ok {
 			t.Fatalf("missing structured schema error: %v", err)
 		}

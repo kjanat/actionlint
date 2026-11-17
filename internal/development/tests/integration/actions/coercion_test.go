@@ -10,6 +10,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestActionCoercionSelection(t *testing.T) {
@@ -39,11 +40,11 @@ func TestActionCoercionSelection(t *testing.T) {
 					root, _ = testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				}
 				source := strings.Replace(manifest, "%s", tc.comment, 1)
-				cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}
-				var result *checking.Result
+				var result *report.Analysis
 				options := checking.Options{WorkingDir: root, Presets: configuration.Presets{Strict: tc.strict}}
 				if called {
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config+"\ntools: {shellcheck: false, ruff: false}\n")

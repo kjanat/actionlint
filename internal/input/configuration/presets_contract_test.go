@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
@@ -23,11 +23,11 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 		} {
 			t.Run(category+"/"+tc.settings, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.settings + "}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.settings + "}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				descriptor := configuration.Rule{Name: "example", Category: category, Maturity: "stable", Group: category}
+				descriptor := rule.Declaration{Name: "example", Category: category, Maturity: "stable"}
 				want := tc.want
 				if category == "conventions" && tc.settings == "{}" {
 					want = "off"
@@ -43,7 +43,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	t.Parallel()
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
-	descriptor := configuration.Rule{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
+	descriptor := rule.Declaration{Name: "under-development", Category: "correctness", Maturity: "nursery"}
 	for _, tc := range []struct {
 		rules   string
 		presets configuration.Presets
@@ -58,7 +58,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 		{"{nursery: off}", configuration.Presets{Experimental: new(true)}, "off"},
 		{"{nursery: warn}", configuration.Presets{Experimental: new(false)}, "off"},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 			{"{preset: all}", configuration.Presets{}},
 			{"{}", configuration.Presets{Strict: true}},
 		} {
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +91,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 
 func TestStrictPreservesConfiguredPolicyOptions(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`policy:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`policy:
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
   require-permissions: {scope: job}
   disallow-suppressions: {rules: [if-cond], report: violation}

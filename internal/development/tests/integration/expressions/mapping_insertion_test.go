@@ -98,7 +98,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow, syntaxErrors := workflowparser.Parse([]byte(source))
+			workflow, syntaxErrors := workflowparser.ParseWorkflow([]byte(source))
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}
@@ -236,7 +236,7 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 					contents = "{'${{ insert }}': " + contents + "}"
 				}
 				source := insertionSectionWorkflow(tc.section, contents)
-				workflow, errs := workflowparser.Parse([]byte(source))
+				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -299,7 +299,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 		} {
 			t.Run(section+mapping, func(t *testing.T) {
 				t.Parallel()
-				_, errs := workflowparser.Parse([]byte(insertionSectionWorkflow(section, mapping)))
+				_, errs := workflowparser.ParseWorkflow([]byte(insertionSectionWorkflow(section, mapping)))
 				found := false
 				for _, err := range errs {
 					found = found || strings.Contains(err.Message, "is duplicated")
@@ -310,7 +310,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			})
 		}
 	}
-	_, errs := workflowparser.Parse([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
+	_, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
 	found := false
 	for _, err := range errs {
 		found = found || strings.Contains(err.Message, "is duplicated")
@@ -331,7 +331,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 					mapping = "{'${{ insert }}': " + mapping + "}"
 				}
 				source := strings.Replace(insertionSectionWorkflow("with", "{'${{ insert }}': "+mapping+"}"), "example/action@v1", "docker://alpine:3", 1)
-				workflow, errs := workflowparser.Parse([]byte(source))
+				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 				if entrypoint == "" {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "empty") {
 						t.Fatalf("empty entrypoint accepted: %v", errs)

@@ -13,7 +13,7 @@ func TestManifestSemanticCategories(t *testing.T) {
 		t.Run(category, func(t *testing.T) {
 			t.Parallel()
 			document := strings.Replace(minimal, `"category": "correctness"`, `"category": "`+category+`"`, 1)
-			manifest, err := manifests.Parse([]byte(document))
+			manifest, err := manifests.ParsePluginManifest([]byte(document))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -26,7 +26,7 @@ func TestManifestSemanticCategories(t *testing.T) {
 		t.Run("reject-"+category, func(t *testing.T) {
 			t.Parallel()
 			document := strings.Replace(minimal, `"category": "correctness"`, `"category": "`+category+`"`, 1)
-			if _, err := manifests.Parse([]byte(document)); err == nil || !strings.Contains(err.Error(), "category") {
+			if _, err := manifests.ParsePluginManifest([]byte(document)); err == nil || !strings.Contains(err.Error(), "category") {
 				t.Fatalf("invalid category accepted: %v", err)
 			}
 		})

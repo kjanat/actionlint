@@ -57,20 +57,20 @@ func (s Step) Position() (source.Position, bool) {
 }
 
 type inputSource struct {
-	input  *workflowlang.Input
+	input  *workflowlang.ActionArgument
 	unique bool
 }
 
 // InputNames yields the resolved with: keys of an action step and the input
 // declaring each key, or nil when insertions make the declaring input ambiguous.
 // It reports whether the key set is complete.
-func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlang.Input], bool) {
+func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlang.ActionArgument], bool) {
 	resolved := ResolvedInputs(action)
 	var sources map[source.Position]inputSource
 	if action != nil {
 		sources = actionInputSourceIndex(action)
 	}
-	return func(yield func(string, *workflowlang.Input) bool) {
+	return func(yield func(string, *workflowlang.ActionArgument) bool) {
 		for key := range resolved.KeyedEntries() {
 			name, known := key.ScalarString()
 			if !known {
@@ -78,7 +78,7 @@ func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlan
 			}
 			position := key.Origin().Span.Start
 			source, ok := sources[position]
-			var input *workflowlang.Input
+			var input *workflowlang.ActionArgument
 			if ok && source.unique {
 				input = source.input
 			}
@@ -91,7 +91,7 @@ func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlan
 
 func actionInputSourceIndex(action *workflowlang.ExecAction) map[source.Position]inputSource {
 	index := map[source.Position]inputSource{}
-	add := func(input *workflowlang.Input) {
+	add := func(input *workflowlang.ActionArgument) {
 		if input == nil || input.Name == nil || input.Name.Pos == nil {
 			return
 		}

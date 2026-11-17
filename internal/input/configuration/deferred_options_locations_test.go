@@ -8,15 +8,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func deferredOptionsRegistration() configuration.RuleRegistration {
 	return configuration.RuleRegistration{
-		Descriptor: rule.Descriptor{Name: "custom-check", Category: "security", Provider: "community", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
-		Scope:      rule.SourceConfiguration,
+		Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "custom-check", Category: "security", Provider: "community", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}, Scope: rule.SourceConfiguration},
 	}
 }
 
@@ -41,7 +40,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 			if err := os.WriteFile(leaf, []byte(`{"extends":["`+test.filename+`"],"lint":{"rules":{"plugins":{"custom-check":"off"}}}}`), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			settings, err := checking.ConfigurationRules().Load(leaf, "custom-check")
+			settings, err := checking.ConfigurationRules().LoadConfig(leaf, "custom-check")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +52,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 
 func TestDeferredPluginOptionsKeepByteSourceLocations(t *testing.T) {
 	t.Parallel()
-	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check:\n        level: on\n        options:\n          count: 0\n"), "custom-check")
+	settings, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    plugins:\n      custom-check:\n        level: on\n        options:\n          count: 0\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +87,7 @@ func TestDeferredPluginOptionsKeepOverlaySourceLocations(t *testing.T) {
 
 func TestCallerPluginOptionsAreNotAttributedToConfig(t *testing.T) {
 	t.Parallel()
-	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check: {level: on, options: {count: 2}}\n"), "custom-check")
+	settings, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    plugins:\n      custom-check: {level: on, options: {count: 2}}\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}

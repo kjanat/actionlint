@@ -27,7 +27,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 		}
 	}
 	for _, content := range []string{"null\n", "name: source\nruns: {using: composite, steps: []}\n"} {
-		parsed, err := Parse("nested/action.yml", []byte(content))
+		parsed, err := ParseActionMetadata("nested/action.yml", []byte(content))
 		if err != nil || parsed.Provenance.parsed == nil {
 			t.Fatalf("source-backed metadata cache: %+v, %v", parsed, err)
 		}
@@ -41,7 +41,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 	t.Parallel()
 	const input = "name: test\nruns:\n  using: composite\n  steps:\n    - run: echo $HI # source\n      shell: bash\n"
 	for _, warm := range []bool{false, true} {
-		meta, err := Parse("action.yml", []byte(input))
+		meta, err := ParseActionMetadata("action.yml", []byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 			meta.Provenance.source(value)
 		}
 		result := meta.Provenance.source(value)
-		pristine, err := Parse("action.yml", []byte(input))
+		pristine, err := ParseActionMetadata("action.yml", []byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 		result.Value = "changed"
 		result.ContentStart.Line = 99
 		result.Lines[0].Start = 99
-		result.Spans[0].YamlColumn = 99
+		result.Spans[0].Document.Column = 99
 		result.Comments[0].Text = "changed"
 		if got := meta.Provenance.source(value); !reflect.DeepEqual(got, want) {
 			t.Fatalf("metadata cache shares mutable source results: got %+v, want %+v", got, want)
@@ -72,7 +72,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 func TestSchemaRecursiveInsertionsDoNotExpandRejectedAliases(t *testing.T) {
 	t.Parallel()
 	const source = "name: cycle\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n      with: &values\n        '${{ insert }}': *values\n        '${{insert}}': *values\n"
-	meta, _ := Parse("action.yml", []byte(source))
+	meta, _ := ParseActionMetadata("action.yml", []byte(source))
 	findings := Validate(meta).Problems
 	if len(findings) != 3 {
 		t.Fatalf("recursive insertions changed physical diagnostics: %v", findings)
@@ -87,7 +87,7 @@ func TestSchemaRecursiveInsertionsDoNotExpandRejectedAliases(t *testing.T) {
 func TestMetadataPositionCache(t *testing.T) {
 	t.Parallel()
 	const source = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
-	meta, err := Parse("action.yml", []byte(source))
+	meta, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestMetadataPositionCache(t *testing.T) {
 		t.Fatal("mapping reused for a different decoded scalar")
 	}
 	oldIndex := meta.Provenance.parsed
-	parsed, err := Parse("action.yml", []byte(source))
+	parsed, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

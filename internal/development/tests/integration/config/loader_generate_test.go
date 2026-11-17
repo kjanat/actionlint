@@ -9,12 +9,12 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
-	providerconfig "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -43,7 +43,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := providerconfig.Compile(document)
+	schema, err := toolsettings.Compile(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,12 +58,12 @@ func TestDefaultConfigFormats(t *testing.T) {
 				t.Fatalf("incorrect schema URL or unexpanded template:\n%s", content)
 			}
 			path := writeConfig(t, t.TempDir(), format.Filename(), string(content))
-			if _, err := checking.ConfigurationRules().Load(path); err != nil {
+			if _, err := checking.ConfigurationRules().LoadConfig(path); err != nil {
 				t.Fatal(err)
 			}
 			checkSchema := func(content []byte) {
 				t.Helper()
-				node, err := configdocument.Parse(path, content)
+				node, err := configdocument.ParseConfigDocument(path, content)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -173,7 +173,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := providerconfig.Compile(document)
+	schema, err := toolsettings.Compile(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 			}
 			writeConfig(t, filepath.Join(root, "config"), "actionlint-base.yml", "{}\n")
 			path := writeConfig(t, filepath.Join(root, ".github"), "actionlint.yaml", content)
-			if _, err := checking.ConfigurationRules().Load(path); err != nil {
+			if _, err := checking.ConfigurationRules().LoadConfig(path); err != nil {
 				t.Errorf("generated config fails the configuration loader: %v", err)
 			}
 		})

@@ -25,6 +25,34 @@ func TestNamesResolveDeclaredAliases(t *testing.T) {
 	}
 }
 
+func TestNamesRestrictKeepsSelectedRulesAndAliases(t *testing.T) {
+	t.Parallel()
+	names, err := NewNames([]Descriptor{
+		{Name: "native", Aliases: []Alias{{Name: "old-native"}}},
+		{Name: "tool", Aliases: []Alias{{Name: "old-tool"}}},
+		{Name: "other"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	native := names.Restrict(func(target string) bool { return target != "tool" })
+	for spelling, want := range map[string]bool{"native": true, "old-native": true, "other": true, "tool": false, "old-tool": false, "unknown": false} {
+		if got := native.Contains(spelling); got != want {
+			t.Errorf("restricted Contains(%q) = %v, want %v", spelling, got, want)
+		}
+	}
+	if native.ResolveAlias("old-native") != "native" || native.ResolveAlias("old-tool") != "old-tool" {
+		t.Fatal("restricted index resolves an alias of a rule it excludes")
+	}
+	if !names.Contains("old-tool") {
+		t.Fatal("Restrict changed the original index")
+	}
+	nested := native.Restrict(func(target string) bool { return target != "other" })
+	if nested.Contains("other") || nested.Contains("tool") || !nested.Contains("old-native") {
+		t.Fatal("nested restriction does not apply both predicates")
+	}
+}
+
 func TestNamesRejectAmbiguousDeclarations(t *testing.T) {
 	t.Parallel()
 	for _, declarations := range [][]Descriptor{

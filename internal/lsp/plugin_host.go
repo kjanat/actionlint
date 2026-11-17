@@ -49,7 +49,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
 		return nil, err
 	}
-	plugins, err := pluginexec.Load(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
 	if err != nil {
 		return nil, err
 	}

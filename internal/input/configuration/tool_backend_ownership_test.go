@@ -16,7 +16,7 @@ func TestToolBackendsAreValidatedAndOwned(t *testing.T) {
   shellcheck:
     backend: {wasm: {path: engines/checker.wasm}}
 `)
-	parsed, err := checking.ConfigurationRules().Parse(source)
+	parsed, err := checking.ConfigurationRules().ParseConfig(source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestToolBackendsAreValidatedAndOwned(t *testing.T) {
 		"tools: {ruff: {backend: {wasm: {path: ''}}}}",
 		"tools: {ruff: {backend: {process: {executable: launcher, env: {'BAD=NAME': value}}}}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(source)); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(source)); err == nil {
 			t.Fatalf("invalid backend accepted: %s", source)
 		}
 	}

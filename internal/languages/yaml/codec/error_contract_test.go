@@ -99,7 +99,7 @@ func TestSessionFinishJoinedDiagnosticsKeepMarksAndOrder(t *testing.T) {
 func TestParserErrorMatchesPinnedUpstreamGolden(t *testing.T) {
 	t.Parallel()
 	const source = "value: [\n"
-	_, codecErr := codec.Parse([]byte(source))
+	_, codecErr := codec.ParseYAML([]byte(source))
 	var want upstream.Node
 	upstreamErr := upstream.Unmarshal([]byte(source), &want)
 	gotLoad, gotOK := errors.AsType[*codec.LoadError](codecErr)
@@ -142,7 +142,7 @@ func TestSelectErrorsNameCallerTypes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			root, err := codec.Parse([]byte(tc.source))
+			root, err := codec.ParseYAML([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -175,7 +175,7 @@ func TestSelectErrorsNameCallerTypes(t *testing.T) {
 
 func TestSelectWrappedJoinedDiagnosticsKeepMarksOrderTextAndCauses(t *testing.T) {
 	t.Parallel()
-	root, err := codec.Parse([]byte("ignored: ok\nother: ok\nhook: value\n"))
+	root, err := codec.ParseYAML([]byte("ignored: ok\nother: ok\nhook: value\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

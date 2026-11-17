@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -48,7 +48,7 @@ func (*evidenceCompletionObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if strings.Contains(input.Content, "runs-on: "+o.label) {
 		o.once.Do(func() { close(o.release) })
 	}

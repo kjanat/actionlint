@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -20,9 +20,9 @@ type Policy struct {
 	Content                            []byte
 
 	EnforcedLifecycle []lifecycle.Policy
-	Bindings          *binding.Snapshot
-	Scope             *binding.Scope
-	SourceBindings    map[string]*binding.Scope
+	Bindings          *rulebinding.Snapshot
+	Scope             *rulebinding.Scope
+	SourceBindings    map[string]*rulebinding.Scope
 	Metadata          *actionmeta.Metadata
 	AdditionalRules   []string
 	IgnorePatterns    configuration.IgnorePatterns
@@ -57,7 +57,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 	}
 	type occurrenceScope struct {
 		path    string
-		binding *binding.Scope
+		binding *rulebinding.Scope
 	}
 	byPath := make(map[occurrenceScope][]*findingmodel.Finding)
 	seenSources := make(map[string]bool)

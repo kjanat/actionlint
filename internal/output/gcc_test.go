@@ -31,7 +31,7 @@ func TestGCCOutput(t *testing.T) {
 				Severity: tc.severity, Message: tc.message, Start: sourcepos.Position{Line: 7, Column: 12}, Snippet: "not emitted",
 			}
 			var out strings.Builder
-			if err := renderer.Render(&out, Result{Diagnostics: []results.Diagnostic{finding}}); err != nil {
+			if err := renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{finding}}); err != nil {
 				t.Fatal(err)
 			}
 			if got, want := out.String(), `C:\repo with space\wørkflow.yml:7:12: `+tc.want+"\n"; got != want {

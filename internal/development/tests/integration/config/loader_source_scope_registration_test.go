@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
@@ -29,7 +29,7 @@ func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 				t.Run(descriptor.Name+"/"+group+"/"+project.name, func(t *testing.T) {
 					t.Parallel()
 					input := fmt.Sprintf("lint: {rules: {preset: none, %s: {%s: warn}}}", group, descriptor.Name)
-					cfg, err := checking.ConfigurationRules().Parse([]byte(input))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte(input))
 					if err != nil {
 						t.Fatal(err)
 					}

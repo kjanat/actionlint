@@ -224,7 +224,7 @@ func (ruleSet RuleSet) expandLintShorthands(value any) any {
 	for category := range (&LintRulesConfig{}).Groups() {
 		value = expandRuleLevel(value, "rules", category)
 		for _, descriptor := range ruleSet.Rules() {
-			if descriptor.Group == category {
+			if descriptor.Category == category {
 				value = expandRuleLevel(value, "rules", category, descriptor.Name)
 			}
 		}

@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -28,8 +28,8 @@ import (
 )
 
 type Options struct {
-	Bindings        *binding.Scope
-	BindSource      func(*binding.Scope, string) (*binding.Scope, error)
+	Bindings        *rulebinding.Scope
+	BindSource      func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
 	Budget          *invocation.Budget
 	SourceSnapshots *parsing.SourceSnapshots
 	Captures        *capture.Store
@@ -43,7 +43,7 @@ type Options struct {
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
 	// ScriptInputsForScope loads lazily once per immutable config, including nil.
-	ScriptInputsForScope func(*binding.Scope) ([]checkinputs.ScriptInput, error)
+	ScriptInputsForScope func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
 	Context              context.Context
 	Actions              *workspaceactions.Resolver
 	Rules                []workflowvisit.Rule
@@ -60,9 +60,9 @@ type Options struct {
 	Debug                            io.Writer
 }
 
-// Result is a plain record of one composition run. It holds no invariants of
+// Composition is a plain record of one composition run. It holds no invariants of
 // its own; CheckInput validates its batch against the entry snapshot.
-type Result struct {
+type Composition struct {
 	IncompleteChecks []report.IncompleteCheck
 	Findings         []*findingmodel.Finding
 	EntrySnapshot    parsing.SourceSnapshot
@@ -83,7 +83,7 @@ type SourceDocument interface {
 // Workflow runs one workflow composition with the caller's collaborators.
 // It enters the workflow pass lifecycle; Action never uses this path.
 // Options.Join runs exactly once per call.
-func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) {
+func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if !snapshot.Present() {
 			return errors.New("workflow source snapshot is unavailable")
@@ -105,7 +105,7 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) 
 
 // Action runs one standalone action composition with the caller's collaborators.
 // Options.Join runs exactly once per call.
-func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot.Kind() != parsing.KindAction {
 			return errors.New("action source snapshot is unavailable")
@@ -120,7 +120,7 @@ func Action(options Options, snapshot parsing.SourceSnapshot, deployment scripte
 	})
 }
 
-func analyze(options Options, visit func(*compositeAnalyzer) error) (result Result, err error) {
+func analyze(options Options, visit func(*compositeAnalyzer) error) (result Composition, err error) {
 	// Join even when a visit fails. Collection happens only after all started work ends.
 	joined := false
 	join := func() error {
@@ -157,7 +157,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 			budget:               invocation.DefaultBudget(),
 			scriptInputs:         scriptInputs,
 			scriptInputsForScope: options.ScriptInputsForScope,
-			scriptCatalogues:     map[*binding.Scope][]checkinputs.ScriptInput{},
+			scriptCatalogues:     map[*rulebinding.Scope][]checkinputs.ScriptInput{},
 			sourceSnapshots:      options.SourceSnapshots,
 			captures:             options.Captures,
 			remoteActions:        options.RemoteActions,
@@ -208,7 +208,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 	for path, document := range c.remoteDocuments {
 		documents[path], sources[path] = document, document.Content()
 	}
-	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents}, err
+	return Composition{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents}, err
 }
 
 func scriptInputCatalogue(additional []checkinputs.ScriptInput) ([]checkinputs.ScriptInput, error) {

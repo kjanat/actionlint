@@ -59,7 +59,7 @@ type Evidence struct {
 type Match struct {
 	Subjects []Subject
 	Events   []EventKind
-	Services []services.Kind
+	Services []services.ServiceKind
 }
 type Start struct {
 	days      uint32

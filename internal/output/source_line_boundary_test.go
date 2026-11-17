@@ -26,10 +26,8 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
 				d := results.Diagnostic{Start: sourcepos.Position{Line: 1}}
-				canonical := (&findingmodel.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: raw}}).Canonical(source)
-				view := render.RenderedFindingOf(canonical, source)
-				view.Source.RawScript = raw
-				got := view.TemplateFields().Snippet
+				canonical := (&findingmodel.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: raw}}).Publish(source)
+				got := render.TemplateFieldsOf(canonical).Snippet
 				want := "token"
 				if raw {
 					want = "\ufefftoken" + ending.text + "tail"
@@ -49,10 +47,8 @@ func TestRawCRLFMarkerUsesDisplayEOF(t *testing.T) {
 	t.Parallel()
 	source := []byte("abc\r\n")
 	d := results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 4}, End: sourcepos.Position{Line: 1, Column: 5}}
-	canonical := (&findingmodel.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: true}}).Canonical(source)
-	view := render.RenderedFindingOf(canonical, source)
-	view.Source.RawScript = true
-	if got := view.TemplateFields().Snippet; got != "abc\n   ^" {
+	canonical := (&findingmodel.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: true}}).Publish(source)
+	if got := render.TemplateFieldsOf(canonical).Snippet; got != "abc\n   ^" {
 		t.Fatalf("CR marker lost at display EOF: %q", got)
 	}
 	if canonical.Start != d.Start || canonical.End != d.End {

@@ -14,7 +14,7 @@ func (ruleSet RuleSet) projectSettings(c *Config) {
 			}
 			setting, exists = ruleSet.canonicalSetting(group, descriptor.Name)
 		}
-		policy, projected := descriptor.policySetting()
+		policy, projected := policySettings[descriptor.Policy]
 		if !exists || !projected {
 			continue
 		}

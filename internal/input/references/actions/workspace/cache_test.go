@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -18,12 +19,12 @@ func testGetWantedActionMetadata() *actionmeta.Metadata {
 	want := &actionmeta.Metadata{
 		Name:        "My action",
 		Description: "my action",
-		Inputs: actionmeta.Inputs{
+		Inputs: calls.Inputs{
 			"name":     {Name: "name"},
 			"message":  {Name: "message", Required: true},
 			"addition": {Name: "addition"},
 		},
-		Outputs: actionmeta.Outputs{
+		Outputs: calls.Outputs{
 			"user_id": {Name: "user_id"},
 		},
 		Runs: actionmeta.Runs{
@@ -98,11 +99,13 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	wantEmpty.InputDefaults = nil
 
 	wantUpper := testGetWantedActionMetadata()
-	for _, i := range wantUpper.Inputs {
+	for id, i := range wantUpper.Inputs {
 		i.Name = strings.ToUpper(i.Name)
+		wantUpper.Inputs[id] = i
 	}
-	for _, o := range wantUpper.Outputs {
+	for id, o := range wantUpper.Outputs {
 		o.Name = strings.ToUpper(o.Name)
+		wantUpper.Outputs[id] = o
 	}
 	for _, d := range wantUpper.InputDefaults {
 		d.Name = strings.ToUpper(d.Name)
@@ -120,9 +123,10 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	wantNode24.Runs.Using = "node24"
 
 	wantDeprecated := testGetWantedActionMetadata()
-	for _, i := range wantDeprecated.Inputs {
+	for id, i := range wantDeprecated.Inputs {
 		i.Deprecated = true
 		i.DeprecationMessage = "This is deprecated"
+		wantDeprecated.Inputs[id] = i
 	}
 
 	tests := []struct {

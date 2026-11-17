@@ -79,7 +79,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			units := result.Batch.Scripts()
+			units := result.Batch.Scripts
 			if probe.visits != 1 || len(units) != 1 || units[0].Shell == nil {
 				t.Fatalf("default mutation scenario not exercised: visits=%d scripts=%d", probe.visits, len(units))
 			}
@@ -116,7 +116,7 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 		t.Fatalf("nested metadata callback did not exercise mutation: callbacks=%d mutations=%d", probe.metadata, mutations)
 	}
 	var original bool
-	for _, call := range result.Batch.Invocations().Calls() {
+	for _, call := range result.Batch.CallGraph.Calls() {
 		facts, ok := call.Facts()
 		if !ok || facts.Uses != "$/a" {
 			continue
@@ -127,8 +127,8 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 		}
 		original = true
 	}
-	if !original || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
-		t.Fatalf("nested callback redirected canonical call: original=%v scripts=%+v", original, result.Batch.Scripts())
+	if !original || len(result.Batch.Scripts) != 1 || result.Batch.Scripts[0].Run.Run.Text() != "echo original-a" {
+		t.Fatalf("nested callback redirected canonical call: original=%v scripts=%+v", original, result.Batch.Scripts)
 	}
 }
 
@@ -173,9 +173,9 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	}
 }
 
-func checkoutSnapshot(result Result) []string {
+func checkoutSnapshot(result Composition) []string {
 	var paths []string
-	for _, scope := range result.Batch.Scopes() {
+	for _, scope := range result.Batch.Scopes {
 		if placement := scope.Paths.Placements; placement.Present() {
 			paths = append(paths, placement.Details().Directory.Path)
 		}

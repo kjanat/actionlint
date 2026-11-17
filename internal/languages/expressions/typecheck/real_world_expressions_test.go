@@ -26,7 +26,7 @@ func TestExprSemanticsCheckRealWorld(t *testing.T) {
 		expr := s.Text()
 		l := exprsyntax.NewLexer(expr + "}}")
 		p := exprsyntax.NewParser()
-		root, err := p.Parse(l)
+		root, err := p.ParseExpression(l)
 		if err != nil {
 			t.Errorf("%q caused parse error: %v", expr, err)
 			continue
@@ -75,7 +75,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("LexParse", func(b *testing.B) {
 		for range b.N {
 			for _, expr := range exprs {
-				if _, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(expr)); err != nil {
+				if _, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr)); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -85,7 +85,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("LexParseSema", func(b *testing.B) {
 		for range b.N {
 			for _, expr := range exprs {
-				root, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(expr + "}}"))
+				root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr + "}}"))
 				if err != nil {
 					b.Fatalf("%q caused parse error: %v", expr, err)
 				}
@@ -97,7 +97,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	trees := []exprsyntax.Node{}
 	for range b.N {
 		for _, expr := range exprs {
-			t, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(expr))
+			t, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr))
 			if err != nil {
 				b.Fatal(err)
 			}

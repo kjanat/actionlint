@@ -15,11 +15,13 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// Document contains decoded declarations, syntax failures and parse provenance.
-// Declaration fields belong to the caller. SourceSnapshots verifies Provenance
-// before publishing declaration views.
+// Document is one decode of a source's bytes. Over the captured bytes it adds
+// the decoded workflow or action metadata, syntax and admission failures, and
+// the sealed Provenance that SourceSnapshots binds on admission. It names no
+// document: identity comes from the capture at admission. Declaration fields
+// belong to the caller.
 type Document struct {
-	kind Kind
+	kind DocumentKind
 	// Workflow is the decoded workflow; nil for action documents.
 	Workflow *workflowlang.Workflow
 	// Metadata is the decoded action manifest; nil for workflow documents.
@@ -35,23 +37,36 @@ type Document struct {
 	Provenance Provenance
 }
 
-// Provenance seals the source text and declarations published by one decode.
-// Only this package creates it; its zero value has no parse provenance.
-type Provenance struct{ record *declaration.Record }
+// Provenance seals the source text and declarations published by one decode,
+// before a registry assigns them a document identity. Only this package
+// creates it, so admission cannot bind a hand-built tree to captured bytes;
+// its zero value has no parse provenance. SourceSnapshots binds it to a
+// declaration.Bound once the capture names the document.
+type Provenance struct {
+	parsed   bool
+	text     string
+	workflow *workflowlang.Workflow
+	action   bool
+	using    string
+}
+
+func (p Provenance) bind(identity string) *declaration.Bound {
+	return declaration.Bind(identity, p.text, p.workflow, p.action, p.using)
+}
 
 func Workflow(content []byte) Document {
 	owned := bytes.Clone(content)
-	w, issues := workflowparser.Parse(owned)
+	w, issues := workflowparser.ParseWorkflow(owned)
 	return Document{
-		kind: WorkflowKind, Workflow: w, Facts: w, SyntaxErrors: issues,
-		Provenance: Provenance{declaration.Publish(string(owned), w, false, "")},
+		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
+		Provenance: Provenance{parsed: true, text: string(owned), workflow: w},
 	}
 }
 
 func Action(sourcePath string, content []byte) Document {
 	owned := bytes.Clone(content)
-	metadata, err := actionmeta.Parse(sourcePath, owned)
-	document := Document{kind: ActionKind, Metadata: metadata, ParseError: err}
+	metadata, err := actionmeta.ParseActionMetadata(sourcePath, owned)
+	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
 	var provenance *workflowlang.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)
 	if metadata != nil && !rejected {
@@ -66,34 +81,27 @@ func Action(sourcePath string, content []byte) Document {
 		document.Facts = provenance
 	}
 	if metadata != nil {
-		document.Provenance = Provenance{declaration.Publish(string(owned), provenance, true, metadata.Runs.Using)}
+		document.Provenance = Provenance{parsed: true, text: string(owned), workflow: provenance, action: true, using: metadata.Runs.Using}
 	}
 	return document
 }
 
-// Kind identifies the document language even when parsing produced no declarations.
-type Kind string
-
-const (
-	WorkflowKind Kind = "workflow"
-	ActionKind   Kind = "action"
-)
-
-// Kind returns the language selected when parsing started.
-func (d Document) Kind() Kind { return d.kind }
+// Kind returns the language selected when parsing started, even when parsing
+// produced no declarations.
+func (d Document) Kind() DocumentKind { return d.kind }
 
 // ParseStatus reports whether parsing produced complete, partial or no declarations.
 // It does not establish whether the declared workflow or action can execute.
 func (d Document) ParseStatus() string {
 	switch d.kind {
-	case WorkflowKind:
+	case KindWorkflow:
 		if d.Workflow == nil {
 			return "failed"
 		}
 		if len(d.SyntaxErrors) != 0 {
 			return "partial"
 		}
-	case ActionKind:
+	case KindAction:
 		if d.Metadata == nil || d.Metadata.Root == nil {
 			return "failed"
 		}

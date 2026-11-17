@@ -15,7 +15,7 @@ var MatrixRule = &define.Rule{
 	Subcategory: "matrix",
 	Recommended: true,
 	Help:        "Check axis names and values and ensure include/exclude entries match the intended combinations.",
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		return MatrixChecks(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off")
 	},
 }

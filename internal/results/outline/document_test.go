@@ -15,7 +15,7 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 		outline.Workflow{Path: "ci.yml", ParseStatus: "complete", Triggers: []string{"push"}, Jobs: []outline.Job{
 			{ID: "build", Needs: []string{}, Steps: []outline.Step{{Kind: "uses", Uses: "./action"}}},
 		}},
-		outline.Action{Path: "action.yml", ParseStatus: "complete", Inputs: []outline.Input{}, Outputs: []outline.Output{}, Runs: outline.CompositeRuns{Steps: []outline.Step{}}},
+		outline.Action{Path: "action.yml", ParseStatus: "complete", Inputs: []outline.ActionInputOutline{}, Outputs: []outline.ActionOutputOutline{}, Runs: outline.CompositeRuns{Steps: []outline.Step{}}},
 	}
 	data, err := json.Marshal(input)
 	if err != nil {

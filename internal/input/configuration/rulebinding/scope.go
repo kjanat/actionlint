@@ -1,5 +1,5 @@
-// Package binding prepares rule configuration once for execution and publication.
-package binding
+// Package rulebinding prepares rule configuration once for execution and publication.
+package rulebinding
 
 import (
 	"encoding/json"
@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"slices"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 // Rule is a prepared configuration decision. Execution and publication retain

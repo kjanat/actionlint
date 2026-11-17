@@ -1,12 +1,12 @@
-// Package bundled holds the tool providers shipped inside actionlint. Each
-// directory is one provider: manifest.json and the transform programs the
-// manifest references by sha256 digest. The directory name is the provider's
-// rule name.
+// Package bundledproviders holds the tool providers shipped inside
+// actionlint. Each directory is one provider: manifest.json and the transform
+// programs the manifest references by sha256 digest. The directory name is the
+// provider's rule name.
 //
-// The package is data only and imports no actionlint package, so the rule
-// catalog and configuration decoding can read the manifests without
-// depending on any tool host. provider.Bundled parses and validates them.
-package bundled
+// The package is data only and imports no actionlint package.
+// manifests.Bundled in internal/plugins decodes and validates the manifests
+// once; the rule catalog, configuration and provider registry read them there.
+package bundledproviders
 
 import (
 	"crypto/sha256"

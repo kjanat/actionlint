@@ -3,18 +3,18 @@ package composites
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // CheckInput projects a composition result onto the check input of its
 // entry document. A batch that disagrees with the entry snapshot is rejected.
-func CheckInput(result Result, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.Input, error) {
-	units := result.Batch.Scripts()
+func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.AnalyzerInput, error) {
+	units := result.Batch.Scripts
 	refs := references[pathAbs]
 	input := executor.SourceInput(document, path, content, refs.Document)
 	if !document.CanAnalyze() {
@@ -23,7 +23,7 @@ func CheckInput(result Result, path, pathAbs string, content []byte, document pa
 	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
 		return input, scriptexecution.ErrInvalidBatch
 	}
-	input.CallGraph = result.Batch.Invocations()
+	input.CallGraph = result.Batch.CallGraph
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
@@ -33,7 +33,7 @@ func CheckInput(result Result, path, pathAbs string, content []byte, document pa
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
 	input.AvailableInputs = append(input.AvailableInputs, rulemeta.Mappings, rulemeta.Dependencies, rulemeta.Invocations)
-	if result.Batch.CollectedScripts() {
+	if result.Batch.Collected {
 		input.AvailableInputs = append(input.AvailableInputs, rulemeta.Scripts)
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
@@ -54,6 +54,6 @@ func CheckInput(result Result, path, pathAbs string, content []byte, document pa
 	if result.ResolveExecution {
 		input.AvailableInputs = append(input.AvailableInputs, rulemeta.Execution)
 	}
-	input.Mappings, input.Dependencies = result.EntrySnapshot.Declarations()
+	input.Mappings, input.Dependencies = result.EntrySnapshot.Bound().Declarations()
 	return input, nil
 }

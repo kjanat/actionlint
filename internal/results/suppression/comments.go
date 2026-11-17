@@ -38,7 +38,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	}
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
-	root, err := codec.Parse(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")))
+	root, err := codec.ParseYAML(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")))
 	if err != nil {
 		return recoverInlineSuppressionComments(source)
 	}

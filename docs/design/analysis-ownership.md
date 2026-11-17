@@ -55,7 +55,7 @@ Alias targets share declarations within that projection; alias-use provenance
 points to the original source nodes. AST parsing and expression-source collection
 consume the projection. Action metadata consumes its original graph through Cursor.
 Reusable-call metadata validates and decodes its original graph through Cursor;
-its recovered workflow facts come from a separate `parser.Parse` projection.
+its recovered workflow facts come from a separate `parser.ParseWorkflow` projection.
 
 Before semantic construction, the codec admits expansion on the physical graph
 using its shared session counters and resource policy. Workflow alias inspection

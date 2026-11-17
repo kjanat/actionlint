@@ -18,11 +18,11 @@ jobs:
   a_second:
     uses: example/repo/.github/workflows/build.yml@v1
 `
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Publish(source, decoded, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
 	first, _ := workflow.Job("z_first")
 	second, _ := workflow.Job("a_second")
 	check := CacheWriteUntrustedChecks(workflow)
@@ -41,7 +41,7 @@ jobs:
 	}
 	// Without a declared ceiling, both reusable calls require their own finding.
 	decoded.CacheMode = nil
-	workflow = declaration.Publish(source, decoded, false, "").Bind("without-ceiling").Workflow()
+	workflow = declaration.Bind("without-ceiling", source, decoded, false, "").Workflow()
 	first, _ = workflow.Job("z_first")
 	second, _ = workflow.Job("a_second")
 	check = CacheCallUnrestrictedChecks(workflow)

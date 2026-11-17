@@ -11,7 +11,8 @@ import (
 	"syscall"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -77,13 +78,13 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 // scope, so neither the path nor a symlink below it leaves the workspace.
 // Reads through the grant are recorded with the scope's reader. A missing
 // directory gets no grant; one outside the workspace fails the check.
-func directoryGrant(ctx context.Context, scope *tools.Scope, directory string) (*inputfiles.BoundedFS, error) {
-	if scope == nil || scope.Workspace == "" && scope.AnalysisDir == "" {
+func directoryGrant(ctx context.Context, scope *scriptexecution.Scope, directory string) (*inputfiles.BoundedFS, error) {
+	if scope == nil || scope.Paths.Workspace == "" && scope.Paths.Analysis == "" {
 		return nil, errors.New("directory access requires a workspace root")
 	}
-	workspace := scope.Workspace
+	workspace := scope.Paths.Workspace
 	if workspace == "" {
-		workspace = scope.AnalysisDir
+		workspace = scope.Paths.Analysis
 	}
 	workspace, err := filepath.Abs(workspace)
 	if err != nil {
@@ -120,7 +121,7 @@ func directoryGrant(ctx context.Context, scope *tools.Scope, directory string) (
 }
 
 // reader is the script scope's recording reader, or nil.
-func reader(script tools.Script) *inputfiles.Reader {
+func reader(script scriptexecution.Unit) *inputfiles.Reader {
 	if script.Scope == nil {
 		return nil
 	}
@@ -129,7 +130,7 @@ func reader(script tools.Script) *inputfiles.Reader {
 
 // recordSources records the files an engine read so watchers re-run the
 // check when they change.
-func (r runner) recordSources(script tools.Script, paths []string, directory string) error {
+func (r runner) recordSources(script scriptexecution.Unit, paths []string, directory string) error {
 	if err := RecordSources(reader(script), paths, directory); err != nil {
 		return fmt.Errorf("tool %s %w", r.descriptor.Name, err)
 	}
@@ -173,7 +174,7 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) tools.ToolFinding {
+func (r runner) reportedFinding(index int, script scriptexecution.Unit, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
@@ -200,7 +201,7 @@ func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.Sc
 		// Without a directory the name anchors nowhere and records nothing.
 		scope.Record(reported)
 	}
-	finding := tools.ToolFinding{
+	finding := contract.ToolFinding{
 		Script: index,
 		Source: results.DiagnosticSource{Content: file.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed)},
 	}
@@ -210,14 +211,14 @@ func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.Sc
 	if d.EndLocation.Row >= d.Location.Row && d.EndLocation.Column > 0 {
 		finding.End = sourcepos.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
 	}
-	if key := script.Key; key != nil {
+	if key := script.Key(); key != nil {
 		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}
-		if value := script.Value; value != nil {
+		if value := script.Value(); value != nil {
 			origin.Last = max(origin.Last, value.Line)
 		}
-		if script.Source != nil {
-			for _, span := range script.Source.Spans {
-				origin.Last = max(origin.Last, span.YamlLine)
+		if source := script.Source(); source != nil {
+			for _, span := range source.Spans {
+				origin.Last = max(origin.Last, span.Document.Line)
 			}
 		}
 		finding.Suppression = origin

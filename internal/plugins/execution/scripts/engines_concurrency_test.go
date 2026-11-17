@@ -38,7 +38,7 @@ type concurrentLoadResult struct {
 func loadScriptAsync(engines *ScriptEngines, ctx context.Context, path string) <-chan concurrentLoadResult {
 	result := make(chan concurrentLoadResult, 1)
 	go func() {
-		backend, err := engines.Load(ctx, path)
+		backend, err := engines.LoadModuleBackend(ctx, path)
 		result <- concurrentLoadResult{backend, err}
 	}()
 	return result
@@ -217,7 +217,7 @@ func TestScriptEnginesConcurrentFailureIsCached(t *testing.T) {
 			t.Fatalf("failed load=%+v", got)
 		}
 	}
-	if backend, err := engines.Load(t.Context(), "failed.wasm"); backend != nil || !errors.Is(err, loadErr) {
+	if backend, err := engines.LoadModuleBackend(t.Context(), "failed.wasm"); backend != nil || !errors.Is(err, loadErr) {
 		t.Fatalf("cached failure=%v, %v", backend, err)
 	}
 	if loads.Load() != 1 {
@@ -233,7 +233,7 @@ func TestScriptEnginesClosesBackendReturnedWithLoadError(t *testing.T) {
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
 		return backend, loadErr
 	})
-	got, err := engines.Load(t.Context(), "partial.wasm")
+	got, err := engines.LoadModuleBackend(t.Context(), "partial.wasm")
 	if got != nil || !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
 		t.Fatalf("backend=%v err=%v", got, err)
 	}
@@ -307,7 +307,7 @@ func TestScriptEnginesCloseCallbacksReleaseCacheLock(t *testing.T) {
 	defer release()
 	backend := &concurrentEngine{onClose: func(context.Context) error { close(entered); <-blocked; return nil }}
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) { return backend, nil })
-	if _, err := engines.Load(t.Context(), "loaded.wasm"); err != nil {
+	if _, err := engines.LoadModuleBackend(t.Context(), "loaded.wasm"); err != nil {
 		t.Fatal(err)
 	}
 	closing := make(chan concurrentLoadResult, 1)

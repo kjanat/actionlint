@@ -15,12 +15,12 @@ type Envelope struct{}
 
 // Decode implements Decoder. An engine reporting failure without a message
 // yields one generic error.
-func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) (Result, error) {
+func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) (DecodedCheck, error) {
 	if err := ctx.Err(); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	if err := checkInput(stdout); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	var envelope struct {
 		OK          *bool                          `json:"ok"`
@@ -28,15 +28,15 @@ func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) 
 		Errors      []string                       `json:"errors"`
 	}
 	if err := jsonv2.Unmarshal(stdout, &envelope); err != nil {
-		return Result{}, fmt.Errorf("decode tool response: %w", err)
+		return DecodedCheck{}, fmt.Errorf("decode tool response: %w", err)
 	}
 	if envelope.OK == nil {
-		return Result{}, errors.New("tool response is missing ok")
+		return DecodedCheck{}, errors.New("tool response is missing ok")
 	}
 	if err := checkCount(len(envelope.Diagnostics)); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
-	result := Result{Diagnostics: envelope.Diagnostics, Errors: envelope.Errors}
+	result := DecodedCheck{Diagnostics: envelope.Diagnostics, Errors: envelope.Errors}
 	if !*envelope.OK && len(result.Errors) == 0 {
 		result.Errors = []string{"tool reported failure without an explanation"}
 	}

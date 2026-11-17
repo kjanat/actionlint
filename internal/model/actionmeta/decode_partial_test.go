@@ -12,7 +12,7 @@ func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
 	for _, source := range []string{"", "null\n"} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			metadata, err := Parse("action.yml", []byte(source))
+			metadata, err := ParseActionMetadata("action.yml", []byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -25,7 +25,7 @@ func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
 
 func TestDecodePartialNullInputsOutputsAndDefinition(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte("inputs: null\noutputs: null\n"))
+	metadata, err := ParseActionMetadata("action.yml", []byte("inputs: null\noutputs: null\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,18 +33,18 @@ func TestDecodePartialNullInputsOutputsAndDefinition(t *testing.T) {
 		t.Fatalf("null sections = inputs %#v, outputs %#v", metadata.Inputs, metadata.Outputs)
 	}
 
-	metadata, err = Parse("action.yml", []byte("inputs:\n  token: null\n"))
+	metadata, err = ParseActionMetadata("action.yml", []byte("inputs:\n  token: null\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" || input.Required {
+	if input, ok := metadata.Inputs["token"]; !ok || input.Name != "token" || input.Required {
 		t.Fatalf("null input definition = %#v", input)
 	}
 }
 
 func TestDecodePartialDuplicateInputKeepsAllDefaults(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte(`inputs:
+	metadata, err := ParseActionMetadata("action.yml", []byte(`inputs:
   before:
     default: first
   token:
@@ -67,7 +67,7 @@ func TestDecodePartialDuplicateInputKeepsAllDefaults(t *testing.T) {
 
 func TestDecodePartialNonMappingInputKeepsLaterDefaults(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte(`inputs:
+	metadata, err := ParseActionMetadata("action.yml", []byte(`inputs:
   invalid: true
   after:
     default: later
@@ -85,7 +85,7 @@ func TestDecodePartialNonMappingInputKeepsLaterDefaults(t *testing.T) {
 
 func TestDecodePartialDuplicateDefinitionFieldsKeepsDefaults(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte(`inputs:
+	metadata, err := ParseActionMetadata("action.yml", []byte(`inputs:
   token:
     default: first
     DEFAULT: second
@@ -115,11 +115,11 @@ inputs:
     required: true
     default: false
 `
-	metadata, err := Parse("action.yml", []byte(source))
+	metadata, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" || input.Required {
+	if input, ok := metadata.Inputs["token"]; !ok || input.Name != "token" || input.Required {
 		t.Fatalf("input metadata was lost: %#v", metadata.Inputs)
 	}
 	if problems := Validate(metadata).Problems; len(problems) != 0 {
@@ -130,20 +130,20 @@ inputs:
 
 func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte(`outputs:
+	metadata, err := ParseActionMetadata("action.yml", []byte(`outputs:
   result: &loop {self: *loop}
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if output := metadata.Outputs["result"]; output == nil || output.Name != "result" {
+	if output, ok := metadata.Outputs["result"]; !ok || output.Name != "result" {
 		t.Fatalf("output declaration = %#v", output)
 	}
 }
 
 func TestDecodePartialDuplicateOutputDiscardsSection(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte("outputs:\n  result: {}\n  RESULT: {}\nname: example\n"))
+	metadata, err := ParseActionMetadata("action.yml", []byte("outputs:\n  result: {}\n  RESULT: {}\nname: example\n"))
 	if err == nil || !strings.Contains(err.Error(), `output "RESULT" is duplicated`) {
 		t.Fatalf("duplicate output error = %v", err)
 	}

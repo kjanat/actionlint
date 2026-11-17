@@ -36,7 +36,7 @@ runs:
     - shell: bash
       working-directory: '`+tc.directory+"'\n      run: "+tc.script+"\n")
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: {path: '"+tc.checkout+"'}\n- uses: ./"+tc.checkout+"/local", checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata
 			})
 			if found != (runtime.GOOS != "windows") {

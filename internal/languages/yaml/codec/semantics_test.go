@@ -11,7 +11,7 @@ import (
 )
 
 func decodeCursorSource(data []byte, target any) error {
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func TestCursorDecodeMatchesUpstreamForPrefilledTargets(t *testing.T) {
 func TestCursorEnterKeepsCallerAliasTargetIdentity(t *testing.T) {
 	t.Parallel()
 	const source = "root:\n  anchor: &payload\n    value: ok\n  item: *payload\n"
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestCursorDecodePreservesAndClearsPrefilledPointer(t *testing.T) {
 
 func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
 	t.Parallel()
-	root, err := codec.Parse([]byte("&recursive [*recursive]\n"))
+	root, err := codec.ParseYAML([]byte("&recursive [*recursive]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +320,7 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 	if want == nil {
 		t.Fatal("upstream fixture has no value node")
 	}
-	gotRoot, err := codec.Parse([]byte(source))
+	gotRoot, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatalf("codec.Parse fixture: %v", err)
 	}
@@ -338,7 +338,7 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 
 func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
 	t.Parallel()
-	root, err := codec.Parse([]byte("anchor: &payload value\nitem: *payload\n"))
+	root, err := codec.ParseYAML([]byte("anchor: &payload value\nitem: *payload\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +376,7 @@ func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
 func TestParseCommentsMatchUpstreamThroughSelectedBoundary(t *testing.T) {
 	t.Parallel()
 	const source = "# document head\nroot:\n  # value head\n  value: text # value line\n  # value foot\n\n# root foot\n"
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

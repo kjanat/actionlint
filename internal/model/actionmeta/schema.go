@@ -11,6 +11,7 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -375,7 +376,7 @@ type schemaChecker struct {
 	expressions []ExpressionField
 }
 
-func (rule *schemaChecker) expressionFindings(value *ExprString, field, location string, key bool, inputs Inputs) []ExpressionProblem {
+func (rule *schemaChecker) expressionFindings(value *ExprString, field, location string, key bool, inputs calls.Inputs) []ExpressionProblem {
 	read := ReadExpressions(value.Value, false, field, inputs)
 	rule.expressions = append(rule.expressions, ExpressionField{Value: *value, SchemaPath: field, FieldPath: location, IsKey: key, Expressions: read.Expressions})
 	return read.Problems

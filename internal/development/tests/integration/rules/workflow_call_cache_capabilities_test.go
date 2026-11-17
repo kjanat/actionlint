@@ -28,7 +28,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			t.Fatal(err)
 		}
 		if fromAST {
-			w, errs := workflowparser.Parse([]byte(src))
+			w, errs := workflowparser.ParseWorkflow([]byte(src))
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
@@ -46,7 +46,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			}
 		}
 	}
-	w, errs := workflowparser.Parse([]byte(caller))
+	w, errs := workflowparser.ParseWorkflow([]byte(caller))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

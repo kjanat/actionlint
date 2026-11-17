@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
@@ -19,10 +19,9 @@ import (
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -39,6 +38,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -62,7 +62,7 @@ type analysisSession struct {
 
 	ruleRegistrations    []configuration.RuleRegistration
 	rules                configuration.RuleSet
-	tools                []tools.Registration
+	tools                []contract.Registration
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
@@ -132,7 +132,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	entryBinding := settings.bindEntry(sourcePath, cfg)
 	names := selection.RuleNames(s.analyzers)
 	for _, registration := range s.ruleRegistrations {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Declaration.Name)
 	}
 	if err := settings.rules.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, nil, err
@@ -176,7 +176,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			return all, outline, nil, err
 		}
 	}
-	composed := composites.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}}
+	composed := composites.Composition{EntrySnapshot: snapshot, Sources: map[string][]byte{}}
 	if document.CanAnalyze() {
 		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, settings, provenance, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
@@ -184,7 +184,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
+	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.Bound().SourceIndex()}
 	defer func() {
 		if resultErr != nil {
 			invocations := indexCheckInvocations(composed.Invocations)
@@ -272,7 +272,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
-) (result composites.Result, resultErr error) {
+) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
 	skipped := make(map[string]bool)
@@ -323,7 +323,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.SetRunners(runners)
-	context := define.Inputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context := define.RuleInputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	context.Lifecycle = actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}
 	context.Debug = s.debugWriter()
@@ -333,7 +333,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
-	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: configuration.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
+	toolContext := contract.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: configuration.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
 		skippedMu.Lock()
 		skipped[name] = true
 		skippedMu.Unlock()
@@ -384,7 +384,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
-		ScriptInputsForScope: func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
+		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, scope)
 		},
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader,

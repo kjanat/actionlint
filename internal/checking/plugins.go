@@ -15,9 +15,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -26,7 +27,7 @@ import (
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *Result, err error) {
+func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -35,7 +36,7 @@ func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel
 }
 
 // CheckWithPlugins loads the selected plugins and checks the input.
-func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *Result, err error) {
+func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -48,7 +49,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 			return nil, &pluginexec.LoadError{Err: err}
 		}
 	}
-	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), log, options.Debug)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, p
 // RequiredToolsWithPlugins applies the selected plugins before checking which
 // native tools are needed.
 func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []string, sources pluginselection.Sources) (needed ToolRequirements, err error) {
-	loaded, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	loaded, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +149,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		found := false
 		options.Tools = slices.Clone(options.Tools)
 		for i, registration := range options.Tools {
-			if registration.Descriptor.Name != metadata.Engine {
+			if registration.Name != metadata.Engine {
 				continue
 			}
 			if registration.WithBackend == nil {
@@ -225,7 +226,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			return options, &pluginexec.LoadError{Err: err}
 		}
 		registration.ToolSettings = new(local.Files.Manifest.Settings())
-		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Descriptor.Name == name })
+		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing contract.Registration) bool { return existing.Name == name })
 		options.Tools = append(options.Tools, registration)
 	}
 
@@ -240,10 +241,10 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 
 // checkTools reports the tool ids named by --tool or --no-tool that match no
 // tool registration, no loaded plugin and no skipped plugin.
-func checkPluginTools(l *pluginexec.Loaded, registrations []tools.Registration) error {
+func checkPluginTools(l *pluginexec.Loaded, registrations []contract.Registration) error {
 	known := slices.Concat(l.SkippedTools, l.ToolIDs)
 	for _, registration := range registrations {
-		known = append(known, registration.Descriptor.Name)
+		known = append(known, registration.Name)
 	}
 	var unknown []string
 	for _, id := range l.NamedTools {

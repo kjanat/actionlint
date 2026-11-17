@@ -32,7 +32,7 @@ func TestReadExpressionsSeparatesSyntaxFromProblems(t *testing.T) {
 func TestMetadataValidationSuppliesExpressionFieldsWithoutPolicy(t *testing.T) {
 	t.Parallel()
 	const source = "name: example\ndescription: example\noutputs:\n  value:\n    description: value\n    value: ${{ format('{0}', startsWith(true, 'TR')) }}\nruns: {using: composite, steps: []}\n"
-	meta, err := Parse("action.yml", []byte(source))
+	meta, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

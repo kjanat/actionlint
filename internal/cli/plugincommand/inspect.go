@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -57,7 +57,7 @@ func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacqu
 	if local || strings.Contains(r.Source, "://") {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}
-	_, parseErr := pluginreference.Parse(r.Source)
+	_, parseErr := pluginreference.ParsePluginReference(r.Source)
 	if parseErr != nil && (strings.HasSuffix(r.Source, ".wasm") || strings.HasSuffix(r.Source, ".json") || strings.HasSuffix(r.Source, ".gz")) {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}

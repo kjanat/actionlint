@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func resolveRules(t *testing.T, presets configuration.Presets, config *configuration.Config, descriptors ...rule.Descriptor) *configuration.Config {
@@ -64,7 +64,7 @@ func TestCategoryBindingPluginOptions(t *testing.T) {
 		Name: "community-check", Category: "security", Provider: "community", Maturity: "stable",
 		OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`),
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint: {rules: {security: {level: warn, community-check: {level: error, options: {count: 3}}}}}`))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`lint: {rules: {security: {level: warn, community-check: {level: error, options: {count: 3}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestCategoryBindingFailures(t *testing.T) {
 			if rules != "{}" {
 				rules = "{" + rules + "}"
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + rules + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + rules + "}"))
 			if err != nil {
 				t.Fatalf("structural decode rejected deferred binding: %v", err)
 			}
@@ -148,7 +148,7 @@ func TestCategoryBindingNurserySelection(t *testing.T) {
 		} {
 			t.Run(maturity+"/"+tc.rules+"/"+string(tc.want), func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 				if err != nil {
 					t.Fatal(err)
 				}

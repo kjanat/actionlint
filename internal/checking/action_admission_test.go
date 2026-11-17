@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -26,7 +26,7 @@ func (probe failedActionFactProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: probe.name, Category: "correctness", RequiredInputs: []rulemeta.InputKind{probe.fact}}
 }
 
-func (probe failedActionFactProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (probe failedActionFactProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	probe.calls.Add(1)
 	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != rulemeta.Source {
 		return nil, errors.New("failed action leaked executable analyzer facts")

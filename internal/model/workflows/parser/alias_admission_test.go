@@ -26,7 +26,7 @@ func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T
 		t.Run(strconv.Itoa(depth), func(t *testing.T) {
 			t.Parallel()
 			source := aliasAdmissionWorkflow(depth)
-			root, err := codec.Parse(source)
+			root, err := codec.ParseYAML(source)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -47,7 +47,7 @@ func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T
 				t.Fatalf("admission failure lost its physical source: %+v", failure)
 			}
 			assertAliasTestSourceUnchanged(t, before)
-			second, repeated := Parse(source)
+			second, repeated := ParseWorkflow(source)
 			if second != nil || !reflect.DeepEqual(findings, repeated) {
 				t.Fatal("admission changes across repeated parses")
 			}
@@ -58,7 +58,7 @@ func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T
 func TestWorkflowAdmissionPreservesRecursiveDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := append([]byte("env: {cycle: &cycle [*cycle]}\n"), aliasAdmissionWorkflow(8)...)
-	workflow, findings := Parse(source)
+	workflow, findings := ParseWorkflow(source)
 	if workflow != nil {
 		t.Fatal("over-budget document supplied semantic input")
 	}
@@ -80,7 +80,7 @@ func TestWorkflowAdmissionDoesNotGrowWithAliasExpansion(t *testing.T) {
 	small, large := aliasAdmissionWorkflow(12), aliasAdmissionWorkflow(24)
 	allocations := func(source []byte) float64 {
 		return testing.AllocsPerRun(2, func() {
-			workflow, findings := Parse(source)
+			workflow, findings := ParseWorkflow(source)
 			if workflow != nil || len(findings) != 2 {
 				t.Fatal("fixture must be rejected before AST construction")
 			}
@@ -110,7 +110,7 @@ func TestWorkflowAdmissionCoversSkippedValuesAndParallelSteps(t *testing.T) {
 				source.WriteString("  ? [invalid, key]\n  : *a8\n")
 			}
 			source.WriteString("jobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: *a8\n")
-			workflow, findings := Parse([]byte(source.String()))
+			workflow, findings := ParseWorkflow([]byte(source.String()))
 			if workflow != nil || len(findings) == 0 || !strings.Contains(findings[len(findings)-1].Message, "excessive aliasing") {
 				t.Fatalf("non-matrix expansion bypassed admission: workflow=%v findings=%v", workflow, findings)
 			}
@@ -125,7 +125,7 @@ func TestWorkflowAdmissionAllowsNonAmplifyingReuse(t *testing.T) {
 	for job := range 100 {
 		fmt.Fprintf(&source, "  build%d:\n    runs-on: ubuntu-latest\n    env: *shared\n    steps: [{run: echo ok}]\n", job)
 	}
-	workflow, findings := Parse([]byte(source.String()))
+	workflow, findings := ParseWorkflow([]byte(source.String()))
 	if workflow == nil || len(workflow.Jobs) != 100 || len(findings) != 0 {
 		t.Fatalf("ordinary reuse rejected: findings=%v", findings)
 	}
@@ -134,7 +134,7 @@ func TestWorkflowAdmissionAllowsNonAmplifyingReuse(t *testing.T) {
 func TestWorkflowAdmissionSkipsRecursiveSlotsInsideAcceptedAnchors(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\nenv:\n  base: &base {self: *base}\n  copy: *base\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-	workflow, findings := Parse([]byte(source))
+	workflow, findings := ParseWorkflow([]byte(source))
 	if workflow == nil {
 		t.Fatal("recursive recovery became an admission failure", findings)
 	}

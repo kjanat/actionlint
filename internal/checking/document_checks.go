@@ -6,11 +6,11 @@ import (
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Registration, input checkinputs.Input, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
+func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Registration, input checkinputs.AnalyzerInput, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
 	var all []*findingmodel.Finding
 	var analysisErr error
 	if len(registrations) != 0 {
@@ -18,7 +18,7 @@ func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Regis
 		analysisErr = err
 		for _, registration := range registrations {
 			if !validation.IsNil(registration.Checker) {
-				*usedRules = append(*usedRules, registration.Checker.Descriptor().Clone())
+				*usedRules = append(*usedRules, registration.Checker.Descriptor().Descriptor.Clone())
 			}
 		}
 		for _, finding := range findings {

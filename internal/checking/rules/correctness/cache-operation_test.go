@@ -10,11 +10,11 @@ import (
 func TestCacheOperationStepWithoutDeclaringJobUsesWorkflowMode(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\ncache-mode: read\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Publish(source, decoded, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
 	check := CacheOperationChecks(workflow, nil)
 	// Composite action steps have no declaring workflow job.
 	if findings := check.Step(declaration.Step{}); len(findings) != 0 {
@@ -35,11 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{uses: actions/cache/save@v4}]
 `
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Publish(source, decoded, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
 	writable, _ := workflow.Job("writable")
 	inherited, _ := workflow.Job("inherited")
 	check := CacheOperationChecks(workflow, nil)

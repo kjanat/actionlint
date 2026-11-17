@@ -20,7 +20,7 @@ func TestDeclarationCombinationsKeepValidationAndExecutionSeparate(t *testing.T)
 			t.Parallel()
 			strategies := []string{"strategy:\n      matrix: " + tc.matrix, "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"}
 			for _, strategy := range strategies {
-				workflow, findings := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + strategy + "\n    steps: [{run: echo ok}]\n"))
+				workflow, findings := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + strategy + "\n    steps: [{run: echo ok}]\n"))
 				if len(findings) != 0 {
 					t.Fatal(findings)
 				}

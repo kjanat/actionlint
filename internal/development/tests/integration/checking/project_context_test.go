@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestInMemorySourcesRetainLocalReferenceContext(t *testing.T) {
@@ -159,7 +160,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					},
 					ConfigFile: "settings/actionlint.yaml", SkipProjectConfig: true,
 				}
-				var result *checking.Result
+				var result *report.Analysis
 				var err error
 				if repository {
 					result, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})

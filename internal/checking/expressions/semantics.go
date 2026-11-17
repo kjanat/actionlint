@@ -295,7 +295,7 @@ func (rule *Checker) safeScriptStatusSelector(node exprsyntax.Node) bool {
 func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (result exprlang.ExpressionCheckResult, offset int, parsed bool) {
 	l := exprsyntax.NewLexer(src)
 	p := exprsyntax.NewParser()
-	expr, err := p.Parse(l)
+	expr, err := p.ParseExpression(l)
 	if err != nil {
 		rule.syntaxError(err, line, col)
 		return exprlang.ExpressionCheckResult{Type: exprtypes.AnyType()}, l.Offset(), false

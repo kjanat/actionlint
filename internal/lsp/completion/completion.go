@@ -32,7 +32,7 @@ func Complete(content string, offset int) []Item {
 		return nil
 	}
 	start := strings.LastIndex(before, "${{")
-	root, err := codec.Parse([]byte(content))
+	root, err := codec.ParseYAML([]byte(content))
 	if err != nil {
 		return nil
 	}
@@ -52,8 +52,8 @@ func Complete(content string, offset int) []Item {
 	}
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
-	parsed, _ := workflowparser.Parse([]byte(content))
-	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
+	parsed, _ := workflowparser.ParseWorkflow([]byte(content))
+	w := declaration.Bind("editor-buffer", content, parsed, false, "").Workflow()
 	contextspec.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
 		for _, event := range w.On {

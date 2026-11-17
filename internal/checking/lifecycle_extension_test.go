@@ -25,7 +25,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "helper/action.yml", "name: helper\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: python example.py\n      shell: bash\n")
-	config, err := ConfigurationRules().Parse([]byte("lint:\n  rules: {correctness: {runtime-lifecycle: warn}}\n  lifecycle:\n    policies:\n      - id: plan-language-upgrades\n        description: Plan language upgrades before support ends\n        match: {subjects: [language-runtimes], events: [support-ends]}\n        notifications: [{starts: {before: 180d}, severity: error}]\n"))
+	config, err := ConfigurationRules().ParseConfig([]byte("lint:\n  rules: {correctness: {runtime-lifecycle: warn}}\n  lifecycle:\n    policies:\n      - id: plan-language-upgrades\n        description: Plan language upgrades before support ends\n        match: {subjects: [language-runtimes], events: [support-ends]}\n        notifications: [{starts: {before: 180d}, severity: error}]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	github, err := services.Parse("github.com", "")
+	github, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		t.Fatalf("JSON lost the new producer's lifecycle report: %s", encoded.Bytes())
 	}
 	encoded.Reset()
-	if err := output.WriteSARIF(&encoded, "test", nil, analysis.Diagnostics); err != nil {
+	if err := output.WriteSARIF(&encoded, "test", nil, results.Diagnostics(analysis.Diagnostics)); err != nil {
 		t.Fatal(err)
 	}
 	var sarif struct {

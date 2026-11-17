@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
@@ -117,7 +117,7 @@ func (relatedAdmissionProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
-func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	point := sourcepos.Position{Line: 1, Column: 1}
 	valid := results.Related{Path: input.Path, Start: point, End: point}
 	foreign := valid

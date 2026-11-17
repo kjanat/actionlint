@@ -11,8 +11,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -30,9 +30,9 @@ func TestInstalledProviderShorthands(t *testing.T) {
 	provider.ID = "example.com/file-tool"
 	provider.Rule.Name = "file-tool"
 	provider.ConfigSchema = json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1},"nested":{"type":"object","properties":{"mode":{"enum":["quiet","loud"]}},"additionalProperties":false}},"additionalProperties":false}`)
-	provider.ConfigShorthands = map[string]configschema.Shorthand{
-		"limit": {Path: []string{"limit"}, Precedence: configschema.PrecedenceShorthand},
-		"mode":  {Path: []string{"nested", "mode"}, Precedence: configschema.PrecedenceConfig},
+	provider.ConfigShorthands = map[string]toolsettings.Shorthand{
+		"limit": {Path: []string{"limit"}, Precedence: toolsettings.PrecedenceShorthand},
+		"mode":  {Path: []string{"nested", "mode"}, Precedence: toolsettings.PrecedenceConfig},
 	}
 	provider.ConfigurationTransform = nil
 	provider.ConfigurationPaths = nil
@@ -98,7 +98,7 @@ func TestInstalledProviderShorthands(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := pluginCommandTest(t, pluginacquisition.Settings{}, 0, "config", "schema", "--plugin", path, "--config", config)
-	schema, err := configschema.Compile([]byte(output))
+	schema, err := toolsettings.Compile([]byte(output))
 	if err != nil {
 		t.Fatal(err)
 	}

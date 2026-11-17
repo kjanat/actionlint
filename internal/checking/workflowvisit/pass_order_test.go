@@ -27,7 +27,7 @@ func TestVisitorJobSourceOrder(t *testing.T) {
 	missingA, missingZ := &workflowlang.Job{}, &workflowlang.Job{}
 	for range 10 {
 		pass := &jobOrderPass{}
-		workflow := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Bind("order").Workflow()
+		workflow := declaration.Bind("order", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Workflow()
 		if err := Visit(workflow, Options{Passes: []Pass{pass}}); err != nil {
 			t.Fatal(err)
 		}

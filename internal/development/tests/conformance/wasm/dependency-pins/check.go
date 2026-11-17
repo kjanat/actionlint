@@ -5,7 +5,7 @@ import (
 	"context"
 	"strings"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -23,7 +23,7 @@ func (Checker) Descriptor() checkinputs.Descriptor {
 	}
 }
 
-func (Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (Checker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, dependency := range input.Dependencies {
 		if err := ctx.Err(); err != nil {

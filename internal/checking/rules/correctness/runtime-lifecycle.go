@@ -5,11 +5,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -25,7 +25,7 @@ var RuntimeLifecycleRule = &define.Rule{
 	Scope:           rule.SourceConfiguration,
 	Explanation:     "Check Node.js release schedules for static node-version inputs to actions/setup-node. Support dates come from the Node.js Release schedule. Named lifecycle policies can notify before a known support deadline. Dynamic values, broad version ranges, release aliases, prereleases and node-version-file inputs are not resolved by this check. Node.js release support does not determine which JavaScript runtimes GitHub Actions accepts in action metadata.",
 	Help:            "Select a supported Node.js release. Configure lint.lifecycle.policies to choose when support deadlines should produce notifications.",
-	Checks:          func(c define.Inputs) define.Checks { return RuntimeLifecycleChecks(c.Lifecycle) },
+	Checks:          func(c define.RuleInputs) define.Checks { return RuntimeLifecycleChecks(c.Lifecycle) },
 }
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {

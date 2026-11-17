@@ -24,7 +24,7 @@ func TestSettingCanonicalLevels(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			parsed, err := document.Parse("test.yaml", []byte(tc.input))
+			parsed, err := document.ParseConfigDocument("test.yaml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -2,22 +2,36 @@ package manifests
 
 import (
 	"fmt"
+	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 )
 
-// Bundled parses every provider shipped inside actionlint in directory order.
+// Bundled returns every provider shipped inside actionlint in directory order.
 // Each manifest's rule name must equal its directory and each transform
-// digest must name a bundled program.
+// digest must name a bundled program. The embedded data is decoded once per
+// process; each call returns copies the caller owns.
 func Bundled() ([]Manifest, error) {
-	names := bundled.Names()
+	decoded, err := bundled()
+	if err != nil {
+		return nil, err
+	}
+	manifests := make([]Manifest, len(decoded))
+	for i, manifest := range decoded {
+		manifests[i] = manifest.Clone()
+	}
+	return manifests, nil
+}
+
+var bundled = sync.OnceValues(func() ([]Manifest, error) {
+	names := bundledproviders.Names()
 	manifests := make([]Manifest, 0, len(names))
 	for _, name := range names {
-		data, ok := bundled.Manifest(name)
+		data, ok := bundledproviders.Manifest(name)
 		if !ok {
 			return nil, fmt.Errorf("bundled provider %s has no manifest", name)
 		}
-		manifest, err := Parse(data)
+		manifest, err := ParsePluginManifest(data)
 		if err != nil {
 			return nil, fmt.Errorf("bundled provider %s: %w", name, err)
 		}
@@ -28,11 +42,11 @@ func Bundled() ([]Manifest, error) {
 			if transform.Digest == "" {
 				continue
 			}
-			if _, ok := bundled.Program(transform.Digest); !ok {
+			if _, ok := bundledproviders.Program(transform.Digest); !ok {
 				return nil, fmt.Errorf("bundled provider %s references missing program %s", name, transform.Digest)
 			}
 		}
 		manifests = append(manifests, manifest)
 	}
 	return manifests, nil
-}
+})

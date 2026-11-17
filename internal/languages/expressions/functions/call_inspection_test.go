@@ -12,7 +12,7 @@ func TestInspectKnownCallArguments(t *testing.T) {
 	for _, tc := range []struct {
 		name, function string
 		values         []any
-		kind           exprtypes.Kind
+		kind           exprtypes.TypeKind
 		problems       []CallProblemReport
 	}{
 		{"missing format replacement", "format", []any{"{1}", true}, exprtypes.KindString, []CallProblemReport{{Problem: MissingFormatArgument{Template: "{1}", Index: 1, Count: 1}, Demand: DemandRequired}}},

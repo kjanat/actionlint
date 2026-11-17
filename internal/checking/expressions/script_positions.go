@@ -114,7 +114,7 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 		}
 		first := offset + index
 		lexer := exprsyntax.NewLexer(source[first+3:])
-		expression, err := exprsyntax.NewParser().Parse(lexer)
+		expression, err := exprsyntax.NewParser().ParseExpression(lexer)
 		if err != nil {
 			return scriptArgumentProofs{}
 		}
