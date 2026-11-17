@@ -11,40 +11,38 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
-	"actionlint.kjanat.dev/v2/internal/plugins/bundled/commitish"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
 
 type resolverRepositoryAccess struct {
-	session  repository.Session
+	session  references.RepositorySession
 	requests []references.Request
 }
 
-func (a *resolverRepositoryAccess) Open(_ context.Context, request references.Request) (repository.Session, error) {
+func (a *resolverRepositoryAccess) Open(_ context.Context, request references.Request) (references.RepositorySession, error) {
 	a.requests = append(a.requests, request)
 	return a.session, nil
 }
 
 type resolverRepositorySession struct {
-	identity  repository.Identity
+	identity  references.RepositoryIdentity
 	refs      map[string]string
-	objects   map[string]repository.Object
+	objects   map[string]references.RepositoryObject
 	lookups   int
 	finishes  int
 	finishErr error
 }
 
-func (s *resolverRepositorySession) Repository() repository.Identity { return s.identity }
+func (s *resolverRepositorySession) Repository() references.RepositoryIdentity { return s.identity }
 func (s *resolverRepositorySession) Reference(_ context.Context, name string) (string, bool, error) {
 	s.lookups++
 	id, found := s.refs[name]
 	return id, found, nil
 }
 
-func (s *resolverRepositorySession) Object(_ context.Context, id string) (repository.Object, bool, error) {
+func (s *resolverRepositorySession) Object(_ context.Context, id string) (references.RepositoryObject, bool, error) {
 	s.lookups++
 	object, found := s.objects[id]
 	return object, found, nil
@@ -55,9 +53,9 @@ func (s *resolverRepositorySession) Finish(context.Context) (json.RawMessage, er
 	return json.RawMessage(`{"source":"host"}`), s.finishErr
 }
 
-func knownRepositoryID(tb testing.TB, value uint64) repositoryid.ID {
+func knownRepositoryID(tb testing.TB, value uint64) repofacts.ID {
 	tb.Helper()
-	id, err := repositoryid.Known(value)
+	id, err := repofacts.KnownID(value)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -67,9 +65,9 @@ func knownRepositoryID(tb testing.TB, value uint64) repositoryid.ID {
 func newResolverRepositoryTest(tb testing.TB) (*repositoryObjects, *resolverRepositoryAccess, *resolverRepositorySession) {
 	tb.Helper()
 	session := &resolverRepositorySession{
-		identity: repository.Identity{Host: "github.com", ID: knownRepositoryID(tb, 7), Name: "owner/repo", ObservedAt: "2026-11-10T00:00:00Z"},
+		identity: references.RepositoryIdentity{Host: "github.com", ID: knownRepositoryID(tb, 7), Name: "owner/repo", ObservedAt: "2026-11-10T00:00:00Z"},
 		refs:     map[string]string{"refs/tags/v1": strings.Repeat("a", 40)},
-		objects:  map[string]repository.Object{strings.Repeat("a", 40): repository.Commit{}},
+		objects:  map[string]references.RepositoryObject{strings.Repeat("a", 40): references.RepositoryCommit{}},
 	}
 	access := &resolverRepositoryAccess{session: session}
 	objects := &repositoryObjects{request: references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: knownRepositoryID(tb, 7)}, access: access, active: true}
@@ -100,7 +98,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			return err
 		}},
 		{"unexpected identity", func(ctx context.Context, objects *repositoryObjects) error {
-			objects.request.ExpectedRepositoryID = repositoryid.ID{}
+			objects.request.ExpectedRepositoryID = repofacts.ID{}
 			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
@@ -173,24 +171,24 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 	peeled := strings.Repeat("b", 40)
 	for _, tc := range []struct {
 		name   string
-		object repository.Object
+		object references.RepositoryObject
 		commit string
 		tree   string
 	}{
-		{"commit", repository.Commit{}, selected, ""},
-		{"tree", repository.Tree{}, "", selected},
-		{"peeled commit", repository.PeeledTag{Commit: peeled}, peeled, ""},
-		{"peeled tree", repository.PeeledTreeTag{Tree: peeled}, "", peeled},
+		{"commit", references.RepositoryCommit{}, selected, ""},
+		{"tree", references.RepositoryTree{}, "", selected},
+		{"peeled commit", references.RepositoryPeeledTag{Commit: peeled}, peeled, ""},
+		{"peeled tree", references.RepositoryPeeledTreeTag{Tree: peeled}, "", peeled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			objects, _, session := newResolverRepositoryTest(t)
 			session.objects[selected] = tc.object
 			if tc.commit == peeled {
-				session.objects[peeled] = repository.Commit{}
+				session.objects[peeled] = references.RepositoryCommit{}
 			}
 			if tc.tree == peeled {
-				session.objects[peeled] = repository.Tree{}
+				session.objects[peeled] = references.RepositoryTree{}
 			}
 			if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
 				t.Fatal(err)
@@ -215,7 +213,7 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 			}
 			for _, change := range []func(*references.Result){
 				func(result *references.Result) { result.RepositoryID = knownRepositoryID(t, 8) },
-				func(result *references.Result) { result.RepositoryID = repositoryid.ID{} },
+				func(result *references.Result) { result.RepositoryID = repofacts.ID{} },
 				func(result *references.Result) { result.Repository = "other/repo" },
 				func(result *references.Result) { result.ObservedAt = "2026-11-10T00:00:01Z" },
 				func(result *references.Result) { result.SelectedRef = "refs/heads/missing" },
@@ -291,7 +289,9 @@ func TestReferenceResolverSessionCachesExactRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result.FetchLog[0] = 'x'
+	if !json.Valid(result.FetchLog) {
+		t.Fatalf("result=%s", result.FetchLog)
+	}
 	cached, err := session.Resolve(t.Context(), request)
 	if err != nil || !json.Valid(cached.FetchLog) || calls.Load() != 1 {
 		t.Fatalf("cached=%s calls=%d err=%v", cached.FetchLog, calls.Load(), err)
@@ -379,7 +379,7 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 
 func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 	t.Parallel()
-	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
+	plugin, err := LoadArtifact(t.Context(), BuiltinCommitishArtifact(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 		}
 		_, access, _ := newResolverRepositoryTest(t)
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: knownRepositoryID(t, 7)}
-		budgeted, stop := references.StartLookupBudget(repository.WithAccess(t.Context(), access), time.Second)
+		budgeted, stop := references.StartLookupBudget(references.WithRepositoryAccess(t.Context(), access), time.Second)
 		defer stop()
 		resolved := make(chan error, 1)
 		go func() {
@@ -412,7 +412,7 @@ func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 
 func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 	t.Parallel()
-	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
+	plugin, err := LoadArtifact(t.Context(), BuiltinCommitishArtifact(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,22 +430,22 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		reference   string
 		kind        string
 		refs        map[string]string
-		objects     map[string]repository.Object
+		objects     map[string]references.RepositoryObject
 		selectedRef string
 		commit      string
 		tree        string
 	}{
-		{"action tag before branch", "v1", "action", map[string]string{"refs/tags/v1": selected, "refs/heads/v1": other}, map[string]repository.Object{selected: repository.Commit{}, other: repository.Commit{}}, "refs/tags/v1", selected, ""},
-		{"uppercase action object ID", strings.ToUpper(selected), "action", nil, map[string]repository.Object{selected: repository.Commit{}}, "", selected, ""},
-		{"workflow tree tag", "v1", "workflow", map[string]string{"refs/tags/v1": selected}, map[string]repository.Object{selected: repository.PeeledTreeTag{Tree: other}, other: repository.Tree{}}, "refs/tags/v1", "", other},
-		{"action annotated commit tag", "v1", "action", map[string]string{"refs/tags/v1": selected}, map[string]repository.Object{selected: repository.PeeledTag{Commit: other}, other: repository.Commit{}}, "refs/tags/v1", other, ""},
+		{"action tag before branch", "v1", "action", map[string]string{"refs/tags/v1": selected, "refs/heads/v1": other}, map[string]references.RepositoryObject{selected: references.RepositoryCommit{}, other: references.RepositoryCommit{}}, "refs/tags/v1", selected, ""},
+		{"uppercase action object ID", strings.ToUpper(selected), "action", nil, map[string]references.RepositoryObject{selected: references.RepositoryCommit{}}, "", selected, ""},
+		{"workflow tree tag", "v1", "workflow", map[string]string{"refs/tags/v1": selected}, map[string]references.RepositoryObject{selected: references.RepositoryPeeledTreeTag{Tree: other}, other: references.RepositoryTree{}}, "refs/tags/v1", "", other},
+		{"action annotated commit tag", "v1", "action", map[string]string{"refs/tags/v1": selected}, map[string]references.RepositoryObject{selected: references.RepositoryPeeledTag{Commit: other}, other: references.RepositoryCommit{}}, "refs/tags/v1", other, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, access, session := newResolverRepositoryTest(t)
 			session.refs, session.objects = tc.refs, tc.objects
 			request := references.Request{Version: 1, Repository: "owner/repo", Ref: tc.reference, Kind: tc.kind, ExpectedRepositoryID: knownRepositoryID(t, 7)}
-			result, err := plugin.Resolve(repository.WithAccess(t.Context(), access), request)
+			result, err := plugin.Resolve(references.WithRepositoryAccess(t.Context(), access), request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -466,7 +466,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		_, access, session := newResolverRepositoryTest(t)
 		session.identity.ID = repositoryID
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: repositoryID}
-		result, err := plugin.Resolve(repository.WithAccess(t.Context(), access), request)
+		result, err := plugin.Resolve(references.WithRepositoryAccess(t.Context(), access), request)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -482,17 +482,17 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 	})
 	for _, tc := range []struct {
 		name     string
-		expected repositoryid.ID
+		expected repofacts.ID
 	}{
-		{"absent host and expected repository IDs", repositoryid.ID{}},
+		{"absent host and expected repository IDs", repofacts.ID{}},
 		{"absent host repository ID with an expected ID", knownRepositoryID(t, 7)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, access, session := newResolverRepositoryTest(t)
-			session.identity.ID = repositoryid.ID{}
+			session.identity.ID = repofacts.ID{}
 			request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: tc.expected}
-			result, err := plugin.Resolve(repository.WithAccess(t.Context(), access), request)
+			result, err := plugin.Resolve(references.WithRepositoryAccess(t.Context(), access), request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -512,7 +512,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		_, access, session := newResolverRepositoryTest(t)
 		session.identity.ID = knownRepositoryID(t, 8)
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: knownRepositoryID(t, 7)}
-		if result, err := plugin.Resolve(repository.WithAccess(t.Context(), access), request); err == nil {
+		if result, err := plugin.Resolve(references.WithRepositoryAccess(t.Context(), access), request); err == nil {
 			t.Fatalf("accepted a conflicting repository ID: %+v", result)
 		}
 		if session.lookups != 0 || session.finishes != 0 {
@@ -554,7 +554,7 @@ func TestLiftReferenceResolutionRepositoryID(t *testing.T) {
 
 func TestLowerReferenceRequestRepositoryID(t *testing.T) {
 	t.Parallel()
-	for _, expected := range []repositoryid.ID{{}, knownRepositoryID(t, 42)} {
+	for _, expected := range []repofacts.ID{{}, knownRepositoryID(t, 42)} {
 		value, err := lowerReferenceRequest(references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: expected})
 		if err != nil {
 			t.Fatal(err)

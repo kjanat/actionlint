@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
@@ -78,13 +78,13 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 	} {
 		t.Run(test.name+test.registry, func(t *testing.T) {
 			t.Parallel()
-			one, err := pluginref.New(test.name, "v1", first)
+			one, err := pluginreference.New(test.name, "v1", first)
 			if err != nil {
 				t.Fatal(err)
 			}
 			two := testReference(t, test.name, "v2", second)
-			refs := []pluginref.Reference{one, two}[:test.count]
-			ref, err := plugincmd.RequestedPlugin(test.name, plugincmd.RegistryOptions{Registry: test.registry}, refs)
+			refs := []pluginreference.Reference{one, two}[:test.count]
+			ref, err := plugincommand.RequestedPlugin(test.name, plugincommand.RegistryOptions{Registry: test.registry}, refs)
 			if test.invalid {
 				if err == nil {
 					t.Fatal("ambiguous declaration selected")
@@ -94,7 +94,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 			if err != nil || ref.Version() != test.version || ref.Registry() != test.registry {
 				t.Fatalf("selection: %+v, %v", ref, err)
 			}
-			index, err := plugincmd.RequestedPluginIndex(ref, test.registry, refs)
+			index, err := plugincommand.RequestedPluginIndex(ref, test.registry, refs)
 			if err != nil || index != test.index {
 				t.Fatalf("declaration index=%d, error=%v; want %d", index, err, test.index)
 			}
@@ -119,16 +119,16 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 func TestRegistryInstallDirectURLDeclarationSelection(t *testing.T) {
 	t.Parallel()
 	const source = "https://plugins.example/check.wasm#sha256="
-	old, err := pluginref.Parse(source + strings.Repeat("1", 64))
+	old, err := pluginreference.Parse(source + strings.Repeat("1", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
 	updated := source + strings.Repeat("2", 64)
-	ref, err := plugincmd.RequestedPlugin(updated, plugincmd.RegistryOptions{}, []pluginref.Reference{old})
+	ref, err := plugincommand.RequestedPlugin(updated, plugincommand.RegistryOptions{}, []pluginreference.Reference{old})
 	if err != nil || ref.DirectSource() != updated {
 		t.Fatalf("direct selection: %+v, %v", ref, err)
 	}
-	index, err := plugincmd.RequestedPluginIndex(ref, "", []pluginref.Reference{old})
+	index, err := plugincommand.RequestedPluginIndex(ref, "", []pluginreference.Reference{old})
 	if err != nil || index != 0 {
 		t.Fatalf("direct replacement index=%d, error=%v", index, err)
 	}

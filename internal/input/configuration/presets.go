@@ -1,4 +1,4 @@
-package config
+package configuration
 
 // Presets enables checks without a configuration file. These runtime
 // selections apply after file overrides and never mutate project configuration.

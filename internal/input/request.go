@@ -22,7 +22,7 @@ const (
 // pre-commit convention; it still validates and records selected configuration.
 type Request struct {
 	Selection *workspace.FileSelection
-	Sources   []workspace.Source
+	Sources   []workspace.InputFile
 	Kind      Kind
 	// Paths selects files and directories relative to the process directory.
 	// The check working directory controls configuration and display paths instead.

@@ -29,7 +29,7 @@ func TestEventGuardReview(t *testing.T) {
 				t.Fatal(err)
 			}
 			source := "on: " + tc.trigger + "\njobs:\n  test:\n    if: ${{ " + tc.condition + " }}\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}

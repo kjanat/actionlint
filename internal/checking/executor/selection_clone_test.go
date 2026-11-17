@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/invocations"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -19,26 +18,18 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ownerGraph, err := builder.Publish()
+	graph, err := builder.Publish()
 	if err != nil {
 		t.Fatal(err)
-	}
-	projection, err := invocations.New(ownerGraph)
-	if err != nil {
-		t.Fatal(err)
-	}
-	graph := projection.Graph()
-	if !graph.Valid() {
-		t.Fatal("empty invocation graph was not projected")
 	}
 	for _, tc := range []struct {
 		name      string
 		available []rulemeta.InputKind
-		selection []checkinputs.OccurrenceID
+		selection []invocation.ID
 		wantNil   bool
 	}{
 		{name: "nil", available: []rulemeta.InputKind{rulemeta.Invocations}, wantNil: true},
-		{name: "empty nonnil", available: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, selection: []checkinputs.OccurrenceID{}},
+		{name: "empty nonnil", available: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, selection: []invocation.ID{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

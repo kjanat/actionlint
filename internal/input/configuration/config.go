@@ -1,6 +1,6 @@
-// Package config owns the repository configuration document: its model, decoding,
+// Package configuration owns the repository configuration document: its model, decoding,
 // validation, inheritance, overlays and inspection.
-package config
+package configuration
 
 import (
 	"context"
@@ -18,11 +18,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
-	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -322,7 +323,7 @@ type Config struct {
 	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
-	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
+	Files selection.Selection `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Output configures defaults for CLI reporting.
 	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
 	// Network controls fallback services for remote metadata.
@@ -415,21 +416,21 @@ func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
 	return resolved.Config, nil
 }
 
-// Resolved keeps validated values and their provenance from the same document.
-type Resolved struct {
+// ResolvedConfig keeps validated values and their provenance from the same document.
+type ResolvedConfig struct {
 	Provenance Provenance
 	Value      any
 	Inputs     map[string]Input
 	Config     *Config
 	Values     map[string]any
-	Origins    map[string]Origin
-	Warnings   []Warning
+	Origins    map[string]configreport.Origin
+	Warnings   []configreport.Warning
 }
 
-func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (Resolved, error) {
+func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (ResolvedConfig, error) {
 	doc, err := document.Parse("", b)
 	if err != nil {
-		return Resolved{}, decodeError{cause: err}
+		return ResolvedConfig{}, decodeError{cause: err}
 	}
 	return ruleSet.ResolveValue(doc.Value, documentInputs(doc), additional...)
 }
@@ -443,24 +444,24 @@ func documentInputs(doc document.Document) map[string]Input {
 	return inputs
 }
 
-func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]Input, additional ...string) (Resolved, error) {
+func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]Input, additional ...string) (ResolvedConfig, error) {
 	return ruleSet.resolveValue(root, inputs, true, additional...)
 }
 
-func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules bool, additional ...string) (Resolved, error) {
+func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules bool, additional ...string) (ResolvedConfig, error) {
 	inputs = ruleSet.migrationInputs(root, inputs)
 	root = ruleSet.normalizeToolSwitch(root)
 	legacyWarnings := configWarnings(root, inputs)
 	var err error
 	root, _, err = ruleSet.migrateNode(root)
 	if err != nil {
-		return Resolved{}, sourceError(err, inputs)
+		return ResolvedConfig{}, sourceError(err, inputs)
 	}
 
 	var c Config
 	if root != nil {
 		if err := ruleSet.decodeValue(root, &c, bindRules); err != nil {
-			return Resolved{}, decodeError{cause: sourceError(err, inputs)}
+			return ResolvedConfig{}, decodeError{cause: sourceError(err, inputs)}
 		}
 		if plugins := field(root, "plugins"); plugins != nil && isNull(plugins) {
 			c.Plugins = PluginDeclarations{}
@@ -469,22 +470,22 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	ruleSet.projectSettings(&c)
 	if bindRules {
 		if err := ruleSet.ValidateRuleNames(&c, additional...); err != nil {
-			return Resolved{}, sourceError(err, inputs)
+			return ResolvedConfig{}, sourceError(err, inputs)
 		}
 	}
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
-			return Resolved{}, fmt.Errorf("invalid glob pattern %q in paths", pat)
+			return ResolvedConfig{}, fmt.Errorf("invalid glob pattern %q in paths", pat)
 		}
 	}
 	values, err := ruleSet.EffectiveValues(&c)
 	if err != nil {
-		return Resolved{}, err
+		return ResolvedConfig{}, err
 	}
-	origins := map[string]Origin{}
+	origins := map[string]configreport.Origin{}
 	configDefaultOrigins(values, "", origins)
 	if err := configOrigins(root, "", origins, inputs); err != nil {
-		return Resolved{}, err
+		return ResolvedConfig{}, err
 	}
 	c.Tools.setInputOrigins(inputs, "/tools")
 	for i := range c.Overrides {
@@ -498,7 +499,7 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	}
 	c.Lint.Rules.bindingSources = ruleBindingSources("", &c, inputs)
 	c.Lint.locations = maps.Clone(inputs)
-	return Resolved{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
+	return ResolvedConfig{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
 // Load reads settings from a configuration file. Read also retains source provenance.
@@ -516,24 +517,24 @@ func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional 
 	return source.Config, nil
 }
 
-func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
 	return ruleSet.ReadContext(context.Background(), path, readFile, additional...)
 }
 
 // ReadContext preserves a supplied source reader for local and HTTPS inputs.
 // Without one, the host reader acquires local files and explicit HTTPS sources.
-func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
 	return ruleSet.readContext(ctx, path, readFile, true, additional...)
 }
 
 // ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
-func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*Loaded, error) {
+func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*LoadedFile, error) {
 	return ruleSet.readContext(ctx, path, readFile, false)
 }
 
-func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*Loaded, error) {
+func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*LoadedFile, error) {
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
-	warningsByFile := map[string][]Warning{}
+	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
 	documents := map[string]any{}
 	loaded, err := loadConfigTree(path, reader.ReadConfig, func(origin string, doc document.Document) (document.Document, error) {
@@ -579,7 +580,7 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
 	}
-	return &Loaded{resolved, path}, nil
+	return &LoadedFile{resolved, path}, nil
 }
 
 // RepositoryConfigNames lists the config file names read from .github, in precedence order.
@@ -593,12 +594,12 @@ var RepositoryConfigNames = func() []string {
 
 // LoadRepository reads the first existing file named in RepositoryConfigNames
 // from the repository's .github directory.
-func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
+func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
 	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, additional...)
 }
 
 // LoadRepositoryContext discovers configuration with cancellable inheritance.
-func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
+func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
 	for _, f := range RepositoryConfigNames {
 		p := filepath.Join(root, ".github", f)
 		c, err := ruleSet.ReadContext(ctx, p, readFile, additional...)
@@ -615,7 +616,7 @@ func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, r
 }
 
 func absPath(path string) string {
-	if configaddress.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return path
 	}
 	if p, err := filepath.Abs(path); err == nil {

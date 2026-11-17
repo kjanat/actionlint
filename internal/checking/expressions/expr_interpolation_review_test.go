@@ -12,7 +12,7 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )

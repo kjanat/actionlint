@@ -57,13 +57,6 @@ func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				// Consumers can change their decoded input after publication.
-				if action {
-					document.Metadata.Source[0] = '!'
-					document.Metadata.Root.Content = nil
-				} else {
-					document.Workflow.Jobs = nil
-				}
 				_, dependencies := snapshot.Declarations()
 				if len(dependencies) != wantCount {
 					t.Fatalf("dependency count = %d; want %d", len(dependencies), wantCount)

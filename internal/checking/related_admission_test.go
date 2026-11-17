@@ -18,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 )
 
 func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
@@ -100,7 +99,7 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	primary := &findingmodel.Finding{Path: "ci.yml", Message: "primary", Related: append(append([]results.Related{good, eof}, bad...), results.Related{Path: "ci.yml"})}
 	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*findingmodel.Finding{primary}}}}
 	err = result.revalidateCaptures(store, rows, root, nil)
-	rejected, ok := errors.AsType[*related.RejectedError](err)
+	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != len(bad)+1 || len(result.files[0].errors) != 1 || result.files[0].errors[0] != primary || len(primary.Related) != 2 || primary.Related[0] != good || primary.Related[1] != eof {
 		t.Fatalf("related admission: primary=%+v error=%v", primary, err)
 	}
@@ -155,7 +154,7 @@ func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
 func testRelatedBridgeAndSeal(t *testing.T, root string) {
 	t.Helper()
 	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
-	rejected, ok := errors.AsType[*related.RejectedError](err)
+	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}

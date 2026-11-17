@@ -34,25 +34,6 @@ func copyOwnedDescriptor(in Descriptor) Descriptor {
 	return out
 }
 
-func copyOwnedCallGraphData(in CallGraphData) CallGraphData {
-	out := in
-	out.Calls = copyOwnedValue_68e4995a8add18661bf9998987ec02c6(in.Calls)
-	out.Scripts = copyOwnedValue_78b951d09831dc28ff16c8152c143cc2(in.Scripts)
-	return out
-}
-
-func copyOwnedCall(in Call) Call {
-	out := in
-	out.Ancestry = slices.Clone(in.Ancestry)
-	return out
-}
-
-func copyOwnedScriptOccurrence(in ScriptOccurrence) ScriptOccurrence {
-	out := in
-	out.Ancestry = slices.Clone(in.Ancestry)
-	return out
-}
-
 func copyOwnedValue_8c2d42081d6aa99a9ff3d69b2dcba0ca(in []Script) []Script {
 	if in == nil {
 		return nil
@@ -107,32 +88,9 @@ func copyOwnedValue_c3d263bd63537c696454d0abea20febe(in []commands.Definition) [
 	return out
 }
 
-func copyOwnedValue_68e4995a8add18661bf9998987ec02c6(in []Call) []Call {
-	if in == nil {
-		return nil
-	}
-	out := make([]Call, len(in))
-	for i := range in {
-		out[i] = copyOwnedCall(in[i])
-	}
-	return out
-}
-
-func copyOwnedValue_78b951d09831dc28ff16c8152c143cc2(in []ScriptOccurrence) []ScriptOccurrence {
-	if in == nil {
-		return nil
-	}
-	out := make([]ScriptOccurrence, len(in))
-	for i := range in {
-		out[i] = copyOwnedScriptOccurrence(in[i])
-	}
-	return out
-}
-
 func copyOwnedScript_094a2ffe083a610c0c74fff33280c461(in Script) Script {
 	out := in
 	out.Declaration = copyOwnedDeclaration_9851ece59dfac4167985ecae35dbf999(in.Declaration)
-	out.Occurrence = copyOwnedScriptOccurrence(in.Occurrence)
 	out.Runtime = copyOwnedValue_9d383f1d3b80e41e3942e4cb7c78216b(in.Runtime)
 	out.Environment = slices.Clone(in.Environment)
 	return out

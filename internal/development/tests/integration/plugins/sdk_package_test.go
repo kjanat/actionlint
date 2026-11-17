@@ -16,7 +16,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -125,7 +124,7 @@ export default defineDocumentProvider({
 		t.Fatal(err)
 	}
 	pool := hostprocess.NewProcessPool(t.Context(), 1)
-	command, err := pool.ConfiguredCommandRunner(manifest.Process.Entry, &processconfig.Options{Executable: &node, WorkingDir: runtimeDirectory}, false)
+	command, err := pool.ConfiguredCommandRunner(manifest.Process.Entry, &hostprocess.CommandOptions{Executable: &node, WorkingDir: runtimeDirectory}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

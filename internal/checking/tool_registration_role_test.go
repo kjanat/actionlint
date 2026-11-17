@@ -10,7 +10,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -42,7 +42,7 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			t.Parallel()
 			selection := registry.Selections{"shellcheck": {Command: "shellcheck"}}
 			if tc.explicit {
-				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{}}}
+				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}
 			}
 			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []checkinputs.Registration{{Checker: selectedToolGuest{}}}})
 			if err != nil {

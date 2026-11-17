@@ -42,7 +42,7 @@ func TestScriptInterpolationWorkflowProofs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -134,7 +134,7 @@ func TestTemplateStringNeedsShellWordProof(t *testing.T) {
 			} {
 				t.Run(check.name, func(t *testing.T) {
 					t.Parallel()
-					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow(check.command)), Config: cfg}})
+					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow(check.command)), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -168,7 +168,7 @@ func TestMutableInheritedEnvIsNotScriptWordProof(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -217,7 +217,7 @@ func TestLogicalScriptWordProofs(t *testing.T) {
 				t.Run(check.name, func(t *testing.T) {
 					t.Parallel()
 					source := "on: {workflow_dispatch: {inputs: {command: {type: string}, value: {type: string}, flag: {type: boolean}}}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + check.run + "\n" + "\npermissions: {}\n"
-					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
+					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}

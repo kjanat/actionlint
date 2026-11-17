@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
@@ -44,7 +43,7 @@ func Offset(content []byte, model sourcepos.Coordinates, p sourcepos.Position) (
 				end = start + relative
 			}
 			if line == p.Line {
-				if column, ok := text.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
+				if column, ok := sourcepos.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
 					return start + column, nil
 				}
 				break

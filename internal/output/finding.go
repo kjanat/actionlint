@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -49,7 +49,7 @@ func (f Finding) end(line string) int {
 	if f.Unavailable {
 		return max(f.Diagnostic.Start.Column, f.EndColumn)
 	}
-	return text.InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
+	return source.InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
 }
 
 func (f Finding) indicator(line string) string {
@@ -57,13 +57,13 @@ func (f Finding) indicator(line string) string {
 	if column <= 0 {
 		return ""
 	}
-	start, ok := text.ByteOffsetAtColumn(line, column)
+	start, ok := source.ByteOffsetAtColumn(line, column)
 	if !ok {
 		return ""
 	}
 	width := 0
 	if end := f.end(line); end >= column {
-		offset, ok := text.ByteOffsetAtColumn(line, end+1)
+		offset, ok := source.ByteOffsetAtColumn(line, end+1)
 		if !ok {
 			offset = len(line)
 		}

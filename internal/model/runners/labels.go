@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
@@ -120,12 +120,12 @@ func KnownLabels(patterns []string) LabelSet {
 
 // LabelRejections returns spelling and compatibility rejections without assigning a lint rule.
 // Unknown repository labels do not establish that an unrecognized name is invalid.
-func LabelRejections(job workflowdecl.JobView, customLabels LabelSet) []runner.Rejection {
+func LabelRejections(job workflowdecl.Job, customLabels LabelSet) []runner.Rejection {
 	if !job.Present() {
 		return nil
 	}
-	selection := job.RunsOn().Selection()
-	strategy := job.Strategy().MatrixResolution()
+	selection := workflowdecl.RunnerSelection(job.RunsOn)
+	strategy := workflowdecl.MatrixResolution(job.Strategy)
 	check := checker{labels: customLabels.patterns, labelsKnown: customLabels.known}
 	combinations, complete := strategy.DeclarationCombinations(256)
 	if !complete {

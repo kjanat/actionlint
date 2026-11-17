@@ -47,12 +47,12 @@ func TestRuleRequirePermissions(t *testing.T) {
 					t.Fatal(err)
 				}
 				request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-				var requestSources []workspace.Source
+				var requestSources []workspace.InputFile
 				linterConfig := cfg
 				source := []byte("on: push\n" + tc.workflowPermissions + `jobs:
   test:
 ` + tc.job)
-				requestSources = []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: source, Project: nil, Config: linterConfig}}
+				requestSources = []workspace.InputFile{{Path: "test.yml", InputPath: "test.yml", Content: source, Project: nil, Config: linterConfig}}
 				errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
 					t.Fatal(err)

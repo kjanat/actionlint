@@ -18,7 +18,6 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -54,7 +53,7 @@ func scriptFixture(t *testing.T, input string) tools.Script {
 	if !ok {
 		t.Fatal("fixture has no run")
 	}
-	return tools.Script{Text: run.Run.Value, Source: view.Source(), Key: run.RunPos, Value: run.Run.Pos, Path: "fix.yml", Content: []byte(content), Execution: tools.Execution{Shell: "bash"}}
+	return tools.Script{Text: run.Run.Value, Source: view.Source, Key: run.RunPos, Value: run.Run.Pos, Path: "fix.yml", Content: []byte(content), Execution: tools.Execution{Shell: "bash"}}
 }
 
 // generated prepares a script as a shell preparation does: a kept shebang,
@@ -103,7 +102,7 @@ func applyFix(t *testing.T, input string, fix results.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcepos.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -128,7 +127,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			t.Parallel()
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			script := scriptFixture(t, input)
-			fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
+			fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
 			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != results.FixSuggested {
@@ -170,7 +169,7 @@ func TestScriptFixPreservesApplicability(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
-		fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{
+		fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{
 			Applicability: applicability,
 			Replacements:  []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
 		})

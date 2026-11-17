@@ -63,7 +63,7 @@ when the cache lacks a manifest or a provider fails, analysis must report that
 metadata was unavailable. Supplying a resolver alone does not acquire manifests.
 
 Plugin and engine selection is held by the
-[`editorSession`](../internal/lsp/plugin_session.go): explicit plugins and
+[`editorPluginHost`](../internal/lsp/plugin_host.go): explicit plugins and
 remote engine URLs are startup snapshots; configured local artifacts are
 identified by their contents. Plugins can return diagnostics and fixes; they
 cannot register completion, hover or navigation handlers.

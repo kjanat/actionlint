@@ -12,7 +12,6 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -43,7 +42,7 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 		t.Fatalf("disk selection conflicted with its open canonical source: result=%+v error=%v", result, err)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Reference == nil || finding.Reference.Revision != sourceid.Digest([]byte(unsaved)) || reads.Load() != 1 {
+	if finding.Reference == nil || finding.Reference.Revision != source.ContentDigest([]byte(unsaved)) || reads.Load() != 1 {
 		t.Fatalf("selected source was reread or used stale bytes: finding=%+v reads=%d", finding, reads.Load())
 	}
 	for _, path := range []string{entryAlias, realPath} {
@@ -63,7 +62,7 @@ func TestPreparedExplicitBytesStillConflictWithBuffer(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo explicit}]}}\n")
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, SourceOverlays: []SourceOverlay{{Path: path, Content: []byte("on: push\njobs: {}\n")}}}, []workspace.Source{{Path: path, Content: content}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, SourceOverlays: []SourceOverlay{{Path: path, Content: []byte("on: push\njobs: {}\n")}}}, []workspace.InputFile{{Path: path, Content: content}})
 	if _, conflicted := errors.AsType[capture.ConflictError](err); !conflicted {
 		t.Fatalf("explicit prepared bytes were silently overridden: %v", err)
 	}

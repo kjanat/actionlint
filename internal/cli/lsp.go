@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
@@ -40,7 +40,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	}
 	var provider references.Resolver
 	if c.ResolverCommand != "" {
-		provider = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
+		provider = execprotocol.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
 	metadata, err := c.actionMetadata(streams.Acquisition)
 	if err != nil {

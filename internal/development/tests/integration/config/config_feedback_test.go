@@ -26,7 +26,7 @@ policy:
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(context.Background(), checking.Options{WorkingDir: t.TempDir(), RemoteActions: unavailableActionMetadata{}}, []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
+	result, err := checking.Analyze(context.Background(), checking.Options{WorkingDir: t.TempDir(), RemoteActions: unavailableActionMetadata{}}, []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
   own:
     uses: my-org/repo/.github/workflows/ci.yml@main

@@ -41,7 +41,7 @@ jobs:
 	}
 	dir := filepath.Join(root, ".github", "workflows")
 	request := checking.Options{WorkingDir: root}
-	requestSources := []workspace.Source{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}
+	requestSources := []workspace.InputFile{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}
 	result, err := checking.Analyze(t.Context(), request, requestSources)
 	if err != nil {
 		t.Fatal(err)

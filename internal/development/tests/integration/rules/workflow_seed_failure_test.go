@@ -4,17 +4,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
-	"actionlint.kjanat.dev/v2/internal/checking/passes"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T) {
@@ -42,8 +43,8 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				t.Fatal("callee has no recovered workflow")
 			}
 			reusable := false
-			for event := range workflow.On() {
-				if _, ok := event.WorkflowCallEvent(); ok {
+			for _, event := range workflow.On {
+				if _, ok := event.(*workflowlang.WorkflowCallEvent); ok {
 					reusable = true
 				}
 			}
@@ -73,7 +74,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				}
 				callRule := workflowCallVisitor(t, workflow, cache, repofacts.Snapshot{})
 				labelRule := productionRunnerRule(t, snapshot, runners)
-				if err := passes.Visit(workflow, passes.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
+				if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)
 				}
 				return len(callRule.Errs()), len(labelRule.Errs())

@@ -33,7 +33,7 @@ func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
 			}
 			return []byte("name: changed\ndescription: changed\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo second\n"), nil
 		},
-	}, []workspace.Source{
+	}, []workspace.InputFile{
 		{Path: "one.yml", InputPath: filepath.Join(root, "one.yml"), Content: []byte(workflow), Project: workspace.Identity(root)},
 		{Path: "two.yml", InputPath: filepath.Join(root, "two.yml"), Content: []byte(workflow), Project: workspace.Identity(root + string(filepath.Separator) + ".")},
 	})
@@ -59,7 +59,7 @@ func TestResultCaptureQuarantinesConflictsWithoutDiscardingOtherEntries(t *testi
 	t.Parallel()
 	root, _ := executableFixture(t)
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"
-	sources := []workspace.Source{
+	sources := []workspace.InputFile{
 		{Path: "bad-one.yml", InputPath: filepath.Join(root, "shared.yml"), Content: []byte(workflow)},
 		{Path: "bad-two.yml", InputPath: root + string(filepath.Separator) + "." + string(filepath.Separator) + "shared.yml", Content: []byte("name: conflicting\n" + workflow)},
 		{Path: "good.yml", InputPath: filepath.Join(root, "good.yml"), Content: []byte(workflow)},

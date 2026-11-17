@@ -10,7 +10,6 @@ import (
 	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 )
 
 func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
@@ -45,7 +44,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 			if mixed == "valid" {
 				want = 2
 			}
-			rejected, ok := errors.AsType[*related.RejectedError](err)
+			rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 			if !ok || rejected.Count() != want || len(findings) != 1 || findings[0].Message != "primary" {
 				t.Fatalf("findings=%+v err=%v", findings, err)
 			}

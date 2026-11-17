@@ -51,7 +51,7 @@ jobs:
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
-            internal/model/contexts/events/payload/catalogue.json
+            internal/model/contexts/events/payload_catalogue.json
             :(glob)internal/**/*.gen.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"

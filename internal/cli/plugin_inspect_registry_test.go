@@ -51,7 +51,7 @@ func TestPluginInspectRegistry(t *testing.T) {
 			if code != 0 {
 				t.Fatalf("inspect %s exited %d: %s", source, code, stderr.String())
 			}
-			var info artifacts.Info
+			var info artifacts.ArtifactProvenance
 			if err := json.Unmarshal(stdout.Bytes(), &info); err != nil {
 				t.Fatal(err)
 			}

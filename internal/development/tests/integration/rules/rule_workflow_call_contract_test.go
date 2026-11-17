@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -149,7 +149,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 
 	want := &calls.Metadata{
 		Inputs: calls.Inputs{
-			"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
+			"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 		},
 		Outputs: calls.Outputs{
 			"output1": {Name: "output1"},

@@ -1,11 +1,9 @@
 package selection
 
 import (
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -24,7 +22,7 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 		}
 	})
 	// Metadata can have file-specific ignores even when its caller has none.
-	_, actionRule := rule.(checkcalls.MetadataParticipant)
+	_, actionRule := rule.(workflowvisit.MetadataParticipant)
 	if !actionRule && !hasIgnores {
 		return visit()
 	}
@@ -56,4 +54,4 @@ type originParticipant interface {
 	SetIgnoreOrigin(*findingmodel.IgnoreOrigin)
 }
 
-func HasConfiguredIgnores(cfg *repoconfig.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }
+func HasConfiguredIgnores(cfg *configuration.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

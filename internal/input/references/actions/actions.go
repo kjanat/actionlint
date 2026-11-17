@@ -11,7 +11,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // Reference identifies the requested action, before a mutable ref is resolved.
@@ -28,7 +29,7 @@ func ParseReference(host, spec string) (Reference, error) {
 		return Reference{}, errors.New("action ref is missing")
 	}
 	parts := strings.SplitN(location, "/", 3)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" || parts[0] == "." || parts[0] == "$" {
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" || isLocalForm(spec) {
 		return Reference{}, errors.New("action needs an owner and repository")
 	}
 	directory := ""
@@ -41,6 +42,13 @@ func ParseReference(host, spec string) (Reference, error) {
 	return Reference{host: strings.ToLower(host), repository: parts[0] + "/" + parts[1], directory: directory, ref: ref}, nil
 }
 
+// isLocalForm reports whether spec spells a workspace or self-repository path,
+// which has no owner.
+func isLocalForm(spec string) bool {
+	form := references.FormOf(spec)
+	return form == references.FormWorkspace || form == references.FormSelfRepository
+}
+
 func (r Reference) Host() string       { return r.host }
 func (r Reference) Repository() string { return r.repository }
 func (r Reference) Directory() string  { return r.directory }
@@ -50,10 +58,10 @@ func (r Reference) Ref() string        { return r.ref }
 // This identifies fetched content; it does not describe how a ref selected it.
 type Identity struct {
 	host, repository, commit, directory string
-	repositoryID                        repositoryid.ID
+	repositoryID                        repofacts.ID
 }
 
-func NewIdentity(host, repository string, repositoryID repositoryid.ID, commit, directory string) (Identity, error) {
+func NewIdentity(host, repository string, repositoryID repofacts.ID, commit, directory string) (Identity, error) {
 	location := repository
 	if directory != "" {
 		location += "/" + directory
@@ -74,11 +82,11 @@ func NewIdentity(host, repository string, repositoryID repositoryid.ID, commit, 
 	return Identity{host: reference.host, repository: reference.repository, repositoryID: repositoryID, commit: strings.ToLower(commit), directory: reference.directory}, nil
 }
 
-func (i Identity) Host() string                  { return i.host }
-func (i Identity) Repository() string            { return i.repository }
-func (i Identity) RepositoryID() repositoryid.ID { return i.repositoryID }
-func (i Identity) Commit() string                { return i.commit }
-func (i Identity) Directory() string             { return i.directory }
+func (i Identity) Host() string               { return i.host }
+func (i Identity) Repository() string         { return i.repository }
+func (i Identity) RepositoryID() repofacts.ID { return i.repositoryID }
+func (i Identity) Commit() string             { return i.commit }
+func (i Identity) Directory() string          { return i.directory }
 
 // Route records whether selection used a raw object ID or an exact lookup key.
 type Route struct {

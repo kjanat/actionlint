@@ -10,15 +10,14 @@ import (
 	"path/filepath"
 	"slices"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // ReadMode selects which configuration fields are normalized during plugin discovery.
@@ -38,7 +37,7 @@ const MaxFileBytes = 4 << 20
 // concurrent changes before saving.
 type File struct {
 	Path       string
-	References []pluginref.Reference
+	References []pluginreference.Reference
 	Declared   bool
 	Exists     bool
 	original   []byte
@@ -49,19 +48,19 @@ type File struct {
 
 // Open reads plugin declarations and the configuration sources they inherit. Plugin rule configuration
 // cannot be validated until the plugins supplying those rules have been loaded.
-func Open(ctx context.Context, rules config.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
+func Open(ctx context.Context, rules configuration.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
 	return Read(ctx, rules, path, func(ctx context.Context, path string) ([]byte, error) {
 		return readPluginManifest(ctx, path, connections)
 	}, CompleteConfiguration)
 }
 
 // Read loads plugin declarations with the supplied source reader and normalization mode.
-func Read(ctx context.Context, rules config.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode) (*File, error) {
-	absolute, err := address.Normalize(path)
+func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode) (*File, error) {
+	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
-	if address.Remote(absolute) {
+	if configsource.IsRemoteAddress(absolute) {
 		// Pass the declared URL spelling to caller-supplied readers.
 		absolute = path
 	} else {
@@ -85,7 +84,7 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 		if name == absolute {
 			return bytes.Clone(data), nil
 		}
-		if !address.Remote(name) {
+		if !configsource.IsRemoteAddress(name) {
 			name, err = filepath.Abs(name)
 			if err != nil {
 				return nil, err
@@ -100,7 +99,7 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 		if err := ValidateRoot(doc.Value); err != nil {
 			return doc, err
 		}
-		if err := config.ValidateSourcePaths(origin, doc.Value); err != nil {
+		if err := configuration.ValidateSourcePaths(origin, doc.Value); err != nil {
 			return doc, err
 		}
 		var err error
@@ -113,7 +112,7 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 			doc.Value, err = rules.NormalizeForMerge(doc.Value)
 		}
 		return doc, err
-	}, config.MergePlan())
+	}, configuration.MergePlan())
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +269,7 @@ func ValidateLocalPath(path string) error {
 }
 
 func readPluginManifest(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if address.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	if err := ValidateLocalPath(path); err != nil {
@@ -281,7 +280,7 @@ func readPluginManifest(ctx context.Context, path string, connections acquisitio
 
 // ReadSource reads a local or remote configuration source within the file-size limit.
 func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if address.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	reader := files.New(ctx, nil, nil)
@@ -347,8 +346,8 @@ func (m *File) OriginalBytes() []byte {
 
 // Save writes an explicit leaf-level list, including [] when removing the last
 // plugin.
-func (m *File) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
-	if address.Remote(m.Path) {
+func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err error) {
+	if configsource.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}
 	data, err := EditManifest(m.Path, m.original, refs)

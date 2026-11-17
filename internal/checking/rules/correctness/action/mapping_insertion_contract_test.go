@@ -7,7 +7,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 

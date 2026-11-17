@@ -10,13 +10,11 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -87,18 +85,18 @@ func metadataOutcome(result workspaceactions.MetadataResult) (invocation.Outcome
 	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, string, invocation.Outcome, error) {
-	uses := action.Uses()
-	if !uses.Present() || uses.Value() == "" {
+func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
+	uses := action.Uses
+	if uses == nil || uses.Value == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
 		return nil, "", outcome, err
 	}
-	spec := uses.Value()
+	spec := uses.Value
 	if exprsyntax.ContainsExpression(spec) {
 		outcome, err := invocation.Dynamic(spec)
 		return nil, "", outcome, err
 	}
-	position, hasPosition := uses.Pos()
+	position, hasPosition := uses.Position()
 	if invalidActionReference(spec, position, hasPosition) {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
 		return nil, "", outcome, err

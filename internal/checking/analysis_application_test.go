@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -109,7 +109,7 @@ type analysisFailingRule struct {
 	err error
 }
 
-func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.WorkflowView) error { return r.err }
+func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.Workflow) error { return r.err }
 
 func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 	t.Parallel()

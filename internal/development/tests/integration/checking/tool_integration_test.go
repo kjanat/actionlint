@@ -13,7 +13,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -77,7 +77,7 @@ func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing
 	for _, unsupported := range []bool{false, true} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: unsupported}
 		explicit := json.RawMessage(`{"private-option": [1, 2]}`)
-		_, err := checking.Analyze(t.Context(), managedTestOptions(guest, explicit), []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
+		_, err := checking.Analyze(t.Context(), managedTestOptions(guest, explicit), []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 		if (err != nil) != unsupported {
 			t.Fatalf("unsupported=%t error=%v", unsupported, err)
 		}
@@ -93,7 +93,7 @@ func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing
 func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
 	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)}
-	_, err := checking.Analyze(t.Context(), managedTestOptions(guest, json.RawMessage(`{"unknown":true}`)), []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
+	_, err := checking.Analyze(t.Context(), managedTestOptions(guest, json.RawMessage(`{"unknown":true}`)), []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err == nil || guest.explicit != nil {
 		t.Fatalf("invalid options reached negotiation: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = checking.Analyze(t.Context(), managedTestOptions(guest, explicit), []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
+		_, err = checking.Analyze(t.Context(), managedTestOptions(guest, explicit), []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,9 +132,9 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := managedTestOptions(guest, nil)
 		if disabled {
-			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &processconfig.Options{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: new("")}}})
 		}
-		result, err := checking.Analyze(t.Context(), options, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
+		result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -242,7 +242,7 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = checking.Analyze(t.Context(), managedTestOptions(guest, nil), []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
+			_, err = checking.Analyze(t.Context(), managedTestOptions(guest, nil), []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}

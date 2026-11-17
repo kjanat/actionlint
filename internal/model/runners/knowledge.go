@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"errors"
@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -76,7 +76,7 @@ func (r jobRecord) knowledge() JobKnowledge {
 
 // Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs   map[workflowdecl.JobView]jobRecord
+	jobs   map[workflowdecl.Job]jobRecord
 	report runnerapi.Report
 	target string
 }
@@ -90,7 +90,7 @@ func (k *Knowledge) Target() string {
 	return k.target
 }
 
-func (k *Knowledge) Job(job workflowdecl.JobView) JobKnowledge {
+func (k *Knowledge) Job(job workflowdecl.Job) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
@@ -168,7 +168,7 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecord, error) {
+func joinAnswers(job workflowdecl.Job, answers []runnerapi.Answer) (jobRecord, error) {
 	record := jobRecord{answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
@@ -197,7 +197,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecor
 			}
 			for _, rejection := range result.Rejections {
 				if rejection.Position.Line == 0 {
-					if declaration, present := job.Pos(); present {
+					if declaration, present := job.Position(); present {
 						rejection.Position = sourcepos.Position{Line: declaration.Line, Column: declaration.Col}
 					}
 				}
@@ -247,11 +247,11 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 	return Any
 }
 
-func builtinJob(job workflowdecl.JobView) JobKnowledge {
+func builtinJob(job workflowdecl.Job) JobKnowledge {
 	if !job.Present() {
 		return JobKnowledge{}
 	}
-	selection := job.RunsOn().Selection()
+	selection := workflowdecl.RunnerSelection(job.RunsOn)
 	return JobKnowledge{Traits: builtinTraits(selection, Labels(selection))}
 }
 

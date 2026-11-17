@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // Project discovery needs a .git marker. Keep it in a temporary fixture copy so
@@ -88,7 +88,7 @@ func TestProjectRootLookupCache(t *testing.T) {
 func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	projects := NewProjects(repoconfig.RuleSet{})
+	projects := NewProjects(configuration.RuleSet{})
 	if project, err := projects.At(root); err != nil || project != nil {
 		t.Fatalf("empty directory: project=%v, error=%v", project, err)
 	}
@@ -109,7 +109,7 @@ func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
 	if err != nil || project == nil {
 		t.Fatalf("repaired config: project=%v, error=%v", project, err)
 	}
-	if got := repoconfig.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != "repaired" {
+	if got := configuration.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != "repaired" {
 		t.Fatalf("repaired configuration not loaded: %v", got)
 	}
 }
@@ -132,7 +132,7 @@ func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
 					}
 				}
 				reads := make(map[string]int)
-				projects := NewProjects(repoconfig.RuleSet{})
+				projects := NewProjects(configuration.RuleSet{})
 				projects.readFile = func(path string) ([]byte, error) {
 					content, err := os.ReadFile(path)
 					if err == nil {
@@ -154,7 +154,7 @@ func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
 					if project == nil || project.RootDir() != root {
 						t.Fatalf("root %q resolved to %+v", root, project)
 					}
-					if got := repoconfig.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != fmt.Sprintf("project%d", index) {
+					if got := configuration.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != fmt.Sprintf("project%d", index) {
 						t.Fatalf("root %q inherited configuration %v", root, got)
 					}
 					if previous := cached[index]; previous != nil && previous != project {
@@ -211,7 +211,7 @@ func TestProjectsFindProjectFromPath(t *testing.T) {
 	} {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			ps := NewProjects(repoconfig.RuleSet{})
+			ps := NewProjects(configuration.RuleSet{})
 			p, err := ps.At(tc.path)
 			if err != nil {
 				t.Fatal(err)
@@ -243,7 +243,7 @@ func TestProjectsDoesNotFindProjectFromOutside(t *testing.T) {
 	}
 
 	outside := filepath.Join(d, "..")
-	ps := NewProjects(repoconfig.RuleSet{})
+	ps := NewProjects(configuration.RuleSet{})
 	p, err := ps.At(outside)
 	if err != nil {
 		t.Fatal(err)
@@ -257,7 +257,7 @@ func TestProjectsLoadProjectConfig(t *testing.T) {
 	t.Parallel()
 	for _, n := range []string{"ok", "yml"} {
 		d := testProjectDir(t, filepath.Join("testdata", "config-projects", n))
-		ps := NewProjects(repoconfig.RuleSet{})
+		ps := NewProjects(configuration.RuleSet{})
 		p, err := ps.At(d)
 		if err != nil {
 			t.Fatal(err)
@@ -274,7 +274,7 @@ func TestProjectsLoadProjectConfig(t *testing.T) {
 func TestProjectsLoadingNoProjectConfig(t *testing.T) {
 	t.Parallel()
 	d := testProjectDir(t, filepath.Join("testdata", "config-projects", "none"))
-	ps := NewProjects(repoconfig.RuleSet{})
+	ps := NewProjects(configuration.RuleSet{})
 	p, err := ps.At(d)
 	if err != nil {
 		t.Fatal(err)
@@ -291,7 +291,7 @@ func TestProjectsLoadingBrokenProjectConfig(t *testing.T) {
 	t.Parallel()
 	want := "could not parse config file"
 	d := testProjectDir(t, filepath.Join("testdata", "config-projects", "err"))
-	ps := NewProjects(repoconfig.RuleSet{})
+	ps := NewProjects(configuration.RuleSet{})
 	p, err := ps.At(d)
 	if err == nil {
 		t.Fatalf("wanted error %q but have no error", want)

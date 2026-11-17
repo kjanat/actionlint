@@ -63,7 +63,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.Source{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		panic(err)

@@ -53,7 +53,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := &settingsAnalyzer{}
-			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.Source{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +74,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 	}
 	a := &settingsAnalyzer{}
 	request := checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}
-	requestSources := []workspace.Source{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}
+	requestSources := []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}
 	if _, err := checking.Analyze(t.Context(), request, requestSources); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
 		t.Fatalf("invalid options were executed: calls=%d err=%v", a.calls, err)
 	}

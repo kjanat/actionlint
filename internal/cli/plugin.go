@@ -7,14 +7,11 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
 )
-
-type pluginInvocation plugincmd.RegistryOptions
 
 func (a *commandApp) pluginCommand() *cobra.Command {
 	parent := &cobra.Command{
@@ -80,7 +77,7 @@ func (c checkInvocation) defaultPlugins(warning func(string)) plugininstall.Defa
 
 // Optional discovery is a default, not an explicit choice of a native checker.
 // Arguments, including those a retired flag adds, still opt into native use.
-func implicitProcessOptions(options *processconfig.Options) bool {
+func implicitProcessOptions(options *process.CommandOptions) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&
 		len(options.Environment) == 0 && options.WorkingDir == ""
@@ -93,17 +90,4 @@ func selectedRulePlugins(ctx context.Context, selection plugininstall.Selection)
 	}
 	sources, err := selection.ResolveForRules(ctx, cwd)
 	return sources, err
-}
-
-type (
-	pluginRegistryRequest plugincmd.RegistryRequest
-	pluginInspectRequest  plugincmd.InspectOptions
-)
-
-func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Manage(ctx, streams.commandStreams(), plugincmd.RegistryRequest(r), streams.Acquisition)
-}
-
-func (r pluginInspectRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Inspect(ctx, streams.commandStreams(), plugincmd.InspectOptions(r), streams.Acquisition)
 }

@@ -4,16 +4,15 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // FromAction projects decoded action metadata into a report outline.
 func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Action {
-	outline := ActionFields{Path: path, ParseStatus: "failed", Inputs: []Input{}, Outputs: []Output{}, Runs: UnknownRuns{}}
+	outline := Action{Path: path, ParseStatus: "failed", Inputs: []Input{}, Outputs: []Output{}, Runs: UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {
-		return NewAction(outline)
+		return outline
 	}
 	fields := actionOutlineFields(metadata.Root)
 	outline.Name, outline.Description = actionOutlineString(fields["name"]), actionOutlineString(fields["description"])
@@ -25,13 +24,13 @@ func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Acti
 	if parseErr != nil {
 		outline.ParseStatus = "partial"
 	}
-	return NewAction(outline)
+	return outline
 }
 
-func actionOutlineFields(node *syntax.Node) map[string]*syntax.Node {
-	fields := map[string]*syntax.Node{}
+func actionOutlineFields(node *codec.Node) map[string]*codec.Node {
+	fields := map[string]*codec.Node{}
 	node = actionmeta.Node(node)
-	if node != nil && node.Kind == syntax.MappingNode {
+	if node != nil && node.Kind == codec.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			fields[strings.ToLower(actionmeta.Key(node.Content[i]))] = node.Content[i+1]
 		}
@@ -39,17 +38,17 @@ func actionOutlineFields(node *syntax.Node) map[string]*syntax.Node {
 	return fields
 }
 
-func actionOutlineString(node *syntax.Node) string {
+func actionOutlineString(node *codec.Node) string {
 	if value := actionmeta.Scalar(node); value != nil {
 		return *value
 	}
 	return ""
 }
 
-func actionInputOutlines(node *syntax.Node) []Input {
+func actionInputOutlines(node *codec.Node) []Input {
 	inputs := []Input{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != syntax.MappingNode {
+	if node == nil || node.Kind != codec.MappingNode {
 		return inputs
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
@@ -74,10 +73,10 @@ func actionInputOutlines(node *syntax.Node) []Input {
 	return inputs
 }
 
-func actionOutputOutlines(node *syntax.Node) []Output {
+func actionOutputOutlines(node *codec.Node) []Output {
 	outputs := []Output{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != syntax.MappingNode {
+	if node == nil || node.Kind != codec.MappingNode {
 		return outputs
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
@@ -91,25 +90,25 @@ func actionOutputOutlines(node *syntax.Node) []Output {
 	return outputs
 }
 
-func actionRunsOutline(node *syntax.Node) ActionRuns {
+func actionRunsOutline(node *codec.Node) ActionRuns {
 	fields := actionOutlineFields(node)
 	using := actionOutlineString(fields["using"])
 	switch strings.ToLower(using) {
 	case "composite":
-		return NewCompositeRuns(actionStepOutlines(fields["steps"]))
+		return CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
 	case "docker":
 		args := []string{}
-		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == syntax.SequenceNode {
+		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == codec.SequenceNode {
 			for _, arg := range sequence.Content {
 				if value := actionmeta.Scalar(arg); value != nil {
 					args = append(args, *value)
 				}
 			}
 		}
-		return NewDockerRuns(DockerRunsFields{
+		return DockerRuns{
 			Image: actionOutlineString(fields["image"]), Entrypoint: actionOutlineString(fields["entrypoint"]),
 			PreEntrypoint: actionOutlineString(fields["pre-entrypoint"]), PostEntrypoint: actionOutlineString(fields["post-entrypoint"]), Args: args,
-		})
+		}
 	case "":
 		if plugin := actionOutlineString(fields["plugin"]); plugin != "" {
 			return PluginRuns{Plugin: plugin}
@@ -124,15 +123,15 @@ func actionRunsOutline(node *syntax.Node) ActionRuns {
 	return UnknownRuns{Using: using}
 }
 
-func actionStepOutlines(node *syntax.Node) []Step {
+func actionStepOutlines(node *codec.Node) []Step {
 	steps := []Step{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != syntax.SequenceNode {
+	if node == nil || node.Kind != codec.SequenceNode {
 		return steps
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := StepFields{
+		step := Step{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
 			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
@@ -144,7 +143,7 @@ func actionStepOutlines(node *syntax.Node) []Step {
 		case hasUses && !hasRun:
 			step.Kind = "uses"
 		}
-		steps = append(steps, NewStep(step))
+		steps = append(steps, step)
 	}
 	return steps
 }

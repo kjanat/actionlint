@@ -35,7 +35,7 @@ func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
 		if onDisk {
 			fixturefiles.Write(t, physical, "action.yml", source)
 		}
-		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: alias}, []workspace.Source{{Path: "action.yml", Content: []byte(source)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: alias}, []workspace.InputFile{{Path: "action.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,12 +72,12 @@ func TestStandaloneActionMetadata(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "main.js", "")
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "action.yml", Content: []byte(tc.source)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "action.yml", Content: []byte(tc.source)}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			outline, ok := result.Documents[0].(documentmodel.Action)
-			if !ok || outline.ParseStatus() == "failed" {
+			if !ok || outline.ParseStatus == "failed" {
 				t.Fatalf("expected decoded action outline, got %#v", result.Documents)
 			}
 			if tc.message == "" {
@@ -96,7 +96,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 
 func TestStandaloneActionMixedInputs(t *testing.T) {
 	t.Parallel()
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{
 		{Path: "ci.yml", Content: []byte(testutil.GoodWorkflow)},
 		{Path: "a/action.yml", Content: []byte(testutil.CompositeAction)},
 		{Path: "b/action.yaml", Content: []byte("runs: [")},
@@ -110,7 +110,7 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if _, ok := result.Documents[0].(documentmodel.Workflow); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
-	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus() != "failed" {
+	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus != "failed" {
 		t.Fatalf("broken action outline: %#v", result.Documents[2])
 	}
 }
@@ -125,7 +125,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: workingDir}, []workspace.Source{{Path: path, Content: []byte(testutil.GoodWorkflow)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: workingDir}, []workspace.InputFile{{Path: path, Content: []byte(testutil.GoodWorkflow)}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
 			}
@@ -142,9 +142,9 @@ func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
 	manifest := strings.Replace(testutil.CompositeAction, "echo ok", "./bad.sh", 1)
 	fixturefiles.Write(t, root, "action.yml", manifest)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\npermissions: {}\n"
-	for _, source := range []workspace.Source{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
+	for _, source := range []workspace.InputFile{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
 		source.Project = workspace.Identity(root)
-		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{source})
+		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{source})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -166,7 +166,7 @@ func TestStandaloneActionNestedAndReferenced(t *testing.T) {
 	fixturefiles.Write(t, root, "outer/action.yml", outer)
 	fixturefiles.Write(t, root, "inner/action.yml", inner)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\npermissions: {}\n"
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{
 		{Path: "outer/action.yml", Content: []byte(outer), Project: workspace.Identity(root)},
 		{Path: "ci.yml", Content: []byte(workflow), Project: workspace.Identity(root)},
 	})
@@ -197,7 +197,7 @@ func TestStandaloneActionSuppression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "action.yml", Content: []byte(tc.source), Config: config}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "action.yml", Content: []byte(tc.source), Config: config}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("suppression failed: result=%+v err=%v", result, err)
 			}
@@ -215,7 +215,7 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 				t.Skipf("%s unavailable: %v", tool, err)
 			}
 			request := checking.Options{WorkingDir: t.TempDir()}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			source := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
 				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: executable}})
@@ -224,7 +224,7 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 				source = strings.Replace(testutil.CompositeAction, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
-			requestSources = []workspace.Source{{Path: filepath.Join(request.WorkingDir, "action.yml"), Content: []byte(source)}}
+			requestSources = []workspace.InputFile{{Path: filepath.Join(request.WorkingDir, "action.yml"), Content: []byte(source)}}
 			result, err := checking.Analyze(t.Context(), request, requestSources)
 			if err != nil {
 				t.Fatal(err)
@@ -259,7 +259,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 				WorkingDir: root,
 
 				Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: executable}}),
-			}, []workspace.Source{
+			}, []workspace.InputFile{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},
 			},

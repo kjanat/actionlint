@@ -1,10 +1,10 @@
-package config
+package configuration
 
 import (
 	"slices"
 	"testing"
 
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestRepositoryRunnerOverlayPreservesOtherHostFacts(t *testing.T) {

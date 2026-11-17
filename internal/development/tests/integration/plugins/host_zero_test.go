@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )

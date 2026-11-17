@@ -3,15 +3,13 @@ package codec
 import (
 	"errors"
 	"reflect"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
-func validateGraph(root *syntax.Node) error {
-	active, done := map[*syntax.Node]bool{}, map[*syntax.Node]bool{}
-	pending := []*syntax.Node{root}
-	var visit func(*syntax.Node) error
-	visit = func(node *syntax.Node) error {
+func validateGraph(root *Node) error {
+	active, done := map[*Node]bool{}, map[*Node]bool{}
+	pending := []*Node{root}
+	var visit func(*Node) error
+	visit = func(node *Node) error {
 		if node == nil {
 			return errors.New("YAML graph contains a nil node")
 		}
@@ -30,30 +28,30 @@ func validateGraph(root *syntax.Node) error {
 		if node.Kind == 0 && (node != root || !reflect.ValueOf(*node).IsZero()) {
 			return errors.New("YAML zero kind is only valid for an empty root")
 		}
-		if node.Kind != syntax.AliasNode && node.Alias != nil {
+		if node.Kind != AliasNode && node.Alias != nil {
 			return errors.New("YAML alias target on a non-alias node")
 		}
 		switch node.Kind {
-		case syntax.AliasNode:
-			if node.Alias == nil || node.Alias.Kind == syntax.AliasNode || node.Alias.Kind == 0 {
+		case AliasNode:
+			if node.Alias == nil || node.Alias.Kind == AliasNode || node.Alias.Kind == 0 {
 				return errors.New("YAML alias requires a concrete target")
 			}
 			if len(node.Content) != 0 {
 				return errors.New("YAML alias cannot have content")
 			}
-		case syntax.ScalarNode:
+		case ScalarNode:
 			if len(node.Content) != 0 {
 				return errors.New("YAML scalar cannot have content")
 			}
-		case syntax.MappingNode:
+		case MappingNode:
 			if len(node.Content)%2 != 0 {
 				return errors.New("YAML mapping requires key-value pairs")
 			}
-		case syntax.DocumentNode:
+		case DocumentNode:
 			if len(node.Content) > 1 {
 				return errors.New("YAML document requires at most one root")
 			}
-		case syntax.SequenceNode:
+		case SequenceNode:
 		}
 		active[node] = true
 		for _, child := range node.Content {
@@ -61,7 +59,7 @@ func validateGraph(root *syntax.Node) error {
 				return err
 			}
 		}
-		if node.Kind == syntax.AliasNode {
+		if node.Kind == AliasNode {
 			pending = append(pending, node.Alias)
 		}
 		delete(active, node)
@@ -78,14 +76,14 @@ func validateGraph(root *syntax.Node) error {
 	return nil
 }
 
-func validateEncodingGraph(root *syntax.Node) error {
+func validateEncodingGraph(root *Node) error {
 	if err := validateGraph(root); err != nil {
 		return err
 	}
-	anchors := map[string]*syntax.Node{}
-	var visit func(*syntax.Node) error
-	visit = func(node *syntax.Node) error {
-		if node.Kind == syntax.AliasNode {
+	anchors := map[string]*Node{}
+	var visit func(*Node) error
+	visit = func(node *Node) error {
+		if node.Kind == AliasNode {
 			if node.Value == "" || node.Value != node.Alias.Anchor || anchors[node.Value] != node.Alias {
 				return errors.New("YAML alias must reference its previously emitted anchor")
 			}

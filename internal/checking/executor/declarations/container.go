@@ -6,15 +6,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
@@ -45,9 +45,9 @@ func NewContainerRunner(ctx context.Context, runners *runnerlang.Knowledge, acti
 	return &containerAdapter{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
 }
 
-func (r *containerAdapter) VisitJobPre(job workflowdecl.JobView) error {
+func (r *containerAdapter) VisitJobPre(job workflowdecl.Job) error {
 	r.targets = r.runners.ContainerLimitations(job)
-	r.guards = []string{job.If().Value()}
+	r.guards = []string{job.If.Text()}
 	r.reportUses(r.runners.JobContainerUses(job))
 	return nil
 }
@@ -58,22 +58,23 @@ func (r *containerAdapter) reportUses(uses []runnerlang.ContainerUse) {
 	}
 }
 
-func (r *containerAdapter) VisitStep(step workflowdecl.StepView) error {
-	r.conditions[step.Reference()] = step.If().Value()
+func (r *containerAdapter) VisitStep(step workflowdecl.Step) error {
+	r.conditions[step.Reference()] = step.If.Text()
 	return r.checkStep(step)
 }
 
-func (r *containerAdapter) checkStep(step workflowdecl.StepView) error {
+func (r *containerAdapter) checkStep(step workflowdecl.Step) error {
 	if len(r.targets) == 0 {
 		return nil
 	}
 	action, ok := step.Action()
-	if !ok || !action.Uses().Present() || action.Uses().ContainsExpression() {
+	if !ok || action.Uses == nil || action.Uses.ContainsExpression() {
 		return nil
 	}
-	spec := action.Uses().Value()
-	docker := strings.HasPrefix(spec, "docker://")
-	if !docker && (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/")) {
+	spec := action.Uses.Text()
+	form := references.FormOf(spec)
+	docker := form == references.FormContainer
+	if !docker && (form == references.FormWorkspace || form == references.FormSelfRepository) {
 		result, _ := r.actions.LookupMetadata(spec)
 		docker = result.Status() == workspaceactions.MetadataDockerfileOnly
 		if meta := result.Metadata(); meta != nil {
@@ -96,7 +97,7 @@ func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) {
 	r.actions = actions.Prepared()
 }
 
-func (r *containerAdapter) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *containerAdapter) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
@@ -108,7 +109,7 @@ func (r *containerAdapter) EnterInvocation(scope checkcalls.Invocation) error {
 	r.guards = append(r.guards, guard)
 	if body, available := scope.Source.ActionView(); available {
 		for step := range body.Steps() {
-			r.conditions[step.Reference()] = step.If().Value()
+			r.conditions[step.Reference()] = step.If.Text()
 		}
 	}
 	return nil
@@ -124,9 +125,9 @@ func (r *containerAdapter) LeaveInvocation(scope invocation.Context) error {
 	return nil
 }
 
-func (r *containerAdapter) VisitInvocationStep(workflowdecl.StepView) error { return nil }
+func (r *containerAdapter) VisitInvocationStep(workflowdecl.Step) error { return nil }
 
-func (r *containerAdapter) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (r *containerAdapter) VisitOpaqueAction(step workflowdecl.Step) error {
 	if len(r.frames) == 0 {
 		return nil
 	}

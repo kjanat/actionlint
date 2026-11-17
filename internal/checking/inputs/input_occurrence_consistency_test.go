@@ -5,25 +5,25 @@ import (
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
 	t.Parallel()
-	for name, change := range map[string]func(*ScriptOccurrence){
-		"unknown id":  func(value *ScriptOccurrence) { value.ID = OccurrenceID("unknown") },
-		"owner":       func(value *ScriptOccurrence) { value.Owner = OccurrenceID("foreign") },
-		"ancestry":    func(value *ScriptOccurrence) { value.Ancestry[0] = OccurrenceID("foreign") },
-		"depth":       func(value *ScriptOccurrence) { value.Depth++ },
-		"declaration": func(value *ScriptOccurrence) { value.Declaration.Node = "foreign" },
-		"kind":        func(value *ScriptOccurrence) { value.Kind = ActionInputScript },
-		"input":       func(value *ScriptOccurrence) { value.Input = "foreign" },
+	for name, change := range map[string]func(*invocation.Script){
+		"unknown id":  func(value *invocation.Script) { value.ID = "unknown" },
+		"owner":       func(value *invocation.Script) { value.Owner = "foreign" },
+		"declaration": func(value *invocation.Script) { value.Declaration.Node = "foreign" },
+		"kind":        func(value *invocation.Script) { value.Kind = invocation.ScriptActionInput },
+		"input":       func(value *invocation.Script) { value.Input = "foreign" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			records := graphFixture(t)
-			occurrence := records.Scripts[0]
+			graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script"})
+			occurrence := graph.Scripts()[0]
 			input := Input{
-				Reference: records.Entry.Reference, CallGraph: retainGraph(t, records),
+				Reference: graph.Entry().Reference, CallGraph: graph,
 				AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts},
 				Invoked:         []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}},
 			}

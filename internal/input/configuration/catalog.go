@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"

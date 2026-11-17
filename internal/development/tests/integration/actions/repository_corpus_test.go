@@ -119,7 +119,7 @@ jobs:
       - uses: $/nesting/%s
 permissions: {}
 `, checkoutInputs, spelling)
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{
 					Path: ".github/workflows/caller.yml", Content: []byte(source), Project: workspace.Identity(root), Config: config,
 				}})
 				if err != nil {

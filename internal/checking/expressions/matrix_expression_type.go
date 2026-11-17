@@ -5,7 +5,7 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 type expressionRefinement struct {
@@ -29,7 +29,7 @@ func (rule *Checker) expressionType(text string, evaluation exprvalues.Evaluatio
 	if !rule.scriptJob.Present() {
 		return expressionRefinement{state: value.Dynamic}
 	}
-	combinations, complete := rule.matrixResolution(rule.scriptJob.Strategy()).Combinations(256)
+	combinations, complete := rule.matrixResolution(rule.scriptJob.Strategy).Combinations(256)
 	if !complete || len(combinations) == 0 {
 		return expressionRefinement{state: value.Dynamic}
 	}

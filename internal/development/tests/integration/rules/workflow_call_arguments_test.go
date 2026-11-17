@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -22,8 +22,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow0.yaml
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "optional_input", Required: false, Type: calls.InputTypeString},
-				"required_input": {Name: "required_input", Required: true, Type: calls.InputTypeString},
+				"optional_input": {Name: "optional_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "required_input", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "output"},
@@ -36,8 +36,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: calls.InputTypeString},
-				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: calls.InputTypeString},
+				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "OUTPUT"},
@@ -206,8 +206,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				return
 			}
 			view := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Bind("call-fixture").Workflow()
-			job, _ := view.JobsAt("test")
-			findings := workflowcall.CheckArguments(job.WorkflowCall(), metadata)
+			job, _ := view.Job("test")
+			findings := workflowcall.CheckArguments(job.WorkflowCall, metadata)
 
 			errs := []string{}
 			for _, err := range findings {

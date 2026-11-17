@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -40,7 +40,7 @@ func (s *CapturedSnapshots) Path(path string) string { return s.sources.Path(pat
 
 // Capture stores content as the fixture bytes for path and captures it
 // without admitting it into the registry.
-func (s *CapturedSnapshots) Capture(path string, content []byte, coordinates source.Coordinates) (capture.Snapshot, error) {
+func (s *CapturedSnapshots) Capture(path string, content []byte, coordinates source.Coordinates) (capture.CapturedDocument, error) {
 	return s.sources.Capture(path, content, coordinates)
 }
 

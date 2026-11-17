@@ -9,9 +9,8 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
@@ -34,7 +33,7 @@ func (p *Plugin) Resolve(ctx context.Context, request references.Request) (refer
 	if err != nil {
 		return references.Result{}, err
 	}
-	objects := &repositoryObjects{request: request, access: repository.AccessFromContext(ctx)}
+	objects := &repositoryObjects{request: request, access: references.RepositoryAccessFromContext(ctx)}
 	ctx = context.WithValue(ctx, repositoryCallKey{}, objects)
 	value, err := p.callInterface(ctx, ReferenceResolverInterface, "resolve", input)
 	if err != nil {
@@ -82,7 +81,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 		if result, ok := s.cache[request]; ok {
 			s.mu.Unlock()
 			accounting.RecordResolverCall(ctx, nil, true)
-			return result.Clone(), nil
+			return result, nil
 		}
 		pending, ok := s.pending[request]
 		if !ok {
@@ -101,7 +100,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 		}
 		if !pending.abandoned {
 			accounting.RecordResolverCall(ctx, nil, true)
-			return pending.result.Clone(), pending.err
+			return pending.result, pending.err
 		}
 	}
 	if s.pending == nil {
@@ -112,7 +111,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 	s.mu.Unlock()
 	result, err := s.resolver.Resolve(ctx, request)
 	s.mu.Lock()
-	pending.result, pending.err, pending.abandoned = result.Clone(), err, err != nil && ctx.Err() != nil
+	pending.result, pending.err, pending.abandoned = result, err, err != nil && ctx.Err() != nil
 	if err == nil {
 		if s.cache == nil {
 			s.cache = make(map[references.Request]references.Result)
@@ -129,14 +128,14 @@ type repositoryCallKey struct{}
 
 type repositoryObjects struct {
 	request  references.Request
-	access   repository.Access
+	access   references.RepositoryAccess
 	active   bool
 	opened   bool
 	finished bool
-	session  repository.Session
-	identity repository.Identity
+	session  references.RepositorySession
+	identity references.RepositoryIdentity
 	refs     map[string]string
-	objects  map[string]repository.Object
+	objects  map[string]references.RepositoryObject
 	fetchLog json.RawMessage
 	err      error
 }
@@ -164,34 +163,34 @@ func (r *repositoryObjects) ready(ctx context.Context) error {
 	return nil
 }
 
-func (r *repositoryObjects) open(ctx context.Context, name string, expectedID repositorybind.OptionU64) (repository.Identity, error) {
+func (r *repositoryObjects) open(ctx context.Context, name string, expectedID repositorybind.OptionU64) (references.RepositoryIdentity, error) {
 	if err := ctx.Err(); err != nil {
-		return repository.Identity{}, r.fail(err)
+		return references.RepositoryIdentity{}, r.fail(err)
 	}
 	if !r.active || r.opened || r.err != nil {
-		return repository.Identity{}, r.fail(errors.New("repository lookup can be opened once during reference resolution"))
+		return references.RepositoryIdentity{}, r.fail(errors.New("repository lookup can be opened once during reference resolution"))
 	}
 	r.opened = true
 	expected, hasExpected := r.request.ExpectedRepositoryID.Value()
 	if name != r.request.Repository || expectedID.IsSome != hasExpected || hasExpected && expectedID.Value != expected {
-		return repository.Identity{}, r.fail(errors.New("repository lookup does not match the resolution request"))
+		return references.RepositoryIdentity{}, r.fail(errors.New("repository lookup does not match the resolution request"))
 	}
 	if r.access == nil {
-		return repository.Identity{}, r.fail(errors.New("repository access is unavailable"))
+		return references.RepositoryIdentity{}, r.fail(errors.New("repository access is unavailable"))
 	}
 	session, err := r.access.Open(ctx, r.request)
 	if err != nil {
-		return repository.Identity{}, r.fail(err)
+		return references.RepositoryIdentity{}, r.fail(err)
 	}
 	if session == nil {
-		return repository.Identity{}, r.fail(errors.New("repository access returned no lookup"))
+		return references.RepositoryIdentity{}, r.fail(errors.New("repository access returned no lookup"))
 	}
 	identity := session.Repository()
 	if !strings.EqualFold(identity.Name, r.request.Repository) || identity.ID.Conflicts(r.request.ExpectedRepositoryID) {
-		return repository.Identity{}, r.fail(errors.New("repository lookup returned a different repository"))
+		return references.RepositoryIdentity{}, r.fail(errors.New("repository lookup returned a different repository"))
 	}
 	r.session, r.identity = session, identity
-	r.refs, r.objects = make(map[string]string), make(map[string]repository.Object)
+	r.refs, r.objects = make(map[string]string), make(map[string]references.RepositoryObject)
 	return identity, nil
 }
 
@@ -240,16 +239,16 @@ func (r *repositoryObjects) GetObject(ctx context.Context, id string) (repositor
 	}
 	var object repositorybind.Object
 	switch value := value.(type) {
-	case repository.Commit:
+	case references.RepositoryCommit:
 		object = repositorybind.ObjectCommit{}
-	case repository.Tree:
+	case references.RepositoryTree:
 		object = repositorybind.ObjectTree{}
-	case repository.PeeledTag:
+	case references.RepositoryPeeledTag:
 		if !fullObjectID(value.Commit) {
 			return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled commit ID")).Error()}, nil
 		}
 		object = repositorybind.ObjectPeeledTag{Value: value.Commit}
-	case repository.PeeledTreeTag:
+	case references.RepositoryPeeledTreeTag:
 		if !fullObjectID(value.Tree) {
 			return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled tree ID")).Error()}, nil
 		}
@@ -310,18 +309,18 @@ func (r *repositoryObjects) validate(result references.Result) error {
 	}
 	var commit, tree string
 	switch object := object.(type) {
-	case repository.Commit:
+	case references.RepositoryCommit:
 		commit = result.SelectedObject
-	case repository.Tree:
+	case references.RepositoryTree:
 		tree = result.SelectedObject
-	case repository.PeeledTag:
+	case references.RepositoryPeeledTag:
 		commit = object.Commit
-		if _, observed := r.objects[commit].(repository.Commit); !observed {
+		if _, observed := r.objects[commit].(references.RepositoryCommit); !observed {
 			return errors.New("reference resolver did not observe the peeled commit")
 		}
-	case repository.PeeledTreeTag:
+	case references.RepositoryPeeledTreeTag:
 		tree = object.Tree
-		if _, observed := r.objects[tree].(repository.Tree); !observed {
+		if _, observed := r.objects[tree].(references.RepositoryTree); !observed {
 			return errors.New("reference resolver did not observe the peeled tree")
 		}
 	}
@@ -331,7 +330,7 @@ func (r *repositoryObjects) validate(result references.Result) error {
 	return nil
 }
 
-func lowerRepositoryID(id repositoryid.ID) repositorybind.OptionU64 {
+func lowerRepositoryID(id repofacts.ID) repositorybind.OptionU64 {
 	if value, known := id.Value(); known {
 		return repositorybind.SomeU64(value)
 	}
@@ -396,7 +395,7 @@ func liftReferenceResolution(value wacogo.Val) (references.Result, error) {
 		if !ok {
 			return result, liftError{"reference repository ID", identity.Val()}
 		}
-		if result.RepositoryID, err = repositoryid.Known(uint64(value)); err != nil {
+		if result.RepositoryID, err = repofacts.KnownID(uint64(value)); err != nil {
 			return result, liftError{"reference repository ID", identity.Val()}
 		}
 	}

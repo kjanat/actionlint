@@ -7,7 +7,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -21,13 +20,13 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 		name, revision string
 		edits          func(path string) []results.Edit
 	}{
-		{"empty alternative", sourceid.Digest(content), func(string) []results.Edit { return nil }},
+		{"empty alternative", sourcepos.ContentDigest(content), func(string) []results.Edit { return nil }},
 		{"missing revision", "", func(path string) []results.Edit { return []results.Edit{base(path)} }},
 		{"stale revision", "bad", func(path string) []results.Edit { return []results.Edit{base(path)} }},
-		{"overlap", sourceid.Digest(content), func(path string) []results.Edit {
+		{"overlap", sourcepos.ContentDigest(content), func(path string) []results.Edit {
 			return []results.Edit{base(path), {Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}}}
 		}},
-		{"outside", sourceid.Digest(content), func(path string) []results.Edit {
+		{"outside", sourcepos.ContentDigest(content), func(path string) []results.Edit {
 			return []results.Edit{{Path: path, Start: sourcepos.Position{Line: 9, Column: 1}, End: sourcepos.Position{Line: 9, Column: 2}}}
 		}},
 	} {
@@ -72,7 +71,7 @@ func TestRemoteFixesDoNotPreventLocalEdits(t *testing.T) {
 	remoteEdit := localEdit
 	remoteEdit.Path, remoteEdit.Replacement = remote, "remote"
 	fix := func(edits ...results.Edit) results.Fix {
-		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest(content), remote: sourceid.Digest(content)}, Edits: edits}
+		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: sourcepos.ContentDigest(content), remote: sourcepos.ContentDigest(content)}, Edits: edits}
 	}
 	findings := []results.Diagnostic{
 		{Fixes: []results.Fix{fix(remoteEdit)}},

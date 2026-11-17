@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestRuleLocationsMergeAcrossConfigSources(t *testing.T) {
@@ -22,7 +22,7 @@ func TestRuleLocationsMergeAcrossConfigSources(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			selected, err := rules.ResolveRules(repoconfig.Presets{}, loaded.Config)
+			selected, err := rules.ResolveRules(configuration.Presets{}, loaded.Config)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,16 +1,9 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
 	"github.com/spf13/cobra"
-)
-
-type (
-	pluginValidateRequest plugincmd.ValidateOptions
-	pluginTestRequest     plugincmd.TestOptions
 )
 
 func (a *commandApp) pluginAuthoringCommands() []*cobra.Command {
@@ -32,12 +25,4 @@ func (a *commandApp) pluginAuthoringCommands() []*cobra.Command {
 	}
 	test.Flags().BoolVar(&a.inv.JSON, "json", false, "Write a JSON report")
 	return []*cobra.Command{validate, test}
-}
-
-func (r pluginValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Validate(ctx, streams.commandStreams(), plugincmd.ValidateOptions(r))
-}
-
-func (r pluginTestRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Test(ctx, streams.commandStreams(), plugincmd.TestOptions(r))
 }

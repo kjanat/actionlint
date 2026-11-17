@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
@@ -160,7 +160,7 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	if pin != "" && pin != digest {
 		return nil, fmt.Errorf("plugin artifact %s: SHA256 mismatch: expected %s, got %s", display, pin, digest)
 	}
-	info := Info{Source: display, SHA256: digest, Size: len(data)}
+	info := ArtifactProvenance{Source: display, SHA256: digest, Size: len(data)}
 	if bytes.HasPrefix(data, []byte{0x1f, 0x8b}) {
 		gz, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {

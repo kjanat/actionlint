@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -63,7 +63,7 @@ func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
 	}
 }
 
-func outputWorkflow(t *testing.T) declaration.WorkflowView {
+func outputWorkflow(t *testing.T) declaration.Workflow {
 	t.Helper()
 	const source = `on: push
 jobs:
@@ -89,7 +89,7 @@ jobs:
 	return declaration.Publish(source, parsed, false, "").Bind("test").Workflow()
 }
 
-func job(t *testing.T, workflow declaration.WorkflowView, name string) declaration.JobView {
+func job(t *testing.T, workflow declaration.Workflow, name string) declaration.Job {
 	t.Helper()
 	view, found := workflow.Job(name)
 	if !found {
@@ -104,7 +104,7 @@ func TestJobsAndNeedsShareLoadedOutputDeclarations(t *testing.T) {
 	consumer := job(t, workflow, "consumer")
 	called := job(t, workflow, "call")
 	metadata := &calls.Metadata{Outputs: calls.Outputs{"artifact": {Name: "artifact"}}}
-	loaded := map[declaration.JobView]*calls.Metadata{called: metadata}
+	loaded := map[declaration.Job]*calls.Metadata{called: metadata}
 	dependencies := outputs.DirectDependencies(workflow, consumer)
 	for range 2 {
 		if names := slices.Collect(func(yield func(string) bool) {
@@ -148,9 +148,9 @@ func TestUnknownAndEmptyReusableOutputsAreDifferent(t *testing.T) {
 	workflow := outputWorkflow(t)
 	called := job(t, workflow, "call")
 	for _, known := range []bool{false, true} {
-		var loaded map[declaration.JobView]*calls.Metadata
+		var loaded map[declaration.Job]*calls.Metadata
 		if known {
-			loaded = map[declaration.JobView]*calls.Metadata{called: {}}
+			loaded = map[declaration.Job]*calls.Metadata{called: {}}
 		}
 		object, _ := property(t, outputs.JobType(called, loaded), "outputs").Object()
 		mapped, open := object.Mapped()

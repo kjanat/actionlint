@@ -10,6 +10,7 @@ import (
 	"time"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -34,7 +35,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	occurrence, _ := graph.Script(scripts[0])
 	input := checkinputs.Input{
 		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations},
-		CallGraph: graph, SelectedScripts: []checkinputs.OccurrenceID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
+		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
 		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcepos.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
 	}
 	if findings, err := guest.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
@@ -43,21 +44,21 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	want := make([]string, 0, len(calls)+len(scripts)+1)
 	for _, id := range calls {
 		call, _ := graph.Call(id)
-		want = append(want, fmt.Sprintf("call:%s:%s", id, call.Parent))
+		want = append(want, fmt.Sprintf("call:%s:%s", id, call.Parent()))
 	}
 	for _, id := range scripts {
 		want = append(want, fmt.Sprintf("script:%s:%s", id, occurrence.Owner))
 	}
-	want = append(want, fmt.Sprintf("graph:%s:257:257:1", graph.Entry().ID))
+	want = append(want, fmt.Sprintf("graph:%s:257:257:1", graph.RootID()))
 	if !slices.Equal(logs, want) {
 		t.Fatalf("guest lost graph records: received %d log lines, want %d", len(logs), len(want))
 	}
 	logs = nil
-	input.SelectedScripts, input.Invoked = []checkinputs.OccurrenceID{}, nil
+	input.SelectedScripts, input.Invoked = []invocation.ID{}, nil
 	if _, err := guest.CheckDocument(t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
-	if logs[len(logs)-1] != fmt.Sprintf("graph:%s:257:257:0", graph.Entry().ID) {
+	if logs[len(logs)-1] != fmt.Sprintf("graph:%s:257:257:0", graph.RootID()) {
 		t.Fatal("some(empty) selection changed at guest boundary")
 	}
 	logs = nil
@@ -71,7 +72,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 
 func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 	t.Parallel()
-	for _, selected := range [][]checkinputs.OccurrenceID{nil, {}, {"chosen"}} {
+	for _, selected := range [][]invocation.ID{nil, {}, {"chosen"}} {
 		value := lowerInput(checkinputs.Input{SelectedScripts: selected})
 		option, ok := value.Field("selected-scripts").(*wacogo.ValOption)
 		if !ok || option.IsNone() != (selected == nil) {
@@ -84,7 +85,7 @@ func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 			}
 		}
 	}
-	input := checkinputs.ActionInput{Occurrence: checkinputs.ScriptOccurrence{ID: "chosen"}, Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}}
+	input := checkinputs.ActionInput{Occurrence: invocation.Script{ID: "chosen"}, Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}}
 	value := lowerInput(checkinputs.Input{ActionInputs: []checkinputs.ActionInput{input}})
 	list, err := liftList(value.Field("action-inputs"), "action inputs")
 	if err != nil || list.Len() != 1 {

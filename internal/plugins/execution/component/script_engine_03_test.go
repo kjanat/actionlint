@@ -222,7 +222,7 @@ func TestScriptEngine03Excluded(t *testing.T) {
 
 // directoryGrant opens directory as the runner's grant would, closed when
 // the test ends.
-func directoryGrant(t *testing.T, directory string) *files.SnapshotFS {
+func directoryGrant(t *testing.T, directory string) *files.BoundedFS {
 	t.Helper()
 	grant, err := files.NewSnapshot(t.Context(), directory, files.New(t.Context(), nil, nil), nil)
 	if err != nil {

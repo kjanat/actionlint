@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -119,7 +119,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 			rules := checking.ConfigurationRules()
 			result, modelErr := rules.ResolveValue(doc.Value, nil, "example", "local-tool", "file-tool")
 			if modelErr == nil && tc.ResolveRules {
-				_, modelErr = rules.ResolveRules(config.Presets{}, result.Config)
+				_, modelErr = rules.ResolveRules(configuration.Presets{}, result.Config)
 			}
 			if (modelErr == nil) != tc.Model {
 				t.Errorf("model acceptance: want %t, error %v (%s)", tc.Model, modelErr, tc.Reason)

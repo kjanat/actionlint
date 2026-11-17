@@ -8,9 +8,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
+	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 // Pos represents a position in the file.
@@ -86,7 +87,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := text.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := source.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -202,7 +203,23 @@ type String struct {
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
 func (s *String) ContainsExpression() bool {
-	return exprsyntax.ContainsExpression(s.Value)
+	return s != nil && exprsyntax.ContainsExpression(s.Value)
+}
+
+// Text returns the decoded value, or "" when the scalar is absent.
+func (s *String) Text() string {
+	if s == nil {
+		return ""
+	}
+	return s.Value
+}
+
+// Position returns the scalar's position when it is present.
+func (s *String) Position() (Pos, bool) {
+	if s == nil || s.Pos == nil {
+		return Pos{}, false
+	}
+	return *s.Pos, true
 }
 
 func IsExprAssigned(s string) bool {
@@ -230,7 +247,7 @@ func IsExprAssigned(s string) bool {
 
 // IsExpressionAssigned returns whether a single expression is assigned to the String.
 func (s *String) IsExpressionAssigned() bool {
-	return IsExprAssigned(s.Value)
+	return s != nil && IsExprAssigned(s.Value)
 }
 
 // Bool represents a YAML boolean or expression and its source position.
@@ -432,6 +449,39 @@ const (
 	// WorkflowCallEventInputTypeString identifies a string input.
 	WorkflowCallEventInputTypeString
 )
+
+// ParseWorkflowCallEventInputType returns the type spelled by a workflow_call
+// input's "type:" value. It reports false for anything but boolean, number and
+// string, and then returns WorkflowCallEventInputTypeInvalid.
+func ParseWorkflowCallEventInputType(spelling string) (WorkflowCallEventInputType, bool) {
+	switch spelling {
+	case "boolean":
+		return WorkflowCallEventInputTypeBoolean, true
+	case "number":
+		return WorkflowCallEventInputTypeNumber, true
+	case "string":
+		return WorkflowCallEventInputTypeString, true
+	}
+	return WorkflowCallEventInputTypeInvalid, false
+}
+
+// ExprType returns the expression type a value passed to the input must be
+// assignable to. An invalid or omitted type accepts every value.
+func (t WorkflowCallEventInputType) ExprType() exprtypes.Type {
+	switch t {
+	case WorkflowCallEventInputTypeBoolean:
+		return exprtypes.BoolType()
+	case WorkflowCallEventInputTypeNumber:
+		return exprtypes.NumberType()
+	case WorkflowCallEventInputTypeString:
+		return exprtypes.StringType()
+	case WorkflowCallEventInputTypeInvalid:
+	}
+	return exprtypes.AnyType()
+}
+
+// String returns the expression type's spelling, as used in diagnostics.
+func (t WorkflowCallEventInputType) String() string { return t.ExprType().String() }
 
 // WorkflowCallEventInput describes a workflow_call input.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
@@ -883,15 +933,15 @@ func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 func (s *RawYAMLString) ScalarValue() any {
 	switch s.Tag {
 	case YamlTagBool:
-		if schema.IsCoreSchemaBool(s.Value) {
+		if codec.IsCoreSchemaBool(s.Value) {
 			return strings.EqualFold(s.Value, "true")
 		}
 	case YamlTagNull:
-		if schema.IsCoreSchemaNull(s.Value) {
+		if codec.IsCoreSchemaNull(s.Value) {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !schema.IsCoreSchemaNumber(s.Value) {
+		if !codec.IsCoreSchemaNumber(s.Value) {
 			break
 		}
 		switch strings.ToLower(s.Value) {

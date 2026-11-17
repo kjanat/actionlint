@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -23,17 +23,17 @@ func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
 		for _, scope := range []string{"global", "path"} {
 			t.Run(scope+"/"+tc.pattern, func(t *testing.T) {
 				t.Parallel()
-				patterns, err := repoconfig.CompileIgnorePatterns([]string{tc.pattern})
+				patterns, err := configuration.CompileIgnorePatterns([]string{tc.pattern})
 				if err != nil {
 					t.Fatal(err)
 				}
 				finding := &findingmodel.Finding{Rule: "shellcheck", Code: "SC2086", Message: message}
 				var policy Policy
-				var paths []repoconfig.PathConfig
+				var paths []configuration.PathConfig
 				if scope == "global" {
 					policy.IgnorePatterns = patterns
 				} else {
-					paths = []repoconfig.PathConfig{{Ignore: patterns}}
+					paths = []configuration.PathConfig{{Ignore: patterns}}
 				}
 				got := filterErrors(policy, []*findingmodel.Finding{finding}, paths)
 				if (len(got) == 0) != tc.ignored || finding.Code != "SC2086" || finding.Message != message {

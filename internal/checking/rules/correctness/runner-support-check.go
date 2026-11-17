@@ -9,7 +9,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -17,7 +17,7 @@ import (
 func RunnerSupportCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: RunnerSupportDeclaration(),
-		Job: func(job workflowdecl.JobView) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.Finding {
 			var findings []reporting.Finding
 			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
 			for _, problem := range problems {
@@ -38,7 +38,7 @@ func RunnerSupportCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCh
 	}
 }
 
-func supportPosition(job workflowdecl.JobView, selector runnerapi.Selector) sourcepos.Position {
+func supportPosition(job workflowdecl.Job, selector runnerapi.Selector) sourcepos.Position {
 	for _, label := range selector.Labels {
 		if label.Position.Line > 0 {
 			return label.Position
@@ -47,7 +47,7 @@ func supportPosition(job workflowdecl.JobView, selector runnerapi.Selector) sour
 	if selector.Group != nil && selector.Group.Position.Line > 0 {
 		return selector.Group.Position
 	}
-	position, _ := job.Pos()
+	position, _ := job.Position()
 	return sourcepos.Position{Line: position.Line, Column: position.Col}
 }
 

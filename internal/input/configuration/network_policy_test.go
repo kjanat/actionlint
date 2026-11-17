@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
@@ -38,7 +38,7 @@ func TestNetworkPolicyDefaultsCanBeOverridden(t *testing.T) {
 	} {
 		t.Run(tc.project, func(t *testing.T) {
 			t.Parallel()
-			policy, err := config.ReadNetworkPolicy([]string{base}, os.ReadFile)
+			policy, err := configuration.ReadNetworkPolicy([]string{base}, os.ReadFile)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -57,7 +57,7 @@ func TestNetworkPolicyDefaultsCanBeOverridden(t *testing.T) {
 func TestNetworkPolicyDefaultsAreIndependentOfReturnedConfigurations(t *testing.T) {
 	t.Parallel()
 	path := writePolicy(t, t.TempDir(), "policy.toml", "[defaults.network.metadata-mirrors]\nallow-unknown-repositories = true\n")
-	policy, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile)
+	policy, err := configuration.ReadNetworkPolicy([]string{path}, os.ReadFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestNetworkPolicyDefaultsAreIndependentOfReturnedConfigurations(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.MetadataMirrorAccess() != references.AllowUnknownMirrors || !slices.Equal(*second.Network.MetadataMirrors.Services, config.MetadataMirrorServices{"jsdelivr"}) {
+	if second.MetadataMirrorAccess() != references.AllowUnknownMirrors || !slices.Equal(*second.Network.MetadataMirrors.Services, configuration.MetadataMirrorServices{"jsdelivr"}) {
 		t.Fatalf("mutating a returned configuration changed policy defaults: %+v", second.Network.MetadataMirrors)
 	}
 }
@@ -92,7 +92,7 @@ func TestNetworkPolicyRestrictionsCannotBeCleared(t *testing.T) {
 				text = `{"extends":["company.toml"]}`
 			}
 			team := writePolicy(t, root, "team.json", text)
-			policy, err := config.ReadNetworkPolicy([]string{team}, os.ReadFile)
+			policy, err := configuration.ReadNetworkPolicy([]string{team}, os.ReadFile)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -123,7 +123,7 @@ func TestNetworkPolicyMergesIndependentFilesAndHTTPSParents(t *testing.T) {
 		team:    "extends = ['company.toml']\n[restrictions.network.metadata-mirrors]\nexclude-repositories = ['github.com/team/private-*']\n",
 		user:    `{"defaults":{"network":{"metadata-mirrors":{"allow-unknown-repositories":false}}}}`,
 	}
-	policy, err := config.ReadNetworkPolicy([]string{team, user}, func(path string) ([]byte, error) {
+	policy, err := configuration.ReadNetworkPolicy([]string{team, user}, func(path string) ([]byte, error) {
 		text, ok := documents[path]
 		if !ok {
 			return nil, fmt.Errorf("unexpected request: %s", path)
@@ -161,7 +161,7 @@ func TestInvalidNetworkPolicyFails(t *testing.T) {
 		t.Run(text, func(t *testing.T) {
 			t.Parallel()
 			path := writePolicy(t, t.TempDir(), "policy.json", text)
-			if _, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile); err == nil {
+			if _, err := configuration.ReadNetworkPolicy([]string{path}, os.ReadFile); err == nil {
 				t.Fatalf("accepted policy %s", text)
 			}
 		})
@@ -197,7 +197,7 @@ func TestNetworkPolicyDefaultOriginsAfterReset(t *testing.T) {
 				if inherited {
 					paths = []string{overlay}
 				}
-				policy, err := config.ReadNetworkPolicy(paths, os.ReadFile)
+				policy, err := configuration.ReadNetworkPolicy(paths, os.ReadFile)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -208,7 +208,7 @@ func TestNetworkPolicyDefaultOriginsAfterReset(t *testing.T) {
 				if got := applied.MetadataMirrorAccess(); got != tc.wantAccess {
 					t.Fatalf("mirror access = %v, want %v", got, tc.wantAccess)
 				}
-				inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), config.Selection{Disabled: true}, true, nil, policy)
+				inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.Selection{Disabled: true}, true, nil, policy)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -233,7 +233,7 @@ func TestNetworkPolicyRepositoryGlobs(t *testing.T) {
 		t.Run(pattern, func(t *testing.T) {
 			t.Parallel()
 			path := writePolicy(t, t.TempDir(), "policy.json", fmt.Sprintf(`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":[%q]}}}}`, pattern))
-			policy, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile)
+			policy, err := configuration.ReadNetworkPolicy([]string{path}, os.ReadFile)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -252,11 +252,11 @@ func TestNetworkPolicyInspectionReportsEffectiveSettingsAndOrigins(t *testing.T)
 	t.Parallel()
 	root := t.TempDir()
 	path := writePolicy(t, root, "policy.toml", "[defaults.network.metadata-mirrors]\nallow-unknown-repositories = true\n[restrictions.network.metadata-mirrors]\nexclude-services = ['jsdelivr']\n")
-	policy, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile)
+	policy, err := configuration.ReadNetworkPolicy([]string{path}, os.ReadFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), config.Selection{Disabled: true}, true, nil, policy)
+	inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.Selection{Disabled: true}, true, nil, policy)
 	if err != nil {
 		t.Fatal(err)
 	}

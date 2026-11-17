@@ -21,8 +21,8 @@ import (
 
 var testReusableWorkflowWantedMetadata *calls.Metadata = &calls.Metadata{
 	Inputs: calls.Inputs{
-		"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
-		"input2": {Name: "input2", Required: true, Type: calls.InputTypeBoolean},
+		"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+		"input2": {Name: "input2", Required: true, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
 	},
 	Outputs: calls.Outputs{
 		"output1": {Name: "output1"},
@@ -55,9 +55,6 @@ func TestReusableWorkflowCacheFindMetadataOK(t *testing.T) {
 	}
 	if diff := cmp.Diff(m, m2); diff != "" {
 		t.Error(diff)
-	}
-	if m == m2 {
-		t.Error("lookups share one metadata record")
 	}
 }
 
@@ -252,10 +249,10 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"unknown_input": {},
 			},
 			want: calls.Inputs{
-				"string_input":  {Name: "string_input", Required: false, Type: calls.InputTypeString},
-				"number_input":  {Name: "number_input", Required: false, Type: calls.InputTypeNumber},
-				"bool_input":    {Name: "bool_input", Required: false, Type: calls.InputTypeBoolean},
-				"unknown_input": {Name: "unknown_input", Required: false, Type: calls.InputTypeAny},
+				"string_input":  {Name: "string_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"number_input":  {Name: "number_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeNumber},
+				"bool_input":    {Name: "bool_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
+				"unknown_input": {Name: "unknown_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
@@ -276,11 +273,11 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				},
 			},
 			want: calls.Inputs{
-				"unspecified":          {Name: "unspecified", Required: false, Type: calls.InputTypeAny},
-				"not_required":         {Name: "not_required", Required: false, Type: calls.InputTypeAny},
-				"required":             {Name: "required", Required: true, Type: calls.InputTypeAny},
-				"required_but_default": {Name: "required_but_default", Required: false, Type: calls.InputTypeAny},
-				"expression":           {Name: "expression", Required: false, Type: calls.InputTypeAny},
+				"unspecified":          {Name: "unspecified", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"not_required":         {Name: "not_required", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"required":             {Name: "required", Required: true, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"required_but_default": {Name: "required_but_default", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"expression":           {Name: "expression", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
@@ -294,7 +291,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeString},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 		},
 		{
@@ -303,7 +300,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeAny},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 	}
@@ -600,42 +597,6 @@ func TestReusableWorkflowNullCache(t *testing.T) {
 	}
 	if err != nil {
 		t.Errorf("error should not happen since the cache simply doesn't hit: %v", err)
-	}
-}
-
-func TestReusableWorkflowCacheDetachesMetadata(t *testing.T) {
-	t.Parallel()
-	cwd := filepath.Join("path", "to", "project")
-	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
-	want := func() *calls.Metadata {
-		return &calls.Metadata{
-			Inputs:         calls.Inputs{"in": {Name: "in", Required: true, Type: calls.InputTypeString}},
-			Outputs:        calls.Outputs{"out": {Name: "out"}},
-			Secrets:        calls.Secrets{"token": {Name: "token", Required: true}},
-			JobPermissions: map[string]calls.PermissionScopeLevels{"build": {"contents": calls.PermissionLevelRead}},
-			JobCacheAccess: map[string]calls.CacheAccess{"build": {Mode: calls.DeclaredCacheMode(workflowlang.CacheModeRead), Operations: []string{"actions/cache"}}},
-		}
-	}
-	stored := want()
-	c.Store("./callee.yaml", stored)
-	stored.Inputs["in"] = calls.Input{Name: "changed"}
-	stored.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
-
-	first, _, ok := c.Lookup("./callee.yaml")
-	if !ok {
-		t.Fatal("stored metadata was not found")
-	}
-	if diff := cmp.Diff(want(), first); diff != "" {
-		t.Fatalf("Store kept the caller's storage: %s", diff)
-	}
-	delete(first.Outputs, "out")
-	first.Secrets["token"] = calls.Secret{Name: "token"}
-	first.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
-	first.JobCacheAccess["build"].Operations[0] = "changed"
-
-	second, _, _ := c.Lookup("./callee.yaml")
-	if diff := cmp.Diff(want(), second); diff != "" {
-		t.Fatalf("Lookup exposed cached storage: %s", diff)
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 )
@@ -28,7 +28,7 @@ func TestPluginManifestRemoteDependencySnapshot(t *testing.T) {
 		}
 		return nil, fmt.Errorf("unexpected source %q", name)
 	}
-	manifest, err := Read(t.Context(), config.RuleSet{}, path, reader, CompleteConfiguration)
+	manifest, err := Read(t.Context(), configuration.RuleSet{}, path, reader, CompleteConfiguration)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestPluginManifestRemoteDependencySnapshot(t *testing.T) {
 func TestPluginManifestRemoteSourceRejectsLocalRegistry(t *testing.T) {
 	t.Parallel()
 	remote := "https://example.test/base.yaml"
-	_, err := Read(t.Context(), config.RuleSet{}, filepath.Join(t.TempDir(), "actionlint.yaml"), func(_ context.Context, name string) ([]byte, error) {
+	_, err := Read(t.Context(), configuration.RuleSet{}, filepath.Join(t.TempDir(), "actionlint.yaml"), func(_ context.Context, name string) ([]byte, error) {
 		if name == remote {
 			return []byte("plugins: [{name: shellcheck, registry: file:///tmp/registry/}]"), nil
 		}
@@ -62,7 +62,7 @@ func TestPluginManifestRemoteLeafReadOnly(t *testing.T) {
 	t.Parallel()
 	remote := "HTTPS://EXAMPLE.TEST/actionlint.yaml?version=1"
 	reads := 0
-	manifest, err := Read(t.Context(), config.RuleSet{}, remote, func(_ context.Context, name string) ([]byte, error) {
+	manifest, err := Read(t.Context(), configuration.RuleSet{}, remote, func(_ context.Context, name string) ([]byte, error) {
 		reads++
 		if name != remote {
 			return nil, fmt.Errorf("rewritten source %q", name)

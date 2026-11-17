@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -23,14 +23,14 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(repoconfig.RunnerLabels(c.Facts())) != 0 {
-		t.Fatal(repoconfig.RunnerLabels(c.Facts()))
+	if len(configuration.RunnerLabels(c.Facts())) != 0 {
+		t.Fatal(configuration.RunnerLabels(c.Facts()))
 	}
-	if repoconfig.VariableNames(c.Facts()) != nil {
-		t.Fatal(repoconfig.RunnerLabels(c.Facts()))
+	if configuration.VariableNames(c.Facts()) != nil {
+		t.Fatal(configuration.RunnerLabels(c.Facts()))
 	}
-	if repoconfig.SecretNames(c.Facts()) != nil {
-		t.Fatal(repoconfig.SecretNames(c.Facts()))
+	if configuration.SecretNames(c.Facts()) != nil {
+		t.Fatal(configuration.SecretNames(c.Facts()))
 	}
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)
@@ -38,7 +38,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if _, known := c.Facts().DefaultWorkflowPermissions.Value(); known {
 		t.Fatal("default config fabricated repository permissions")
 	}
-	if diff := cmp.Diff(repoconfig.Policy{}, c.Policy); diff != "" {
+	if diff := cmp.Diff(configuration.Policy{}, c.Policy); diff != "" {
 		t.Fatal(diff)
 	}
 	b, err := os.ReadFile(f)
@@ -53,7 +53,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 		t.Fatal("generated config duplicates the schema header or document separator")
 	}
 	// Every public top-level setting must be discoverable in the reference.
-	typ := reflect.TypeFor[repoconfig.Config]()
+	typ := reflect.TypeFor[configuration.Config]()
 	for field := range typ.Fields() {
 		if !field.IsExported() {
 			continue

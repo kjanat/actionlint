@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
@@ -68,7 +68,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}
 			content := "on: push\n" + tc.workflowDefaults + "jobs:\n  test:\n    runs-on: " + selection + "\n" + tc.jobSettings + "    steps:\n      - run: echo ok\n" + tc.stepShell + "\npermissions: {}\n"
-			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), options, []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte(content)}}))
+			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "test.yml", InputPath: "test.yml", Content: []byte(content)}}))
 			if err != nil {
 				t.Fatal(err)
 			}

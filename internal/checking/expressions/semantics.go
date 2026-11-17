@@ -19,11 +19,11 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )

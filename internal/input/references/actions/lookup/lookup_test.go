@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type localLookup struct {
@@ -43,7 +43,7 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 	service := remote.New(provider(func(_ context.Context, ref actions.Reference) (actions.Manifest, error) {
 		requests++
 		commit := strings.Repeat("a", 40)
-		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, commit, ref.Directory())
+		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, ref.Directory())
 		if err != nil {
 			t.Fatal(err)
 		}

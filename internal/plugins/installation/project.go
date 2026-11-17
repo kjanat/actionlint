@@ -8,14 +8,14 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // Project edits exact plugin declarations in configuration.
@@ -68,7 +68,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 	return configplugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (p *Project) SelectedPlugins(ctx context.Context) (ResolvedPlugins, error) 
 	return p.selectedPins(ctx, p.Manifest.References)
 }
 
-func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) (ResolvedPlugins, error) {
+func (p *Project) selectedPins(ctx context.Context, refs []pluginreference.Reference) (ResolvedPlugins, error) {
 	selected := ResolvedPlugins{Plugins: []Pin{}}
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
@@ -123,7 +123,7 @@ func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) 
 
 // Resolve acquires missing dependencies and refreshes the specified declarations.
 // Existing immutable identity checks still apply to every replacement.
-func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Reference) error {
+func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Reference) error {
 	selected := make([]Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
@@ -231,7 +231,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 
 // Configured releases retain publisher, immutable-version and downgrade checks.
 // Authority evidence comes from cached or acquired registry records.
-func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref pluginref.Reference) error {
+func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref pluginreference.Reference) error {
 	for _, configured := range p.Manifest.References {
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
 			continue
@@ -264,8 +264,8 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref plugi
 
 // ResolvedDeclarations replaces selectors with exact release versions.
 // Registry and cache records supply publisher identities and checksums.
-func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Reference) ([]pluginref.Reference, error) {
-	resolved := make([]pluginref.Reference, 0, len(refs))
+func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreference.Reference) ([]pluginreference.Reference, error) {
+	resolved := make([]pluginreference.Reference, 0, len(refs))
 	for _, ref := range refs {
 		if ref.DirectSource() != "" {
 			resolved = append(resolved, ref)
@@ -301,11 +301,11 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Ref
 		if !verified.SameRelease(*selected) {
 			return nil, fmt.Errorf("registry release disagrees with selected artifact for %s@%s", selected.Name, selected.Version)
 		}
-		var declaration pluginref.Reference
+		var declaration pluginreference.Reference
 		if selected.Origin == "candidate" {
-			declaration, err = pluginref.NewCandidate(selected.Name, selected.Version, selected.Registry, selected.SHA256)
+			declaration, err = pluginreference.NewCandidate(selected.Name, selected.Version, selected.Registry, selected.SHA256)
 		} else {
-			declaration, err = pluginref.New(selected.Name, selected.Version, selected.Registry)
+			declaration, err = pluginreference.New(selected.Name, selected.Version, selected.Registry)
 		}
 		if err != nil {
 			return nil, err
@@ -316,7 +316,7 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Ref
 }
 
 // Save writes the exact plugin declarations after checking configuration for concurrent edits.
-func (p *Project) Save(ctx context.Context, refs []pluginref.Reference) error {
+func (p *Project) Save(ctx context.Context, refs []pluginreference.Reference) error {
 	resolved, err := p.ResolvedDeclarations(ctx, refs)
 	if err != nil {
 		return err

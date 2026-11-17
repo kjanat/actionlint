@@ -14,7 +14,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -57,7 +57,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tc.command}})}
+			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tc.command}})}
 			result, err := checking.CheckWithPlugins(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
 			if err != nil {
 				t.Fatal(err)

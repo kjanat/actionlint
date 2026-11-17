@@ -45,7 +45,7 @@ func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 		if !found {
 			return nil, fmt.Errorf("missing owner %q", script.Occurrence.Owner)
 		}
-		findings = append(findings, results.Diagnostic{Reference: &script.Reference, Message: "invoked " + call.Uses, Path: script.Path, Start: start, End: end})
+		findings = append(findings, results.Diagnostic{Reference: &script.Reference, Message: "invoked " + call.Uses(), Path: script.Path, Start: start, End: end})
 	}
 	return findings, nil
 }
@@ -87,7 +87,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 		t.Fatalf("scripts=%+v invoked=%+v", input.Scripts, input.Invoked)
 	}
 	declared := input.Scripts[0]
-	if declared.Path != "" || declared.JobID != "build" || declared.Occurrence.Owner != input.CallGraph.Entry().ID || declared.Runtime == nil {
+	if declared.Path != "" || declared.JobID != "build" || declared.Occurrence.Owner != input.CallGraph.RootID() || declared.Runtime == nil {
 		t.Fatalf("declared script=%+v", declared)
 	}
 	if declared.Runtime.Shell != "bash" || !declared.Runtime.ShellKnown || !declared.Runtime.ShellImplicit {
@@ -98,11 +98,12 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 		t.Fatalf("invoked script=%+v", invoked)
 	}
 	call, found := input.CallGraph.Call(invoked.Occurrence.Owner)
-	if !found || call.Uses != "./.github/actions/greet" || call.Parent != input.CallGraph.Entry().ID || call.Step.Line != 6 || call.Depth != 1 {
+	facts, _ := call.Facts()
+	if !found || facts.Uses != "./.github/actions/greet" || call.Parent() != input.CallGraph.RootID() || facts.Step.Line != 6 || call.Depth() != 1 {
 		t.Fatalf("invocation=%+v", call)
 	}
-	if invoked.Reference.Node == "" || invoked.Reference.Document == input.Reference.Document || call.Site.Document != input.Reference.Document || call.Site.Node == "" || invoked.Reference.Address != "runs.steps[0]" {
-		t.Fatalf("source and invocation identities were conflated: %+v %+v", invoked.Reference, call.Site)
+	if invoked.Reference.Node == "" || invoked.Reference.Document == input.Reference.Document || call.Site().Document != input.Reference.Document || call.Site().Node == "" || invoked.Reference.Address != "runs.steps[0]" {
+		t.Fatalf("source and invocation identities were conflated: %+v %+v", invoked.Reference, call.Site())
 	}
 	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
@@ -147,7 +148,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 	input := capture.inputs[0]
 	script := input.Invoked[0]
 	call, found := input.CallGraph.Call(script.Occurrence.Owner)
-	if !found || call.Site.Node == "" || !strings.HasSuffix(call.Site.Document, "/outer/action.yml") || call.Site.Address != "runs.steps[0]" || !strings.HasSuffix(script.Reference.Document, "/inner/action.yml") {
+	if !found || call.Site().Node == "" || !strings.HasSuffix(call.Site().Document, "/outer/action.yml") || call.Site().Address != "runs.steps[0]" || !strings.HasSuffix(script.Reference.Document, "/inner/action.yml") {
 		t.Fatalf("lost intermediate caller identity: %+v %+v", script.Reference, call)
 	}
 }

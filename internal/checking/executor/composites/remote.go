@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -33,7 +33,7 @@ func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *act
 	}
 	if !document.metadataChecked {
 		for _, pass := range analysis.passes {
-			participant, checksMetadata := pass.(checkcalls.MetadataParticipant)
+			participant, checksMetadata := pass.(workflowvisit.MetadataParticipant)
 			if !checksMetadata {
 				continue
 			}

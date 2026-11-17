@@ -1,16 +1,15 @@
 package declarations
 
 import (
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -23,10 +22,10 @@ import (
 // declarationRule is the traversal adapter for stateless declaration checks.
 type declarationRule struct {
 	workflowvisit.Base
-	workflowCheck func(workflowdecl.WorkflowView) []reporting.Finding
-	jobCheck      func(workflowdecl.JobView) []reporting.Finding
-	stepCheck     func(workflowdecl.StepView) []reporting.Finding
-	rules         repoconfig.RuleSet
+	workflowCheck func(workflowdecl.Workflow) []reporting.Finding
+	jobCheck      func(workflowdecl.Job) []reporting.Finding
+	stepCheck     func(workflowdecl.Step) []reporting.Finding
+	rules         configuration.RuleSet
 }
 
 // invocationDeclarationRule applies a source-local check to composite bodies.
@@ -36,7 +35,7 @@ type invocationDeclarationRule struct {
 	contexts []invocation.Context
 }
 
-func (r *invocationDeclarationRule) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *invocationDeclarationRule) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
@@ -52,11 +51,11 @@ func (r *invocationDeclarationRule) LeaveInvocation(scope invocation.Context) er
 	return nil
 }
 
-func (r *invocationDeclarationRule) VisitInvocationStep(step workflowdecl.StepView) error {
+func (r *invocationDeclarationRule) VisitInvocationStep(step workflowdecl.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.Step) error {
 	if len(r.contexts) == 0 {
 		return nil
 	}
@@ -64,7 +63,7 @@ func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView
 }
 
 // New invokes only the workflow, job and step checks supplied by the rule.
-func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) workflowvisit.Rule {
+func New(rules configuration.RuleSet, check checkinputs.DeclarationCheck) workflowvisit.Rule {
 	if check.Workflow == nil && check.Job == nil && check.Step == nil {
 		panic("rule " + check.Name + " supplies no declaration check")
 	}
@@ -89,7 +88,7 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 			finding.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.SourcePosition(d.Step)}
+			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.OptionalPosition(d.Step.Position())}
 			origin := d.Step.Origin(job)
 			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {
@@ -100,21 +99,21 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 	}
 }
 
-func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
+func (r *declarationRule) VisitWorkflowPre(w workflowdecl.Workflow) error {
 	if r.workflowCheck != nil {
 		r.collect(r.workflowCheck(w), "")
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
+func (r *declarationRule) VisitJobPre(j workflowdecl.Job) error {
 	if r.jobCheck != nil {
-		r.collect(r.jobCheck(j), declarationID(j.ID()))
+		r.collect(r.jobCheck(j), declarationID(j.ID))
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
+func (r *declarationRule) VisitStep(s workflowdecl.Step) error {
 	if r.stepCheck != nil {
 		r.collect(r.stepCheck(s), s.DeclaringJob())
 	}
@@ -122,11 +121,11 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 }
 
 // NewVendorLockIn checks URL-form references in jobs, steps and called composites.
-func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
+func NewVendorLockIn(rules configuration.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
 	return New(rules, correctness.VendorLockInCheck(runners.Target()))
 }
 
-func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {
+func NewRuleRequireJobTimeout(rules configuration.RuleSet, policy *configuration.JobTimeoutPolicy) workflowvisit.Rule {
 	options := conventions.TimeoutPolicy{Enabled: policy.Enabled()}
 	if lower, ok := policy.MinMinutes(); ok {
 		options.Min = new(lower)
@@ -137,10 +136,10 @@ func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTi
 	return New(rules, conventions.JobTimeoutCheck(options))
 }
 
-func NewRuleRequireCommitHash(rules repoconfig.RuleSet, excluded func(string) bool) workflowvisit.Rule {
+func NewRuleRequireCommitHash(rules configuration.RuleSet, excluded func(string) bool) workflowvisit.Rule {
 	return New(rules, security.UnpinnedReferenceCheck(excluded))
 }
 
-func declarationID(value workflowdecl.StringView) string {
-	return value.Value()
+func declarationID(value *workflowlang.String) string {
+	return value.Text()
 }

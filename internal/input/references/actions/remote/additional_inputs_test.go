@@ -7,8 +7,8 @@ import (
 	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func requestActionSource(t *testing.T) string {
@@ -69,9 +69,9 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 			if repositoryID == 0 {
 				repositoryID = 213507602
 			}
-			var id repositoryid.ID
+			var id repofacts.ID
 			if !test.unknownID {
-				known, err := repositoryid.Known(repositoryID)
+				known, err := repofacts.KnownID(repositoryID)
 				if err != nil {
 					t.Fatal(err)
 				}

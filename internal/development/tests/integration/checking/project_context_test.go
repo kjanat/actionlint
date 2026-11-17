@@ -62,12 +62,12 @@ jobs:
 			if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("invalid: ["), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			sources := []workspace.Source{
+			sources := []workspace.InputFile{
 				{Path: ".github/workflows/main.yml", Content: []byte(caller)},
 				{Path: ".github/workflows/reuse.yml", Content: []byte(reusable)},
 			}
 			if mode != "reader-action" {
-				sources = append(sources, workspace.Source{Path: "local/action.yml", Content: []byte(action)})
+				sources = append(sources, workspace.InputFile{Path: "local/action.yml", Content: []byte(action)})
 			}
 			observer := &invocationAnalyzer{}
 			options := checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}

@@ -3,9 +3,11 @@ package workspace
 import (
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -15,7 +17,7 @@ import (
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
-func (c *Resolver) ObserveExecution(step workflowdecl.StepView) {
+func (c *Resolver) ObserveExecution(step workflowdecl.Step) {
 	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
@@ -23,7 +25,7 @@ func (c *Resolver) ObserveExecution(step workflowdecl.StepView) {
 	if !ok {
 		return
 	}
-	if c.shellEnvUnknown || c.shellEnvironmentUnknown(step.Env().Mapping()) || !c.runPreservesEnvironment(run.Run().Semantic(), run.Shell().Semantic()) {
+	if c.shellEnvUnknown || c.shellEnvironmentUnknown(workflowdecl.Environment(step.Env)) || !c.runPreservesEnvironment(workflowdecl.Scalar(run.Run), workflowdecl.Scalar(run.Shell)) {
 		c.persistentEnvUnknown = true
 	}
 }
@@ -88,13 +90,12 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 }
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
-func (c *Resolver) ObserveOpaqueAction(step workflowdecl.StepView, action workflowdecl.ExecActionView) {
+func (c *Resolver) ObserveOpaqueAction(step workflowdecl.Step, action *workflowlang.ExecAction) {
 	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
-	uses := action.Uses()
-	if uses.Present() {
-		name, _, versioned := strings.Cut(uses.Value(), "@")
+	if action != nil && action.Uses != nil {
+		name, _, versioned := strings.Cut(action.Uses.Value, "@")
 		if versioned && strings.EqualFold(name, "actions/checkout") {
 			return
 		}

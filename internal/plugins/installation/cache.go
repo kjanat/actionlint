@@ -10,13 +10,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // ResolveCached reuses the last verified release selected by a name and version
 // selector. Cache warming refreshes the selection from the registry.
 func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin, error) {
-	if !pluginref.ValidName(name) && !pluginref.ValidAlias(name) || !pluginref.ValidVersion(selector) {
+	if !pluginreference.ValidName(name) && !pluginreference.ValidAlias(name) || !pluginreference.ValidVersion(selector) {
 		return Pin{}, errors.New("invalid plugin name or version selector")
 	}
 	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
@@ -70,7 +70,7 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 	if c.base.Scheme == "file" {
 		return Pin{}, errors.New("local candidate lookup requires a configured SHA256 digest; run actionlint plugin install to bind it")
 	}
-	if !pluginref.ValidName(name) || !pluginref.ValidVersion(version) || version == "latest" {
+	if !pluginreference.ValidName(name) || !pluginreference.ValidVersion(version) || version == "latest" {
 		return Pin{}, errors.New("registry plugins require a canonical package and exact version; run actionlint plugin install to resolve the declaration")
 	}
 	if err := ctx.Err(); err != nil {
@@ -146,7 +146,7 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 // local candidate digest. An uncached selection may be restored from staging
 // only when the staged artifact still has that digest.
 func (c *Client) LookupCandidate(ctx context.Context, name, version, digest string) (Pin, error) {
-	if c.base.Scheme != "file" || !pluginref.ValidName(name) || !pluginref.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
+	if c.base.Scheme != "file" || !pluginreference.ValidName(name) || !pluginreference.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
 		return Pin{}, errors.New("candidate lookup requires a local registry, canonical package, exact version, and SHA256 digest")
 	}
 	if err := ctx.Err(); err != nil {

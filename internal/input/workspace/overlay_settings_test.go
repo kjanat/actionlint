@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -32,7 +33,7 @@ func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: []repoconfig.Overlay{base, overlay}, Rules: checking.ConfigurationRules()})
+			l, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: []configuration.Overlay{base, overlay}, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -64,7 +65,7 @@ paths:
 	if err := os.WriteFile(path, []byte(base), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var overlays []repoconfig.Overlay
+	var overlays []configuration.Overlay
 	for _, in := range []struct{ name, value string }{
 		{"config", `{"self-hosted-runner":{"labels":["inline"]},"config-secrets":[],"policy":{"require-commit-hash":false,"require-job-timeout":{"max-minutes":60}}}`},
 		{"self-hosted-runner", "labels: [individual]"},
@@ -78,8 +79,8 @@ paths:
 		}
 		overlays = append(overlays, o)
 	}
-	var reports []repoconfig.Report
-	l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { reports = append(reports, r) }, Rules: checking.ConfigurationRules()})
+	var reports []configreport.Report
+	l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r configreport.Report) { reports = append(reports, r) }, Rules: checking.ConfigurationRules()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,10 +88,10 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), []string{"individual"}) {
+	if !reflect.DeepEqual(configuration.RunnerLabels(cfg.Facts()), []string{"individual"}) {
 		t.Errorf("individual input must replace labels: %#v", cfg.Facts())
 	}
-	if repoconfig.VariableNames(cfg.Facts()) != nil || repoconfig.SecretNames(cfg.Facts()) == nil || len(repoconfig.SecretNames(cfg.Facts())) != 0 {
+	if configuration.VariableNames(cfg.Facts()) != nil || configuration.SecretNames(cfg.Facts()) == nil || len(configuration.SecretNames(cfg.Facts())) != 0 {
 		t.Errorf("null must disable variable checking, [] must forbid custom secrets: %#v", cfg)
 	}
 	permissions, knownPermissions := cfg.Facts().DefaultWorkflowPermissions.Value()
@@ -115,7 +116,7 @@ paths:
 		t.Fatalf("report selected file and inputs once per project: %#v", reports)
 	}
 	inspection := reports[0].Inspection
-	for pointer, want := range map[string]repoconfig.Origin{
+	for pointer, want := range map[string]configreport.Origin{
 		"/repository/runners":                                     {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
 		"/repository/variables":                                   {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
 		"/repository/default-workflow-permissions":                {File: path, Source: "config", State: "value", Line: 4, Column: 29},
@@ -137,7 +138,7 @@ paths:
 		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
 	original, err := checking.ConfigurationRules().Load(path)
-	if err != nil || !original.RequiresCommitHash() || repoconfig.VariableNames(original.Facts())[0] != "ORIGINAL" {
+	if err != nil || !original.RequiresCommitHash() || configuration.VariableNames(original.Facts())[0] != "ORIGINAL" {
 		t.Errorf("overlays must leave the config file unchanged: %#v, %v", original, err)
 	}
 }
@@ -163,7 +164,7 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, Rules: checking.ConfigurationRules()})
+			l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []configuration.Overlay{overlay}, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -171,7 +172,7 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), tc.labels) || !reflect.DeepEqual(repoconfig.VariableNames(cfg.Facts()), tc.variables) {
+			if !reflect.DeepEqual(configuration.RunnerLabels(cfg.Facts()), tc.labels) || !reflect.DeepEqual(configuration.VariableNames(cfg.Facts()), tc.variables) {
 				t.Errorf("unexpected config after overlay: %#v", cfg)
 			}
 		})

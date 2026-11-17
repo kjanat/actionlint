@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -28,7 +28,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	if err != nil {
 		return nil, err
 	}
-	if _, err := repoconfig.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
+	if _, err := configuration.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
 		return ToolRequirements{}, err
 	}
 	var names []string
@@ -50,8 +50,8 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 		return ToolRequirements{}, err
 	}
 	providers := toolNames(options.Tools)
-	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Required: func(cfg, project *repoconfig.Config) ([]string, error) {
-		if err := repoconfig.ValidateToolNames(project, providers...); err != nil {
+	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Required: func(cfg, project *configuration.Config) ([]string, error) {
+		if err := configuration.ValidateToolNames(project, providers...); err != nil {
 			return nil, err
 		}
 		var names []string

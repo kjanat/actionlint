@@ -1,11 +1,11 @@
-package config_test
+package configuration_test
 
 import (
 	"strings"
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestRuleGroupConfigErrors(t *testing.T) {
@@ -22,7 +22,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte(input))
 			if err == nil {
-				_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+				_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			}
 			if err == nil {
 				t.Fatal("invalid config accepted")
@@ -45,19 +45,19 @@ func TestStableSuspiciousRuleSelection(t *testing.T) {
 		}
 		for _, tc := range []struct {
 			rules   string
-			presets repoconfig.Presets
-			want    repoconfig.Level
+			presets configuration.Presets
+			want    configuration.Level
 		}{
-			{"{}", repoconfig.Presets{}, "off"},
-			{"{preset: recommended}", repoconfig.Presets{}, "off"},
-			{"{preset: all}", repoconfig.Presets{}, "on"},
-			{"{}", repoconfig.Presets{Strict: true}, "on"},
-			{"{}", repoconfig.Presets{Experimental: new(true)}, "off"},
-			{"{suspicious: {" + name + ": warn}}", repoconfig.Presets{}, "warn"},
-			{"{suspicious: {" + name + ": warn}}", repoconfig.Presets{Experimental: new(false)}, "warn"},
-			{"{suspicious: {" + name + ": off}}", repoconfig.Presets{Strict: true}, "off"},
-			{"{suspicious: {preset: all}}", repoconfig.Presets{}, "on"},
-			{"{suspicious: {preset: recommended}}", repoconfig.Presets{}, "off"},
+			{"{}", configuration.Presets{}, "off"},
+			{"{preset: recommended}", configuration.Presets{}, "off"},
+			{"{preset: all}", configuration.Presets{}, "on"},
+			{"{}", configuration.Presets{Strict: true}, "on"},
+			{"{}", configuration.Presets{Experimental: new(true)}, "off"},
+			{"{suspicious: {" + name + ": warn}}", configuration.Presets{}, "warn"},
+			{"{suspicious: {" + name + ": warn}}", configuration.Presets{Experimental: new(false)}, "warn"},
+			{"{suspicious: {" + name + ": off}}", configuration.Presets{Strict: true}, "off"},
+			{"{suspicious: {preset: all}}", configuration.Presets{}, "on"},
+			{"{suspicious: {preset: recommended}}", configuration.Presets{}, "off"},
 		} {
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
 			if err != nil {

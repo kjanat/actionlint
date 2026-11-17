@@ -45,7 +45,7 @@ func TestActionMetadataDuplicatesAcrossInsertions(t *testing.T) {
 		`{FOO: one, '${{ insert }}': {"${{ 'foo' }}": two}}`,
 	} {
 		source := "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n      env: " + value + "\n"
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "action.yml", Content: []byte(source)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "action.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}

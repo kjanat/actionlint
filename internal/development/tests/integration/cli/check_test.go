@@ -19,7 +19,6 @@ import (
 	diagnosticmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
@@ -211,7 +210,7 @@ func TestCommandNativeJSON(t *testing.T) {
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]
-				if actual.Reference == nil || actual.Reference.Revision != sourceid.Digest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
+				if actual.Reference == nil || actual.Reference.Revision != sourcepos.ContentDigest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
 					t.Fatalf("missing diagnostic context: %+v", actual)
 				}
 				expected[i].Reference = actual.Reference

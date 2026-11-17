@@ -6,12 +6,50 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
-func knownRepositoryID(t *testing.T, value uint64) repositoryid.ID {
+func TestParseReference(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ spec, host, repository, directory, ref, err string }{
+		{"o/r@v", "github.com", "o/r", "", "v", ""},
+		{"o/r/p/q@v", "github.com", "o/r", "p/q", "v", ""},
+		{"O/R/p@V", "github.com", "O/R", "p", "V", ""},
+		{"o/r@v@w", "github.com", "o/r", "", "v@w", ""},
+		{"o/r", "", "", "", "", "action ref is missing"},
+		{"o/r@", "", "", "", "", "action ref is missing"},
+		{"./a", "", "", "", "", "action ref is missing"},
+		{"./a@v", "", "", "", "", "action needs an owner and repository"},
+		{"./o/r@v", "", "", "", "", "action needs an owner and repository"},
+		{"$/a@v", "", "", "", "", "action needs an owner and repository"},
+		{"o/@v", "", "", "", "", "action needs an owner and repository"},
+		{"@v", "", "", "", "", "action needs an owner and repository"},
+		{"o/r/p/@v", "", "", "", "", "invalid action directory \"p/\""},
+		{"o/r//p@v", "", "", "", "", "invalid action directory \"/p\""},
+		{"o/r/../p@v", "", "", "", "", "invalid action directory \"../p\""},
+		{"o/r/./p@v", "", "", "", "", "invalid action directory \"./p\""},
+		{"o/r/\\p@v", "", "", "", "", "invalid action directory \"\\\\p\""},
+	} {
+		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+			ref, err := actions.ParseReference("GitHub.com", tc.spec)
+			message := ""
+			if err != nil {
+				message = err.Error()
+			}
+			if message != tc.err {
+				t.Fatalf("ParseReference(%q) error = %q, want %q", tc.spec, message, tc.err)
+			}
+			if ref.Host() != tc.host || ref.Repository() != tc.repository || ref.Directory() != tc.directory || ref.Ref() != tc.ref {
+				t.Fatalf("ParseReference(%q) = %q %q %q %q, want %q %q %q %q", tc.spec, ref.Host(), ref.Repository(), ref.Directory(), ref.Ref(), tc.host, tc.repository, tc.directory, tc.ref)
+			}
+		})
+	}
+}
+
+func knownRepositoryID(t *testing.T, value uint64) repofacts.ID {
 	t.Helper()
-	id, err := repositoryid.Known(value)
+	id, err := repofacts.KnownID(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +114,7 @@ func TestHeadSelectionKeepsSyntheticLookupKey(t *testing.T) {
 func TestIdentityWithoutRepositoryID(t *testing.T) {
 	t.Parallel()
 	commit := strings.Repeat("d", 40)
-	identity, err := actions.NewIdentity("github.com", "example/action", repositoryid.ID{}, commit, "")
+	identity, err := actions.NewIdentity("github.com", "example/action", repofacts.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +130,10 @@ func TestIdentityWithoutRepositoryID(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		id   repositoryid.ID
+		id   repofacts.ID
 		want string
 	}{
-		{repositoryid.ID{}, `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
+		{repofacts.ID{}, `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
 		{knownRepositoryID(t, 42), `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","repository_id":42,"commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
 	} {
 		identity, err := actions.NewIdentity("github.com", "example/action", test.id, commit, "")

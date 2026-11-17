@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -49,12 +49,12 @@ func StepType(outputs exprtypes.ObjectType) exprtypes.ObjectType {
 // DirectDependencies yields existing direct prerequisites once each. Missing
 // jobs, duplicate references and self references do not introduce context entries.
 // Each iteration has independent state.
-func DirectDependencies(workflow declaration.WorkflowView, job declaration.JobView) iter.Seq2[string, declaration.JobView] {
-	return func(yield func(string, declaration.JobView) bool) {
+func DirectDependencies(workflow declaration.Workflow, job declaration.Job) iter.Seq2[string, declaration.Job] {
+	return func(yield func(string, declaration.Job) bool) {
 		seen := map[string]bool{}
-		for reference := range job.Needs() {
-			name := strings.ToLower(reference.Value())
-			if name == strings.ToLower(job.ID().Value()) || seen[name] {
+		for _, reference := range job.Needs {
+			name := strings.ToLower(reference.Text())
+			if name == strings.ToLower(job.ID.Text()) || seen[name] {
 				continue
 			}
 			dependency, exists := workflow.Job(name)
@@ -72,13 +72,13 @@ func DirectDependencies(workflow declaration.WorkflowView, job declaration.JobVi
 // JobType supplies outputs and result for either the jobs or needs context.
 // reusableWorkflows contains already loaded metadata keyed by the declaring job.
 // An absent or nil entry for a reusable call leaves output names unknown.
-func JobType(job declaration.JobView, reusableWorkflows map[declaration.JobView]*calls.Metadata) exprtypes.ObjectType {
+func JobType(job declaration.Job, reusableWorkflows map[declaration.Job]*calls.Metadata) exprtypes.ObjectType {
 	var outputs exprtypes.ObjectType
-	if job.WorkflowCall().Present() {
+	if job.WorkflowCall != nil {
 		outputs = WorkflowType(reusableWorkflows[job])
 	} else {
 		var declared exprtypes.ObjectBuilder
-		for name := range job.Outputs() {
+		for name := range job.Outputs {
 			declared.SetProperty(name, exprtypes.StringType())
 		}
 		outputs = declared.Build()
@@ -90,7 +90,7 @@ func JobType(job declaration.JobView, reusableWorkflows map[declaration.JobView]
 
 // NeedsType includes direct prerequisites only. The caller supplies reusable
 // workflow metadata; this function never resolves or reads their source files.
-func NeedsType(workflow declaration.WorkflowView, job declaration.JobView, reusableWorkflows map[declaration.JobView]*calls.Metadata) exprtypes.ObjectType {
+func NeedsType(workflow declaration.Workflow, job declaration.Job, reusableWorkflows map[declaration.Job]*calls.Metadata) exprtypes.ObjectType {
 	var object exprtypes.ObjectBuilder
 	for name, dependency := range DirectDependencies(workflow, job) {
 		object.Set(name, JobType(dependency, reusableWorkflows).Type())
@@ -100,7 +100,7 @@ func NeedsType(workflow declaration.WorkflowView, job declaration.JobView, reusa
 
 // JobsType exposes the same job output shapes when a reusable workflow maps its
 // job outputs to on.workflow_call.outputs. Context availability is checked elsewhere.
-func JobsType(workflow declaration.WorkflowView, reusableWorkflows map[declaration.JobView]*calls.Metadata) exprtypes.ObjectType {
+func JobsType(workflow declaration.Workflow, reusableWorkflows map[declaration.Job]*calls.Metadata) exprtypes.ObjectType {
 	var object exprtypes.ObjectBuilder
 	for name, job := range workflow.Jobs() {
 		object.Set(name, JobType(job, reusableWorkflows).Type())

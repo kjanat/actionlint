@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -14,12 +14,12 @@ import (
 )
 
 // preparePublicationBatch binds the configuration of each source before sealing.
-func preparePublicationBatch(t *testing.T, batch policy.Batch, caller *config.Config, sourceConfigs map[string]*config.Config) policy.Batch {
+func preparePublicationBatch(t *testing.T, batch policy.Batch, caller *configuration.Config, sourceConfigs map[string]*configuration.Config) policy.Batch {
 	t.Helper()
 	return preparePublicationBatchAt(t, batch, caller, sourceConfigs, t.TempDir())
 }
 
-func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *config.Config, sourceConfigs map[string]*config.Config, captureRoot string) policy.Batch {
+func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *configuration.Config, sourceConfigs map[string]*configuration.Config, captureRoot string) policy.Batch {
 	t.Helper()
 	rules := checking.ConfigurationRules()
 	registry := binding.NewRegistry(rules)
@@ -74,7 +74,7 @@ func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *config.
 	return batch
 }
 
-func publishFindings(t *testing.T, p policy.Policy, cfg *config.Config, findings []*finding.Finding, sources map[string][]byte, sourceConfigs map[string]*config.Config) ([]*finding.Finding, error) {
+func publishFindings(t *testing.T, p policy.Policy, cfg *configuration.Config, findings []*finding.Finding, sources map[string][]byte, sourceConfigs map[string]*configuration.Config) ([]*finding.Finding, error) {
 	t.Helper()
 	batch := preparePublicationBatch(t, policy.Batch{Policy: p, InputPath: p.Path, Findings: findings, Sources: sources}, cfg, sourceConfigs)
 	result, err := policy.Publish([]policy.Batch{batch}, nil)
@@ -88,7 +88,7 @@ func publishBatches(t *testing.T, batches []policy.Batch) policy.Publication {
 	t.Helper()
 	captureRoot := t.TempDir()
 	for i := range batches {
-		sourceConfigs := map[string]*config.Config{}
+		sourceConfigs := map[string]*configuration.Config{}
 		for _, item := range batches[i].Findings {
 			if item.Path == "" || item.Source == nil || item.UnavailableSource.Present() {
 				continue

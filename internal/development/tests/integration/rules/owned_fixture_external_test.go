@@ -7,7 +7,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func matrixJob(tb testing.TB, snapshot parsing.SourceSnapshot, key string) workflowdecl.JobView {
+func matrixJob(tb testing.TB, snapshot parsing.SourceSnapshot, key string) workflowdecl.Job {
 	tb.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {

@@ -36,7 +36,7 @@ func TestRemoteMetadataAdvisoriesUseEachInvocationBinding(t *testing.T) {
 				t.Fatal(err)
 			}
 			workflow := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/first\n      - uses: $/second\n      - uses: $/first\n"
-			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -28,7 +28,7 @@ func TestFilesSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: ".github/workflows/ci.yml", Content: []byte("bad yaml: ["), Config: cfg}})
+				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: []byte("bad yaml: ["), Config: cfg}})
 				if err != nil {
 					t.Fatal(err)
 				}

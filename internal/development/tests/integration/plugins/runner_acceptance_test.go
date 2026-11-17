@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
@@ -74,7 +74,7 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 		Analyzers: []checkinputs.Registration{{Checker: observer}},
-	}, []workspace.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}})
+	}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}})
 	if err == nil || !strings.Contains(err.Error(), "invalid queue snapshot") {
 		t.Fatalf("missing operational error: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestRunnerProviderShellValidation(t *testing.T) {
 	}{{"buildkite-windows", false}, {"buildkite-linux", true}} {
 		result, err := checking.Analyze(t.Context(), checking.Options{
 			Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: runnerFixtureRequest(t).Snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-		}, []workspace.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + tc.label + "\n    steps: [{run: echo hello, shell: cmd}]\n")}})
+		}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + tc.label + "\n    steps: [{run: echo hello, shell: cmd}]\n")}})
 		if err != nil {
 			t.Fatal(err)
 		}

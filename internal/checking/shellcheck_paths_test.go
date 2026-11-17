@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -64,7 +64,7 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -132,7 +132,7 @@ permissions: {}
 				if err != nil {
 					t.Fatal(err)
 				}
-				options.ConfigOverlays = []repoconfig.Overlay{overlay}
+				options.ConfigOverlays = []configuration.Overlay{overlay}
 			}
 			session := options
 			session.Tools = registry.Registrations(optionsTools)
@@ -492,7 +492,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []repoconfig.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err != nil {

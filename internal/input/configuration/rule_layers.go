@@ -1,4 +1,4 @@
-package config
+package configuration
 
 // normalizeRuleLocations gives named settings one merge key across accepted
 // category spellings. Group defaults stay in their declared groups because

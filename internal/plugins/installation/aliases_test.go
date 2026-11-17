@@ -7,7 +7,7 @@ import (
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestRegistryAssignedAliases(t *testing.T) {
@@ -84,14 +84,14 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New("check", "", fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New("check", "", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !pin.Matches(ref) {
 		t.Fatal("recorded alias does not match")
 	}
-	ref, err = pluginref.New("check", "", pluginref.DefaultRegistry)
+	ref, err = pluginreference.New("check", "", pluginreference.DefaultRegistry)
 	if err != nil {
 		t.Fatal(err)
 	}

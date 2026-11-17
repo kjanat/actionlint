@@ -13,14 +13,12 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/lsp/transport"
-
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type incoming struct {
-	message transport.Message
+	message RPCMessage
 	err     error
 }
 
@@ -66,7 +64,7 @@ func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options 
 	go func() {
 		r := bufio.NewReader(in)
 		for {
-			m, err := transport.ReadMessage(r)
+			m, err := ReadRPCMessage(r)
 			select {
 			case input <- incoming{m, err}:
 			case <-ctx.Done():
@@ -101,10 +99,10 @@ func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options 
 		} else {
 			v["result"] = result
 		}
-		return transport.WriteMessage(out, v)
+		return WriteRPCMessage(out, v)
 	}
 	notify := func(method string, params any) error {
-		return transport.WriteMessage(out, map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
+		return WriteRPCMessage(out, map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
 	}
 	schedule := func() {
 		latest = map[string][]results.Diagnostic{}

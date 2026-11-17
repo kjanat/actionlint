@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 )
 
 func TestResolverRepositoryRechecksReferences(t *testing.T) {
@@ -55,7 +54,7 @@ func TestResolverRepositoryRechecksReferences(t *testing.T) {
 		if err != nil || !found {
 			t.Fatalf("object = %v %v %v", object, found, err)
 		}
-		if _, ok := object.(repository.Commit); !ok {
+		if _, ok := object.(references.RepositoryCommit); !ok {
 			t.Fatalf("object = %T", object)
 		}
 		log, err := session.Finish(t.Context())
@@ -141,7 +140,7 @@ func TestResolverAnnotatedTagPeelsToCommit(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("object = %v %v %v", object, found, err)
 	}
-	tag, ok := object.(repository.PeeledTag)
+	tag, ok := object.(references.RepositoryPeeledTag)
 	if !ok || tag.Commit != commitID {
 		t.Fatalf("object = %#v", object)
 	}
@@ -333,7 +332,7 @@ func TestResolverAcceptsSixteenAnnotatedTags(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("object = %v %v %v", object, found, err)
 	}
-	tag, ok := object.(repository.PeeledTag)
+	tag, ok := object.(references.RepositoryPeeledTag)
 	if !ok || tag.Commit != fmt.Sprintf("%040x", 17) {
 		t.Fatalf("object = %#v", object)
 	}
@@ -398,7 +397,7 @@ func TestResolverReadsTreeAfterCommitAndTagMisses(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("object = %v, found = %v, error = %v", object, found, err)
 	}
-	if _, ok := object.(repository.Tree); !ok {
+	if _, ok := object.(references.RepositoryTree); !ok {
 		t.Fatalf("object = %T, want repository.Tree", object)
 	}
 }

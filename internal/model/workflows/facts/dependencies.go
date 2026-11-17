@@ -2,7 +2,7 @@ package facts
 
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // Dependency is a statically known action or reusable-workflow reference.
@@ -19,6 +19,6 @@ type Dependency struct {
 type ResolvedDependency struct {
 	Dependency               Dependency
 	Ref                      string
-	RepositoryID             repositoryid.ID
+	RepositoryID             repofacts.ID
 	Commit, Tree, ObservedAt string
 }

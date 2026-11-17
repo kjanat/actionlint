@@ -6,11 +6,11 @@ import (
 	"slices"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -18,7 +18,7 @@ import (
 type invocation struct {
 	Operation      operation
 	Check          checkInvocation
-	Plugin         pluginInvocation
+	Plugin         plugincommand.RegistryOptions
 	Cache          cacheInvocation
 	Render         renderOptions
 	Yes            bool
@@ -27,7 +27,7 @@ type invocation struct {
 	Origin         bool
 	MigrationWrite bool
 	MigrationCheck bool
-	ConfigFormat   repoconfig.FileFormat
+	ConfigFormat   configuration.FileFormat
 	Rule           string
 	Shell          string
 }
@@ -51,7 +51,7 @@ type checkInvocation struct {
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
 	Paths                 []string
-	Config                repoconfig.Selection
+	Config                configuration.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
 	IgnoreSelectors       []string
@@ -194,7 +194,7 @@ func (a *commandApp) prepareInvocation() error {
 		return commandargs.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
 	}
 	for _, mode := range o.output {
-		if outputformat.Valid(mode) {
+		if render.ValidFormat(mode) {
 			i.Render.Oneline = false
 			format := render.Format(mode)
 			if !slices.Contains(i.Render.Formats, format) {
@@ -227,17 +227,17 @@ func (inv invocation) request() (commandRequest, error) {
 		}
 		return cacheRequest{Operation: inv.Operation, cacheInvocation: inv.Cache, JSON: inv.JSON}, nil
 	case operationPluginInspect:
-		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON, Registry: inv.Plugin.Registry}, nil
+		return newStreamRequest(plugincommand.InspectOptions{Source: inv.Check.Paths[0], JSON: inv.JSON, Registry: inv.Plugin.Registry}), nil
 	case operationPluginValidate:
 		path := ""
 		if len(inv.Check.Paths) > 0 {
 			path = inv.Check.Paths[0]
 		}
-		return pluginValidateRequest{Path: path, JSON: inv.JSON}, nil
+		return newStreamRequest(plugincommand.ValidateOptions{Path: path, JSON: inv.JSON}), nil
 	case operationPluginTest:
-		return pluginTestRequest{Paths: inv.Check.Paths, JSON: inv.JSON}, nil
+		return newStreamRequest(plugincommand.TestOptions{Paths: inv.Check.Paths, JSON: inv.JSON}), nil
 	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
-		return pluginRegistryRequest{Operation: plugincmd.Operation(inv.Operation), Options: plugincmd.RegistryOptions(inv.Plugin), Paths: inv.Check.Paths, Config: inv.Check.Config, JSON: inv.JSON}, nil
+		return newStreamRequest(plugincommand.RegistryRequest{Operation: plugincommand.Operation(inv.Operation), Options: inv.Plugin, Paths: inv.Check.Paths, Config: inv.Check.Config, JSON: inv.JSON}), nil
 	case "lsp":
 		return lspRequest{inv.Check}, nil
 	case operationVersion:
@@ -263,7 +263,7 @@ func (inv invocation) request() (commandRequest, error) {
 		if inv.MigrationWrite && inv.MigrationCheck {
 			return nil, commandargs.UsageError{Cause: errors.New("config migrate: --write and --check cannot be combined")}
 		}
-		return configMigrateRequest{Config: inv.Check.Config, JSON: inv.JSON, Write: inv.MigrationWrite, Check: inv.MigrationCheck}, nil
+		return newStreamRequest(configcommand.MigrateOptions{Config: inv.Check.Config, JSON: inv.JSON, Write: inv.MigrationWrite, Check: inv.MigrationCheck}), nil
 	case operationConfigInit:
 		if inv.Legacy {
 			return legacyConfigInitRequest{

@@ -1,11 +1,11 @@
-package runner
+package runners
 
 import (
 	"context"
 	"slices"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestHostedArchitectureCatalog(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -179,13 +178,13 @@ func TestSyntaxNodeCaptureKeepsAliasGraphUnexpanded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("capture syntax graph: %v", err)
 	}
-	if got.Kind != syntax.DocumentNode || len(got.Content) != 1 {
+	if got.Kind != codec.DocumentNode || len(got.Content) != 1 {
 		t.Fatalf("captured document root = kind %v, children %d", got.Kind, len(got.Content))
 	}
 	root := got.Content[0]
 	value := mappingValue(root, "value")
 	level := mappingValue(root, "a5")
-	if value == nil || level == nil || value.Kind != syntax.AliasNode || level.Kind != syntax.SequenceNode {
+	if value == nil || level == nil || value.Kind != codec.AliasNode || level.Kind != codec.SequenceNode {
 		t.Fatalf("captured alias nodes missing: value=%#v level=%#v", value, level)
 	}
 	if value.Alias != level {

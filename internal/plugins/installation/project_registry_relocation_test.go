@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
@@ -21,11 +21,11 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ref, err := pluginref.New("ruff", "v1.0.0", plugininstall.DefaultURL)
+			ref, err := pluginreference.New("ruff", "v1.0.0", plugininstall.DefaultURL)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, nil); err != nil {
+			if err := project.Resolve(t.Context(), []pluginreference.Reference{ref}, nil); err != nil {
 				t.Fatal(err)
 			}
 			original := project.Releases.Plugins[0]
@@ -33,11 +33,11 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			registry.AddPlugin(t, fixtureregistry.PluginPublisher{
 				BaseURL: mirror, Name: original.Name, Aliases: []string{"ruff"}, RepositoryID: repositoryID, PluginID: "ruff",
 			}, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-			ref, err = pluginref.New("ruff", "v1.0.0", mirror)
+			ref, err = pluginreference.New("ruff", "v1.0.0", mirror)
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = project.Resolve(t.Context(), []pluginref.Reference{ref}, nil)
+			err = project.Resolve(t.Context(), []pluginreference.Reference{ref}, nil)
 			if repositoryID != 11 {
 				if err == nil {
 					t.Fatal("registry relocation accepted a changed publisher")

@@ -12,16 +12,15 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type resolverRepository struct {
 	g             *GitHub
 	base          string
-	identity      repository.Identity
+	identity      references.RepositoryIdentity
 	defaultBranch string
 	refs          map[string]refObservation
 	log           []string
@@ -40,7 +39,7 @@ type repositoryResponse struct {
 }
 
 // Open checks repository identity and read access before resolving references.
-func (g *GitHub) Open(ctx context.Context, request references.Request) (repository.Session, error) {
+func (g *GitHub) Open(ctx context.Context, request references.Request) (references.RepositorySession, error) {
 	if g.mode != Online {
 		return nil, errors.New("GitHub repository access is unavailable while network access is off or offline")
 	}
@@ -56,11 +55,11 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (reposito
 	if err != nil {
 		return nil, err
 	}
-	id, err := repositoryid.Known(repo.ID)
+	id, err := repofacts.KnownID(repo.ID)
 	if err != nil || !strings.EqualFold(repo.Name, request.Repository) || id.Conflicts(request.ExpectedRepositoryID) || repo.DefaultBranch == "" {
 		return nil, errors.New("GitHub repository identity or default branch is invalid")
 	}
-	s.identity = repository.Identity{Host: "github.com", ID: id, Name: repo.Name, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	s.identity = references.RepositoryIdentity{Host: "github.com", ID: id, Name: repo.Name, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	g.listings.observeVisibility(repo.Name, repo.Private)
 	s.defaultBranch = repo.DefaultBranch
 	// A 404 from a Git endpoint is ambiguous unless contents are readable.
@@ -69,7 +68,7 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (reposito
 	}
 	return s, nil
 }
-func (s *resolverRepository) Repository() repository.Identity { return s.identity }
+func (s *resolverRepository) Repository() references.RepositoryIdentity { return s.identity }
 func (s *resolverRepository) get(ctx context.Context, suffix string) ([]byte, bool, error) {
 	if s.requests >= 64 {
 		return nil, false, errors.New("GitHub repository request limit exceeded")
@@ -201,7 +200,7 @@ func validSHA(id string) bool {
 	return true
 }
 
-func (s *resolverRepository) Object(ctx context.Context, id string) (repository.Object, bool, error) {
+func (s *resolverRepository) Object(ctx context.Context, id string) (references.RepositoryObject, bool, error) {
 	if s.finished {
 		return nil, false, errors.New("repository session is finished")
 	}
@@ -218,7 +217,7 @@ func (s *resolverRepository) Object(ctx context.Context, id string) (repository.
 	return object, found, err
 }
 
-func (s *resolverRepository) object(ctx context.Context, id string, seen map[string]bool, depth int) (repository.Object, bool, error) {
+func (s *resolverRepository) object(ctx context.Context, id string, seen map[string]bool, depth int) (references.RepositoryObject, bool, error) {
 	if depth > 16 || seen[id] {
 		return nil, false, errors.New("git tag chain exceeds its limit or contains a cycle")
 	}
@@ -245,9 +244,9 @@ func (s *resolverRepository) object(ctx context.Context, id string, seen map[str
 		case "blobs":
 			return nil, false, errors.New("git blob objects cannot be resolved as commits or trees")
 		case "commits":
-			return repository.Commit{}, true, nil
+			return references.RepositoryCommit{}, true, nil
 		case "trees":
-			return repository.Tree{}, true, nil
+			return references.RepositoryTree{}, true, nil
 		case "tags":
 			if !validSHA(body.Object.SHA) || (body.Object.Type != "commit" && body.Object.Type != "tree" && body.Object.Type != "tag") {
 				return nil, false, errors.New("invalid annotated Git tag target")
@@ -261,22 +260,22 @@ func (s *resolverRepository) object(ctx context.Context, id string, seen map[str
 				return nil, false, errors.New("annotated Git tag target is inaccessible")
 			}
 			switch v := peeled.(type) {
-			case repository.Commit:
+			case references.RepositoryCommit:
 				if body.Object.Type != "commit" {
 					break
 				}
-				return repository.PeeledTag{Commit: target}, true, nil
-			case repository.Tree:
+				return references.RepositoryPeeledTag{Commit: target}, true, nil
+			case references.RepositoryTree:
 				if body.Object.Type != "tree" {
 					break
 				}
-				return repository.PeeledTreeTag{Tree: target}, true, nil
-			case repository.PeeledTag:
+				return references.RepositoryPeeledTreeTag{Tree: target}, true, nil
+			case references.RepositoryPeeledTag:
 				if body.Object.Type != "tag" {
 					break
 				}
 				return v, true, nil
-			case repository.PeeledTreeTag:
+			case references.RepositoryPeeledTreeTag:
 				if body.Object.Type != "tag" {
 					break
 				}

@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -19,7 +20,7 @@ paths:
   '**':
     ignores: [something]
 `)
-	inspection, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +58,8 @@ func TestConfigWarningSurvivesOverlay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var report repoconfig.Report
-	session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }, Rules: checking.ConfigurationRules()})
+	var report configreport.Report
+	session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []configuration.Overlay{overlay}, OnConfigLoaded: func(value configreport.Report) { report = value }, Rules: checking.ConfigurationRules()})
 	if err != nil {
 		t.Fatal(err)
 	}

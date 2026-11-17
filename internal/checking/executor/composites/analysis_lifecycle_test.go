@@ -8,12 +8,12 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -33,7 +33,7 @@ type cancelBeforeStep struct {
 	cancel context.CancelFunc
 }
 
-func (r *cancelBeforeStep) VisitWorkflowPre(workflowdecl.WorkflowView) error {
+func (r *cancelBeforeStep) VisitWorkflowPre(workflowdecl.Workflow) error {
 	r.cancel()
 	return nil
 }
@@ -44,7 +44,7 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
 	check := conventions.MissingActionMetadataCheck(nil)
-	rules, err := repoconfig.NewRuleSet([]rulemeta.Declaration{check.Declaration})
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{check.Declaration})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ type phaseRule struct {
 	joined  *bool
 }
 
-func (r *phaseRule) VisitStep(workflowdecl.StepView) error { *r.visited = true; return r.failure }
+func (r *phaseRule) VisitStep(workflowdecl.Step) error { *r.visited = true; return r.failure }
 func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
 	for _, failVisit := range []bool{false, true} {

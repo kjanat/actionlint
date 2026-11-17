@@ -11,7 +11,7 @@ import (
 // findings and may run without any preceding or following callback.
 type DeclarationCheck struct {
 	rule.Declaration
-	Workflow func(declaration.WorkflowView) []reporting.Finding
-	Job      func(declaration.JobView) []reporting.Finding
-	Step     func(declaration.StepView) []reporting.Finding
+	Workflow func(declaration.Workflow) []reporting.Finding
+	Job      func(declaration.Job) []reporting.Finding
+	Step     func(declaration.Step) []reporting.Finding
 }

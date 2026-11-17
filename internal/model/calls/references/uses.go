@@ -49,7 +49,7 @@ func ActionReferenceProblem(spec string) string {
 }
 
 func SelfRepositoryLocal(spec string) (string, bool) {
-	p, ok := strings.CutPrefix(spec, "$/")
+	p, ok := strings.CutPrefix(spec, selfRepositoryPrefix)
 	if !ok || strings.ContainsRune(p, '@') {
 		return "", false
 	}
@@ -58,16 +58,18 @@ func SelfRepositoryLocal(spec string) (string, bool) {
 }
 
 func LocalWorkflow(u string) (string, bool) {
-	if strings.HasPrefix(u, "$/") {
+	switch FormOf(u) {
+	case FormSelfRepository:
 		s, ok := SelfRepositoryLocal(u)
 		if !ok {
 			return "", false
 		}
 		u = s
-	} else if !strings.HasPrefix(u, "./") {
+	case FormWorkspace:
+	case FormRepository, FormContainer, FormBuiltin:
 		return "", false
 	}
-	path := strings.TrimPrefix(u, "./")
+	path := strings.TrimPrefix(u, workspacePrefix)
 
 	// Cannot contain a ref
 	idx := strings.IndexRune(path, '@')

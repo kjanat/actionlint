@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
@@ -37,7 +37,7 @@ func TestReferenceIdentitiesPreserveSourceLookupPaths(t *testing.T) {
 		if !ok {
 			t.Fatalf("caller source lookup path %q lost", path)
 		}
-		want := sourceid.Document(identify(path))
+		want := source.DocumentID(identify(path))
 		if index.Document.Document != want {
 			t.Fatalf("document identity = %q, want %q", index.Document.Document, want)
 		}

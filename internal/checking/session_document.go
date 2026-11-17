@@ -23,8 +23,8 @@ import (
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -35,11 +35,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -59,8 +59,8 @@ type analysisSession struct {
 	runnerReports   []runner.Report
 	environment     ExecutionEnvironment
 
-	ruleRegistrations    []repoconfig.RuleRegistration
-	rules                repoconfig.RuleSet
+	ruleRegistrations    []configuration.RuleRegistration
+	rules                configuration.RuleSet
 	tools                []tools.Registration
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
@@ -75,14 +75,14 @@ type analysisSession struct {
 	captures        *capture.Store
 	snapshots       *parsing.SourceSnapshots
 	gitModes        *gitModes
-	ignorePats      repoconfig.IgnorePatterns
+	ignorePats      configuration.IgnorePatterns
 	ignoreSelectors resultpolicy.IgnoreSelectors
 	onRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
-	rulePresets     repoconfig.Presets
+	rulePresets     configuration.Presets
 }
 
 // check parses action manifests and workflows with their respective parsers.
-func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config, provenance repoconfig.Provenance,
+func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
 	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, *resultpolicy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
@@ -100,8 +100,8 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Snapsh
 	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, provenance, processes, actions, workflows, usedRules)
 }
 
-func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document parsing.Document, action bool,
-	project *workspace.Project, projectConfig *repoconfig.Config, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
+func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
+	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, publication *resultpolicy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
@@ -118,7 +118,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		return nil, outline, nil, err
 	}
 	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules, s.ruleRegistrations)
-	var cfg *repoconfig.Config
+	var cfg *configuration.Config
 	if action {
 		cfg, err = settings.action(sourcePath)
 	} else {
@@ -135,7 +135,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err := settings.rules.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, nil, err
 	}
-	if err := repoconfig.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
+	if err := configuration.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
 		return nil, nil, nil, err
 	}
 	registrations, err := selection.ConfigureAnalyzers(entryBinding, s.analyzers)
@@ -268,7 +268,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 }
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
-	project *workspace.Project, cfg, projectConfig *repoconfig.Config, settings *ruleConfigurations, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
+	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
 ) (result composites.Result, resultErr error) {
 	process := processes.Fork()
@@ -303,7 +303,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	resolvedActions := workspaceactions.NewResolver(actions, mappings)
 	host := s.repositories[projectRoot(project)]
-	facts := repoconfig.RepositoryFacts(cfg, host)
+	facts := configuration.RepositoryFacts(cfg, host)
 	customLabels := runnerlang.LabelSet{}
 	if known, available := facts.RunnerLabels.Value(); available {
 		customLabels = runnerlang.KnownLabels(known.Values())
@@ -331,7 +331,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
-	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: repoconfig.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
+	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: configuration.InvocationPlanningConfig(cfg, projectConfig, projectRoot(project)), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
 		skippedMu.Lock()
 		skipped[name] = true
 		skippedMu.Unlock()

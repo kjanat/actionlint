@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )

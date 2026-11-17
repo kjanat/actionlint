@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"strconv"
@@ -10,7 +10,7 @@ import (
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
 	t.Parallel()
-	if errs := LabelRejections(workflowdecl.JobView{}, KnownLabels(nil)); len(errs) != 0 {
+	if errs := LabelRejections(workflowdecl.Job{}, KnownLabels(nil)); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 }

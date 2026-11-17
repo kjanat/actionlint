@@ -72,21 +72,21 @@ func (f *CapturedSources) Path(path string) string {
 	return filepath.Join(f.base, path)
 }
 
-func (f *CapturedSources) Capture(path string, content []byte, coordinates source.Coordinates) (capture.Snapshot, error) {
+func (f *CapturedSources) Capture(path string, content []byte, coordinates source.Coordinates) (capture.CapturedDocument, error) {
 	path = f.Path(path)
 	document, err := f.store.Canonical(f.ctx, path)
 	if err != nil {
-		return capture.Snapshot{}, err
+		return capture.CapturedDocument{}, err
 	}
 	f.mu.Lock()
 	f.content[document] = bytes.Clone(content)
 	f.mu.Unlock()
 	snapshot, err := f.store.Read(f.ctx, path, coordinates)
 	if err != nil {
-		return capture.Snapshot{}, err
+		return capture.CapturedDocument{}, err
 	}
 	if err := f.store.Verify(snapshot, content); err != nil {
-		return capture.Snapshot{}, err
+		return capture.CapturedDocument{}, err
 	}
 	return snapshot, nil
 }

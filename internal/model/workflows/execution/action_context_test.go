@@ -9,9 +9,11 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -86,7 +88,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 				if _, ok := step.Action(); !ok {
 					continue
 				}
-				position, present := step.Pos()
+				position, present := step.Position()
 				facts, err := CallFacts(step, runnerlang.MacOrLinux)
 				if err != nil || !present || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != position.Line || facts.Step.Column != position.Col {
 					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
@@ -193,7 +195,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("action view unavailable")
 	}
-	inputs := action.ResolvedInputs()
+	inputs := declaration.ResolvedInputs(action)
 	if got := inputs.Lookup("null-value"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}

@@ -32,7 +32,7 @@ type Cache struct {
 type reusableWorkflowMetadataResult struct {
 	metadata *calls.Metadata
 	failure  metadataError // zero when metadata was read and parsed, or deliberately ignored
-	captured capture.Snapshot
+	captured capture.CapturedDocument
 }
 
 // failureKind says which step of loading a reusable workflow failed.
@@ -108,13 +108,13 @@ func (c *Cache) Lookup(key string) (*calls.Metadata, error, bool) {
 	if result.failure.failed() {
 		return nil, result.failure, true
 	}
-	return result.metadata.Clone(), nil, true
+	return result.metadata, nil, true
 }
 
 // Store records a copy of parsed metadata for a repository-relative
 // specification. A nil val records that the specification has no metadata.
 func (c *Cache) Store(key string, val *calls.Metadata) {
-	c.store(key, reusableWorkflowMetadataResult{metadata: val.Clone()})
+	c.store(key, reusableWorkflowMetadataResult{metadata: val})
 }
 
 func (c *Cache) store(key string, result reusableWorkflowMetadataResult) {

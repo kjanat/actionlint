@@ -6,6 +6,7 @@ import (
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -22,7 +23,7 @@ func CheckInput(result Result, path, pathAbs string, content []byte, document pa
 	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
 		return input, scriptexecution.ErrInvalidBatch
 	}
-	input.CallGraph = result.Batch.CallGraph()
+	input.CallGraph = result.Batch.Invocations()
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
@@ -41,9 +42,9 @@ func CheckInput(result Result, path, pathAbs string, content []byte, document pa
 			}
 
 			switch {
-			case script.Occurrence.Kind == checkinputs.ActionInputScript:
+			case script.Occurrence.Kind == invocation.ScriptActionInput:
 				input.ActionInputs = append(input.ActionInputs, checkinputs.ActionInput{Script: script, Site: unit.Input.Site})
-			case script.Occurrence.Owner == input.CallGraph.Entry().ID:
+			case script.Occurrence.Owner == input.CallGraph.RootID():
 				input.Scripts = append(input.Scripts, script)
 			default:
 				input.Invoked = append(input.Invoked, script)

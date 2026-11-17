@@ -32,12 +32,11 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 		if !slices.Contains(input.AvailableInputs, rulemeta.Invocations) || slices.Contains(input.AvailableInputs, rulemeta.Scripts) != collect || !input.CallGraph.Valid() {
 			t.Fatalf("fact availability disagrees with collection: %+v", input.AvailableInputs)
 		}
-		graph := input.CallGraph.Export()
-		if input.CallGraph.CallCount() != 1 || input.CallGraph.ScriptCount() != 2 || !input.CallGraph.Complete() {
-			t.Fatalf("uncollected text removed graph facts: %+v", graph)
+		if input.CallGraph.CallCount() != 1 || input.CallGraph.ScriptCount() != 2 || input.CallGraph.Incomplete() {
+			t.Fatalf("uncollected text removed graph facts: %+v", input.CallGraph.Calls())
 		}
 		if collect {
-			if len(input.Scripts) != 1 || len(input.Invoked) != 1 || input.Scripts[0].Occurrence.Owner != input.CallGraph.Entry().ID || input.Invoked[0].Occurrence.Owner == input.CallGraph.Entry().ID {
+			if len(input.Scripts) != 1 || len(input.Invoked) != 1 || input.Scripts[0].Occurrence.Owner != input.CallGraph.RootID() || input.Invoked[0].Occurrence.Owner == input.CallGraph.RootID() {
 				t.Fatal("script classification lost canonical owners")
 			}
 		} else if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) != 0 {

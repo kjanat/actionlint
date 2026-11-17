@@ -38,7 +38,7 @@ func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
 	if err := snapshot.ValidateStep(snapshotJobSteps(t, foreign, "build")[0]); err == nil {
 		t.Fatal("accepted a step from an independently decoded source binding")
 	}
-	if err := snapshot.ValidateStep(workflowdecl.StepView{}); err == nil {
+	if err := snapshot.ValidateStep(workflowdecl.Step{}); err == nil {
 		t.Fatal("accepted a missing call-site declaration")
 	}
 }
@@ -85,7 +85,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 			if err != nil || left.Node == right.Node {
 				t.Fatalf("alias ownership collapsed: first=%+v second=%+v error=%v", left, right, err)
 			}
-			steps[0] = workflowdecl.StepView{}
+			steps[0] = workflowdecl.Step{}
 			copiedSteps := snapshotActionSteps(t, again)
 			if err := again.ValidateStep(copiedSteps[0]); err != nil {
 				t.Fatal("consumer changed the snapshot's step sequence")

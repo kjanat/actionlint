@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestInspectRegisteredRulesInInheritedConfiguration(t *testing.T) {
@@ -21,7 +21,7 @@ func TestInspectRegisteredRulesInInheritedConfiguration(t *testing.T) {
 	if err := os.WriteFile(path, []byte("extends: [base.yaml]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	selection := config.Selection{Path: path}
+	selection := configuration.Selection{Path: path}
 	inspection, err := checking.ConfigurationRules().Inspect(selection, true, "no-sudo")
 	if err != nil {
 		t.Fatal(err)

@@ -6,7 +6,7 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )

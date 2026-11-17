@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestUnusedYAMLAnchorsReportInDeclarationOrder(t *testing.T) {
@@ -19,7 +18,7 @@ func TestUnusedYAMLAnchorsReportInDeclarationOrder(t *testing.T) {
 	}
 	for range 32 {
 		var names []string
-		ValidateYAMLAliases(root, func(node *syntax.Node, kind YamlAliasDiagnostic, message string) {
+		ValidateYAMLAliases(root, func(node *codec.Node, kind YamlAliasDiagnostic, message string) {
 			if kind != YamlAliasDiagnosticUnusedAnchor {
 				t.Fatalf("unexpected alias diagnostic: %s", message)
 			}
@@ -47,13 +46,13 @@ func TestYAMLAliasInspectionVisitsSharedDeclarationsOnce(t *testing.T) {
 			if strings.Contains(source, "nested:") {
 				shared = mapping.Content[3]
 			}
-			mapping.Content[5].Content = []*syntax.Node{shared}
+			mapping.Content[5].Content = []*codec.Node{shared}
 			session, _, err := codec.Open(root)
 			if err != nil {
 				t.Fatalf("shared source graph rejected: %v", err)
 			}
 			session.Close()
-			report := func(node *syntax.Node, kind YamlAliasDiagnostic, message string) {
+			report := func(node *codec.Node, kind YamlAliasDiagnostic, message string) {
 				t.Errorf("resolve=%t: shared declaration produced diagnostic: %s", resolve, message)
 			}
 			if resolve {
@@ -97,10 +96,10 @@ func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
 		nested := anchor.Content[1]
 		alias := nested.Content[1]
 		first := mapping.Content[3]
-		first.Content = []*syntax.Node{nested}
-		mapping.Content = []*syntax.Node{mapping.Content[2], first, mapping.Content[0], anchor}
+		first.Content = []*codec.Node{nested}
+		mapping.Content = []*codec.Node{mapping.Content[2], first, mapping.Content[0], anchor}
 		var kinds []YamlAliasDiagnostic
-		report := func(node *syntax.Node, kind YamlAliasDiagnostic, message string) {
+		report := func(node *codec.Node, kind YamlAliasDiagnostic, message string) {
 			kinds = append(kinds, kind)
 			if kind == yamlAliasDiagnosticUndeclared && (node != alias || message != `alias "a" refers to an anchor not yet declared`) {
 				t.Errorf("forward alias diagnostic lost source: %s", message)
@@ -116,7 +115,7 @@ func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
 			projectedAnchor := projectedMapping.Content[3]
 			projectedNested := projectedAnchor.Content[1]
 			projectedAlias := projectedNested.Content[1]
-			if projectedMapping.Content[1].Content[0] != projectedNested || projectedAlias.Kind != syntax.AliasNode || projectedAlias.Alias != projectedAnchor {
+			if projectedMapping.Content[1].Content[0] != projectedNested || projectedAlias.Kind != codec.AliasNode || projectedAlias.Alias != projectedAnchor {
 				t.Fatal("projection lost unresolved shared forward alias graph")
 			}
 			assertAliasTestProjection(t, projected, before)
@@ -140,9 +139,9 @@ func TestYAMLAliasInspectionKeepsSharedRecursiveAliasUnresolved(t *testing.T) {
 		anchor := mapping.Content[1]
 		nested := anchor.Content[1]
 		alias := nested.Content[1]
-		mapping.Content[3].Content = []*syntax.Node{nested}
+		mapping.Content[3].Content = []*codec.Node{nested}
 		count := 0
-		report := func(node *syntax.Node, kind YamlAliasDiagnostic, message string) {
+		report := func(node *codec.Node, kind YamlAliasDiagnostic, message string) {
 			count++
 			if kind != yamlAliasDiagnosticRecursive || node != alias {
 				t.Errorf("recursive source diagnostic=%s kind=%v node=%p want %p", message, kind, node, alias)
@@ -158,7 +157,7 @@ func TestYAMLAliasInspectionKeepsSharedRecursiveAliasUnresolved(t *testing.T) {
 			projectedAnchor := projectedMapping.Content[1]
 			projectedNested := projectedAnchor.Content[1]
 			projectedAlias := projectedNested.Content[1]
-			if projectedMapping.Content[3].Content[0] != projectedNested || projectedAlias.Kind != syntax.AliasNode || projectedAlias.Alias != projectedAnchor {
+			if projectedMapping.Content[3].Content[0] != projectedNested || projectedAlias.Kind != codec.AliasNode || projectedAlias.Alias != projectedAnchor {
 				t.Fatal("projection lost unresolved shared recursive alias graph")
 			}
 			assertAliasTestProjection(t, projected, before)
@@ -193,12 +192,12 @@ func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
 			first, second := mapping.Content[3], mapping.Content[5]
 			originalContent := first.Content
 			alias := first.Content[0]
-			second.Content = []*syntax.Node{alias}
+			second.Content = []*codec.Node{alias}
 			if sharedBacking {
 				second.Content = first.Content
 			}
 			anchorReports, aliasReports := 0, 0
-			report := func(node *syntax.Node, kind YamlAliasDiagnostic, message string) {
+			report := func(node *codec.Node, kind YamlAliasDiagnostic, message string) {
 				if kind != yamlAliasDiagnosticInvalidName {
 					t.Errorf("unexpected diagnostic: %s", message)
 				}
@@ -222,7 +221,7 @@ func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
 				if projectedFirst.Content[0].Value != "value" || projectedSecond.Content[0].Value != "value" {
 					t.Fatal("shared alias projection lost target value")
 				}
-				if first.Content[0] != alias || second.Content[0] != alias || originalContent[0] != alias || alias.Kind != syntax.AliasNode || alias.Alias != mapping.Content[1] {
+				if first.Content[0] != alias || second.Content[0] != alias || originalContent[0] != alias || alias.Kind != codec.AliasNode || alias.Alias != mapping.Content[1] {
 					t.Fatal("projection mutated original backing or alias source")
 				}
 				assertAliasTestProjection(t, projected, before)
@@ -248,14 +247,14 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 	}
 	mapping := root.Content[0]
 	alias, anchor := mapping.Content[3], mapping.Content[1]
-	mapping.Content = []*syntax.Node{mapping.Content[2], alias, mapping.Content[0], anchor}
+	mapping.Content = []*codec.Node{mapping.Content[2], alias, mapping.Content[0], anchor}
 	before := snapshotAliasTestGraph(root)
 	_, diagnostics := parseDocument([]byte(source), root)
 	if len(diagnostics) < 2 {
 		t.Fatalf("missing alias diagnostics: %+v", diagnostics)
 	}
 	for i, want := range []struct {
-		node    *syntax.Node
+		node    *codec.Node
 		message string
 	}{
 		{alias, `alias "a" refers to an anchor not yet declared`},
@@ -275,7 +274,7 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 		t.Fatal("parser projected rejected alias")
 	}
 	projectedAlias := projected.Content[0].Content[1]
-	if projectedAlias.Kind != syntax.AliasNode || projectedAlias.Alias != projected.Content[0].Content[3] {
+	if projectedAlias.Kind != codec.AliasNode || projectedAlias.Alias != projected.Content[0].Content[3] {
 		t.Fatal("rejected alias lost projected graph target")
 	}
 	assertAliasTestProjection(t, projected, before)
@@ -306,7 +305,7 @@ func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
 			message      string
 		}
 		var got, want []diagnostic
-		ValidateYAMLAliases(root, func(n *syntax.Node, kind YamlAliasDiagnostic, message string) {
+		ValidateYAMLAliases(root, func(n *codec.Node, kind YamlAliasDiagnostic, message string) {
 			got = append(got, diagnostic{n.Line, n.Column, kind, message})
 		})
 		if len(got) != len(tc.messages) {
@@ -322,7 +321,7 @@ func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
 				t.Fatalf("validation changed source node at %d:%d", original.Line, original.Column)
 			}
 		}
-		projected, _ := projectAliasTestGraph(root, func(n *syntax.Node, kind YamlAliasDiagnostic, message string) {
+		projected, _ := projectAliasTestGraph(root, func(n *codec.Node, kind YamlAliasDiagnostic, message string) {
 			want = append(want, diagnostic{n.Line, n.Column, kind, message})
 		})
 		assertAliasTestProjection(t, projected, before)
@@ -332,10 +331,10 @@ func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
 	}
 }
 
-func snapshotAliasTestGraph(root *syntax.Node) map[*syntax.Node]syntax.Node {
-	result := map[*syntax.Node]syntax.Node{}
-	var visit func(*syntax.Node)
-	visit = func(node *syntax.Node) {
+func snapshotAliasTestGraph(root *codec.Node) map[*codec.Node]codec.Node {
+	result := map[*codec.Node]codec.Node{}
+	var visit func(*codec.Node)
+	visit = func(node *codec.Node) {
 		if node == nil {
 			return
 		}
@@ -354,18 +353,18 @@ func snapshotAliasTestGraph(root *syntax.Node) map[*syntax.Node]syntax.Node {
 	return result
 }
 
-func assertAliasTestProjection(t *testing.T, projected *syntax.Node, originals map[*syntax.Node]syntax.Node) {
+func assertAliasTestProjection(t *testing.T, projected *codec.Node, originals map[*codec.Node]codec.Node) {
 	t.Helper()
 	assertAliasTestSourceUnchanged(t, originals)
-	originalSlots := map[**syntax.Node]bool{}
+	originalSlots := map[**codec.Node]bool{}
 	for node := range originals {
 		for i := range node.Content {
 			originalSlots[&node.Content[i]] = true
 		}
 	}
-	seen := map[*syntax.Node]bool{}
-	var visit func(*syntax.Node)
-	visit = func(node *syntax.Node) {
+	seen := map[*codec.Node]bool{}
+	var visit func(*codec.Node)
+	visit = func(node *codec.Node) {
 		if node == nil || seen[node] {
 			return
 		}
@@ -386,18 +385,18 @@ func assertAliasTestProjection(t *testing.T, projected *syntax.Node, originals m
 	visit(projected)
 }
 
-func projectAliasTestGraph(root *syntax.Node, report func(*syntax.Node, YamlAliasDiagnostic, string)) (*syntax.Node, map[*syntax.Node]*syntax.Node) {
+func projectAliasTestGraph(root *codec.Node, report func(*codec.Node, YamlAliasDiagnostic, string)) (*codec.Node, map[*codec.Node]*codec.Node) {
 	return projectYAMLAliases(root, inspectYAMLAliases(root, report))
 }
 
 // Leaf-parser fixtures opt into projection; production construction belongs to parseDocument.
-func projectAliasTestInput(parser *Parser, root *syntax.Node) *syntax.Node {
-	projected, aliases := projectAliasTestGraph(root, func(node *syntax.Node, _ YamlAliasDiagnostic, message string) { parser.error(node, CodeAlias, message) })
+func projectAliasTestInput(parser *Parser, root *codec.Node) *codec.Node {
+	projected, aliases := projectAliasTestGraph(root, func(node *codec.Node, _ YamlAliasDiagnostic, message string) { parser.error(node, CodeAlias, message) })
 	parser.aliases = aliases
 	return projected
 }
 
-func assertAliasTestSourceUnchanged(t *testing.T, originals map[*syntax.Node]syntax.Node) {
+func assertAliasTestSourceUnchanged(t *testing.T, originals map[*codec.Node]codec.Node) {
 	t.Helper()
 	for node, before := range originals {
 		if node.Alias != before.Alias || !slices.Equal(node.Content, before.Content) || !reflect.DeepEqual(*node, before) {

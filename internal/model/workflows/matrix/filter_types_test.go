@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 func TestMatrixFilterTypeMismatchUsesSemanticValues(t *testing.T) {

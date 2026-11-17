@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero/experimental"
 )
@@ -24,7 +24,7 @@ func (b *memoryBudget) Allocate(_, maximum uint64) experimental.LinearMemory {
 }
 
 func (b *memoryBudget) allocateTables(tables []wacogo.CoreTable) (func(), error) {
-	reserved, err := wasmbudget.Tables(tables, b.limit)
+	reserved, err := module.ReservedTableBytes(tables, b.limit)
 	if err != nil {
 		return nil, err
 	}

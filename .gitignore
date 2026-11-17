@@ -48,9 +48,8 @@ docs/superpowers
 # Temporary local fixtures from private repositories.
 runny-*
 commitish
-!internal/plugins/bundled/commitish/
 *.log
 /.review-artifacts/
-!internal/checking/cache
+!internal/checking/cachepolicy
 /custom-gcl*
 *.exe

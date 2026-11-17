@@ -62,7 +62,7 @@ jobs:
           JSON: ${{ toJSON(` + path + `) }}
         run: printf '%s\n' "$JSON"
 ` + "\npermissions: {}\n"
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow)}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe condition/environment binding rejected: %+v, %v", result.Diagnostics, err)
 		}
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 ` + script + "\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(source, "\n", ending))}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(source, "\n", ending))}})
 			wantLine := 7
 			if strings.Contains(script, "uses:") {
 				wantLine = 9

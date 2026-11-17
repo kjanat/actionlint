@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"

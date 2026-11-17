@@ -239,6 +239,9 @@ type Graph struct {
 	incomplete  bool
 }
 
+// Valid reports whether g was published by a Builder.
+func (g Graph) Valid() bool { return g.root != "" }
+
 // Entry returns the analysis entry.
 func (g Graph) Entry() Entry { return g.entry }
 
@@ -250,6 +253,12 @@ func (g Graph) Budget() Budget { return g.budget }
 
 // Calls returns all recorded calls in creation order.
 func (g Graph) Calls() []Call { return slices.Clone(g.calls) }
+
+// CallCount returns the number of recorded calls.
+func (g Graph) CallCount() int { return len(g.calls) }
+
+// CallRange returns calls[start:end] in creation order; callers check bounds.
+func (g Graph) CallRange(start, end int) []Call { return slices.Clone(g.calls[start:end]) }
 
 // Call returns the call with the given ID.
 func (g Graph) Call(id ID) (Call, bool) {

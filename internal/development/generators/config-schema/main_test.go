@@ -16,7 +16,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
-	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -76,7 +76,7 @@ func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
 
 func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
 	t.Parallel()
-	schema := mapYAMLType(reflect.TypeFor[actionlint.PermissionLocationList](), nil)
+	schema := mapYAMLType(reflect.TypeFor[configuration.PermissionLocationList](), nil)
 	if schema.Default != nil {
 		t.Fatalf("require-at has no value equivalent to omission; schema suggests %v", schema.Default)
 	}
@@ -165,7 +165,7 @@ func TestTombiMetadata(t *testing.T) {
 
 func TestRuleLevelSuggestions(t *testing.T) {
 	t.Parallel()
-	if schema := mapYAMLType(reflect.TypeFor[actionlint.Level](), nil); schema.Ref != "#/$defs/level" {
+	if schema := mapYAMLType(reflect.TypeFor[configuration.Level](), nil); schema.Ref != "#/$defs/level" {
 		t.Fatalf("level property does not reference its shared definition: %+v", schema)
 	}
 	schema := levelSchema()
@@ -204,11 +204,11 @@ func TestSchemaReferenceNotSuggested(t *testing.T) {
 
 func TestPluginRuleSelectors(t *testing.T) {
 	t.Parallel()
-	ignore := mapYAMLType(reflect.TypeFor[actionlint.IgnoreConfig](), nil)
+	ignore := mapYAMLType(reflect.TypeFor[configuration.IgnoreConfig](), nil)
 	rule, _ := ignore.Properties.Get("rule")
-	lint := mapYAMLType(reflect.TypeFor[actionlint.LintRulesConfig](), nil)
+	lint := mapYAMLType(reflect.TypeFor[configuration.LintRulesConfig](), nil)
 	disabled, _ := lint.Properties.Get("disable")
-	policy := mapYAMLType(reflect.TypeFor[actionlint.SuppressionsPolicy](), nil)
+	policy := mapYAMLType(reflect.TypeFor[configuration.SuppressionsPolicy](), nil)
 	prohibited, _ := policy.OneOf[1].Properties.Get("rules")
 	if len(rule.AllOf) != 1 {
 		t.Fatal("ignore selectors must reference rule names and apply their suppression constraints")
@@ -224,7 +224,7 @@ func TestPluginRuleSelectors(t *testing.T) {
 // tools.ruff, as a JSON value.
 func ruffShorthand(t *testing.T, key string) map[string]any {
 	t.Helper()
-	tools := mapYAMLType(reflect.TypeFor[actionlint.ToolsConfig](), nil)
+	tools := mapYAMLType(reflect.TypeFor[configuration.ToolsConfig](), nil)
 	ruff, ok := tools.Properties.Get("ruff")
 	if !ok {
 		t.Fatal("missing Ruff tool schema")
@@ -1022,7 +1022,7 @@ func TestDocumentedReflectorUsesImportPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	typ := reflect.TypeFor[actionlint.PathConfig]()
+	typ := reflect.TypeFor[configuration.PathConfig]()
 	key := typ.PkgPath() + "." + typ.Name() + ".Ignore"
 	if !strings.HasPrefix(r.CommentMap[key], "Ignore suppresses diagnostics") {
 		t.Fatalf("comment missing under Go import path %q", key)

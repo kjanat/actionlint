@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	options "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 )
 
@@ -18,7 +18,7 @@ func TestEffectiveConfigInheritance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rs, err := config.NewRuleSet(nil)
+	rs, err := configuration.NewRuleSet(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,13 +28,13 @@ func TestEffectiveConfigInheritance(t *testing.T) {
 	}
 	c := loaded.Config
 	facts := c.Facts()
-	if got := config.RunnerLabels(facts); !reflect.DeepEqual(got, []string{"second"}) {
+	if got := configuration.RunnerLabels(facts); !reflect.DeepEqual(got, []string{"second"}) {
 		t.Errorf("runners: %v", got)
 	}
-	if got := config.SecretNames(facts); !reflect.DeepEqual(got, []string{"MAIN"}) {
+	if got := configuration.SecretNames(facts); !reflect.DeepEqual(got, []string{"MAIN"}) {
 		t.Errorf("secrets: %v", got)
 	}
-	if got := config.VariableNames(facts); !reflect.DeepEqual(got, []string{"SECOND"}) {
+	if got := configuration.VariableNames(facts); !reflect.DeepEqual(got, []string{"SECOND"}) {
 		t.Errorf("variables: %v", got)
 	}
 	if !c.Files.Match("a.yml") || c.Files.Match("b.txt") {
@@ -80,7 +80,7 @@ func TestEffectiveConfigInheritance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := config.RunnerLabels(selected.Facts()); !reflect.DeepEqual(got, []string{tc.runner}) {
+			if got := configuration.RunnerLabels(selected.Facts()); !reflect.DeepEqual(got, []string{tc.runner}) {
 				t.Errorf("runners: %v", got)
 			}
 			if got := selected.LocalActions["./dist"]; got != tc.local {
@@ -97,7 +97,7 @@ type effectiveRuleCase struct {
 
 func TestEffectiveJSONRoots(t *testing.T) {
 	t.Parallel()
-	rs, err := config.NewRuleSet(nil)
+	rs, err := configuration.NewRuleSet(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			selected, err = rs.ResolveRules(config.Presets{}, selected)
+			selected, err = rs.ResolveRules(configuration.Presets{}, selected)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -175,7 +175,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 			if !ok {
 				t.Fatal("missing job-timeout")
 			}
-			timeoutOpt := new(config.JobTimeoutPolicy)
+			timeoutOpt := new(configuration.JobTimeoutPolicy)
 			if _, err := timeout.LoadOptions(timeoutOpt); err != nil {
 				t.Fatal(err)
 			}
@@ -185,7 +185,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 			if !ok {
 				t.Fatal("missing forbidden-suppression")
 			}
-			suppressOpt := new(config.SuppressionsPolicy)
+			suppressOpt := new(configuration.SuppressionsPolicy)
 			if _, err := suppress.LoadOptions(suppressOpt); err != nil {
 				t.Fatal(err)
 			}

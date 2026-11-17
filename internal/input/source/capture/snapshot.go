@@ -6,7 +6,6 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 type captured struct {
@@ -16,24 +15,24 @@ type captured struct {
 	utf8     bool
 }
 
-// Snapshot is an immutable Store handle. Its frozen aliases are diagnostic-only;
+// CapturedDocument is an immutable Store handle. Its frozen aliases are diagnostic-only;
 // publication uses the complete, deterministic table returned by Sources.
-type Snapshot struct {
+type CapturedDocument struct {
 	store   *Store
 	value   *captured
 	aliases []string
 }
 
-func (s Snapshot) Valid() bool { return s.store != nil && s.value != nil }
+func (s CapturedDocument) Valid() bool { return s.store != nil && s.value != nil }
 
-func (s Snapshot) Revision() source.Revision {
+func (s CapturedDocument) Revision() source.Revision {
 	if s.value == nil {
 		return source.Revision{}
 	}
 	return s.value.revision
 }
 
-func (s Snapshot) Coordinates() source.Coordinates {
+func (s CapturedDocument) Coordinates() source.Coordinates {
 	if s.value == nil {
 		return ""
 	}
@@ -41,20 +40,20 @@ func (s Snapshot) Coordinates() source.Coordinates {
 }
 
 // CoordinatesAvailable is independent of whether the captured digest is known.
-func (s Snapshot) CoordinatesAvailable() bool { return s.value != nil && s.value.utf8 }
+func (s CapturedDocument) CoordinatesAvailable() bool { return s.value != nil && s.value.utf8 }
 
-func (s Snapshot) Bytes() []byte {
+func (s CapturedDocument) Bytes() []byte {
 	if s.value == nil {
 		return nil
 	}
 	return bytes.Clone(s.value.content)
 }
 
-func (s Snapshot) Aliases() []string { return slices.Clone(s.aliases) }
+func (s CapturedDocument) Aliases() []string { return slices.Clone(s.aliases) }
 
 func capture(document string, model source.Coordinates, content []byte) (*captured, error) {
 	content = bytes.Clone(content)
-	revision, err := source.NewRevision(document, sourceid.Digest(content))
+	revision, err := source.NewRevision(document, source.ContentDigest(content))
 	if err != nil {
 		return nil, err
 	}

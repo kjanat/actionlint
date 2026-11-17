@@ -2,8 +2,6 @@ package codec
 
 import (
 	"errors"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 // AdmissionError prevents semantic construction while preserving the load cause.
@@ -38,7 +36,7 @@ func NewAdmissionError(cause error) error {
 // Admit checks expansion cost without constructing values or changing the graph.
 // follow selects alias slots according to the caller's dialect. Rejected slots
 // are neither followed nor counted; accepted expansions share the session limit.
-func Admit(root *syntax.Node, follow func(parent *syntax.Node, index int) bool) error {
+func Admit(root *Node, follow func(parent *Node, index int) bool) error {
 	if follow == nil {
 		return NewAdmissionError(errors.New("YAML admission requires an alias selection policy"))
 	}
@@ -53,14 +51,14 @@ func Admit(root *syntax.Node, follow func(parent *syntax.Node, index int) bool) 
 	return nil
 }
 
-func admit(cursor Cursor, follow func(*syntax.Node, int) bool) error {
+func admit(cursor Cursor, follow func(*Node, int) bool) error {
 	entered, err := cursor.Enter()
 	if err != nil {
 		return err
 	}
 	node := entered.Node()
 	for index, child := range node.Content {
-		if child.Kind == syntax.AliasNode && !follow(node, index) {
+		if child.Kind == AliasNode && !follow(node, index) {
 			continue
 		}
 		next := entered.cursor

@@ -16,24 +16,21 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/lsp/transport"
-
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestUnsupportedRequestsReceiveMethodNotFound(t *testing.T) {
 	t.Parallel()
 	var input, output bytes.Buffer
-	for _, request := range []transport.Message{
+	for _, request := range []RPCMessage{
 		{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "initialize"},
 		{JSONRPC: "2.0", Method: "unsupported/notification"},
 		{JSONRPC: "2.0", ID: json.RawMessage(`"hover-request"`), Method: "textDocument/hover"},
 		{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "shutdown"},
 		{JSONRPC: "2.0", Method: "exit"},
 	} {
-		if err := transport.WriteMessage(&input, request); err != nil {
+		if err := WriteRPCMessage(&input, request); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -83,7 +80,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				if !strings.Contains(doc.Text, "bad") {
 					continue
 				}
-				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
+				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourcepos.ContentDigest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
 			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {
@@ -99,7 +96,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 		if id != nil {
 			m["id"] = id
 		}
-		if err := transport.WriteMessage(client, m); err != nil {
+		if err := WriteRPCMessage(client, m); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -194,7 +191,7 @@ func TestCoordinateBoundaries(t *testing.T) {
 	if offset, err := byteOffset("😀x", position{0, 2}); err != nil || offset != 4 {
 		t.Fatalf("%d %v", offset, err)
 	}
-	if _, err := transport.ReadMessage(bufio.NewReader(strings.NewReader("Content-Length: 999999999\r\n\r\n"))); err == nil {
+	if _, err := ReadRPCMessage(bufio.NewReader(strings.NewReader("Content-Length: 999999999\r\n\r\n"))); err == nil {
 		t.Fatal("accepted oversized frame")
 	}
 }
@@ -232,7 +229,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 		if id != nil {
 			message["id"] = id
 		}
-		if err := transport.WriteMessage(client, message); err != nil {
+		if err := WriteRPCMessage(client, message); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -331,7 +328,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 		if id != nil {
 			m["id"] = id
 		}
-		if err := transport.WriteMessage(client, m); err != nil {
+		if err := WriteRPCMessage(client, m); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
@@ -64,10 +64,10 @@ runs:
 					want = scriptmodel.EnvironmentUncertain
 				}
 				if environment.Lookup(name) != want {
-					t.Errorf("script %q on %s lost %q", unit.Run.Run().Value(), environment.OperatingSystem(), name)
+					t.Errorf("script %q on %s lost %q", unit.Run.Run.Text(), environment.OperatingSystem(), name)
 				}
 			}
-			switch unit.Run.Run().Value() {
+			switch unit.Run.Run.Text() {
 			case "echo child":
 				for _, name := range []string{"job_name", "caller_name", "child_name"} {
 					if environment.Lookup(name) != scriptmodel.EnvironmentDeclared {

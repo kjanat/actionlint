@@ -38,8 +38,8 @@ generator and option validator use these declarations too.
 
 `internal/checking/selection` selects implementations and supplies resolved
 configuration. `internal/checking/executor` adapts models to checks and coordinates
-nested calls. `internal/checking/passes` runs synchronous workflow passes through
-the contract in `internal/checking/traversal`.
+nested calls. `internal/checking/workflowvisit` defines the visitor and invocation
+contracts and runs synchronous workflow passes through them.
 
 Configuration overlays keep values and source locations in one located document.
 Merge behavior belongs to the configuration field declaration, including lists

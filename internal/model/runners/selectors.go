@@ -1,15 +1,15 @@
-package runner
+package runners
 
 import (
 	"slices"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
-func Selectors(job workflowdecl.JobView) []runnerapi.Selector {
+func Selectors(job workflowdecl.Job) []runnerapi.Selector {
 	alternatives := selectorAlternatives(job)
 	if alternatives == nil {
 		return nil
@@ -31,16 +31,16 @@ type Alternative struct {
 
 // Alternatives joins execution rows to the provider selector that resolves them.
 // A matrix unrelated to runs-on does not change the provider's request or certainty.
-func Alternatives(job workflowdecl.JobView) []Alternative {
+func Alternatives(job workflowdecl.Job) []Alternative {
 	alternatives := selectorAlternatives(job)
 	for index := range alternatives {
 		alternatives[index].AnswerIndex = index
-		alternatives[index].MatrixKnown = !alternatives[index].Selector.Incomplete && hasMatrixReference(job.RunsOn().Selection())
+		alternatives[index].MatrixKnown = !alternatives[index].Selector.Incomplete && hasMatrixReference(workflowdecl.RunnerSelection(job.RunsOn))
 	}
-	if len(alternatives) != 1 || hasMatrixReference(job.RunsOn().Selection()) {
+	if len(alternatives) != 1 || hasMatrixReference(workflowdecl.RunnerSelection(job.RunsOn)) {
 		return alternatives
 	}
-	rows, complete := job.Strategy().MatrixResolution().Combinations(256)
+	rows, complete := workflowdecl.MatrixResolution(job.Strategy).Combinations(256)
 	if !complete {
 		return alternatives
 	}
@@ -57,15 +57,15 @@ func Alternatives(job workflowdecl.JobView) []Alternative {
 	return result
 }
 
-func selectorAlternatives(job workflowdecl.JobView) []Alternative {
-	if !job.Present() || !job.RunsOn().Present() {
+func selectorAlternatives(job workflowdecl.Job) []Alternative {
+	if !job.Present() || job.RunsOn == nil {
 		return nil
 	}
-	selection := job.RunsOn().Selection()
+	selection := workflowdecl.RunnerSelection(job.RunsOn)
 	if !hasMatrixReference(selection) {
 		return []Alternative{{Selector: selectorFor(selection, matrix.Combination{}, false)}}
 	}
-	strategy := job.Strategy().MatrixResolution()
+	strategy := workflowdecl.MatrixResolution(job.Strategy)
 	combinations, complete := strategy.Combinations(256)
 	if complete {
 		if len(combinations) == 0 {

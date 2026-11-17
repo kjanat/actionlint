@@ -10,9 +10,9 @@ import (
 
 // FromWorkflow projects decoded workflow declarations into a report outline.
 func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool) Workflow {
-	outline := WorkflowFields{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []Job{}}
+	outline := Workflow{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []Job{}}
 	if workflow == nil {
-		return NewWorkflow(outline)
+		return outline
 	}
 	outline.ParseStatus = "complete"
 	if parseErrors {
@@ -22,9 +22,9 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 	for _, event := range workflow.On {
 		outline.Triggers = append(outline.Triggers, event.EventName())
 	}
-	jobs := make([]JobFields, 0, len(workflow.Jobs))
+	jobs := make([]Job, 0, len(workflow.Jobs))
 	for _, job := range workflow.Jobs {
-		record := JobFields{
+		record := Job{
 			ID: outlineString(job.ID), Name: outlineString(job.Name), Start: outlinePosition(job.Pos),
 			Needs: []string{}, Steps: stepOutlines(job.Steps),
 		}
@@ -38,7 +38,7 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 		}
 		jobs = append(jobs, record)
 	}
-	slices.SortFunc(jobs, func(a, b JobFields) int {
+	slices.SortFunc(jobs, func(a, b Job) int {
 		switch {
 		case a.Start != nil && b.Start != nil:
 			if order := cmp.Compare(a.Start.Line, b.Start.Line); order != 0 {
@@ -54,16 +54,14 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 		}
 		return cmp.Compare(a.ID, b.ID)
 	})
-	for _, job := range jobs {
-		outline.Jobs = append(outline.Jobs, NewJob(job))
-	}
-	return NewWorkflow(outline)
+	outline.Jobs = append(outline.Jobs, jobs...)
+	return outline
 }
 
 func stepOutlines(steps []*workflowlang.Step) []Step {
 	records := make([]Step, 0, len(steps))
 	for _, step := range steps {
-		record := StepFields{
+		record := Step{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
 			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
 		}
@@ -79,7 +77,7 @@ func stepOutlines(steps []*workflowlang.Step) []Step {
 		case *workflowlang.ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
-		records = append(records, NewStep(record))
+		records = append(records, record)
 	}
 	return records
 }

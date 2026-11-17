@@ -6,7 +6,7 @@ import (
 
 	execution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 func TestRunDirectoryContexts(t *testing.T) {

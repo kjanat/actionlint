@@ -1,10 +1,10 @@
 package sourcemap
 
-import "actionlint.kjanat.dev/v2/internal/input/source/text"
+import "actionlint.kjanat.dev/v2/internal/input/source"
 
-func DiagnosticLine(source []byte, line int, rawScript bool) (string, bool) {
+func DiagnosticLine(content []byte, line int, rawScript bool) (string, bool) {
 	if !rawScript {
-		return SourceLine(string(source), line)
+		return SourceLine(string(content), line)
 	}
-	return text.LFLine(source, line)
+	return source.LFLine(content, line)
 }

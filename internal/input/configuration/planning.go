@@ -1,4 +1,4 @@
-package config
+package configuration
 
 // InvocationPlanningConfig supplies the configurations a referenced action
 // could use before its path is known. A repository supplies its own baseline.

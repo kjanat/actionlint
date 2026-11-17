@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -23,7 +22,7 @@ func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadat
 	return nil
 }
 
-func (p *failingMetadataParticipant) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (p *failingMetadataParticipant) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return &failingMetadataCallback{Base: workflowvisit.NewBase(p.Name(), ""), failure: p.failure}
 }
 
@@ -32,7 +31,7 @@ type failingMetadataCallback struct {
 	failure error
 }
 
-func (p *failingMetadataCallback) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (p *failingMetadataCallback) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return p
 }
 
@@ -40,8 +39,8 @@ func (p *failingMetadataCallback) CheckStandaloneMetadata(*actionmeta.Metadata, 
 	return p.failure
 }
 
-func (p *failingMetadataCallback) VisitStep(step declaration.StepView) error {
-	position, _ := step.Pos()
+func (p *failingMetadataCallback) VisitStep(step declaration.Step) error {
+	position, _ := step.Position()
 	p.Error(&position, "partial metadata result")
 	return p.failure
 }

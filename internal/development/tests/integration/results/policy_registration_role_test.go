@@ -6,7 +6,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -22,7 +22,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().ResolveRegisteredRules(repoconfig.Presets{}, nil, repoconfig.RuleRegistration{Descriptor: descriptor, ReplacesTool: tc.replaces})
+			cfg, err := checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, nil, configuration.RuleRegistration{Descriptor: descriptor, ReplacesTool: tc.replaces})
 			if tc.wantError {
 				if err == nil || !strings.Contains(err.Error(), "conflicts") {
 					t.Fatalf("expected collision, got %v", err)
@@ -33,7 +33,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 				t.Fatal(err)
 			}
 			policy := resultpolicy.Policy{Path: "workflow.yml", Root: "."}
-			if _, err := publishFindings(t, policy, nil, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, map[string]*repoconfig.Config{"action.yml": cfg}); err != nil {
+			if _, err := publishFindings(t, policy, nil, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, map[string]*configuration.Config{"action.yml": cfg}); err != nil {
 				t.Fatal(err)
 			}
 		})

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -25,7 +25,7 @@ type SourceSnapshot struct{ admission *admission }
 // afterwards.
 type admission struct {
 	registry  *SourceSnapshots
-	captured  capture.Snapshot
+	captured  capture.CapturedDocument
 	reference source.Reference
 	action    bool
 	bound     *workflowdecl.Bound
@@ -49,9 +49,9 @@ func (s SourceSnapshot) Content() []byte {
 	return s.admission.captured.Bytes()
 }
 
-func (s SourceSnapshot) Capture() capture.Snapshot {
+func (s SourceSnapshot) Capture() capture.CapturedDocument {
 	if s.admission == nil {
-		return capture.Snapshot{}
+		return capture.CapturedDocument{}
 	}
 	return s.admission.captured
 }
@@ -89,16 +89,16 @@ func NewSourceSnapshots(store *capture.Store) (*SourceSnapshots, error) {
 }
 
 // Capture looks up already-captured bytes without canonicalizing or reading.
-func (s *SourceSnapshots) Capture(path string) (capture.Snapshot, error) {
+func (s *SourceSnapshots) Capture(path string) (capture.CapturedDocument, error) {
 	if s == nil || s.store == nil {
-		return capture.Snapshot{}, errors.New("source declarations require a capture store")
+		return capture.CapturedDocument{}, errors.New("source declarations require a capture store")
 	}
 	captured, state, err := s.store.Lookup(path)
 	if err != nil {
-		return capture.Snapshot{}, err
+		return capture.CapturedDocument{}, err
 	}
 	if state != capture.Captured {
-		return capture.Snapshot{}, fmt.Errorf("source %q has no captured revision", path)
+		return capture.CapturedDocument{}, fmt.Errorf("source %q has no captured revision", path)
 	}
 	return captured, nil
 }
@@ -157,7 +157,7 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 
 // Document returns canonical declarations for this source revision.
 // Repeated decodes share the existing immutable binding.
-func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document) (SourceSnapshot, error) {
+func (s *SourceSnapshots) Document(captured capture.CapturedDocument, document Document) (SourceSnapshot, error) {
 	record := document.Provenance.record
 	if record == nil {
 		return SourceSnapshot{}, errors.New("source document has no parse provenance")
@@ -168,7 +168,7 @@ func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document)
 	return s.bind(captured, record)
 }
 
-func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
+func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
 	if metadata == nil {
 		return SourceSnapshot{}, errors.New("action metadata is unavailable")
 	}
@@ -201,7 +201,7 @@ func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta
 	return s.bind(captured, record)
 }
 
-func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) error {
+func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []byte) error {
 	if s == nil || s.store == nil {
 		return errors.New("source declarations require a capture store")
 	}
@@ -214,7 +214,7 @@ func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) erro
 	return nil
 }
 
-func (s *SourceSnapshots) bind(captured capture.Snapshot, record *workflowdecl.Record) (SourceSnapshot, error) {
+func (s *SourceSnapshots) bind(captured capture.CapturedDocument, record *workflowdecl.Record) (SourceSnapshot, error) {
 	if err := s.verify(captured, []byte(record.Text())); err != nil {
 		return SourceSnapshot{}, err
 	}
@@ -277,36 +277,36 @@ func (s SourceSnapshot) Kind() DocumentKind {
 	return KindWorkflow
 }
 
-func (s SourceSnapshot) WorkflowView() (workflowdecl.WorkflowView, bool) {
+func (s SourceSnapshot) WorkflowView() (workflowdecl.Workflow, bool) {
 	if s.Kind() != KindWorkflow {
-		return workflowdecl.WorkflowView{}, false
+		return workflowdecl.Workflow{}, false
 	}
 	view := s.admission.bound.Workflow()
 	return view, view.Present()
 }
 
-func (s SourceSnapshot) ActionView() (workflowdecl.ActionBodyView, bool) {
+func (s SourceSnapshot) ActionView() (workflowdecl.ActionBody, bool) {
 	if s.Kind() != KindAction {
-		return workflowdecl.ActionBodyView{}, false
+		return workflowdecl.ActionBody{}, false
 	}
 	view := s.admission.bound.ActionBody()
 	return view, view.Present()
 }
 
-func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.StepView, bool) {
+func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.Step, bool) {
 	if s == nil {
-		return workflowdecl.StepView{}, false
+		return workflowdecl.Step{}, false
 	}
 	s.mu.Lock()
 	admitted := s.documents[reference.Document]
 	s.mu.Unlock()
 	if admitted == nil || admitted.bound == nil || admitted.verify() != nil {
-		return workflowdecl.StepView{}, false
+		return workflowdecl.Step{}, false
 	}
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflowdecl.StepView) bool {
+func (s *SourceSnapshots) Owns(step workflowdecl.Step) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
@@ -331,7 +331,7 @@ func (s SourceSnapshot) Declarations() ([]workflowfacts.Mapping, []workflowfacts
 	return s.admission.bound.Declarations()
 }
 
-func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
+func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.Workflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
+func (s SourceSnapshot) ValidateJob(view workflowdecl.Job) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateStep(view workflowdecl.StepView) error {
+func (s SourceSnapshot) ValidateStep(view workflowdecl.Step) error {
 	if err := s.verify(); err != nil {
 		return err
 	}

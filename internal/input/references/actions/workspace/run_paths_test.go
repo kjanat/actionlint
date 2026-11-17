@@ -5,12 +5,14 @@ import (
 	"slices"
 	"testing"
 
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -92,7 +94,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 		t.Fatal("job view unavailable")
 	}
 	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
-	resolver.BeginJob(workflow.Env().Mapping(), workflow.Defaults().Run().Semantic(), job)
+	resolver.BeginJob(declaration.Environment(workflow.Env), declaration.DefaultsRun(workflow.Defaults), job)
 	checkout := slices.Collect(job.Steps())[0]
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()

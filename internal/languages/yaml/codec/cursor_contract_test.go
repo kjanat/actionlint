@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
@@ -25,7 +23,7 @@ func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
 
 func TestEmptySourcesDoNotVisitSelectedFields(t *testing.T) {
 	t.Parallel()
-	var roots []*syntax.Node
+	var roots []*Node
 	for _, data := range []string{"", "# comment\n"} {
 		root, err := Parse([]byte(data))
 		if err != nil {
@@ -33,7 +31,7 @@ func TestEmptySourcesDoNotVisitSelectedFields(t *testing.T) {
 		}
 		roots = append(roots, root)
 	}
-	roots = append(roots, &syntax.Node{Kind: syntax.DocumentNode})
+	roots = append(roots, &Node{Kind: DocumentNode})
 	for _, root := range roots {
 		session, cursor, err := Open(root)
 		if err != nil {
@@ -58,7 +56,7 @@ func TestCursorRejectsNodeAndSelectedDecodeTargetsBeforeConstruction(t *testing.
 		target any
 		want   string
 	}{
-		{&syntax.Node{Value: "unchanged"}, "YAML node fields require an explicit schema traversal"},
+		{&Node{Value: "unchanged"}, "YAML node fields require an explicit schema traversal"},
 		{&struct{ Value Selected }{}, "YAML selections require a Select struct field"},
 	} {
 		cursor := errorCursor(t, []byte("value: input\n"))
@@ -69,7 +67,7 @@ func TestCursorRejectsNodeAndSelectedDecodeTargetsBeforeConstruction(t *testing.
 		if cursor.session.constructions != 0 || cursor.session.aliases != 0 {
 			t.Fatal("rejected target consumed construction budget")
 		}
-		if node, ok := tc.target.(*syntax.Node); ok && node.Value != "unchanged" {
+		if node, ok := tc.target.(*Node); ok && node.Value != "unchanged" {
 			t.Fatalf("rejected node target changed: %+v", node)
 		}
 	}

@@ -31,7 +31,7 @@ const formatted = execFileSync('kprint', ['fmt', '--stdin', 'catalogue.json'], {
 	maxBuffer: 32 << 20,
 });
 writeFileSync(
-	resolve(import.meta.dirname, '../../../internal/model/contexts/events/payload/catalogue.json'),
+	resolve(import.meta.dirname, '../../../internal/model/contexts/events/payload_catalogue.json'),
 	formatted,
 );
 console.log(`Generated ${Object.keys(events).length} events and ${nodes.length} shapes from ${pin.revision}`);

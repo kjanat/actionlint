@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 

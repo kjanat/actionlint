@@ -29,7 +29,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			captures := []capture.Snapshot{captured, aliased}
+			captures := []capture.CapturedDocument{captured, aliased}
 			registry := fixtures.SourceSnapshots
 			documents := []Document{Workflow(content), Action(path, content)}
 			if order == "action-first" {
@@ -37,7 +37,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]SourceSnapshot
 			var failures [2]error
-			var earlierView workflowdecl.StepView
+			var earlierView workflowdecl.Step
 			var earlierReference source.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])

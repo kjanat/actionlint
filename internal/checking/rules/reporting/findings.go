@@ -14,14 +14,14 @@ import (
 // Finding associates a diagnostic with its owning step.
 type Finding struct {
 	findingmodel.Finding
-	Step declaration.StepView
+	Step declaration.Step
 }
 
 // Collector attaches a rule name and step to each reported message.
 type Collector struct {
 	Rule     string
 	Findings []Finding
-	Step     declaration.StepView
+	Step     declaration.Step
 }
 
 func (c *Collector) Error(p *workflow.Pos, text string) {
@@ -40,8 +40,8 @@ func Position(p *workflow.Pos) sourcepos.Position {
 	return sourcepos.Position{Line: p.Line, Column: p.Col}
 }
 
-// ViewPosition returns nil when a view has no source position.
-func ViewPosition(pos workflow.Pos, present bool) *workflow.Pos {
+// OptionalPosition returns nil when a declaration has no source position.
+func OptionalPosition(pos workflow.Pos, present bool) *workflow.Pos {
 	if !present {
 		return nil
 	}
@@ -63,10 +63,9 @@ func FromDiagnostics(ds []results.Diagnostic) []Finding {
 }
 
 // SourcePosition returns a declaration's position, or nil when it has none.
-func SourcePosition(view interface{ Pos() (workflow.Pos, bool) }) *workflow.Pos {
-	position, present := view.Pos()
-	if !present {
+func SourcePosition(s *workflow.String) *workflow.Pos {
+	if s == nil {
 		return nil
 	}
-	return &position
+	return s.Pos
 }

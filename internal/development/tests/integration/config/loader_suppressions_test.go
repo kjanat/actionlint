@@ -5,22 +5,22 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestDisallowSuppressionsConfig(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		value string
-		want  repoconfig.SuppressionReport
+		want  configuration.SuppressionReport
 	}{
-		{"null", repoconfig.SuppressionsAllowed},
-		{"false", repoconfig.SuppressionsAllowed},
-		{"true", repoconfig.ReportAll},
-		{"{}", repoconfig.ReportAll},
-		{"{report: suppression}", repoconfig.ReportSuppression},
-		{"{report: violation}", repoconfig.ReportViolation},
-		{"{report: all}", repoconfig.ReportAll},
+		{"null", configuration.SuppressionsAllowed},
+		{"false", configuration.SuppressionsAllowed},
+		{"true", configuration.ReportAll},
+		{"{}", configuration.ReportAll},
+		{"{report: suppression}", configuration.ReportSuppression},
+		{"{report: violation}", configuration.ReportViolation},
+		{"{report: all}", configuration.ReportAll},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
@@ -33,11 +33,11 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 			}
 		})
 	}
-	var policy repoconfig.SuppressionsPolicy
+	var policy configuration.SuppressionsPolicy
 	if err := decodeConfigYAML([]byte("rules: [cache-operation, cache-operation]\nreport: violation"), &policy); err != nil {
 		t.Fatal(err)
 	}
-	if policy.ReportFor("cache-operation") != repoconfig.ReportViolation || policy.ReportFor("cache-call-unrestricted") != repoconfig.SuppressionsAllowed || len(policy.Rules()) != 1 {
+	if policy.ReportFor("cache-operation") != configuration.ReportViolation || policy.ReportFor("cache-call-unrestricted") != configuration.SuppressionsAllowed || len(policy.Rules()) != 1 {
 		t.Fatalf("rule selection: %+v", policy)
 	}
 	for _, value := range []string{"false", "true", "{}"} {

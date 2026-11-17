@@ -4,14 +4,13 @@ package calls
 import (
 	"fmt"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func expectedMapping(where string, n *syntax.Node) error {
+func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf(
 		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
 		where,
@@ -21,46 +20,16 @@ func expectedMapping(where string, n *syntax.Node) error {
 	)
 }
 
-// InputType is the declared type of a reusable workflow input. GitHub accepts
-// only boolean, number and string; any other or omitted type is unknown.
-type InputType uint8
-
-const (
-	// InputTypeAny is an unknown type; every value is assignable.
-	InputTypeAny InputType = iota
-	// InputTypeBoolean is "type: boolean".
-	InputTypeBoolean
-	// InputTypeNumber is "type: number".
-	InputTypeNumber
-	// InputTypeString is "type: string".
-	InputTypeString
-)
-
-// ExprType returns the expression type a value passed to the input must be assignable to.
-func (t InputType) ExprType() exprtypes.Type {
-	switch t {
-	case InputTypeBoolean:
-		return exprtypes.BoolType()
-	case InputTypeNumber:
-		return exprtypes.NumberType()
-	case InputTypeString:
-		return exprtypes.StringType()
-	case InputTypeAny:
-	}
-	return exprtypes.AnyType()
-}
-
-// String returns the expression type's spelling, as used in diagnostics.
-func (t InputType) String() string { return t.ExprType().String() }
-
 // Input describes an input declared by a local reusable workflow.
 type Input struct {
 	// Name is a name of the input defined in the reusable workflow.
 	Name string
 	// Required is true when 'required' field of the input is set to true and no default value is set.
 	Required bool
-	// Type is the declared type of the input.
-	Type InputType
+	// Type is the declared type of the input. GitHub accepts only boolean,
+	// number and string; any other or omitted type is
+	// WorkflowCallEventInputTypeInvalid and accepts every value.
+	Type workflowlang.WorkflowCallEventInputType
 }
 
 // Inputs maps lowercase input names to reusable workflow input metadata.
@@ -154,17 +123,6 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 		return CacheAccess{}, false
 	}
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
-}
-
-//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/model/calls -type Metadata -output internal/model/calls/owned_copy.gen.go
-
-// Clone returns a copy that shares no map or slice storage with m.
-func (m *Metadata) Clone() *Metadata {
-	if m == nil {
-		return nil
-	}
-	result := copyOwnedMetadata(*m)
-	return &result
 }
 
 func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {

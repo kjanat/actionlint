@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -152,7 +151,7 @@ type textScalar struct {
 func (v *textScalar) UnmarshalText(data []byte) error { v.Value = string(data); v.Calls++; return nil }
 
 type textWithNode struct {
-	Node   syntax.Node
+	Node   codec.Node
 	Value  string
 	Called bool
 }

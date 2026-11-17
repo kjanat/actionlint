@@ -70,7 +70,7 @@ func documentPluginSources(t *testing.T, manifest manifests.Manifest) plugininst
 	}
 	sum := sha256.Sum256(data)
 	location := "https://plugins.example.invalid/document.json#sha256=" + hex.EncodeToString(sum[:])
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.Info{Kind: pluginartifact.ProviderManifest, Source: location}, Bytes: data}
+	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Kind: pluginartifact.ProviderManifest, Source: location}, Bytes: data}
 	return plugininstall.Sources{Paths: []string{location}, Artifacts: map[string]*pluginartifact.Artifact{location: artifact}}
 }
 

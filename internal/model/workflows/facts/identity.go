@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -106,7 +105,7 @@ func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
 }
 
 func (s Skeleton) Bind(path string, content []byte) References {
-	index := sourceid.New(path, content)
+	index := source.NewReferenceIndex(path, content)
 	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*workflowlang.Step]source.Reference{}, StepJobs: map[*workflowlang.Step]string{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
 	var walk func(string, []skeletonStep)
 	walk = func(owner string, steps []skeletonStep) {

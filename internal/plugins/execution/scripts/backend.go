@@ -19,7 +19,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
@@ -136,7 +136,7 @@ type processRunner interface {
 	Concurrent() bool
 }
 
-func (r runner) scriptEnabled(cfg *config.Config) bool {
+func (r runner) scriptEnabled(cfg *configuration.Config) bool {
 	if r.options.enabled == nil {
 		return true
 	}
@@ -391,7 +391,7 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 	}
 	start, ok := script.Source.Position(row, d.Location.Column)
 	if !ok {
-		start, hasEnd = *script.Key, false
+		start, hasEnd = script.Key, false
 	}
 	var end sourcepos.Position
 	if hasEnd {

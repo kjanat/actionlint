@@ -9,7 +9,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 type partialGuest struct {
@@ -37,7 +37,7 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 		for _, grant := range []bool{false, true} {
 			batch := documentBatchFixture(t, 3)
 			nativeIndex := 1 - failureAt
-			cfg, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
+			cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +48,7 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 				context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
-				native: func(*config.Config) (tools.Runner, error) {
+				native: func(*configuration.Config) (tools.Runner, error) {
 					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
 						nativeCalls++
 						if len(selected.Scripts) != 1 || selected.Scripts[0].Fact.Occurrence.ID != batch.Scripts[nativeIndex].Fact.Occurrence.ID || len(selected.Scopes) != 0 {

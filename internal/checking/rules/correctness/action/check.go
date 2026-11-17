@@ -9,12 +9,12 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	identifier "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/id"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
@@ -80,7 +80,7 @@ func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*
 }
 
 // Inputs validates supplied and required inputs against resolved action metadata.
-func Inputs(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
+func Inputs(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
 	rule := validator{}
 	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
@@ -450,8 +450,8 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, calle
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl.ExecActionView, description string) {
-	inputs := exec.ResolvedInputs()
+func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlang.ExecAction, description string) {
+	inputs := workflowdecl.ResolvedInputs(exec)
 	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
 	for key := range inputs.KeyedEntries() {
@@ -509,7 +509,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 					}
 				}
 				rule.Errorf(
-					positionPointer(exec.Uses().Pos()),
+					positionPointer(exec.Uses.Position()),
 					actionmeta.CodeRequiredInput,
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
@@ -556,10 +556,10 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 	node := actionmeta.Node(rule.standalone.Root)
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	for _, field := range fields {
-		if node == nil || node.Kind != syntax.MappingNode {
+		if node == nil || node.Kind != codec.MappingNode {
 			break
 		}
-		var next *syntax.Node
+		var next *codec.Node
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {

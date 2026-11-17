@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -203,7 +203,7 @@ func TestCachedMetadataIsVisibleDuringDocumentNotification(t *testing.T) {
 	entered, release, notified := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(unblock)
-	cache.Configure(Options{OnDocument: func(_ capture.Snapshot, _ string, _ *actionmeta.Metadata, _ error) {
+	cache.Configure(Options{OnDocument: func(_ capture.CapturedDocument, _ string, _ *actionmeta.Metadata, _ error) {
 		close(entered)
 		<-release
 		close(notified)
@@ -269,7 +269,7 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 			writeFixture(t, root, "action/action.yml", content)
 			cache := newCapturedActionCache(t, root, nil)
 			var notifications atomic.Int32
-			cache.Configure(Options{OnDocument: func(captured capture.Snapshot, path string, metadata *actionmeta.Metadata, parseErr error) {
+			cache.Configure(Options{OnDocument: func(captured capture.CapturedDocument, path string, metadata *actionmeta.Metadata, parseErr error) {
 				notifications.Add(1)
 				published, exists := cache.readCache("./action")
 				cache.mu.RLock()

@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -48,22 +49,24 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 	if len(collector.inputs) != 2 {
 		t.Fatalf("received %d inputs", len(collector.inputs))
 	}
-	seen := map[checkinputs.OccurrenceID]bool{}
+	seen := map[invocation.ID]bool{}
 	for _, input := range collector.inputs {
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		graph := input.CallGraph.Export()
 		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 6 {
-			t.Fatalf("incomplete nested input: %+v", graph)
+			t.Fatalf("incomplete nested input: %+v", input.CallGraph.Calls())
 		}
 		left, right := input.Invoked[0], input.Invoked[1]
-		if left.Reference != right.Reference || left.Occurrence.Owner == right.Occurrence.Owner || left.Occurrence.Ancestry[1] == right.Occurrence.Ancestry[1] {
+		leftChain, _ := input.CallGraph.Chain(left.Occurrence.Owner)
+		rightChain, _ := input.CallGraph.Chain(right.Occurrence.Owner)
+		if left.Reference != right.Reference || left.Occurrence.Owner == right.Occurrence.Owner || leftChain[1] == rightChain[1] {
 			t.Fatal("shared declaration lost distinct outer calls")
 		}
 		for _, script := range input.Invoked {
 			occurrence := script.Occurrence
-			if occurrence.Depth != 3 || len(occurrence.Ancestry) != 4 || occurrence.Ancestry[0] != input.CallGraph.Entry().ID || occurrence.Ancestry[3] != occurrence.Owner || seen[occurrence.ID] {
+			chain, _ := input.CallGraph.Chain(occurrence.Owner)
+			if len(chain) != 4 || chain[0] != input.CallGraph.RootID() || chain[3] != occurrence.Owner || seen[occurrence.ID] {
 				t.Fatalf("lost occurrence identity across entries: %+v", occurrence)
 			}
 			seen[occurrence.ID] = true

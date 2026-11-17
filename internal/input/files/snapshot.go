@@ -15,9 +15,9 @@ import (
 	"time"
 )
 
-// SnapshotFS exposes bounded, read-only file snapshots beneath an open root.
+// BoundedFS exposes bounded, read-only file snapshots beneath an open root.
 // Every lookup is root-contained, including when symlinks change concurrently.
-type SnapshotFS struct {
+type BoundedFS struct {
 	ctx    context.Context
 	root   *os.Root
 	reader *Reader
@@ -94,7 +94,7 @@ type snapshotName struct {
 }
 
 // NewSnapshot opens an explicit directory grant. Close it after guest teardown.
-func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *SnapshotBudget) (*SnapshotFS, error) {
+func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *SnapshotBudget) (*BoundedFS, error) {
 	root, err := os.OpenRoot(directory)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *
 
 // NewSnapshotAt opens a child grant through an already authorized root. The
 // parent stays caller-owned; the snapshot owns its independently opened child.
-func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Reader, budget *SnapshotBudget) (*SnapshotFS, error) {
+func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Reader, budget *SnapshotBudget) (*BoundedFS, error) {
 	root, err := parent.OpenRoot(name)
 	if err != nil {
 		return nil, err
@@ -112,27 +112,27 @@ func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Re
 	return newSnapshot(ctx, root, reader, budget), nil
 }
 
-func newSnapshot(ctx context.Context, root *os.Root, reader *Reader, budget *SnapshotBudget) *SnapshotFS {
+func newSnapshot(ctx context.Context, root *os.Root, reader *Reader, budget *SnapshotBudget) *BoundedFS {
 	if budget == nil {
 		budget = &SnapshotBudget{}
 	}
-	return &SnapshotFS{ctx: ctx, root: root, reader: reader, files: make(map[string]*snapshotData), names: make(map[string]snapshotName), budget: budget}
+	return &BoundedFS{ctx: ctx, root: root, reader: reader, files: make(map[string]*snapshotData), names: make(map[string]snapshotName), budget: budget}
 }
 
-func (s *SnapshotFS) Close() error {
+func (s *BoundedFS) Close() error {
 	s.budget.mu.Lock()
 	defer s.budget.mu.Unlock()
 	return errors.Join(s.root.Close(), s.budget.err())
 }
 
-func (s *SnapshotFS) Open(name string) (fs.File, error) {
+func (s *BoundedFS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
 	return s.open(name)
 }
 
-func (s *SnapshotFS) open(name string) (fs.File, error) {
+func (s *BoundedFS) open(name string) (fs.File, error) {
 	if err := s.ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (s *SnapshotFS) open(name string) (fs.File, error) {
 	return &snapshotFile{Reader: bytes.NewReader(data), info: detached}, nil
 }
 
-func (s *SnapshotFS) lookup(name string) error {
+func (s *BoundedFS) lookup(name string) error {
 	s.budget.mu.Lock()
 	defer s.budget.mu.Unlock()
 	if s.budget.lookups >= 4096 {
@@ -215,7 +215,7 @@ func (s *SnapshotFS) lookup(name string) error {
 // ReadFile reads name through the snapshot: the bytes the guest read if it
 // read the file, otherwise a new root-contained read within the budget. It
 // records the read like a guest's.
-func (s *SnapshotFS) ReadFile(name string) ([]byte, error) {
+func (s *BoundedFS) ReadFile(name string) ([]byte, error) {
 	file, err := s.Open(name)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", name, err)
@@ -232,7 +232,7 @@ func (s *SnapshotFS) ReadFile(name string) ([]byte, error) {
 }
 
 // Content returns the resolved name and exact bytes read by the guest.
-func (s *SnapshotFS) Content(name string) (string, []byte, bool) {
+func (s *BoundedFS) Content(name string) (string, []byte, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	name = s.names[sourceSpelling(name)].path
@@ -245,7 +245,7 @@ func (s *SnapshotFS) Content(name string) (string, []byte, bool) {
 
 // Resolve symlinks before processing '..' so dependency paths match filesystem traversal.
 // os.Root confines every metadata lookup and the subsequent file open.
-func (s *SnapshotFS) resolve(name string) (snapshotName, error) {
+func (s *BoundedFS) resolve(name string) (snapshotName, error) {
 	if path.IsAbs(name) || strings.ContainsAny(name, "\\\x00") {
 		return snapshotName{}, fs.ErrPermission
 	}
@@ -339,7 +339,7 @@ func (f *snapshotFile) Stat() (fs.FileInfo, error) { return f.info, nil }
 func (*snapshotFile) Close() error                 { return nil }
 
 type snapshotDirectory struct {
-	fs   *SnapshotFS
+	fs   *BoundedFS
 	name string
 	info fileInfo
 }

@@ -3,9 +3,7 @@ package correctness
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -42,33 +40,33 @@ func (rule *ruleExecutableBit) FindingCount() int             { return rule.find
 func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
 	rule.findings.AnnotateSince(mark, annotate)
 }
-func (rule *ruleExecutableBit) VisitWorkflowPost(workflowdecl.WorkflowView) error { return nil }
-func (rule *ruleExecutableBit) VisitJobPost(workflowdecl.JobView) error           { return nil }
+func (rule *ruleExecutableBit) VisitWorkflowPost(workflowdecl.Workflow) error { return nil }
+func (rule *ruleExecutableBit) VisitJobPost(workflowdecl.Job) error           { return nil }
 func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver) {
 	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
 }
 
 type executableInvocation struct {
-	scope  checkcalls.Invocation
+	scope  workflowvisit.Invocation
 	parent *ExecutableChecker
 }
 
-func (rule *ruleExecutableBit) VisitStep(step workflowdecl.StepView) error {
+func (rule *ruleExecutableBit) VisitStep(step workflowdecl.Step) error {
 	if _, action := step.Action(); action {
 		return nil
 	}
 	return rule.VisitInvocationStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitInvocationStep(step workflowdecl.StepView) error {
+func (rule *ruleExecutableBit) VisitInvocationStep(step workflowdecl.Step) error {
 	return rule.ExecutableChecker.VisitStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.Step) error {
 	return rule.VisitInvocationStep(step)
 }
 
-func (rule *ruleExecutableBit) EnterInvocation(scope checkcalls.Invocation) error {
+func (rule *ruleExecutableBit) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
@@ -88,4 +86,4 @@ func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error
 	return nil
 }
 
-var _ checkcalls.InvocationParticipant = (*ruleExecutableBit)(nil)
+var _ workflowvisit.InvocationParticipant = (*ruleExecutableBit)(nil)

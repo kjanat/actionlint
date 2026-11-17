@@ -14,7 +14,7 @@ import (
 	sourceref "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -38,7 +38,7 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, commit, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,9 +103,9 @@ jobs:
       - id: action
         uses: ` + uses + tc.extra + "\npermissions: {}\n"
 				request := checking.Options{WorkingDir: root, RemoteActions: literalMetadataFixture{remote}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-				var requestSources []workspace.Source
+				var requestSources []workspace.InputFile
 				var err error
-				requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: workspace.Identity(root).Config()}}
+				requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: workspace.Identity(root).Config()}}
 				diagnostics, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
 					t.Fatal(err)
@@ -133,9 +133,9 @@ func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 	t.Parallel()
 	for _, uses := range []string{"oooops", "${{ 'oooops' }}"} {
 		request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-		var requestSources []workspace.Source
+		var requestSources []workspace.InputFile
 		var err error
-		requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push
+		requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push
 jobs:
   call:
     uses: ` + uses + "\npermissions: {}\n"), Project: nil}}

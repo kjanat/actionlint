@@ -9,7 +9,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -23,8 +23,8 @@ func (r routingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 
 func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	t.Parallel()
-	disabled, enabled := &config.Config{}, &config.Config{}
-	disabled.Overrides = []config.Override{{Includes: []string{"other/**"}}}
+	disabled, enabled := &configuration.Config{}, &configuration.Config{}
+	disabled.Overrides = []configuration.Override{{Includes: []string{"other/**"}}}
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
@@ -43,7 +43,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			}), nil
 		},
 	}
-	disabled.Tools = config.ToolsConfig{"ruff": {Enabled: new(false)}}
+	disabled.Tools = configuration.ToolsConfig{"ruff": {Enabled: new(false)}}
 	calls := 0
 	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		calls++
@@ -281,7 +281,7 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 
 func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 	t.Parallel()
-	first, second := &config.Config{}, &config.Config{}
+	first, second := &configuration.Config{}, &configuration.Config{}
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "code", Language: "python"}
 	checks, nativeCalls := 0, 0
 	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {

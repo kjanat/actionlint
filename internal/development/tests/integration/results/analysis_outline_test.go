@@ -11,13 +11,14 @@ import (
 	"strings"
 	"testing"
 
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
@@ -41,7 +42,7 @@ jobs:
     needs: ZBuild
     uses: ./.github/workflows/deploy.yml
 `
-	analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{
+	analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{
 		{Path: "clean.yml", Content: []byte(source)},
 		{Path: "partial.yml", Content: []byte(strings.Replace(source, "run: echo hi", "unexpected: value", 1))},
 		{Path: "broken.yml", Content: []byte("jobs: [")},
@@ -55,32 +56,32 @@ jobs:
 	clean := requireWorkflowOutline(t, analysis.Documents[0])
 	partial := requireWorkflowOutline(t, analysis.Documents[1])
 	broken := requireWorkflowOutline(t, analysis.Documents[2])
-	if clean.DocumentPath() != "clean.yml" || clean.Name() != "Build" || clean.ParseStatus() != "complete" || !reflect.DeepEqual(clean.Triggers(), []string{"push", "workflow_dispatch"}) {
+	if clean.DocumentPath() != "clean.yml" || clean.Name != "Build" || clean.ParseStatus != "complete" || !reflect.DeepEqual(clean.Triggers, []string{"push", "workflow_dispatch"}) {
 		t.Fatalf("wrong workflow: %+v", clean)
 	}
-	if len(clean.Jobs()) != 2 || clean.Jobs()[0].ID() != "ZBuild" || clean.Jobs()[1].ID() != "ADeploy" {
-		t.Fatalf("job casing/source order lost: %+v", clean.Jobs())
+	if len(clean.Jobs) != 2 || clean.Jobs[0].ID != "ZBuild" || clean.Jobs[1].ID != "ADeploy" {
+		t.Fatalf("job casing/source order lost: %+v", clean.Jobs)
 	}
-	build, deploy := clean.Jobs()[0], clean.Jobs()[1]
-	if build.Name() != "${{ github.ref }}" || build.Start() == nil || *build.Start() != (sourcepos.Position{Line: 4, Column: 3}) {
+	build, deploy := clean.Jobs[0], clean.Jobs[1]
+	if build.Name != "${{ github.ref }}" || build.Start == nil || *build.Start != (sourcepos.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared expression/location lost: %+v", build)
 	}
-	if len(build.Steps()) != 2 || build.Steps()[0].Kind() != "uses" || build.Steps()[0].Uses() != "actions/checkout@v7" || build.Steps()[1].Kind() != "run" || build.Steps()[1].ID() != "script" {
-		t.Fatalf("wrong steps: %+v", build.Steps())
+	if len(build.Steps) != 2 || build.Steps[0].Kind != "uses" || build.Steps[0].Uses != "actions/checkout@v7" || build.Steps[1].Kind != "run" || build.Steps[1].ID != "script" {
+		t.Fatalf("wrong steps: %+v", build.Steps)
 	}
-	if build.Steps()[0].Start() == nil || *build.Steps()[0].Start() != (sourcepos.Position{Line: 8, Column: 9}) {
-		t.Fatalf("step location lost: %+v", build.Steps()[0])
+	if build.Steps[0].Start == nil || *build.Steps[0].Start != (sourcepos.Position{Line: 8, Column: 9}) {
+		t.Fatalf("step location lost: %+v", build.Steps[0])
 	}
-	if !reflect.DeepEqual(deploy.Needs(), []string{"ZBuild"}) || deploy.Uses() != "./.github/workflows/deploy.yml" || deploy.Steps() == nil || len(deploy.Steps()) != 0 {
+	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference(), documentmodel.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference(), callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference())
 	}
-	if partial.DocumentPath() != "partial.yml" || partial.ParseStatus() != "partial" || len(partial.Jobs()) != 2 || partial.Jobs()[0].Steps()[1].Kind() != "unknown" {
+	if partial.DocumentPath() != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
 		t.Fatalf("partial tree lost: %+v", partial)
 	}
-	if broken.DocumentPath() != "broken.yml" || broken.ParseStatus() != "failed" || broken.Jobs() == nil || len(broken.Jobs()) != 0 {
+	if broken.DocumentPath() != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
 	renderer, err := render.New(render.FormatJSON, "", false, buildinfo.Version, nil)
@@ -141,7 +142,7 @@ jobs:
       - uses: $/missing
 permissions: {}
 `
-	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
+	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,11 +150,11 @@ permissions: {}
 		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
 	}
 	action, ok := analysis.Documents[1].(documentmodel.Action)
-	if !ok || action.DocumentPath() != "action.yml" || action.ParseStatus() != "complete" {
+	if !ok || action.DocumentPath() != "action.yml" || action.ParseStatus != "complete" {
 		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
 	}
 	broken, ok := analysis.Documents[2].(documentmodel.Action)
-	if !ok || broken.ParseStatus() != "failed" {
+	if !ok || broken.ParseStatus != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
 	data, err := json.Marshal(commandstatus.AnalysisResult(*analysis))
@@ -202,7 +203,7 @@ jobs:
       - uses: $/
 permissions: {}
 `
-			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
+			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -210,7 +211,7 @@ permissions: {}
 				t.Fatalf("missing action inventory: %+v", analysis.Documents)
 			}
 			action, ok := analysis.Documents[1].(documentmodel.Action)
-			if !ok || action.ParseStatus() != "complete" {
+			if !ok || action.ParseStatus != "complete" {
 				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
 			}
 			for _, message := range tc.messages {
@@ -251,13 +252,13 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
-			setting, err := repoconfig.NewSetting("bogus", nil)
+			setting, err := configuration.NewSetting("bogus", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
-			config := &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
-			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
+			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+			config := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
+			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
 			if err == nil || !strings.Contains(err.Error(), "rule level") {
 				t.Fatalf("invalid action configuration was accepted: %v", err)
 			}
@@ -286,18 +287,18 @@ jobs:
       - uses: ./local
 permissions: {}
 `
-	bogus := func(include string) *repoconfig.Config {
-		setting, err := repoconfig.NewSetting("bogus", nil)
+	bogus := func(include string) *configuration.Config {
+		setting, err := configuration.NewSetting("bogus", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
-		return &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{include}, Lint: lint}}}
+		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+		return &configuration.Config{Overrides: []configuration.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"
 	for _, tc := range []struct {
 		name    string
-		config  *repoconfig.Config
+		config  *configuration.Config
 		ruff    string
 		sources map[string]string
 		wantErr string
@@ -312,9 +313,9 @@ permissions: {}
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var sources []workspace.Source
+			var sources []workspace.InputFile
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
-				sources = append(sources, workspace.Source{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
+				sources = append(sources, workspace.InputFile{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
 			}
 			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: tc.ruff}})}, sources)
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
@@ -327,9 +328,9 @@ permissions: {}
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
 				case documentmodel.Workflow:
-					got = append(got, document.DocumentPath()+":"+document.ParseStatus())
+					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
 				case documentmodel.Action:
-					got = append(got, document.DocumentPath()+":"+document.ParseStatus())
+					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
 				default:
 					t.Fatalf("unexpected document %T", document)
 				}

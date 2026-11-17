@@ -383,7 +383,7 @@ To refresh only these tables, run `go run ./internal/development/generators/acti
 
 ### JavaScript action runtime lifecycle
 
-`go run ./internal/development/generators/action-metadata -runtimes` refreshes `internal/model/actions/runtimes.gen.go`. It reads the accepted `runs.using` values from the runner's current and legacy manifest parsers. It gets bundled Node executables from `src/Misc/externals.sh` and deprecation notices and removal dates from `Constants.cs`. The action template schema requires a nonempty string at `runs.using` but does not list the accepted versions or their support dates.
+`go run ./internal/development/generators/action-metadata -runtimes` refreshes `internal/model/actionmeta/runtimes.gen.go`. It reads the accepted `runs.using` values from the runner's current and legacy manifest parsers. It gets bundled Node executables from `src/Misc/externals.sh` and deprecation notices and removal dates from `Constants.cs`. The action template schema requires a nonempty string at `runs.using` but does not list the accepted versions or their support dates.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
@@ -439,8 +439,8 @@ See [the script README][the readme of the script-2] for usage and the document f
 [`.golangci.toml`]: ./.golangci.toml
 [`Dockerfile`]: ./distribution/docker/Dockerfile
 [`Upkeep`]: .github/workflows/upkeep.yml
-[action-availability]: ./internal/model/actions/availability.gen.go
-[`webhooks.gen.go`]: ./internal/model/contexts/events/triggers/webhooks.gen.go
+[action-availability]: ./internal/model/actionmeta/availability.gen.go
+[`webhooks.gen.go`]: ./internal/model/contexts/events/webhooks.gen.go
 [`availability.gen.go`]: ./internal/model/contexts/availability.gen.go
 [`check-checks`]: ./internal/development/tests/integration/documentation
 [`ci.yml`]: .github/workflows/ci.yml

@@ -1,5 +1,5 @@
-// Package runner resolves workflow runner declarations and platform behavior.
-package runner
+// Package runners resolves workflow runner declarations and platform behavior.
+package runners
 
 // Platform identifies runner path and shell conventions known to analysis.
 type Platform int

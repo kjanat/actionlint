@@ -13,7 +13,7 @@ import (
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -122,7 +122,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 }
 
 // readFixtureSources reads snapshots for tests that supply their own project and config.
-func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []sourceUnit {
+func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []sourceUnit {
 	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
@@ -170,7 +170,7 @@ func testFindings(result *analysisResult, err error) ([]*findingmodel.Finding, e
 func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*findingmodel.Finding {
 	t.Helper()
 	request := analysisRequest{}
-	var lConfig *repoconfig.Config
+	var lConfig *configuration.Config
 	var err error
 
 	if config != "" {

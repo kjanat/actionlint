@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
@@ -150,7 +150,7 @@ func editTOMLPlugins(original []byte, sequence []any) ([]byte, error) {
 func pluginTOMLTables(sequence []any, newline string) ([]byte, error) {
 	var tables []byte
 	for index, entry := range sequence {
-		var declarations config.PluginDeclarations
+		var declarations configuration.PluginDeclarations
 		if err := declarations.DecodeConfig([]any{entry}); err != nil {
 			return nil, err
 		}
@@ -164,7 +164,7 @@ func pluginTOMLTables(sequence []any, newline string) ([]byte, error) {
 			fields = append(fields, [2]string{"source", ref.DirectSource()})
 		} else {
 			fields = append(fields, [2]string{"name", ref.Name()}, [2]string{"version", ref.Version()})
-			if ref.Registry() != pluginref.DefaultRegistry {
+			if ref.Registry() != pluginreference.DefaultRegistry {
 				fields = append(fields, [2]string{"registry", ref.Registry()})
 			}
 			if digest := ref.CandidateDigest(); digest != "" {

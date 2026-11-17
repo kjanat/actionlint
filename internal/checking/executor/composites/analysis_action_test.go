@@ -7,15 +7,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -73,7 +72,7 @@ func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.
 	return nil
 }
 
-func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return rule
 }
 
@@ -142,7 +141,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 				t.Fatal(err)
 			}
 			scripts := result.Batch.Scripts()
-			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+			if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 				t.Fatalf("rejected run entered standalone script batch: %+v", scripts)
 			}
 			found := false
@@ -177,9 +176,9 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatalf("empty composite script lost: scripts=%d findings=%v", len(scripts), result.Findings)
 	}
 	run := scripts[0].Run
-	if !run.Run().SourceScalar().HasSource || !run.Source().Present() || run.Run().Value() != "" {
+	if !run.Run.SourceScalar.HasSource || run.Source == nil || run.Run.Text() != "" {
 		t.Fatal("empty script lost its physical scalar or source mapping")
 	}
 }
 
-var _ checkcalls.MetadataParticipant = (*mutatingStandaloneMetadata)(nil)
+var _ workflowvisit.MetadataParticipant = (*mutatingStandaloneMetadata)(nil)

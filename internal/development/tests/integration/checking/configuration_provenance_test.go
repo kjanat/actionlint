@@ -26,7 +26,7 @@ func TestLoadedConfigProvenanceReachesAnalysisInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root},
-		[]workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs: {}\n"), Config: cfg.Config, ConfigProvenance: cfg.Provenance}},
+		[]workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs: {}\n"), Config: cfg.Config, ConfigProvenance: cfg.Provenance}},
 	)
 	if err != nil {
 		t.Fatal(err)

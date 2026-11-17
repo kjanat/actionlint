@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -48,7 +48,7 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 						t.Error(err)
 						return
 					}
-					documents.add(captured.Revision().Document(), documentmodel.NewAction(documentmodel.ActionFields{Path: path, Name: "virtual"}))
+					documents.add(captured.Revision().Document(), documentmodel.Action{Path: path, Name: "virtual"})
 				}
 				var workers sync.WaitGroup
 				for _, path := range paths {
@@ -92,7 +92,7 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 		t.Fatalf("one virtual manifest produced duplicate outlines through parent aliases: %+v", result.Documents)
 	}
 	outline, ok := result.Documents[1].(documentmodel.Action)
-	if !ok || outline.Name() != "virtual" || outline.ParseStatus() != "complete" || outline.DocumentPath() != filepath.Join("alias", "virtual", "action.yml") {
+	if !ok || outline.Name != "virtual" || outline.ParseStatus != "complete" || outline.DocumentPath() != filepath.Join("alias", "virtual", "action.yml") {
 		t.Fatalf("virtual action outline missing: %+v", result.Documents)
 	}
 }
@@ -138,12 +138,12 @@ func TestSharedActionOutlinesAreCompleteAfterBatch(t *testing.T) {
 			}
 			for path, action := range outlines {
 				if path == filepath.Join("shared", "action.yml") && broken {
-					if action.ParseStatus() == "complete" {
+					if action.ParseStatus == "complete" {
 						t.Fatal("broken shared action reported as complete")
 					}
 					continue
 				}
-				if action.ParseStatus() != "complete" || action.Name() == "" {
+				if action.ParseStatus != "complete" || action.Name == "" {
 					t.Fatalf("missing recovered declaration: %+v", action)
 				}
 			}

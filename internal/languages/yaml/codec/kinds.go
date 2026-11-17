@@ -3,36 +3,34 @@ package codec
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 var kinds = [...]struct {
-	owned  syntax.Kind
+	owned  Kind
 	parser upstream.Kind
 }{
 	{0, 0},
-	{syntax.DocumentNode, upstream.DocumentNode},
-	{syntax.SequenceNode, upstream.SequenceNode},
-	{syntax.MappingNode, upstream.MappingNode},
-	{syntax.ScalarNode, upstream.ScalarNode},
-	{syntax.AliasNode, upstream.AliasNode},
+	{DocumentNode, upstream.DocumentNode},
+	{SequenceNode, upstream.SequenceNode},
+	{MappingNode, upstream.MappingNode},
+	{ScalarNode, upstream.ScalarNode},
+	{AliasNode, upstream.AliasNode},
 }
 
 var styles = [...]struct {
-	owned  syntax.Style
+	owned  Style
 	parser upstream.Style
 }{
-	{syntax.TaggedStyle, upstream.TaggedStyle},
-	{syntax.DoubleQuotedStyle, upstream.DoubleQuotedStyle},
-	{syntax.SingleQuotedStyle, upstream.SingleQuotedStyle},
-	{syntax.LiteralStyle, upstream.LiteralStyle},
-	{syntax.FoldedStyle, upstream.FoldedStyle},
-	{syntax.FlowStyle, upstream.FlowStyle},
+	{TaggedStyle, upstream.TaggedStyle},
+	{DoubleQuotedStyle, upstream.DoubleQuotedStyle},
+	{SingleQuotedStyle, upstream.SingleQuotedStyle},
+	{LiteralStyle, upstream.LiteralStyle},
+	{FoldedStyle, upstream.FoldedStyle},
+	{FlowStyle, upstream.FlowStyle},
 }
 
-func ownedKind(kind upstream.Kind) (syntax.Kind, error) {
+func ownedKind(kind upstream.Kind) (Kind, error) {
 	for _, pair := range kinds {
 		if kind == pair.parser {
 			return pair.owned, nil
@@ -41,7 +39,7 @@ func ownedKind(kind upstream.Kind) (syntax.Kind, error) {
 	return 0, fmt.Errorf("unsupported parser YAML node kind %d", kind)
 }
 
-func parserKind(kind syntax.Kind) (upstream.Kind, error) {
+func parserKind(kind Kind) (upstream.Kind, error) {
 	for _, pair := range kinds {
 		if kind == pair.owned {
 			return pair.parser, nil
@@ -50,8 +48,8 @@ func parserKind(kind syntax.Kind) (upstream.Kind, error) {
 	return 0, fmt.Errorf("unsupported YAML node kind %d", kind)
 }
 
-func ownedStyle(style upstream.Style) (syntax.Style, error) {
-	var result syntax.Style
+func ownedStyle(style upstream.Style) (Style, error) {
+	var result Style
 	for _, pair := range styles {
 		if style&pair.parser != 0 {
 			result |= pair.owned
@@ -64,7 +62,7 @@ func ownedStyle(style upstream.Style) (syntax.Style, error) {
 	return result, nil
 }
 
-func parserStyle(style syntax.Style) (upstream.Style, error) {
+func parserStyle(style Style) (upstream.Style, error) {
 	var result upstream.Style
 	for _, pair := range styles {
 		if style&pair.owned != 0 {

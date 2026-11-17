@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 // ToolIntegration advertises an optional, versioned host tool profile.
@@ -76,4 +77,4 @@ type ShellScriptInput struct {
 	Lines      []ShellScriptLine
 	Excluded   []uint32
 }
-type ShellScriptInputBuilder func(context.Context, OccurrenceID, *string) (*ShellScriptInput, error)
+type ShellScriptInputBuilder func(context.Context, invocation.ID, *string) (*ShellScriptInput, error)

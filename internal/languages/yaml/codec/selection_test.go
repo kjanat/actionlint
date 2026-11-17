@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 	"github.com/kjanat/go-yaml/v4/plugin/limit"
 )
@@ -30,7 +29,7 @@ type selectionCycleNode struct {
 
 type selectionHookField struct{ Value string }
 
-func (*selectionHookField) UnmarshalYAML(*syntax.Node) error { return nil }
+func (*selectionHookField) UnmarshalYAML(*Node) error { return nil }
 
 type selectionInput struct {
 	Name    string `yaml:"name"`
@@ -65,7 +64,7 @@ func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	copyNode := root.Content[0].Content[3]
-	if copyNode.Kind != syntax.AliasNode || copyNode.Alias != root.Content[0].Content[1] {
+	if copyNode.Kind != AliasNode || copyNode.Alias != root.Content[0].Content[1] {
 		t.Fatalf("parsed alias does not target original node: %#v", copyNode)
 	}
 
@@ -152,7 +151,7 @@ picked: *items
 		var target selectionSource
 		var got []selectionInput
 		err = cursor.Select(&target, func(_ *Selected, occurrence Cursor) error {
-			if occurrence.Node().Kind != syntax.AliasNode {
+			if occurrence.Node().Kind != AliasNode {
 				return fmt.Errorf("selected occurrence kind = %v, want alias", occurrence.Node().Kind)
 			}
 			entered, err := occurrence.Enter()
@@ -309,7 +308,7 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 		}},
 		{"node field", "YAML node fields require an explicit schema traversal", func(cursor Cursor) error {
 			return cursor.Select(&struct {
-				Value *syntax.Node `yaml:"value"`
+				Value *Node `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
 		{"nested marker", "YAML selections require a Select struct field", func(cursor Cursor) error {

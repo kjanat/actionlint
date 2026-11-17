@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 type expressionShellProvider struct{ shell string }
@@ -64,7 +64,7 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 				Snapshot:  runner.Snapshot{Scope: "test", Freshness: runner.Fresh, Complete: true},
 				Providers: []runner.Registration{{ImplementationID: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
 			}}
-			result, err := checking.Analyze(t.Context(), options, []workspace.Source{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}

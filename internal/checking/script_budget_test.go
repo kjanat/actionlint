@@ -24,7 +24,7 @@ func TestScriptBudgetWithoutRegisteredTools(t *testing.T) {
 			loads++
 			return nil, errors.New("unexpected script engine load")
 		},
-	}, []workspace.Source{{Path: "budget.yml", Content: []byte(content)}})
+	}, []workspace.InputFile{{Path: "budget.yml", Content: []byte(content)}})
 	if !errors.Is(err, invocation.ErrScriptBudget) || result == nil || loads != 0 {
 		t.Fatalf("no-tool analysis lost budget or loaded an engine: result=%v error=%v loads=%d", result != nil, err, loads)
 	}

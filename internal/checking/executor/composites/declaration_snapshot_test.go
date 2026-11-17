@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -128,7 +128,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			}
 			for i, target := range []*actionmeta.Metadata{first, second} {
 				unit := units[i]
-				if !unit.Run.Present() || unit.Run.Run().Value() != run.Run().Value() || unit.Origin.StepPosition.Line != stepPosition(t, steps[0]).Line {
+				if unit.Run == nil || unit.Run.Run.Text() != run.Run.Text() || unit.Origin.StepPosition.Line != stepPosition(t, steps[0]).Line {
 					t.Fatal("script occurrence was decoded outside its declaration snapshot")
 				}
 				want := filepath.Dir(metadata.Path())

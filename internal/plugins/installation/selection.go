@@ -10,29 +10,29 @@ import (
 	"strings"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // Selection chooses plugins from explicit arguments or repository configuration.
 // Explicit sources replace automatic selection. Explicit configs are
 // invocation-wide; automatic declarations belong to their nearest repository.
 type Selection struct {
-	RuleSet config.RuleSet
+	RuleSet configuration.RuleSet
 	Paths   []string
 
 	ConfigFile string
 	Disabled   bool
-	Overlays   []config.Overlay
+	Overlays   []configuration.Overlay
 	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
 	DefaultTools []string
 	lazyDefaults bool
@@ -62,11 +62,11 @@ type Sources struct {
 	RepositoryRoot   string
 	RepositoryScoped bool
 	Releases         *ResolvedPlugins
-	Configurations   []*config.Config
+	Configurations   []*configuration.Config
 	Artifacts        map[string]*pluginartifact.Artifact
 	// NetworkGrants come only from explicit source arguments, never project files.
 	NetworkGrants map[string]acquisitionhttp.Grant
-	Overlays      []config.Overlay
+	Overlays      []configuration.Overlay
 	// DisabledTools and NamedTools carry the invocation selections to loading.
 	DisabledTools, NamedTools []string
 	// SkippedTools lists disabled tool ids that matched a selected plugin.
@@ -189,7 +189,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 	roots := map[string]bool{}
 	var selected Sources
 	var selectedProject *Project
-	var configs []*config.Config
+	var configs []*configuration.Config
 	for _, start := range starts {
 		root := discovery.PhysicalRepositoryRoot(start)
 		if roots[root] {
@@ -226,7 +226,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		if err != nil {
 			return Sources{}, err
 		}
-		selected := Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: []*config.Config{resolved.Config}, Overlays: slices.Clone(s.Overlays), Configured: true}
+		selected := Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: []*configuration.Config{resolved.Config}, Overlays: slices.Clone(s.Overlays), Configured: true}
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
@@ -254,7 +254,7 @@ func pluginSelectionStart(path string) string {
 	return filepath.Dir(path)
 }
 
-func (s Selection) prepareProject(project *Project) (*config.Config, error) {
+func (s Selection) prepareProject(project *Project) (*configuration.Config, error) {
 	resolved, err := s.RuleSet.ResolveBeforePlugins(project.Manifest.MergedDocument(), s.Overlays)
 	if err != nil {
 		return nil, err
@@ -275,7 +275,7 @@ func (s Selection) prepareProject(project *Project) (*config.Config, error) {
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {
-			if address.Remote(path) {
+			if source.IsRemoteAddress(path) {
 				continue
 			}
 			if err := configplugins.ValidateLocalPath(path); err != nil {
@@ -300,7 +300,7 @@ func (s Selection) sourcesFromProject(ctx context.Context, project *Project, roo
 		return Sources{}, err
 	}
 	selected.SkippedTools = skipped
-	selected.Configurations = []*config.Config{prepared}
+	selected.Configurations = []*configuration.Config{prepared}
 	selected.Overlays = slices.Clone(s.Overlays)
 	selected.Configured = true
 	if s.lazyDefaults && project.defaultPlugins {
@@ -337,7 +337,7 @@ func (s Selection) selectedPlugins(ctx context.Context, project *Project) (Resol
 			skipped = append(skipped, ref.Name())
 			continue
 		}
-		pins, err := project.selectedPins(ctx, []pluginref.Reference{ref})
+		pins, err := project.selectedPins(ctx, []pluginreference.Reference{ref})
 		if err != nil {
 			if s.DisableTools && network.OnlyOffline(err) {
 				skipped = append(skipped, ref.Name())
@@ -432,7 +432,7 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 
 // ValidateScope prevents a session's automatic project plugins from being
 // applied to documents opened from another (including nested) repository.
-func (s *Sources) ValidateScope(ctx context.Context, rules config.RuleSet, paths []string) error {
+func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet, paths []string) error {
 	if !s.RepositoryScoped {
 		return nil
 	}

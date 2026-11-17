@@ -13,7 +13,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 // Reader receives the Store lifetime context and canonical document address.
@@ -44,7 +43,7 @@ type Store struct {
 	idle    chan struct{}
 	closing bool
 	sealed  bool
-	sources []Source
+	sources []TableRow
 }
 
 type alias struct {
@@ -79,7 +78,7 @@ func physicalDocument(path string) string {
 	if path == "<stdin>" || source.RemoteAddress(path) {
 		return path
 	}
-	return sourceid.Document(files.PhysicalPath(path))
+	return source.DocumentID(files.PhysicalPath(path))
 }
 
 func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader, resolve func(string) string) (*Store, error) {
@@ -140,7 +139,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		variants := make(map[string]struct{})
 		for _, overlay := range group {
 			e.aliases[overlay.Path] = struct{}{}
-			variants[string(overlay.Coordinates)+":"+sourceid.Digest(overlay.Content)] = struct{}{}
+			variants[string(overlay.Coordinates)+":"+source.ContentDigest(overlay.Content)] = struct{}{}
 		}
 		if len(variants) != 1 {
 			keys := make([]string, 0, len(variants))
@@ -298,25 +297,25 @@ func (s *Store) registerDocument(path, document string) {
 
 // Read shares one capture per canonical document. Caller cancellation only
 // cancels its wait; backing IO belongs to the Store lifetime context.
-func (s *Store) Read(ctx context.Context, path string, model source.Coordinates) (Snapshot, error) {
+func (s *Store) Read(ctx context.Context, path string, model source.Coordinates) (CapturedDocument, error) {
 	if ctx == nil || !model.Valid() {
-		return Snapshot{}, errors.New("source capture requires a caller context and coordinates")
+		return CapturedDocument{}, errors.New("source capture requires a caller context and coordinates")
 	}
 	if err := ctx.Err(); err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	document, err := s.Canonical(ctx, path)
 	if err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	s.mu.Lock()
 	if s.closing {
 		s.mu.Unlock()
-		return Snapshot{}, &ClosedError{}
+		return CapturedDocument{}, &ClosedError{}
 	}
 	if err := ctx.Err(); err != nil {
 		s.mu.Unlock()
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	e := s.docs[document]
 	if e.readAliases == nil {
@@ -326,7 +325,7 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 	if e.done == nil {
 		if err := s.ctx.Err(); err != nil {
 			s.mu.Unlock()
-			return Snapshot{}, err
+			return CapturedDocument{}, err
 		}
 		e.model, e.done = model, make(chan struct{})
 		if document == "<stdin>" || source.RemoteAddress(document) {
@@ -343,29 +342,29 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 	if e.conflicted() {
 		conflict := e.conflict
 		s.mu.Unlock()
-		return Snapshot{}, conflict
+		return CapturedDocument{}, conflict
 	}
 	s.mu.Unlock()
 	select {
 	case <-ctx.Done():
-		return Snapshot{}, ctx.Err()
+		return CapturedDocument{}, ctx.Err()
 	case <-s.ctx.Done():
-		return Snapshot{}, s.ctx.Err()
+		return CapturedDocument{}, s.ctx.Err()
 	case <-e.done:
 	}
 	if err := ctx.Err(); err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	if err := s.ctx.Err(); err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.conflicted() {
-		return Snapshot{}, e.conflict
+		return CapturedDocument{}, e.conflict
 	}
 	if e.err != nil {
-		return Snapshot{}, e.err
+		return CapturedDocument{}, e.err
 	}
 	return s.snapshot(e), nil
 }
@@ -390,25 +389,25 @@ func (s *Store) read(document string, e *entry) {
 	s.mu.Unlock()
 }
 
-func (s *Store) snapshot(e *entry) Snapshot {
+func (s *Store) snapshot(e *entry) CapturedDocument {
 	aliases := make([]string, 0, len(e.aliases))
 	for alias := range e.aliases {
 		aliases = append(aliases, alias)
 	}
 	slices.Sort(aliases)
-	return Snapshot{store: s, value: e.value, aliases: aliases}
+	return CapturedDocument{store: s, value: e.value, aliases: aliases}
 }
 
 // VerifyHandle rejects foreign, zero, stale or quarantined capture handles.
 // It checks owner identity without copying or comparing source bytes.
-func (s *Store) VerifyHandle(snapshot Snapshot) error {
+func (s *Store) VerifyHandle(snapshot CapturedDocument) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.verifyHandle(snapshot)
 }
 
 // verifyHandle requires s.mu.
-func (s *Store) verifyHandle(snapshot Snapshot) error {
+func (s *Store) verifyHandle(snapshot CapturedDocument) error {
 	if snapshot.store != s || snapshot.value == nil {
 		return ErrInvalidSnapshot
 	}
@@ -425,7 +424,7 @@ func (s *Store) verifyHandle(snapshot Snapshot) error {
 
 // Verify rejects invalid handles and disagreeing externally supplied bytes.
 // Verification never reads content, changes a capture or promotes other evidence.
-func (s *Store) Verify(snapshot Snapshot, supplied []byte) error {
+func (s *Store) Verify(snapshot CapturedDocument, supplied []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.verifyHandle(snapshot); err != nil {

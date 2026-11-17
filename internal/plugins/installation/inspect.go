@@ -7,30 +7,30 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // InspectRelease resolves a registry reference and verifies its downloaded metadata.
-func InspectRelease(ctx context.Context, ref pluginref.Reference, acquisition Acquisition) (pluginartifact.Info, error) {
+func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition Acquisition) (pluginartifact.ArtifactProvenance, error) {
 	client, err := New(ref.Registry(), acquisition)
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	pin, err := client.Resolve(ctx, ref.Name(), ref.Version())
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	if pin.Origin == "candidate" {
 		if err := pin.importCandidate(ctx, acquisition.ArtifactOptions()); err != nil {
-			return pluginartifact.Info{}, err
+			return pluginartifact.ArtifactProvenance{}, err
 		}
 	}
 	info, err := inspect(ctx, pin.Source(), acquisition.ArtifactOptions())
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	if err := pin.Verify(info); err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	return info, nil
 }
@@ -60,29 +60,29 @@ func PinSource(ctx context.Context, source string, acquisition Acquisition) (str
 }
 
 // Inspect resolves and reads metadata without creating a runtime.
-func Inspect(ctx context.Context, source string, acquisition Acquisition) (pluginartifact.Info, error) {
+func Inspect(ctx context.Context, source string, acquisition Acquisition) (pluginartifact.ArtifactProvenance, error) {
 	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	options := acquisition.ArtifactOptions()
 	options.Network = grant
 	return inspect(ctx, source, options)
 }
 
-func inspect(ctx context.Context, source string, options pluginartifact.Options) (pluginartifact.Info, error) {
+func inspect(ctx context.Context, source string, options pluginartifact.Options) (pluginartifact.ArtifactProvenance, error) {
 	if manifests.IsLocalManifest(source) {
 		if err := ValidateLocalProvider(ctx, source); err != nil {
-			return pluginartifact.Info{}, err
+			return pluginartifact.ArtifactProvenance{}, err
 		}
 	}
 	artifact, err := pluginartifact.Resolve(ctx, source, options)
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	if artifact.Info.Kind == pluginartifact.ProviderManifest && !manifests.IsLocalManifest(source) {
 		if err := ValidateProviderArtifact(ctx, artifact, options); err != nil {
-			return pluginartifact.Info{}, err
+			return pluginartifact.ArtifactProvenance{}, err
 		}
 	}
 	return artifact.Info, nil

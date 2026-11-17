@@ -21,8 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -31,10 +30,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -60,7 +59,7 @@ type Options struct {
 	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
 	ConfigFile        string
 	ConfigConnections acquisitionhttp.Connections
-	ConfigOverlays    []repoconfig.Overlay
+	ConfigOverlays    []configuration.Overlay
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
@@ -75,7 +74,7 @@ type Options struct {
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
 	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
-	Presets                      repoconfig.Presets
+	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
 	LogWriter                    io.Writer
@@ -179,7 +178,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		}
 		backing := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
 		selectionReader = func(path string) ([]byte, error) {
-			if address.Remote(path) {
+			if configsource.IsRemoteAddress(path) {
 				return backing.ReadFile(path)
 			}
 			alias := path
@@ -226,14 +225,14 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	} else if options.Debug {
 		request.LogLevel = LogLevelDebug
 	}
-	request.IgnorePatterns, err = repoconfig.CompileIgnorePatterns(options.IgnorePatterns)
+	request.IgnorePatterns, err = configuration.CompileIgnorePatterns(options.IgnorePatterns)
 	request.IgnoreSelectors = options.IgnoreSelectors
 	if err != nil {
 		return nil, err
 	}
 	if input.Kind == inputmodel.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
-		policy, err := repoconfig.LoadNetworkPolicy(ctx, options.ConfigConnections)
+		policy, err := configuration.LoadNetworkPolicy(ctx, options.ConfigConnections)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +357,7 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
 // It does not discover configuration or read the supplied source paths.
-func Analyze(ctx context.Context, options Options, sources []workspace.Source) (*Result, error) {
+func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*Result, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, inputmodel.Request{Kind: inputmodel.Prepared, Sources: sources})
 }

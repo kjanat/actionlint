@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type manifestProvider func(context.Context, actions.Reference) (actions.Manifest, error)
@@ -19,7 +19,7 @@ func (p manifestProvider) Lookup(ctx context.Context, reference actions.Referenc
 
 func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 	t.Parallel()
-	identity, err := actions.NewIdentity("github.com", "example/action", repositoryid.ID{}, strings.Repeat("a", 40), "")
+	identity, err := actions.NewIdentity("github.com", "example/action", repofacts.ID{}, strings.Repeat("a", 40), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 		return manifest, nil
 	})
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ permissions: {}
 func TestRemoteMetadataIsUnavailableWithoutProvider(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
+	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

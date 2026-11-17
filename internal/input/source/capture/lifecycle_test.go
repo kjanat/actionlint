@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
@@ -72,7 +71,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 		t.Fatalf("work survived Close: running=%d reads=%d", running.Load(), reads.Load())
 	}
 	rows, err := store.Sources()
-	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != sourceid.Digest([]byte("joined")) {
+	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != source.ContentDigest([]byte("joined")) {
 		t.Fatalf("sealed sources = %#v, %v", rows, err)
 	}
 }
@@ -107,7 +106,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot, state, err := store.Lookup(path)
-	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != sourceid.Digest(content) {
+	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != source.ContentDigest(content) {
 		t.Fatalf("completed bytes lost after cancellation: %q, %v", state, err)
 	}
 }
@@ -180,7 +179,7 @@ func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
 			active.Add(1)
 			defer active.Add(-1)
 			runtime.Gosched()
-			return sourceid.Document(path)
+			return source.DocumentID(path)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -545,7 +544,7 @@ func TestSealedSourcesDeterministicAcrossOrdersAndConcurrency(t *testing.T) {
 			if err != nil || fresh[0].Document == "mutated" || fresh[0].Aliases[0] == "mutated" {
 				t.Fatal("caller mutated sealed table")
 			}
-			if _, current, err := store.Lookup(bad); current != Conflicted || requireConflict(t, err).document != sourceid.Document(physicalDocument(bad)) {
+			if _, current, err := store.Lookup(bad); current != Conflicted || requireConflict(t, err).document != source.DocumentID(physicalDocument(bad)) {
 				t.Fatalf("conflict lookup = %q, %v", current, err)
 			}
 			slices.Reverse(requests)

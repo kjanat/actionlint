@@ -4,11 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -16,18 +14,18 @@ import (
 
 type frameObserver struct {
 	workflowvisit.Base
-	enter func(checkcalls.Invocation) error
+	enter func(workflowvisit.Invocation) error
 	step  func() error
 }
 
-func (p *frameObserver) EnterInvocation(call checkcalls.Invocation) error { return p.enter(call) }
-func (p *frameObserver) LeaveInvocation(invocation.Context) error         { return nil }
-func (p *frameObserver) VisitStep(workflowdecl.StepView) error            { return p.step() }
-func (p *frameObserver) VisitInvocationStep(step workflowdecl.StepView) error {
+func (p *frameObserver) EnterInvocation(call workflowvisit.Invocation) error { return p.enter(call) }
+func (p *frameObserver) LeaveInvocation(invocation.Context) error            { return nil }
+func (p *frameObserver) VisitStep(workflowdecl.Step) error                   { return p.step() }
+func (p *frameObserver) VisitInvocationStep(step workflowdecl.Step) error {
 	return p.VisitStep(step)
 }
 
-func (p *frameObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (p *frameObserver) VisitOpaqueAction(step workflowdecl.Step) error {
 	return p.VisitStep(step)
 }
 
@@ -45,9 +43,9 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 				"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 				"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 			}, nil)
-			rootConfig := &repoconfig.Config{}
+			rootConfig := &configuration.Config{}
 			f.options.Bindings = testBindings(rootConfig)
-			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return &repoconfig.Config{}, nil })
+			f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return &configuration.Config{}, nil })
 			entered, visited := 0, 0
 			_, err := analyze(f.options, func(parent *compositeAnalyzer) error {
 				if err := parent.startEntry(invocation.EntryWorkflow, f.root); err != nil {
@@ -68,7 +66,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 						t.Fatal("nested traversal replaced the live caller frame")
 					}
 				}
-				probe := &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: func(call checkcalls.Invocation) error {
+				probe := &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: func(call workflowvisit.Invocation) error {
 					assertCaller()
 					if call.Context == rootContext || call.Source == f.root {
 						t.Fatal("child did not receive its own invocation, source and resolver")
@@ -80,7 +78,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 					visited++
 					return childError
 				}}
-				err := parent.visitActionScripts(workflowStepViews(t, workflow, "test")[0], []checkcalls.InvocationParticipant{probe}, nil)
+				err := parent.visitActionScripts(workflowStepViews(t, workflow, "test")[0], []workflowvisit.InvocationParticipant{probe}, nil)
 				assertCaller()
 				return err
 			})

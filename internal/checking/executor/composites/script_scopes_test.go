@@ -6,7 +6,7 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"

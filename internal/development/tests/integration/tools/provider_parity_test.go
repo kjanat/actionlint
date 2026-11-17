@@ -20,11 +20,11 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -172,9 +172,9 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		t.Fatalf("no parity snapshot for %q", key)
 	}
 	want = hostSeverities(t, want)
-	var options *processconfig.Options
+	var options *process.CommandOptions
 	if len(arguments) != 0 {
-		options = &processconfig.Options{Arguments: arguments}
+		options = &process.CommandOptions{Arguments: arguments}
 	}
 	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)
@@ -395,7 +395,7 @@ func TestProviderParityFixtures(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					sources := []workspace.Source{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &repoconfig.Config{}}}
+					sources := []workspace.InputFile{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &configuration.Config{}}}
 					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: repository, Tools: recorder.wrap(registrations)}, sources)
 					return toolFindings(t, result, err, recorder, map[string]string{repository: "<repository>"})
 				}, shellcheck, ruff)
@@ -536,7 +536,7 @@ func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 		return []byte(`{"comments":[]}`), nil
 	}}})
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo $1\n"
-	if _, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "/", Tools: registrations}, []workspace.Source{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
+	if _, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "/", Tools: registrations}, []workspace.InputFile{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"--norc", "-f", "json1", "--shell", "bash", "-e", "SC1091,SC2194,SC2050,SC2157,SC2043,SC2153,SC2154", "-"}

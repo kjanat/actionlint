@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -35,21 +33,21 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
-	files, err := actionfiles.Inspect(analysis.ctx, meta, analysis.reader)
+	files, err := workspace.InspectReferencedFiles(analysis.ctx, meta, analysis.reader)
 	if err != nil {
 		return err
 	}
 	if err := analysis.recordUncheckedFiles(meta, files, snapshot.Reference(), analysis.invocations.RootContext()); err != nil {
 		return err
 	}
-	var scripts []checkcalls.InvocationParticipant
+	var scripts []workflowvisit.InvocationParticipant
 	for _, rule := range rules {
-		if participant, ok := rule.(checkcalls.MetadataParticipant); ok {
+		if participant, ok := rule.(workflowvisit.MetadataParticipant); ok {
 			if err := participant.CheckStandaloneMetadata(meta, snapshot, files); err != nil {
 				return err
 			}
 		}
-		if participant, ok := rule.(checkcalls.InvocationParticipant); ok {
+		if participant, ok := rule.(workflowvisit.InvocationParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}

@@ -11,7 +11,6 @@ import (
 
 	expr "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
@@ -57,12 +56,15 @@ func Complete(content string, offset int) []Item {
 	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
 	contextspec.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
-		for event := range w.On() {
-			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
+		for _, event := range w.On {
+			if dispatch, ok := event.(*workflow.WorkflowDispatchEvent); ok && dispatch != nil {
 				var inputs exprtypes.ObjectBuilder
-				for name, input := range dispatch.Inputs() {
+				for name, input := range dispatch.Inputs {
+					if input == nil {
+						continue
+					}
 					ty := exprtypes.StringType()
-					switch input.Type() {
+					switch input.Type {
 					case workflow.WorkflowDispatchEventInputTypeBoolean:
 						ty = exprtypes.BoolType()
 					case workflow.WorkflowDispatchEventInputTypeNumber:
@@ -89,23 +91,23 @@ func Complete(content string, offset int) []Item {
 // keyAt finds the workflow field containing the scalar preceding the cursor.
 // Block scalars keep their field path across lines. Sequence indices are omitted
 // because context availability is defined by field paths.
-func keyAt(root *syntax.Node, content string, offset int) string {
+func keyAt(root *codec.Node, content string, offset int) string {
 	before := content[:offset]
 	line := strings.Count(before, "\n") + 1
 	column := utf8.RuneCountInString(before[strings.LastIndexByte(before, '\n')+1:]) + 1
 	bestLine, bestColumn := 0, 0
 	key := ""
-	var walk func(*syntax.Node, []string)
-	walk = func(n *syntax.Node, path []string) {
+	var walk func(*codec.Node, []string)
+	walk = func(n *codec.Node, path []string) {
 		if n == nil {
 			return
 		}
 		switch n.Kind {
-		case syntax.DocumentNode, syntax.SequenceNode:
+		case codec.DocumentNode, codec.SequenceNode:
 			for _, child := range n.Content {
 				walk(child, path)
 			}
-		case syntax.MappingNode:
+		case codec.MappingNode:
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				name := n.Content[i].Value
 				if len(path) == 1 && path[0] == "jobs" {
@@ -117,12 +119,12 @@ func keyAt(root *syntax.Node, content string, offset int) string {
 				next := append(append([]string{}, path...), name)
 				walk(n.Content[i+1], next)
 			}
-		case syntax.ScalarNode:
+		case codec.ScalarNode:
 			if (n.Line < line || n.Line == line && n.Column <= column) && (n.Line > bestLine || n.Line == bestLine && n.Column > bestColumn) {
 				bestLine, bestColumn = n.Line, n.Column
 				key = strings.Join(path, ".")
 			}
-		case syntax.AliasNode:
+		case codec.AliasNode:
 		}
 	}
 	walk(root, nil)

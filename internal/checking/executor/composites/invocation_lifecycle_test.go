@@ -8,9 +8,8 @@ import (
 	"slices"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
@@ -22,7 +21,7 @@ import (
 type invocationLifecycleProbe struct {
 	workflowvisit.Base
 	t            *testing.T
-	frames       []checkcalls.Invocation
+	frames       []workflowvisit.Invocation
 	events       *[]string
 	enterFailure error
 	stepFailure  error
@@ -44,7 +43,7 @@ func (p *invocationLifecycleProbe) emit(phase string, ref source.Reference) {
 	})
 }
 
-func (p *invocationLifecycleProbe) EnterInvocation(call checkcalls.Invocation) error {
+func (p *invocationLifecycleProbe) EnterInvocation(call workflowvisit.Invocation) error {
 	p.frames = append(p.frames, call)
 	p.emit("enter", call.Source.Reference())
 	if len(p.frames) == 2 && p.enterFailure != nil {
@@ -64,7 +63,7 @@ func (p *invocationLifecycleProbe) LeaveInvocation(call invocation.Context) erro
 	return p.leaveFailure
 }
 
-func (p *invocationLifecycleProbe) VisitInvocationStep(step declaration.StepView) error {
+func (p *invocationLifecycleProbe) VisitInvocationStep(step declaration.Step) error {
 	p.emit("step", step.Reference())
 	if p.cancel != nil {
 		p.cancel()
@@ -72,7 +71,7 @@ func (p *invocationLifecycleProbe) VisitInvocationStep(step declaration.StepView
 	return p.stepFailure
 }
 
-func (p *invocationLifecycleProbe) VisitOpaqueAction(step declaration.StepView) error {
+func (p *invocationLifecycleProbe) VisitOpaqueAction(step declaration.Step) error {
 	p.emit("opaque", step.Reference())
 	return p.stepFailure
 }

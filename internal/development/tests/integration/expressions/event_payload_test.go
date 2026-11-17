@@ -23,7 +23,7 @@ func TestWorkflowEventPayloadChecks(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			content := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ " + tc.value + " }}\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(content)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)
 			}

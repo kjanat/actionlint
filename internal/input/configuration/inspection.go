@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
@@ -42,17 +44,17 @@ func SelectedPath(selection Selection) (string, error) {
 }
 
 // Inspect validates settings and optionally records their YAML origins.
-func (ruleSet RuleSet) Inspect(selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
+func (ruleSet RuleSet) Inspect(selection Selection, withOrigin bool, registeredRules ...string) (configreport.Inspection, error) {
 	return ruleSet.InspectContext(context.Background(), selection, withOrigin, registeredRules...)
 }
 
 // InspectContext validates settings with cancellable configuration acquisition.
-func (ruleSet RuleSet) InspectContext(ctx context.Context, selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
+func (ruleSet RuleSet) InspectContext(ctx context.Context, selection Selection, withOrigin bool, registeredRules ...string) (configreport.Inspection, error) {
 	return ruleSet.inspectContext(ctx, selection, withOrigin, nil, nil, nil, registeredRules...)
 }
 
 // InspectContextWithRegistrations validates settings using the selected rules and tool replacements.
-func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), policy *NetworkPolicy, registrations ...RuleRegistration) (Inspection, error) {
+func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), policy *NetworkPolicy, registrations ...RuleRegistration) (configreport.Inspection, error) {
 	metadata := make([]RuleRegistration, len(registrations))
 	copy(metadata, registrations)
 	names := make([]string, 0, len(registrations))
@@ -62,45 +64,45 @@ func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, sele
 	return ruleSet.inspectContext(ctx, selection, withOrigin, readFile, metadata, policy, names...)
 }
 
-func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), registrations []RuleRegistration, policy *NetworkPolicy, registeredRules ...string) (Inspection, error) {
+func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), registrations []RuleRegistration, policy *NetworkPolicy, registeredRules ...string) (configreport.Inspection, error) {
 	if err := ctx.Err(); err != nil {
-		return Inspection{}, err
+		return configreport.Inspection{}, err
 	}
 	path, err := SelectedPath(selection)
 	if err != nil {
-		return Inspection{}, err
+		return configreport.Inspection{}, err
 	}
 	parseRules := ruleSet
 	if registrations != nil {
 		parseRules, err = ruleSet.WithRegisteredRules(registrations...)
 		if err != nil {
-			return Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
+			return configreport.Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
 		}
 	}
-	var resolved Resolved
+	var resolved ResolvedConfig
 	if path != "" {
-		var source *Loaded
+		var source *LoadedFile
 		source, err = parseRules.ReadContext(ctx, path, readFile, registeredRules...)
 		if err != nil {
-			return Inspection{Path: path}, err
+			return configreport.Inspection{Path: path}, err
 		}
-		resolved = source.Resolved
+		resolved = source.ResolvedConfig
 	} else {
 		resolved, err = parseRules.ResolveDocument(nil, registeredRules...)
 	}
 	if err != nil {
-		return Inspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
+		return configreport.Inspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
 	if registrations != nil {
 		if _, err := ruleSet.ResolveRegisteredRules(Presets{}, resolved.Config, registrations...); err != nil {
-			return Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
+			return configreport.Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
 		}
 	}
 	resolved, err = policy.Resolve(parseRules, resolved)
 	if err != nil {
-		return Inspection{Path: path}, err
+		return configreport.Inspection{Path: path}, err
 	}
-	result := Inspection{Path: path, Config: resolved.Values, Warnings: resolved.Warnings}
+	result := configreport.Inspection{Path: path, Config: resolved.Values, Warnings: resolved.Warnings}
 	if withOrigin {
 		result.Origins = resolved.Origins
 	}

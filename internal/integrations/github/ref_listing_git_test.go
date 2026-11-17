@@ -8,7 +8,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	gitcommand "actionlint.kjanat.dev/v2/internal/integrations/git"
 )
 
@@ -39,7 +38,7 @@ func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.objects[commit] != (repository.Commit{}) {
+	if parsed.objects[commit] != (references.RepositoryCommit{}) {
 		t.Fatalf("branch tip was not recognized as a commit: %v", parsed.objects[commit])
 	}
 	for _, name := range []string{"tree", "blob", "tree-annotated", "blob-annotated"} {
@@ -54,11 +53,11 @@ func TestListingSessionVerifiesNonBranchObjects(t *testing.T) {
 	t.Parallel()
 	for _, target := range []struct {
 		kind   string
-		object repository.Object
-		peeled repository.Object
+		object references.RepositoryObject
+		peeled references.RepositoryObject
 	}{
-		{"commit", repository.Commit{}, repository.PeeledTag{Commit: sha}},
-		{"tree", repository.Tree{}, repository.PeeledTreeTag{Tree: sha}},
+		{"commit", references.RepositoryCommit{}, references.RepositoryPeeledTag{Commit: sha}},
+		{"tree", references.RepositoryTree{}, references.RepositoryPeeledTreeTag{Tree: sha}},
 		{"blob", nil, nil},
 		{"missing", nil, nil},
 	} {

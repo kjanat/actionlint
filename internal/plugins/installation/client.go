@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"golang.org/x/mod/semver"
 )
 
@@ -35,7 +35,7 @@ type Client struct {
 func registryURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
 	if err == nil && u.Scheme == "file" {
-		if _, err := pluginref.LocalRegistryDirectory(raw); err != nil {
+		if _, err := pluginreference.LocalRegistryDirectory(raw); err != nil {
 			return nil, err
 		}
 		u.Path = strings.TrimSuffix(path.Clean(u.Path), "/") + "/"
@@ -176,7 +176,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]CatalogPlugin, err
 		seen[key] = true
 		matchesAlias := false
 		for _, alias := range p.Aliases {
-			if !pluginref.ValidAlias(alias) || aliases[alias] {
+			if !pluginreference.ValidAlias(alias) || aliases[alias] {
 				return nil, fmt.Errorf("invalid or duplicate catalogue alias %q", alias)
 			}
 			aliases[alias] = true
@@ -210,12 +210,12 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 			name = strings.ToLower(i.PluginID)
 			key = hash("package-v2\n" + i.Issuer + "\n" + i.RepositoryID + "\n" + i.PluginID)
 		}
-		if m.Source != "" || i.SchemaVersion != 1 && i.SchemaVersion != 2 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || !pluginref.ValidRepository(repository) || name != p.Name || i.SchemaVersion == 2 && !strings.HasPrefix(name, repository+"/") || i.PluginID != p.PluginID || p.Manifest != "plugins/"+key+"/index.json" || m.Versions == nil {
+		if m.Source != "" || i.SchemaVersion != 1 && i.SchemaVersion != 2 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || !pluginreference.ValidRepository(repository) || name != p.Name || i.SchemaVersion == 2 && !strings.HasPrefix(name, repository+"/") || i.PluginID != p.PluginID || p.Manifest != "plugins/"+key+"/index.json" || m.Versions == nil {
 			return p, m, errors.New("registry manifest disagrees with catalogue identity")
 		}
 		seen := map[string]bool{}
 		for _, v := range m.Versions {
-			if !pluginref.ValidVersion(v.Version) || seen[v.Version] || v.Record != "versions/"+hash(v.Version)+".json" {
+			if !pluginreference.ValidVersion(v.Version) || seen[v.Version] || v.Record != "versions/"+hash(v.Version)+".json" {
 				return p, m, errors.New("invalid or duplicate registry version")
 			}
 			seen[v.Version] = true
@@ -282,7 +282,7 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		return c.resolveCandidate(ctx, name, selector)
 	}
 	if network.Settings(ctx).Offline {
-		if !pluginref.ValidName(name) || !pluginref.ValidVersion(selector) || selector == "latest" {
+		if !pluginreference.ValidName(name) || !pluginreference.ValidVersion(selector) || selector == "latest" {
 			return Pin{}, network.Missing(name + "@" + selector)
 		}
 		pin, err := c.Lookup(ctx, name, selector)
@@ -326,7 +326,7 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		if err != nil {
 			return Pin{}, err
 		}
-		if pluginref.ValidAlias(name) {
+		if pluginreference.ValidAlias(name) {
 			pin.Alias = name
 		}
 		err = checkStatus(ctx, pin, statuses, c.StatusOptions, true)

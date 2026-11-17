@@ -144,7 +144,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
 			}
 			workflow, ok := result.Documents[0].(documentmodel.Workflow)
-			if !ok || workflow.DocumentPath() != "failing.yml" || workflow.ParseStatus() != "complete" || len(workflow.Jobs()) != 1 {
+			if !ok || workflow.DocumentPath() != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
 			}
 			if result.FileCount == nil || *result.FileCount != 1 {
@@ -182,7 +182,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
 			document, ok := result.Documents[0].(documentmodel.Workflow)
-			if !ok || document.DocumentPath() != workingDirectoryPath(t, workflow) || document.ParseStatus() != "complete" || len(document.Jobs()) != 1 {
+			if !ok || document.DocumentPath() != workingDirectoryPath(t, workflow) || document.ParseStatus != "complete" || len(document.Jobs) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}
 		})

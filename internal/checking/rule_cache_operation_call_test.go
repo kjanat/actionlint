@@ -10,7 +10,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -408,7 +408,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 	}
 	project := workspace.Identity(root)
 	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-	var lConfig *repoconfig.Config
+	var lConfig *configuration.Config
 	var err error
 
 	if config != "" {

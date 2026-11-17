@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
@@ -12,7 +12,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (config.RuleSet{}).Parse(fmt.Appendf(nil, `overrides:
+			cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, `overrides:
   - includes: ['process-action/**']
     tools: {%s: {backend: {process: {executable: checker}}}}
   - includes: ['wasm-action/**']
@@ -21,7 +21,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			candidates, err := config.ConfigCandidates(name, cfg)
+			candidates, err := configuration.ConfigCandidates(name, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,7 +43,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 			if !hasDefault || !hasProcess || !hasWasm {
 				t.Fatalf("transport candidates lost: default=%t process=%t wasm=%t", hasDefault, hasProcess, hasWasm)
 			}
-			needed, err := ProjectMayNeedProcessFor(name, cfg, nil, func(candidate *config.Config) bool {
+			needed, err := ProjectMayNeedProcessFor(name, cfg, nil, func(candidate *configuration.Config) bool {
 				backend := candidate.Tools["shellcheck"].Backend
 				if name == "ruff" {
 					backend = candidate.Tools["ruff"].Backend

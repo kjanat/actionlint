@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,7 +28,7 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		cancel()
 		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
-	}}})}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
+	}}})}, []workspace.InputFile{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
       - run: print(1)
         shell: python
 permissions: {}
@@ -71,8 +71,8 @@ permissions: {}
 			t.Fatal(err)
 		}
 	}
-	options := func(tool string) *processconfig.Options {
-		return &processconfig.Options{
+	options := func(tool string) *process.CommandOptions {
+		return &process.CommandOptions{
 			Executable: &executable,
 			Arguments:  []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", tool},
 		}
@@ -81,7 +81,7 @@ permissions: {}
 		for _, failingFirst := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/failing-first=%t", adapter, failingFirst), func(t *testing.T) {
 				t.Parallel()
-				sources := []workspace.Source{{Path: "successful.yml", Content: []byte(successful)}, {Path: "failing.yml", Content: []byte(failing)}}
+				sources := []workspace.InputFile{{Path: "successful.yml", Content: []byte(successful)}, {Path: "failing.yml", Content: []byte(failing)}}
 				if failingFirst {
 					slices.Reverse(sources)
 				}

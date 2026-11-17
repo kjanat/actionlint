@@ -1,4 +1,5 @@
-// Package source defines document revisions and stable node references.
+// Package source defines document revisions, stable node references and
+// identities, and the Unicode column and LF line helpers they rely on.
 package source
 
 // Reference separates identity from an address in a particular document revision.

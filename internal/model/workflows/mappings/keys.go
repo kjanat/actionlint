@@ -1,6 +1,6 @@
-package mapping
+package mappings
 
-import value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+import "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 type KeyState uint8
 

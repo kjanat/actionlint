@@ -4,11 +4,11 @@ import (
 	"slices"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -20,13 +20,13 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 			t.Parallel()
 			check := checkinputs.DeclarationCheck{
 				Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions,
-				Step: func(declaration.StepView) []reporting.Finding { return nil },
+				Step: func(declaration.Step) []reporting.Finding { return nil },
 			}
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, participates := New(rules, check).(checkcalls.InvocationParticipant)
+			_, participates := New(rules, check).(workflowvisit.InvocationParticipant)
 			if participates != supportsActions {
 				t.Fatalf("check declares action support %t, but composite participation is %t", supportsActions, participates)
 			}
@@ -54,33 +54,33 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			calls := 0
 			switch scope {
 			case "workflow":
-				check.Workflow = func(input declaration.WorkflowView) []reporting.Finding {
-					if input.Name().Value() != "Native" {
+				check.Workflow = func(input declaration.Workflow) []reporting.Finding {
+					if input.Name.Text() != "Native" {
 						t.Fatal("callback received a different workflow")
 					}
 					calls++
 					return nil
 				}
 			case "job":
-				check.Job = func(input declaration.JobView) []reporting.Finding {
-					if input.ID().Value() != "build" {
+				check.Job = func(input declaration.Job) []reporting.Finding {
+					if input.ID.Text() != "build" {
 						t.Fatal("callback received a different job")
 					}
 					calls++
 					return nil
 				}
 			case "step":
-				check.Step = func(input declaration.StepView) []reporting.Finding {
+				check.Step = func(input declaration.Step) []reporting.Finding {
 					if input.Reference() != step.Reference() {
 						t.Fatal("callback received a different step")
 					}
 					calls++
 					collector := reporting.Collector{Rule: check.Name, Step: input}
-					collector.Errorf(reporting.SourcePosition(input), "test finding")
+					collector.Errorf(reporting.OptionalPosition(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
 			if err != nil {
 				t.Fatal(err)
 			}

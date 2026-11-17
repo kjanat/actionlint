@@ -1,11 +1,11 @@
-package config_test
+package configuration_test
 
 import (
 	"slices"
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestSuppressionsPolicyInspection(t *testing.T) {
@@ -34,7 +34,7 @@ func TestSuppressionsPolicyInspection(t *testing.T) {
 			}
 		})
 	}
-	for _, p := range []*repoconfig.SuppressionsPolicy{nil, {}} {
+	for _, p := range []*configuration.SuppressionsPolicy{nil, {}} {
 		if p.Enabled() || p.Report() != "" || p.Rules() != nil {
 			t.Fatal("nil and zero policies must permit inline suppressions")
 		}

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -98,7 +97,7 @@ func TestSelectedItemsShareAliasExpansionBudgetAndStopAfterFatal(t *testing.T) {
 	}
 	for _, item := range items.Content {
 		alias := mappingValue(item, "value")
-		if alias == nil || alias.Kind != syntax.AliasNode || alias.Alias != anchor {
+		if alias == nil || alias.Kind != codec.AliasNode || alias.Alias != anchor {
 			t.Errorf("source alias changed: %#v", alias)
 		}
 	}
@@ -113,7 +112,7 @@ type inheritedAliasTarget struct {
 	Items [][]string `yaml:"items"`
 }
 
-func selectAliasItems(root *syntax.Node, visit func(codec.Cursor) error) error {
+func selectAliasItems(root *codec.Node, visit func(codec.Cursor) error) error {
 	session, cursor, err := codec.Open(root)
 	if err != nil {
 		return err
@@ -171,9 +170,9 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 	if items == nil || anchor == nil || len(items.Content) != inheritedAliasOccurrences {
 		t.Fatalf("source graph has items=%#v anchor=%#v", items, anchor)
 	}
-	aliases := make([]*syntax.Node, 0, inheritedAliasOccurrences)
+	aliases := make([]*codec.Node, 0, inheritedAliasOccurrences)
 	for _, occurrence := range items.Content {
-		if occurrence.Kind != syntax.AliasNode || occurrence.Alias != anchor {
+		if occurrence.Kind != codec.AliasNode || occurrence.Alias != anchor {
 			t.Fatalf("source occurrence = %#v, want original alias to payload %p", occurrence, anchor)
 		}
 		aliases = append(aliases, occurrence)
@@ -214,7 +213,7 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 	}
 	assertCursorAliasErrorMatchesUpstream(t, err, wantErr)
 	for i, alias := range aliases {
-		if alias.Kind != syntax.AliasNode || alias.Alias != anchor {
+		if alias.Kind != codec.AliasNode || alias.Alias != anchor {
 			t.Errorf("source alias occurrence %d changed during decode: %#v", i, alias)
 		}
 	}

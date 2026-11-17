@@ -10,16 +10,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	checkpasses "actionlint.kjanat.dev/v2/internal/checking/passes"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -50,7 +49,7 @@ type Options struct {
 	Reader               *files.Reader // records reads made while resolving script paths
 
 	// ConfigProvenance is shared by the entry settings and per-file projections.
-	ConfigProvenance repoconfig.Provenance
+	ConfigProvenance configuration.Provenance
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
 	CollectScripts, ResolveExecution bool
@@ -73,7 +72,7 @@ type Result struct {
 }
 
 type SourceDocument interface {
-	Capture() capture.Snapshot
+	Capture() capture.CapturedDocument
 	Content() []byte
 	Provenance() parsing.Provenance
 }
@@ -93,9 +92,9 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) 
 		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 			return err
 		}
-		return checkpasses.Visit(w, checkpasses.Options{
+		return workflowvisit.Visit(w, workflowvisit.Options{
 			Passes: c.passes,
-			Hooks:  checkpasses.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
+			Hooks:  workflowvisit.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
 			Debug:  options.Debug,
 		})
 	})

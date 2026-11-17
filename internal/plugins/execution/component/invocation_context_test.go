@@ -4,31 +4,42 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
-func invocationContextGraph(t *testing.T) checkinputs.CallGraph {
+var invocationContextEntry = sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
+
+func invocationContextBuilder(t *testing.T, budget invocation.Budget) *invocation.Builder {
 	t.Helper()
-	graph, err := checkinputs.NewCallGraph(checkinputs.CallGraphData{
-		Entry: checkinputs.InvocationEntry{
-			ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Kind: checkinputs.WorkflowEntry,
-			Reference: sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"},
-		},
-		Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}, Complete: true,
-	})
+	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, invocationContextEntry, budget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return builder
+}
+
+func publishInvocationContext(t *testing.T, builder *invocation.Builder) invocation.Graph {
+	t.Helper()
+	graph, err := builder.Publish()
 	if err != nil {
 		t.Fatal(err)
 	}
 	return graph
 }
 
-func invocationContextFor(graph checkinputs.CallGraph) context.Context {
+func invocationContextGraph(t *testing.T) invocation.Graph {
+	t.Helper()
+	return publishInvocationContext(t, invocationContextBuilder(t, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}))
+}
+
+func invocationContextFor(graph invocation.Graph) context.Context {
 	return context.WithValue(context.Background(), invocationGraphKey{}, graph)
 }
 
@@ -121,56 +132,53 @@ func TestInvocationContextValidEmptyGraph(t *testing.T) {
 	}
 }
 
-func invocationContextPagedGraph(t *testing.T, count int) (checkinputs.CallGraph, []checkinputs.OccurrenceID, []checkinputs.OccurrenceID) {
+// invocationContextPagedGraph nests count calls, each expanded into its own
+// body, and registers count scripts in the deepest body.
+func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []invocation.ID, []invocation.ID) {
 	t.Helper()
-	entryID := checkinputs.OccurrenceID(strings.Repeat("f", 64))
-	entry := sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
-	body := sourcepos.Reference{Document: entry.Document, Revision: entry.Revision, Node: "body"}
-	outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: body})
-	if err != nil {
-		t.Fatal(err)
+	builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: count, MaxCalls: count, MaxScripts: count})
+	owner, contexts := builder.RootContext(), make([]invocation.Context, 0, count)
+	callIDs, scriptIDs := make([]invocation.ID, 0, count), make([]invocation.ID, 0, count)
+	at := func(node string) sourcepos.Reference {
+		return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 	}
-	data := checkinputs.CallGraphData{
-		Entry:  checkinputs.InvocationEntry{ID: entryID, Kind: checkinputs.WorkflowEntry, Reference: entry},
-		Budget: checkinputs.InvocationBudget{MaxDepth: count, MaxCalls: count, MaxScripts: count}, Complete: true,
-	}
-	callIDs := make([]checkinputs.OccurrenceID, 0, count)
-	ancestry := []checkinputs.OccurrenceID{entryID}
-	parent := entryID
 	for index := range count {
-		id := checkinputs.OccurrenceID(fmt.Sprintf("%064x", index+1))
-		callIDs = append(callIDs, id)
-		data.Calls = append(data.Calls, checkinputs.Call{
-			ID: id, Parent: parent, Ancestry: append([]checkinputs.OccurrenceID(nil), ancestry...), Depth: index + 1,
-			Site: sourcepos.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("call-%d", index)},
-			Step: sourcepos.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome,
-		})
-		ancestry = append(ancestry, id)
-		parent = id
+		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: invocation.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
+		if err != nil {
+			t.Fatal(err)
+		}
+		call, admitted := ticket.Context()
+		expanded, err := invocation.Expanded(at(fmt.Sprintf("body-%d", index)))
+		if !admitted || err != nil {
+			t.Fatalf("call %d not admitted: %v", index, err)
+		}
+		if _, err := builder.Resolve(call, expanded); err != nil {
+			t.Fatal(err)
+		}
+		callIDs, contexts, owner = append(callIDs, call.ID()), append(contexts, call), call
 	}
-	scriptIDs := make([]checkinputs.OccurrenceID, 0, count)
 	for index := range count {
-		id := checkinputs.OccurrenceID(fmt.Sprintf("%064x", index+10000))
+		id, err := builder.AddScript(owner, at(fmt.Sprintf("script-%d", index)), invocation.ScriptRun, "")
+		if err != nil {
+			t.Fatal(err)
+		}
 		scriptIDs = append(scriptIDs, id)
-		data.Scripts = append(data.Scripts, checkinputs.ScriptOccurrence{
-			ID: id, Owner: parent, Ancestry: append([]checkinputs.OccurrenceID(nil), ancestry...), Depth: count,
-			Declaration: sourcepos.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("script-%d", index)}, Kind: checkinputs.RunScript,
-		})
 	}
-	graph, err := checkinputs.NewCallGraph(data)
-	if err != nil {
-		t.Fatal(err)
+	for _, context := range slices.Backward(contexts) {
+		if err := builder.Close(context); err != nil {
+			t.Fatal(err)
+		}
 	}
-	return graph, callIDs, scriptIDs
+	return publishInvocationContext(t, builder), callIDs, scriptIDs
 }
 
 func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing.T) {
 	t.Parallel()
-	graph, callIDs, scriptIDs := invocationContextPagedGraph(t, checkinputs.MaxCallGraphPageSize+1)
+	graph, callIDs, scriptIDs := invocationContextPagedGraph(t, MaxInvocationPageSize+1)
 	api, ctx := invocationContext{}, invocationContextFor(graph)
 	var calls []bind.Call
-	for offset := uint32(0); offset < uint32(len(callIDs)); offset += checkinputs.MaxCallGraphPageSize {
-		page, ok := requireInvocationResult(api.Calls(ctx, offset, checkinputs.MaxCallGraphPageSize)).(bind.ResultListCallStringOk)
+	for offset := uint32(0); offset < uint32(len(callIDs)); offset += MaxInvocationPageSize {
+		page, ok := requireInvocationResult(api.Calls(ctx, offset, MaxInvocationPageSize)).(bind.ResultListCallStringOk)
 		if !ok {
 			t.Fatalf("calls page at %d failed", offset)
 		}
@@ -185,8 +193,8 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 		}
 	}
 	var scripts []bind.ScriptOccurrence
-	for offset := uint32(0); offset < uint32(len(scriptIDs)); offset += checkinputs.MaxCallGraphPageSize {
-		page, ok := requireInvocationResult(api.Scripts(ctx, offset, checkinputs.MaxCallGraphPageSize)).(bind.ResultListScriptOccurrenceStringOk)
+	for offset := uint32(0); offset < uint32(len(scriptIDs)); offset += MaxInvocationPageSize {
+		page, ok := requireInvocationResult(api.Scripts(ctx, offset, MaxInvocationPageSize)).(bind.ResultListScriptOccurrenceStringOk)
 		if !ok {
 			t.Fatalf("scripts page at %d failed", offset)
 		}
@@ -196,13 +204,13 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 		t.Fatalf("script count=%d, want %d", len(scripts), len(scriptIDs))
 	}
 	for i, script := range scripts {
-		if script.ID != string(scriptIDs[i]) || script.Depth != uint32(len(callIDs)) || len(script.Ancestry) != len(callIDs)+1 || script.Ancestry[0] != string(graph.Entry().ID) || script.Ancestry[len(script.Ancestry)-1] != script.Owner {
+		if script.ID != string(scriptIDs[i]) || script.Depth != uint32(len(callIDs)) || len(script.Ancestry) != len(callIDs)+1 || script.Ancestry[0] != string(graph.RootID()) || script.Ancestry[len(script.Ancestry)-1] != script.Owner {
 			t.Fatalf("script %d = %+v", i, script)
 		}
 	}
 	calls[0].Ancestry[0] = "changed-call"
 	firstCall, ok := requireInvocationResult(api.CallByID(ctx, string(callIDs[0]))).(bind.ResultOptionCallStringOk)
-	if !ok || !firstCall.Value.IsSome || firstCall.Value.Value.Ancestry[0] != string(graph.Entry().ID) {
+	if !ok || !firstCall.Value.IsSome || firstCall.Value.Value.Ancestry[0] != string(graph.RootID()) {
 		t.Fatal("call page ancestry mutation changed graph")
 	}
 	wantScriptAncestor := scripts[0].Ancestry[1]
@@ -231,10 +239,10 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 
 func TestInvocationContextPageBoundsAndNilEndPages(t *testing.T) {
 	t.Parallel()
-	graph, _, _ := invocationContextPagedGraph(t, checkinputs.MaxCallGraphPageSize+1)
+	graph, _, _ := invocationContextPagedGraph(t, MaxInvocationPageSize+1)
 	api, ctx := invocationContext{}, invocationContextFor(graph)
 	count := uint32(graph.CallCount())
-	for _, bounds := range [][2]uint32{{count, 1}, {count + 1, 1}, {0, 0}, {0, checkinputs.MaxCallGraphPageSize + 1}, {math.MaxUint32, 1}} {
+	for _, bounds := range [][2]uint32{{count, 1}, {count + 1, 1}, {0, 0}, {0, MaxInvocationPageSize + 1}, {math.MaxUint32, 1}} {
 		calls := requireInvocationResult(api.Calls(ctx, bounds[0], bounds[1]))
 		scripts := requireInvocationResult(api.Scripts(ctx, bounds[0], bounds[1]))
 		if bounds[0] == count {
@@ -254,34 +262,39 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 	t.Parallel()
 	t.Run("stop", func(t *testing.T) {
 		t.Parallel()
-		base := invocationContextGraph(t).Export()
-		callID := checkinputs.OccurrenceID(strings.Repeat("b", 64))
-		callSite := sourcepos.Reference{Document: base.Entry.Reference.Document, Revision: base.Entry.Reference.Revision, Node: "call"}
-		outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: sourcepos.Reference{Document: callSite.Document, Revision: callSite.Revision, Node: "body"}})
+		builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1})
+		at := func(node string) sourcepos.Reference {
+			return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
+		}
+		facts := invocation.Facts{Step: invocation.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
+		ticket, err := builder.Begin(builder.RootContext(), at("call"), facts)
 		if err != nil {
 			t.Fatal(err)
 		}
-		base.Calls = []checkinputs.Call{{ID: callID, Parent: base.Entry.ID, Ancestry: []checkinputs.OccurrenceID{base.Entry.ID}, Depth: 1, Site: callSite, Step: sourcepos.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome}}
-		base.Stop = checkinputs.Present(checkinputs.InvocationStop{Parent: base.Entry.ID, Site: callSite, Limit: checkinputs.CallLimit, Max: 1})
-		base.Complete = false
-		graph, err := checkinputs.NewCallGraph(base)
+		call, _ := ticket.Context()
+		opaque, err := invocation.Opaque(invocation.ReasonNonComposite, "")
 		if err != nil {
 			t.Fatal(err)
 		}
+		if _, err := builder.Resolve(call, opaque); err != nil {
+			t.Fatal(err)
+		}
+		if ticket, err := builder.Begin(builder.RootContext(), at("rejected"), facts); err != nil || ticket.Status() != invocation.Stopped {
+			t.Fatalf("second call was not stopped: %v %v", ticket.Status(), err)
+		}
+		graph := publishInvocationContext(t, builder)
 		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(bind.ResultSummaryStringOk)
-		if !ok || summary.Value.Complete || !summary.Value.Stop.IsSome || summary.Value.Stop.Value.Limit != bind.StopLimitTotal || summary.Value.Stop.Value.Max != 1 || summary.Value.Stop.Value.Parent != string(base.Entry.ID) || summary.Value.Stop.Value.Site.Node != callSite.Node {
+		if !ok || summary.Value.Complete || !summary.Value.Stop.IsSome || summary.Value.Stop.Value.Limit != bind.StopLimitTotal || summary.Value.Stop.Value.Max != 1 || summary.Value.Stop.Value.Parent != string(graph.RootID()) || summary.Value.Stop.Value.Site.Node != "rejected" {
 			t.Fatalf("stop summary: %+v", summary)
 		}
 	})
 	t.Run("entry interruption", func(t *testing.T) {
 		t.Parallel()
-		base := invocationContextGraph(t).Export()
-		base.EntryInterruption = checkinputs.Present(checkinputs.Interruption{Reason: checkinputs.OperationalFailure, Detail: "entry expansion failed"})
-		base.Complete = false
-		graph, err := checkinputs.NewCallGraph(base)
-		if err != nil {
+		builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1})
+		if err := builder.InterruptEntry(invocation.ReasonOperational, "entry expansion failed"); err != nil {
 			t.Fatal(err)
 		}
+		graph := publishInvocationContext(t, builder)
 		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(bind.ResultSummaryStringOk)
 		if !ok || summary.Value.Complete || !summary.Value.EntryInterruption.IsSome || summary.Value.EntryInterruption.Value.Reason != bind.InterruptionReasonOperationalFailure || summary.Value.EntryInterruption.Value.Detail != "entry expansion failed" {
 			t.Fatalf("interruption summary: %+v", summary)
@@ -294,20 +307,15 @@ func TestInvocationContextRejectsBudgetOverflow(t *testing.T) {
 	if strconv.IntSize <= 32 {
 		t.Skip("int cannot exceed WIT u32 on 32-bit platforms")
 	}
-	const beyondU32 = uint64(math.MaxUint32) + 1
-	for name, set := range map[string]func(*checkinputs.CallGraphData){
-		"depth":   func(data *checkinputs.CallGraphData) { data.Budget.MaxDepth = int(beyondU32) },
-		"calls":   func(data *checkinputs.CallGraphData) { data.Budget.MaxCalls = int(beyondU32) },
-		"scripts": func(data *checkinputs.CallGraphData) { data.Budget.MaxScripts = int(beyondU32) },
+	beyondU32 := uint64(math.MaxUint32) + 1
+	for name, budget := range map[string]invocation.Budget{
+		"depth":   {MaxDepth: int(beyondU32), MaxCalls: 1, MaxScripts: 1},
+		"calls":   {MaxDepth: 1, MaxCalls: int(beyondU32), MaxScripts: 1},
+		"scripts": {MaxDepth: 1, MaxCalls: 1, MaxScripts: int(beyondU32)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			data := invocationContextGraph(t).Export()
-			set(&data)
-			graph, err := checkinputs.NewCallGraph(data)
-			if err != nil {
-				t.Fatal(err)
-			}
+			graph := publishInvocationContext(t, invocationContextBuilder(t, budget))
 			requireInvocationError(t, requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))), "exceeds WIT integer range")
 		})
 	}

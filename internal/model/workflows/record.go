@@ -1,128 +1,29 @@
-// Package declaration owns published syntax storage. Mutable decoded values enter
-// only through Publish; consumers receive private read capabilities.
+// Package declaration binds parsed workflow and action syntax to its source
+// document. Consumers read the parsed tree directly; Workflow, Job and Step
+// handles add the owning document's identity and semantic lookups.
 package declaration
 
 import (
+	"iter"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
-type inputSource struct {
-	input  *workflowlang.Input
-	unique bool
-}
-
-type builder struct {
-	steps            []*workflowlang.Step
-	jobs             []*workflowlang.Job
-	stringNodes      []*workflowlang.String
-	boolNodes        []*workflowlang.Bool
-	runnerNodes      []*workflowlang.Runner
-	defaultsRunNodes []*workflowlang.DefaultsRun
-	containerNodes   []*workflowlang.Container
-	envNodes         []*workflowlang.Env
-	execActionNodes  []*workflowlang.ExecAction
-	strategyNodes    []*workflowlang.Strategy
-}
-
-// Record owns one private copy of the decoded model and its published facts.
-// It retains no pointers into the caller's mutable input.
+// Record holds one decoded document and the facts derived from it. Publish
+// takes ownership of the tree: callers must not modify it afterwards.
 type Record struct {
-	text         string
-	action       bool
-	using        string
-	workflow     *workflowlang.Workflow
-	skeleton     workflowfacts.Skeleton
-	steps        []*workflowlang.Step
-	jobs         []*workflowlang.Job
-	stepIndices  map[*workflowlang.Step]int
-	jobIndices   map[*workflowlang.Job]int
-	jobKeys      map[*workflowlang.Job]string
-	inputSources map[*workflowlang.ExecAction]map[workflowlang.Pos]inputSource
-	strings      map[*workflowlang.String]value.Value
-	bools        map[*workflowlang.Bool]value.Value
-	conditions   map[*workflowlang.String]value.Value
-	selections   map[*workflowlang.Runner]value.Value
-	defaultsRun  map[*workflowlang.DefaultsRun]value.Value
-	containers   map[*workflowlang.Container]value.Value
-	environments map[*workflowlang.Env]mapping.Mapping
-	resolved     map[*workflowlang.ExecAction]mapping.Mapping
-	matrices     map[*workflowlang.Strategy]matrix.Resolution
-	matrixMaps   map[*workflowlang.Matrix]mapping.Mapping
+	text     string
+	action   bool
+	using    string
+	workflow *workflowlang.Workflow
+	skeleton workflowfacts.Skeleton
 }
 
 func Publish(text string, workflow *workflowlang.Workflow, action bool, using string) *Record {
-	b := builder{}
-	owned := b.cloneWorkflow(workflow)
-	record := &Record{
-		text: text, action: action, using: using, workflow: owned,
-		skeleton: workflowfacts.BuildSkeleton(owned, action),
-		steps:    b.steps, jobs: b.jobs,
-		stepIndices: map[*workflowlang.Step]int{}, jobIndices: map[*workflowlang.Job]int{},
-		jobKeys: map[*workflowlang.Job]string{}, inputSources: map[*workflowlang.ExecAction]map[workflowlang.Pos]inputSource{},
-		strings: map[*workflowlang.String]value.Value{}, bools: map[*workflowlang.Bool]value.Value{},
-		conditions: map[*workflowlang.String]value.Value{}, selections: map[*workflowlang.Runner]value.Value{},
-		defaultsRun: map[*workflowlang.DefaultsRun]value.Value{}, containers: map[*workflowlang.Container]value.Value{},
-		environments: map[*workflowlang.Env]mapping.Mapping{}, resolved: map[*workflowlang.ExecAction]mapping.Mapping{},
-		matrices: map[*workflowlang.Strategy]matrix.Resolution{}, matrixMaps: map[*workflowlang.Matrix]mapping.Mapping{},
-	}
-	record.publishSemantics(&b)
-	for i, step := range record.steps {
-		record.stepIndices[step] = i
-		if action, ok := step.Exec.(*workflowlang.ExecAction); ok && action != nil {
-			record.inputSources[action] = actionInputSourceIndex(action)
-		}
-	}
-	for i, job := range record.jobs {
-		record.jobIndices[job] = i
-	}
-	if owned != nil {
-		for key, job := range owned.Jobs {
-			record.jobKeys[job] = key
-		}
-	}
-	return record
-}
-
-func actionInputSourceIndex(action *workflowlang.ExecAction) map[workflowlang.Pos]inputSource {
-	index := map[workflowlang.Pos]inputSource{}
-	add := func(input *workflowlang.Input) {
-		if input == nil || input.Name == nil || input.Name.Pos == nil {
-			return
-		}
-		position := *input.Name.Pos
-		entry := index[position]
-		if entry.input == nil {
-			entry.input = input
-			entry.unique = true
-		} else {
-			entry.unique = false
-		}
-		index[position] = entry
-	}
-	var collect func(*workflowlang.ActionInputMapping)
-	collect = func(mapping *workflowlang.ActionInputMapping) {
-		if mapping == nil {
-			return
-		}
-		for _, input := range mapping.Inputs {
-			add(input)
-		}
-		for _, insertion := range mapping.Insertions {
-			collect(insertion)
-		}
-	}
-	for _, input := range action.Inputs {
-		add(input)
-	}
-	for _, insertion := range action.InputInsertions {
-		collect(insertion)
-	}
-	return index
+	return &Record{text: text, action: action, using: using, workflow: workflow, skeleton: workflowfacts.BuildSkeleton(workflow, action)}
 }
 
 func (r *Record) Text() string { return r.text }
@@ -132,38 +33,259 @@ func (r *Record) Action() bool { return r.action }
 type Bound struct {
 	record     *Record
 	references workflowfacts.References
-	steps      map[source.Reference]int
+	steps      map[source.Reference]*workflowlang.Step
 }
 
 func (r *Record) Bind(identity string) *Bound {
 	refs := r.skeleton.Bind(identity, []byte(r.text))
-	bound := &Bound{record: r, references: refs, steps: map[source.Reference]int{}}
+	bound := &Bound{record: r, references: refs, steps: map[source.Reference]*workflowlang.Step{}}
 	for step, ref := range refs.Steps {
-		bound.steps[ref] = r.stepIndices[step]
+		bound.steps[ref] = step
 	}
 	return bound
 }
 
 func (b *Bound) Reference() source.Reference { return b.references.Document }
-func (b *Bound) Workflow() WorkflowView      { return makeWorkflowView(b, b.record.workflow) }
-
-func (b *Bound) Step(reference source.Reference) (StepView, bool) {
-	index, ok := b.steps[reference]
-	if !ok {
-		return StepView{}, false
+func (b *Bound) Workflow() Workflow {
+	if b == nil || b.record.workflow == nil {
+		return Workflow{}
 	}
-	return StepView{owner: b, index: index}, true
+	return Workflow{b.record.workflow, b}
 }
 
-func (b *Bound) Owns(step StepView) bool {
-	return step.Present() && b == step.owner
+func (b *Bound) Step(reference source.Reference) (Step, bool) {
+	step, ok := b.steps[reference]
+	if !ok {
+		return Step{}, false
+	}
+	return Step{step, b}, true
 }
+
+func (b *Bound) Owns(step Step) bool          { return step.Present() && b == step.owner }
+func (b *Bound) OwnsWorkflow(w Workflow) bool { return w.Present() && b == w.owner }
+func (b *Bound) OwnsJob(job Job) bool         { return job.Present() && b == job.owner }
 
 func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
 	return b.declarations()
 }
 
-func (b *Bound) OwnsWorkflow(view WorkflowView) bool { return view.Present() && b == view.owner }
-func (b *Bound) OwnsJob(view JobView) bool           { return view.Present() && b == view.owner }
-
 func (b *Bound) SourceIndex() workflowfacts.SourceIndex { return b.references.SourceIndex() }
+
+// ActionBody exposes composite action steps without a workflow lifecycle.
+func (b *Bound) ActionBody() ActionBody { return ActionBody{workflow: b.Workflow()} }
+
+// Workflow is a parsed workflow bound to its document.
+type Workflow struct {
+	*workflowlang.Workflow
+	owner *Bound
+}
+
+func (w Workflow) Present() bool { return w.Workflow != nil }
+
+func (w Workflow) Job(key string) (Job, bool) {
+	if !w.Present() {
+		return Job{}, false
+	}
+	job, ok := w.Workflow.Jobs[key]
+	if !ok || job == nil {
+		return Job{}, false
+	}
+	return Job{job, w.owner, key}, true
+}
+
+// Jobs yields the workflow's jobs keyed by lowercase ID.
+func (w Workflow) Jobs() iter.Seq2[string, Job] {
+	return func(yield func(string, Job) bool) {
+		if !w.Present() {
+			return
+		}
+		for key, job := range w.Workflow.Jobs {
+			if job != nil && !yield(key, Job{job, w.owner, key}) {
+				return
+			}
+		}
+	}
+}
+
+// ScalarSource maps a decoded scalar back to its captured YAML. It is
+// available for indexed expressions, conditions and dependency references.
+func (w Workflow) ScalarSource(s *workflowlang.String) *workflowlang.ScriptSource {
+	pos, ok := s.Position()
+	if !ok || !w.Present() {
+		return nil
+	}
+	return w.ExpressionSources[pos]
+}
+
+// Job is a parsed job bound to its document.
+type Job struct {
+	*workflowlang.Job
+	owner *Bound
+	key   string
+}
+
+func (j Job) Present() bool { return j.Job != nil }
+
+// Key returns the lowercase job ID that indexes the job in the workflow.
+func (j Job) Key() string { return j.key }
+
+func (j Job) Reference() source.Reference {
+	if !j.Present() || j.owner == nil {
+		return source.Reference{}
+	}
+	return j.owner.references.Jobs[j.Key()]
+}
+
+func (j Job) Workflow() Workflow { return j.owner.Workflow() }
+
+// Steps yields the job's top-level steps.
+func (j Job) Steps() iter.Seq[Step] { return boundSteps(j.owner, j.stepNodes()) }
+
+func (j Job) stepNodes() []*workflowlang.Step {
+	if !j.Present() {
+		return nil
+	}
+	return j.Job.Steps
+}
+
+func boundSteps(owner *Bound, nodes []*workflowlang.Step) iter.Seq[Step] {
+	return func(yield func(Step) bool) {
+		for _, step := range nodes {
+			if step != nil && !yield(Step{step, owner}) {
+				return
+			}
+		}
+	}
+}
+
+// Step is a parsed step bound to its document.
+type Step struct {
+	*workflowlang.Step
+	owner *Bound
+}
+
+func (s Step) Present() bool { return s.Step != nil }
+
+func (s Step) Reference() source.Reference {
+	if !s.Present() || s.owner == nil {
+		return source.Reference{}
+	}
+	return s.owner.references.Steps[s.Step]
+}
+
+func (s Step) SourceReference() source.Reference {
+	if !s.Present() || s.owner == nil {
+		return source.Reference{}
+	}
+	return s.owner.Reference()
+}
+
+func (s Step) ContentText() string {
+	if !s.Present() || s.owner == nil {
+		return ""
+	}
+	return s.owner.record.text
+}
+
+func (s Step) DeclaringJob() string {
+	if !s.Present() || s.owner == nil {
+		return ""
+	}
+	return s.owner.references.StepJobs[s.Step]
+}
+
+// Job returns the job that declares this step, including nested parallel
+// steps. Composite metadata without a declaring workflow job returns an absent Job.
+func (s Step) Job() Job {
+	if !s.Present() || s.owner == nil {
+		return Job{}
+	}
+	job, _ := s.owner.Workflow().Job(s.DeclaringJob())
+	return job
+}
+
+func (s Step) Workflow() Workflow { return s.owner.Workflow() }
+
+// Condition decodes the step's if condition.
+func (s Step) Condition() value.Value {
+	if !s.Present() {
+		return value.Value{}
+	}
+	return condition(s.If)
+}
+
+func (s Step) Run() (*workflowlang.ExecRun, bool) {
+	if !s.Present() {
+		return nil, false
+	}
+	run, ok := s.Exec.(*workflowlang.ExecRun)
+	return run, ok && run != nil
+}
+
+func (s Step) Action() (*workflowlang.ExecAction, bool) {
+	if !s.Present() {
+		return nil, false
+	}
+	action, ok := s.Exec.(*workflowlang.ExecAction)
+	return action, ok && action != nil
+}
+
+func (s Step) Wait() (*workflowlang.ExecWait, bool) {
+	if !s.Present() {
+		return nil, false
+	}
+	wait, ok := s.Exec.(*workflowlang.ExecWait)
+	return wait, ok && wait != nil
+}
+
+func (s Step) Cancel() (*workflowlang.ExecCancel, bool) {
+	if !s.Present() {
+		return nil, false
+	}
+	cancel, ok := s.Exec.(*workflowlang.ExecCancel)
+	return cancel, ok && cancel != nil
+}
+
+// ParallelSteps yields the steps of a parallel group; it reports false for other steps.
+func (s Step) ParallelSteps() (iter.Seq[Step], bool) {
+	if !s.Present() {
+		return nil, false
+	}
+	parallel, ok := s.Exec.(*workflowlang.ExecParallel)
+	if !ok || parallel == nil {
+		return nil, false
+	}
+	return boundSteps(s.owner, parallel.Steps), true
+}
+
+// ActionBody exposes composite steps without a workflow lifecycle.
+type ActionBody struct{ workflow Workflow }
+
+func (a ActionBody) Present() bool      { return a.workflow.Present() }
+func (a ActionBody) Workflow() Workflow { return a.workflow }
+func (a ActionBody) Using() string {
+	if a.workflow.owner == nil {
+		return ""
+	}
+	return a.workflow.owner.record.using
+}
+
+func (a ActionBody) Steps() iter.Seq[Step] {
+	job, _ := a.workflow.Job("")
+	return job.Steps()
+}
+
+// OutputValues yields composite output expressions evaluated after all steps.
+func (a ActionBody) OutputValues() iter.Seq[*workflowlang.String] {
+	return func(yield func(*workflowlang.String) bool) {
+		job, ok := a.workflow.Job("")
+		if !ok {
+			return
+		}
+		for _, output := range job.Outputs {
+			if output != nil && !yield(output.Value) {
+				return
+			}
+		}
+	}
+}

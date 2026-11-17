@@ -117,7 +117,7 @@ run = "go run ./internal/development/tests/integration/documentation -quiet ./do
 
 ["generate:payload"]
 sources = ["tools/generate/webhook-payloads/**"]
-outputs = ["internal/model/contexts/events/payload/catalogue.json"]
+outputs = ["internal/model/contexts/events/payload_catalogue.json"]
 run     = "node ./tools/generate/webhook-payloads/main.mts"
 
 ["generate:config-schema"]
@@ -144,22 +144,17 @@ run     = "go run ./internal/development/generators/expression-contexts ./intern
 
 ["generate:events"]
 depends = ["generate:payload"]
-sources = ["internal/development/generators/event-triggers/**", "internal/model/contexts/events/payload/**"]
-outputs = ["internal/model/contexts/events/triggers/webhooks.gen.go"]
-run     = "go run ./internal/development/generators/event-triggers --registry ./internal/model/contexts/events/triggers/webhooks.gen.go"
+sources = ["internal/development/generators/event-triggers/**", "internal/model/contexts/events/payload_*"]
+outputs = ["internal/model/contexts/events/webhooks.gen.go"]
+run     = "go run ./internal/development/generators/event-triggers --registry ./internal/model/contexts/events/webhooks.gen.go"
 
 ["generate:actions"]
 sources = ["internal/development/generators/action-metadata/**"]
-outputs = ["internal/model/actions/*.gen.go"]
+outputs = ["internal/model/actionmeta/*.gen.go"]
 run     = [
-  "go run ./internal/development/generators/action-metadata -runtimes -output internal/model/actions/runtimes.gen.go",
-  "go run ./internal/development/generators/action-metadata -output internal/model/actions/availability.gen.go"
+  "go run ./internal/development/generators/action-metadata -runtimes -output internal/model/actionmeta/runtimes.gen.go",
+  "go run ./internal/development/generators/action-metadata -output internal/model/actionmeta/availability.gen.go"
 ]
-
-["generate:workflow-views"]
-sources = ["internal/development/generators/workflow-views/**", "internal/model/workflows/definition/*.go"]
-outputs = ["internal/model/workflows/*.gen.go"]
-run     = "go run ./internal/development/generators/workflow-views . internal/model/workflows"
 
 ["generate:owned-copies"]
 run = "go generate -run owned-copies ./..."
@@ -174,7 +169,6 @@ depends = [
   "generate:contexts",
   "generate:events",
   "generate:actions",
-  "generate:workflow-views",
   "generate:owned-copies",
   "generate:analysis-merge"
 ]

@@ -14,7 +14,7 @@ import (
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
@@ -70,14 +70,14 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := pluginref.New("community-check", "latest", fixtureregistry.FixtureRegistryURL)
+	request, err := pluginreference.New("community-check", "latest", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{request}, nil); err != nil {
+	if err := project.Resolve(t.Context(), []pluginreference.Reference{request}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{request}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{request}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := checking.ConfigurationRules().Load(project.Manifest.Path)
@@ -102,14 +102,14 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	initial, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	initial, err := pluginreference.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{initial}, nil); err != nil {
+	if err := project.Resolve(t.Context(), []pluginreference.Reference{initial}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{initial}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{initial}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(project.Manifest.Path)
@@ -122,11 +122,11 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := pluginref.New(fixtureregistry.FixturePluginName, "v2.0.0", fixtureregistry.FixtureRegistryURL)
+	updated, err := pluginreference.New(fixtureregistry.FixturePluginName, "v2.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{updated}, []pluginref.Reference{updated}); err == nil || !strings.Contains(err.Error(), "identity changed") {
+	if err := project.Resolve(t.Context(), []pluginreference.Reference{updated}, []pluginreference.Reference{updated}); err == nil || !strings.Contains(err.Error(), "identity changed") {
 		t.Fatalf("publisher change accepted: %v", err)
 	}
 	after, err := os.ReadFile(project.Manifest.Path)

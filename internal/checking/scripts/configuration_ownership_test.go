@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -22,7 +22,7 @@ func (run configurationRunner) Analyze(_ context.Context, batch tools.Batch) ([]
 
 func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	t.Parallel()
-	rules, err := config.NewRuleSet([]rule.Declaration{{Name: "runtime-check", Category: "correctness", Recommended: true}})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "runtime-check", Category: "correctness", Recommended: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err = rules.ResolveRules(config.Presets{}, cfg)
+	cfg, err = rules.ResolveRules(configuration.Presets{}, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

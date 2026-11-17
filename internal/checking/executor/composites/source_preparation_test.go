@@ -4,10 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -22,16 +21,16 @@ type preparationObserver struct {
 	metadataChecks int
 }
 
-var _ checkcalls.InvocationParticipant = (*preparationObserver)(nil)
+var _ workflowvisit.InvocationParticipant = (*preparationObserver)(nil)
 
-func (r *preparationObserver) VisitWorkflowPre(workflowdecl.WorkflowView) error {
+func (r *preparationObserver) VisitWorkflowPre(workflowdecl.Workflow) error {
 	if !r.prepared[r.entryDocument] {
 		r.t.Fatal("workflow checks started before source preparation")
 	}
 	return nil
 }
 
-func (r *preparationObserver) EnterInvocation(call checkcalls.Invocation) error {
+func (r *preparationObserver) EnterInvocation(call workflowvisit.Invocation) error {
 	if !r.prepared[call.Source.Reference().Document] {
 		r.t.Fatal("composite checks started before source preparation")
 	}
@@ -39,9 +38,9 @@ func (r *preparationObserver) EnterInvocation(call checkcalls.Invocation) error 
 	return nil
 }
 
-func (*preparationObserver) LeaveInvocation(invocation.Context) error        { return nil }
-func (*preparationObserver) VisitInvocationStep(workflowdecl.StepView) error { return nil }
-func (*preparationObserver) VisitOpaqueAction(workflowdecl.StepView) error   { return nil }
+func (*preparationObserver) LeaveInvocation(invocation.Context) error    { return nil }
+func (*preparationObserver) VisitInvocationStep(workflowdecl.Step) error { return nil }
+func (*preparationObserver) VisitOpaqueAction(workflowdecl.Step) error   { return nil }
 
 func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, snapshot parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	if !r.prepared[snapshot.Reference().Document] {
@@ -51,7 +50,7 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 	return nil
 }
 
-func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return r
 }
 

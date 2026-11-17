@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -74,7 +74,7 @@ func TestProjectOverlayCannotEnableForbiddenMirror(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: rules, ConfigOverlays: []config.Overlay{overlay}})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: rules, ConfigOverlays: []configuration.Overlay{overlay}})
 	if err != nil {
 		t.Fatal(err)
 	}

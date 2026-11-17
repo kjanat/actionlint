@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestDirectoryPluginSelectionUsesDirectoryRepository(t *testing.T) {
@@ -148,11 +148,11 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
+	ref, err := pluginreference.New(pin.Name, pin.Version, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
 	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
@@ -175,7 +175,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, mixed); err == nil {
 		t.Fatal("mixed active plugin scope accepted")
 	}
-	session, err := newEditorSession(t.Context(), checking.Options{WorkingDir: root}, selected.Paths, acquisition)
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root}, selected.Paths, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}

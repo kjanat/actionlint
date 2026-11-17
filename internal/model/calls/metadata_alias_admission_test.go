@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestMetadataAliasAdmissionRejectsUndeclaredSource(t *testing.T) {
@@ -16,7 +15,7 @@ func TestMetadataAliasAdmissionRejectsUndeclaredSource(t *testing.T) {
 	}
 	mapping := root.Content[0]
 	alias := mapping.Content[3]
-	mapping.Content = []*syntax.Node{mapping.Content[2], alias, mapping.Content[0], mapping.Content[1]}
+	mapping.Content = []*codec.Node{mapping.Content[2], alias, mapping.Content[0], mapping.Content[1]}
 	err = checkMetadataAliases(root)
 	want := fmt.Sprintf("line:%d, column:%d: alias %q refers to an anchor not yet declared", alias.Line, alias.Column, "a")
 	if err == nil || err.Error() != want {

@@ -10,7 +10,7 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
@@ -33,7 +33,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := plugininstall.Selection{Acquisition: acquisition, Overlays: []config.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
+				selection := plugininstall.Selection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
 				if explicit {
 					selection.ConfigFile = path
 				}
@@ -44,7 +44,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 					t.Fatalf("disabled defaults contacted registry: %v", registry.Requests())
 				}
 				cfg, err := checking.ConfigurationRules().Load(path)
-				if err != nil || config.VariableNames(cfg.Facts()) == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {
+				if err != nil || configuration.VariableNames(cfg.Facts()) == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {
 					t.Fatalf("migration ignored opt-out: %+v, %v", cfg, err)
 				}
 				if _, err := os.Stat(filepath.Join(filepath.Dir(path), "actionlint.plugins.lock.json")); !os.IsNotExist(err) {

@@ -59,7 +59,7 @@ jobs:
     steps: [{run: echo ok}]
 permissions: {}
 `)
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: workspace.Identity(root), Config: config}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: workspace.Identity(root), Config: config}})
 				if err != nil {
 					t.Fatal(err)
 				}

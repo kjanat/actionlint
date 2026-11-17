@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -110,7 +110,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 				t.Fatal(err)
 			}
 			scripts := result.Batch.Scripts()
-			if len(scripts) != 1 || !scripts[0].Run.Run().SourceScalar().HasSource || !scripts[0].Run.Source().Present() || scripts[0].Run.Run().Value() != "" {
+			if len(scripts) != 1 || !scripts[0].Run.Run.SourceScalar.HasSource || scripts[0].Run.Source == nil || scripts[0].Run.Run.Text() != "" {
 				t.Fatalf("empty workflow script lost its occurrence or physical source: %+v", scripts)
 			}
 		})
@@ -123,10 +123,10 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	outerSource := "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n"
 	innerSource := "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": outerSource, "inner/action.yml": innerSource}, nil)
-	outerConfig, innerConfig := &repoconfig.Config{}, &repoconfig.Config{}
+	outerConfig, innerConfig := &configuration.Config{}, &configuration.Config{}
 	outerPath := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
 	innerPath := filepath.Join(f.options.Paths.Workspace, "inner", "action.yml")
-	f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
+	f.options.BindSource = testSourceBindings(func(path string) (*configuration.Config, error) {
 		if path == outerPath {
 			return outerConfig, nil
 		}
@@ -352,7 +352,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 		t.Fatal(err)
 	}
 	scripts := result.Batch.Scripts()
-	if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+	if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 		t.Fatalf("scripts = %+v, want only the surrounding valid runs", scripts)
 	}
 }

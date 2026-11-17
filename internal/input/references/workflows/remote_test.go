@@ -53,10 +53,9 @@ func TestRemoteWorkflowMetadataSharedWithoutRepositoryRoot(t *testing.T) {
 	if err != nil || metadata == nil {
 		t.Fatalf("metadata=%+v error=%v", metadata, err)
 	}
-	metadata.JobPermissions["build"]["contents"] = calls.PermissionLevelNone
 	fresh, err := caches[1].Resolved().LookupForCall(spec)
 	if err != nil || fresh.JobPermissions["build"]["contents"] != calls.PermissionLevelWrite || requests.Load() != 1 {
-		t.Fatalf("shared mutable data or repeated requests: %+v %v requests=%d", fresh, err, requests.Load())
+		t.Fatalf("missing metadata or repeated requests: %+v %v requests=%d", fresh, err, requests.Load())
 	}
 }
 

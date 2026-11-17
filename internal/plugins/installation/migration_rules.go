@@ -9,7 +9,7 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
@@ -19,7 +19,7 @@ import (
 // cachedMigrationRules reads declarative metadata without running a guest or
 // acquiring an artifact. Registry selection can consult release metadata; a
 // missing cached manifest requires an explicit installation before migration.
-func cachedMigrationRules(ctx context.Context, rules config.RuleSet, acquisition Acquisition, path string) ([]rule.Descriptor, error) {
+func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
 	sources, err := (Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
@@ -58,7 +58,7 @@ func cachedMigrationRules(ctx context.Context, rules config.RuleSet, acquisition
 			return nil, fmt.Errorf("cached plugin manifest: %w", err)
 		}
 		if cached.Info.Kind != artifacts.ProviderManifest {
-			return nil, fmt.Errorf("plugin %q has no declarative rule descriptor: %w", source, config.ErrRuleMetadataRequired)
+			return nil, fmt.Errorf("plugin %q has no declarative rule descriptor: %w", source, configuration.ErrRuleMetadataRequired)
 		}
 		manifest, err := manifests.Parse(cached.Bytes)
 		if err != nil {

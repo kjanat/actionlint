@@ -1,8 +1,6 @@
 package conventions
 
 import (
-	"strings"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -20,18 +18,23 @@ import (
 // MissingActionMetadataCheck reads acquisition outcomes prepared by the host.
 // It does not start provider requests or depend on preceding step callbacks.
 func MissingActionMetadataCheck(remote *actionremote.ResolvedActions) checkinputs.DeclarationCheck {
-	return checkinputs.DeclarationCheck{Declaration: MissingActionMetadataDeclaration(), Step: func(step workflowdecl.StepView) []reporting.Finding {
+	return checkinputs.DeclarationCheck{Declaration: MissingActionMetadataDeclaration(), Step: func(step workflowdecl.Step) []reporting.Finding {
 		return missingActionMetadata(step, remote)
 	}}
 }
 
-func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.ResolvedActions) []reporting.Finding {
+func missingActionMetadata(step workflowdecl.Step, remote *actionremote.ResolvedActions) []reporting.Finding {
 	action, ok := step.Action()
-	if !ok || !action.Uses().Present() || action.Uses().ContainsExpression() {
+	if !ok || action.Uses == nil || action.Uses.ContainsExpression() {
 		return nil
 	}
-	spec := action.Uses().Value()
-	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") || strings.HasPrefix(spec, "docker://") || references.ActionReferenceProblem(spec) != "" {
+	spec := action.Uses.Value
+	switch references.FormOf(spec) {
+	case references.FormWorkspace, references.FormSelfRepository, references.FormContainer:
+		return nil
+	case references.FormRepository, references.FormBuiltin:
+	}
+	if references.ActionReferenceProblem(spec) != "" {
 		return nil
 	}
 	result := remote.Inspect(spec)
@@ -60,6 +63,6 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 		factavailability.InaccessibleReason, factavailability.LimitReason:
 	}
 	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
-	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "could not inspect metadata for "+spec+" ("+reason+")"+help)
+	collector.Error(action.Uses.Pos, "could not inspect metadata for "+spec+" ("+reason+")"+help)
 	return collector.Findings
 }

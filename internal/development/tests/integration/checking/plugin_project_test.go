@@ -13,7 +13,7 @@ import (
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
@@ -34,11 +34,11 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
+	ref, err := pluginreference.New(pin.Name, pin.Version, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs := []pluginref.Reference{ref}
+	refs := []pluginreference.Reference{ref}
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 		t.Fatalf("configured release changed: %+v %v", selected, err)
 	}
 	declared := project.Manifest.References[0]
-	project.Manifest.References[0], err = pluginref.New(declared.Name(), "v2.0.0", declared.Registry())
+	project.Manifest.References[0], err = pluginreference.New(declared.Name(), "v2.0.0", declared.Registry())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,11 +76,11 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.Parse("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
+	ref, err := pluginreference.Parse("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
 	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "")

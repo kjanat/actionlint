@@ -7,8 +7,6 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -20,8 +18,8 @@ import (
 // unchanged: a row preparation generated, or one whose expressions it
 // masked, makes the whole fix unavailable, as do indentation changes and
 // overlapping replacements. A fix may edit several rows.
-func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
-	if !source.Present() || !source.Literal() || len(fix.Replacements) == 0 {
+func scriptFix(source *workflowlang.ScriptSource, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
+	if source == nil || !source.Literal || len(fix.Replacements) == 0 {
 		return results.Fix{}, false
 	}
 	seen := strings.Split(prepared.Source, "\n")
@@ -35,24 +33,24 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepar
 			}
 			line = mapped.Line
 		}
-		if replacement.Row != replacement.EndRow || line < 1 || line > source.LinesLen() || replacement.Row < 1 || replacement.Row > len(seen) ||
+		if replacement.Row != replacement.EndRow || line < 1 || line > len(source.Lines) || replacement.Row < 1 || replacement.Row > len(seen) ||
 			strings.ContainsAny(replacement.Text, "\x00\r\n") || !utf8.ValidString(replacement.Text) {
 			return results.Fix{}, false
 		}
-		bounds, _ := source.Line(line - 1)
-		original := source.Value()[bounds.Start:bounds.End]
+		bounds := source.Lines[line-1]
+		original := source.Value[bounds.Start:bounds.End]
 		if original != seen[replacement.Row-1] {
 			return results.Fix{}, false
 		}
-		startOffset, startOK := text.ByteOffsetAtColumn(original, replacement.Column)
-		endOffset, endOK := text.ByteOffsetAtColumn(original, replacement.EndColumn)
+		startOffset, startOK := sourcepos.ByteOffsetAtColumn(original, replacement.Column)
+		endOffset, endOK := sourcepos.ByteOffsetAtColumn(original, replacement.EndColumn)
 		if !startOK || !endOK || startOffset > endOffset {
 			return results.Fix{}, false
 		}
 		// Require both boundaries in the same exact span. Insertions at the end
 		// of a line are valid even though they are not diagnostic start positions.
 		var mapped *workflowlang.ScriptSourceSpan
-		for span := range source.Spans() {
+		for _, span := range source.Spans {
 			if bounds.Start+startOffset >= span.Start && bounds.Start+endOffset <= span.End {
 				mapped = &span
 				break
@@ -61,8 +59,8 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepar
 		if mapped == nil || mapped.Start == mapped.End {
 			return results.Fix{}, false
 		}
-		start := mapped.YamlColumn + utf8.RuneCountInString(source.Value()[mapped.Start:bounds.Start+startOffset])
-		end := mapped.YamlColumn + utf8.RuneCountInString(source.Value()[mapped.Start:bounds.Start+endOffset])
+		start := mapped.YamlColumn + utf8.RuneCountInString(source.Value[mapped.Start:bounds.Start+startOffset])
+		end := mapped.YamlColumn + utf8.RuneCountInString(source.Value[mapped.Start:bounds.Start+endOffset])
 		edits = append(edits, results.Edit{
 			Start:       sourcepos.Position{Line: mapped.YamlLine, Column: start},
 			End:         sourcepos.Position{Line: mapped.YamlLine, Column: end},
@@ -91,16 +89,16 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepar
 	return results.Fix{Description: fix.Description, Applicability: fix.Applicability, Edits: edits}, true
 }
 
-func fixPreservesIndent(source workflowdecl.ScriptSourceView, edits []results.Edit) bool {
-	for span := range source.Spans() {
-		original := source.Value()[span.Start:span.End]
+func fixPreservesIndent(source *workflowlang.ScriptSource, edits []results.Edit) bool {
+	for _, span := range source.Spans {
+		original := source.Value[span.Start:span.End]
 		modified := original
 		for _, edit := range slices.Backward(edits) {
 			if edit.Start.Line != span.YamlLine {
 				continue
 			}
-			start, startOK := text.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
-			end, endOK := text.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
+			start, startOK := sourcepos.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
+			end, endOK := sourcepos.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
 			if !startOK || !endOK {
 				return false
 			}

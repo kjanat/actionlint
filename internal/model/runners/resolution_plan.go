@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"crypto/sha256"
@@ -10,7 +10,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -22,7 +22,7 @@ type ProviderSelection struct {
 }
 
 type jobRange struct {
-	job        workflowdecl.JobView
+	job        workflowdecl.Job
 	start, end int
 }
 
@@ -49,7 +49,7 @@ func NewResolutionPlan(snapshot parsing.SourceSnapshot, custom LabelSet, request
 	workflowJobs := maps.Collect(workflow.Jobs())
 	for _, id := range slices.Sorted(maps.Keys(workflowJobs)) {
 		job := workflowJobs[id]
-		if !job.RunsOn().Present() {
+		if job.RunsOn == nil {
 			continue
 		}
 		start := len(selectors)
@@ -200,7 +200,7 @@ func (plan *ResolutionPlan) Complete(response runnerapi.Response) (*Knowledge, e
 	cacheKeyHash.Write(plan.dependency)
 	cacheKeyHash.Write(encodedAnswers)
 	k.report.CacheKey = hex.EncodeToString(cacheKeyHash.Sum(nil))
-	jobs := make(map[workflowdecl.JobView]jobRecord, len(plan.ranges))
+	jobs := make(map[workflowdecl.Job]jobRecord, len(plan.ranges))
 	for _, span := range plan.ranges {
 		record, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {

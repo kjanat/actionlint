@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
@@ -21,7 +21,7 @@ func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 		}
 		cfg, err := checking.ConfigurationRules().Parse([]byte(source))
 		if err == nil {
-			_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+			_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 		}
 		if err == nil {
 			t.Fatalf("additional rule leaked: %s", source)
@@ -30,12 +30,12 @@ func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay}, "no-sudo"); err != nil {
+		if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay}, "no-sudo"); err != nil {
 			t.Fatal(err)
 		}
-		cfg, _, err = checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay})
+		cfg, _, err = checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay})
 		if err == nil {
-			_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+			_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 		}
 		if err == nil {
 			t.Fatal("overlay skipped rule validation")

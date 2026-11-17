@@ -138,10 +138,10 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		}
 		if call, exists := observer.input.CallGraph.Call(input.Occurrence.Owner); exists {
 			invoked++
-			if call.Uses != "./nested" || !strings.HasSuffix(input.Path, "action.yml") {
+			if call.Uses() != "./nested" || !strings.HasSuffix(input.Path, "action.yml") {
 				t.Fatalf("input lost composite invocation: input=%+v call=%+v", input, call)
 			}
-		} else if input.Occurrence.Owner != observer.input.CallGraph.Entry().ID {
+		} else if input.Occurrence.Owner != observer.input.CallGraph.RootID() {
 			t.Fatalf("input occurrence owner missing from call graph: %+v", input.Occurrence)
 		}
 	}

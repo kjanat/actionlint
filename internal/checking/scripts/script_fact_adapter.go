@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -67,7 +68,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	graph := batch.CallGraph()
+	graph := batch.Invocations()
 	var findings []*findingmodel.Finding
 	var failures []error
 	for index, unit := range batch.Scripts() {
@@ -87,9 +88,9 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			AvailableInputs: available,
-			SelectedScripts: []checkinputs.OccurrenceID{script.Occurrence.ID},
+			SelectedScripts: []invocation.ID{script.Occurrence.ID},
 		}
-		if script.Occurrence.Owner == graph.Entry().ID {
+		if script.Occurrence.Owner == graph.RootID() {
 			input.Scripts = []checkinputs.Script{script}
 		} else {
 			input.Invoked = []checkinputs.Script{script}

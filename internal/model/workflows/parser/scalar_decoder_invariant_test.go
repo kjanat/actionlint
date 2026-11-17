@@ -7,10 +7,9 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
+	inputsource "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -41,7 +40,7 @@ var scalarDecoderInvariantCorpus = []string{
 	"- |2-\n  first\n- >2\n  second\n",
 	"run: !!str &script \"echo \\u0024HOME\"\ncopy: *script\n",
 	"run: &script # comment\n  !!str\n  'echo hello'\n",
-	"run: !<tag:syntax.org,2002:str> hello\n",
+	"run: !<tag:codec.org,2002:str> hello\n",
 	"{plain: hello, 'quoted:key': [one, \"two\"], last: end}\n",
 	"{a: {b: c}, d: [e, f]}\n",
 	"? multi\n  line\n: value\n",
@@ -101,14 +100,14 @@ func FuzzScalarDecoderInvariants(f *testing.F) {
 	})
 }
 
-func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node) {
+func checkScalarDecoderInvariants(t *testing.T, input string, root *codec.Node) {
 	t.Helper()
 	p := workflowparser.NewSourceParser([]byte(input))
 	p.IndexScalarSources(root)
 	document := sourcemap.NewDocument(input)
-	var visit func(*syntax.Node)
-	visit = func(node *syntax.Node) {
-		if node.Kind == syntax.ScalarNode {
+	var visit func(*codec.Node)
+	visit = func(node *codec.Node) {
+		if node.Kind == codec.ScalarNode {
 			// An implicit empty value has no scalar token to locate.
 			if node.Value == "" && node.Style == 0 {
 				return
@@ -122,7 +121,7 @@ func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node)
 	visit(root)
 }
 
-func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document *sourcemap.Document, node *syntax.Node) {
+func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document *sourcemap.Document, node *codec.Node) {
 	t.Helper()
 	lines := document.Lines()
 	source := p.ScriptSource(node)
@@ -136,7 +135,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := text.ByteOffsetAtColumn(lines[pos.Line-1], pos.Col); !ok {
+		if _, ok := inputsource.ByteOffsetAtColumn(lines[pos.Line-1], pos.Col); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
@@ -154,7 +153,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 			t.Fatalf("span outside source lines: %+v", span)
 		}
 		rawLine := lines[span.YamlLine-1]
-		start, ok := text.ByteOffsetAtColumn(rawLine, span.YamlColumn)
+		start, ok := inputsource.ByteOffsetAtColumn(rawLine, span.YamlColumn)
 		if !ok {
 			t.Fatalf("span starts outside source line: %+v", span)
 		}
@@ -172,12 +171,12 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 				t.Fatalf("copied span %+v decodes to %q, source is %q", span, value, rawLine[start:])
 			}
 		default:
-			end, ok := text.ByteOffsetAtColumn(rawLine, span.YamlEndColumn)
+			end, ok := inputsource.ByteOffsetAtColumn(rawLine, span.YamlEndColumn)
 			if !ok || end < start {
 				t.Fatalf("escape ends outside source line: %+v", span)
 			}
 			quote := "\""
-			if node.Style&syntax.SingleQuotedStyle != 0 {
+			if node.Style&codec.SingleQuotedStyle != 0 {
 				quote = "'"
 			}
 			encoded := []byte(quote + rawLine[start:end] + quote)

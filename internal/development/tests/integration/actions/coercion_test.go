@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -44,13 +44,13 @@ func TestActionCoercionSelection(t *testing.T) {
 					t.Fatal(err)
 				}
 				var result *checking.Result
-				options := checking.Options{WorkingDir: root, Presets: repoconfig.Presets{Strict: tc.strict}}
+				options := checking.Options{WorkingDir: root, Presets: configuration.Presets{Strict: tc.strict}}
 				if called {
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config+"\ntools: {shellcheck: false, ruff: false}\n")
 					fixturefiles.Write(t, root, "inner/action.yml", source)
 					result = testutil.Composite(t, root, "- uses: ./inner", options)
 				} else {
-					result, err = checking.Analyze(t.Context(), options, []workspace.Source{{Path: "action.yml", Content: []byte(source), Config: cfg}})
+					result, err = checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "action.yml", Content: []byte(source), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}

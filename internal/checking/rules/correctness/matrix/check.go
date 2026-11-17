@@ -10,7 +10,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

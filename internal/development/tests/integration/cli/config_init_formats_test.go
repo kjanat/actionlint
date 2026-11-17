@@ -9,12 +9,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/tidwall/jsonc"
 )
 
 func TestConfigInitFormats(t *testing.T) {
-	for _, format := range repoconfig.FileFormats() {
+	for _, format := range configuration.FileFormats() {
 		t.Run(string(format), func(t *testing.T) {
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			acquisition := registryAcquisition(registry)
@@ -28,10 +28,10 @@ func TestConfigInitFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if format == repoconfig.FormatJSON && !json.Valid(content) {
+			if format == configuration.FormatJSON && !json.Valid(content) {
 				t.Fatalf("invalid JSON:\n%s", content)
 			}
-			if format == repoconfig.FormatJSONC && (!json.Valid(jsonc.ToJSON(content)) || !strings.Contains(string(content), "// Rule defaults")) {
+			if format == configuration.FormatJSONC && (!json.Valid(jsonc.ToJSON(content)) || !strings.Contains(string(content), "// Rule defaults")) {
 				t.Fatalf("missing JSONC reference:\n%s", content)
 			}
 			cfg, err := checking.ConfigurationRules().Load(path)
@@ -45,7 +45,7 @@ func TestConfigInitFormats(t *testing.T) {
 			if selected.Status != 0 || !strings.Contains(selected.Stdout, format.Filename()) {
 				t.Fatal(selected)
 			}
-			for _, other := range repoconfig.FileFormats() {
+			for _, other := range configuration.FileFormats() {
 				got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--"+string(other))
 				if got.Status != 3 || !strings.Contains(got.Stdout+got.Stderr, "already exists") {
 					t.Fatalf("overwrote %s with %s: %+v", format, other, got)
@@ -82,8 +82,8 @@ func TestConfigInitFormatSelection(t *testing.T) {
 			}
 		})
 	}
-	for _, first := range repoconfig.FileFormats() {
-		for _, second := range repoconfig.FileFormats() {
+	for _, first := range configuration.FileFormats() {
+		for _, second := range configuration.FileFormats() {
 			if first == second {
 				continue
 			}
@@ -93,7 +93,7 @@ func TestConfigInitFormatSelection(t *testing.T) {
 				if got.Status != 2 || !strings.Contains(got.Stdout+got.Stderr, "cannot be combined") {
 					t.Fatal(got)
 				}
-				for _, name := range repoconfig.RepositoryConfigNames {
+				for _, name := range configuration.RepositoryConfigNames {
 					if _, err := os.Stat(filepath.Join(".github", name)); !os.IsNotExist(err) {
 						t.Fatalf("conflicting flags created %s: %v", name, err)
 					}

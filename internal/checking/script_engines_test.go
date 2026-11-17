@@ -14,9 +14,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
@@ -122,7 +122,7 @@ func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
 	session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 		paths = append(paths, path)
 		return engine, nil
-	}, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
+	}, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
 
 	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows})
 	if err != nil {
@@ -154,8 +154,8 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 		loaded := map[string]bool{}
 		var loadedMu sync.Mutex
 		options := checking.Options{
-			WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
-			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}}),
+			WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
+			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
 			LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 				loadedMu.Lock()
 				loaded[path] = true
@@ -176,13 +176,13 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
 
 	if _, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "tools.ruff.backend.wasm selects "+filepath.Join(root, ".github", "engines", "ruff.wasm")+", and this host has no WebAssembly engine loader") {
 		t.Fatalf("err=%v", err)
 	}
 	failing := errors.New("module is broken")
-	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
+	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
 
 	if _, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize ruff: module is broken") {
 		t.Fatalf("err=%v", err)
@@ -194,7 +194,7 @@ func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	options := checking.Options{
 		WorkingDir:       root,
-		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}}),
+		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, nil },
 	}
 	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize ruff") || !strings.Contains(err.Error(), "nil backend") {
@@ -251,7 +251,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
 		session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			return namedShellEngine(filepath.Base(path)), nil
-		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}})}
+		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}})}
 		var err error
 
 		result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, filepath.FromSlash(input))}})
@@ -290,7 +290,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 	var mu sync.Mutex
 	loaded := map[string]*recordingEngine{}
 	options := checking.Options{
-		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}}),
+		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
 		LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			mu.Lock()
 			defer mu.Unlock()

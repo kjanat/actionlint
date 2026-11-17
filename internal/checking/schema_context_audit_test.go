@@ -7,10 +7,9 @@ import (
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	"actionlint.kjanat.dev/v2/internal/checking/passes"
-	visit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -116,12 +115,12 @@ jobs:
 			workflow, rule := schemaAuditExpressionRule(t, source)
 			if tc.name == "matrix reserved key expression" {
 				job, _ := workflow.Job("test")
-				matrix := job.Strategy().Matrix()
-				if !matrix.Present() || !matrix.Exclude().Present() || !matrix.Exclude().Name().Present() || matrix.Exclude().Name().Value() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude().Evaluated() {
+				matrix := job.Strategy.Matrix
+				if matrix == nil || matrix.Exclude == nil || matrix.Exclude.Name == nil || matrix.Exclude.Name.Text() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated {
 					t.Fatalf("matrix reserved key source lost: %#v", matrix)
 				}
 			}
-			if err := passes.Visit(workflow, passes.Options{Passes: []visit.Pass{rule}}); err != nil {
+			if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{rule}}); err != nil {
 				t.Fatal(err)
 			}
 			errs := rule.Errs()
@@ -156,7 +155,7 @@ jobs:
     steps:
       - run: echo test
 `)
-			if err := passes.Visit(workflow, passes.Options{Passes: []visit.Pass{rule}}); err != nil {
+			if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{rule}}); err != nil {
 				t.Fatal(err)
 			}
 			errs := rule.Errs()
@@ -167,7 +166,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.WorkflowView, visit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workflow, workflowvisit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -194,5 +193,5 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return workflowdecl.WorkflowView{}, nil
+	return workflowdecl.Workflow{}, nil
 }

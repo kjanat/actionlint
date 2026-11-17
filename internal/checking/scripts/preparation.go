@@ -16,11 +16,11 @@ import (
 
 // ScriptInputAction removes the ref and lowercases the owner and repository.
 // It preserves the case of any action subpath.
-func ScriptInputAction(action workflowdecl.ExecActionView) (string, bool) {
-	if !action.Uses().Present() || action.Uses().ContainsExpression() {
+func ScriptInputAction(action *workflowlang.ExecAction) (string, bool) {
+	if action == nil || action.Uses == nil || action.Uses.ContainsExpression() {
 		return "", false
 	}
-	name, _, pinned := strings.Cut(action.Uses().Value(), "@")
+	name, _, pinned := strings.Cut(action.Uses.Text(), "@")
 	parts := strings.SplitN(name, "/", 3)
 	if !pinned || len(parts) < 2 {
 		return "", false
@@ -45,7 +45,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 	if _, exists := collection.Declarations.Lookup(graph.Entry().Reference); !exists {
 		return nil, fmt.Errorf("%w: entry source is absent from declaration registry", ErrInvalidBatch)
 	}
-	declarations := make(map[source.Reference]workflowdecl.StepView)
+	declarations := make(map[source.Reference]workflowdecl.Step)
 	contents := make(map[source.Reference][]byte)
 	units := make([]Unit, 0, len(requests))
 	for _, record := range graph.Scripts() {
@@ -77,7 +77,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Scope: scope, Execution: request.Execution,
 			Environment:  slices.Clone(request.Environment),
 			Interpreters: request.Interpreters,
-			Origin:       origin, Owner: &findingmodel.Owner{Job: job, Step: positionPointer(decl.Pos())},
+			Origin:       origin, Owner: &findingmodel.Owner{Job: job, Step: positionPointer(decl.Position())},
 			Path: scope.Deployment.SourcePath(),
 		}
 		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)
@@ -117,33 +117,32 @@ func scriptJob(graph invocation.Graph, declarations *parsing.SourceSnapshots, ow
 	return outer.DeclaringJob(), nil
 }
 
-func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflowdecl.StepView) error {
+func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflowdecl.Step) error {
 	switch record.Kind {
 	case invocation.ScriptRun:
 		run, hasRun := declaration.Run()
-		_, hasBodyPos := run.Run().Pos()
-		_, hasRunPos := run.RunPos()
-		if request.Input != nil || !hasRun || !run.Run().Present() || !run.Source().Present() || !hasBodyPos || !hasRunPos {
+		if request.Input != nil || !hasRun || run.Source == nil || run.RunPos == nil {
 			return fmt.Errorf("%w: run occurrence %q needs one mapped run body", ErrInvalidBatch, record.ID)
 		}
-		unit.Run, unit.Shell = run, copyValue(request.DefaultShell)
-		if run.Shell().Present() {
-			unit.Shell = new(run.Shell().Value())
+		if _, hasBodyPos := run.Run.Position(); !hasBodyPos {
+			return fmt.Errorf("%w: run occurrence %q needs one mapped run body", ErrInvalidBatch, record.ID)
+		}
+		unit.Run, unit.Shell = run, request.DefaultShell
+		if run.Shell != nil {
+			unit.Shell = new(run.Shell.Value)
 		}
 	case invocation.ScriptActionInput:
 		site := request.Input
 		action, hasAction := declaration.Action()
-		var input workflowdecl.InputView
-		inputs, _ := action.InputNames()
+		var input *workflowlang.Input
+		inputs, _ := workflowdecl.InputNames(action)
 		for name, candidate := range inputs {
 			if name == record.Input {
 				input = candidate
 				break
 			}
 		}
-		_, hasNamePos := input.Name().Pos()
-		_, hasValuePos := input.Value().Pos()
-		if site == nil || site.Input != record.Input || request.DefaultShell != nil || !input.Present() || !input.Name().Present() || !hasNamePos || !input.Value().Present() || !hasValuePos || !input.Source().Present() {
+		if site == nil || site.Input != record.Input || request.DefaultShell != nil || input == nil || input.Source == nil || !hasPosition(input.Name) || !hasPosition(input.Value) {
 			return fmt.Errorf("%w: input occurrence %q needs its registered mapped argument", ErrInvalidBatch, record.ID)
 		}
 		if err := checkinputs.ValidateScriptInput(*site); err != nil {
@@ -161,6 +160,11 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 		return fmt.Errorf("%w: unknown script kind", ErrInvalidBatch)
 	}
 	return nil
+}
+
+func hasPosition(s *workflowlang.String) bool {
+	_, present := s.Position()
+	return present
 }
 
 // positionPointer detaches an optional value position for legacy finding adapters.

@@ -31,13 +31,13 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -501,12 +501,12 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		config := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
+		config := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
 			Preset:      "none",
-			Correctness: repoconfig.NewGroup("recommended", "", nil),
-			Suspicious:  repoconfig.NewGroup("recommended", "", nil),
+			Correctness: configuration.NewGroup("recommended", "", nil),
+			Suspicious:  configuration.NewGroup("recommended", "", nil),
 		}}}
-		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
+		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}

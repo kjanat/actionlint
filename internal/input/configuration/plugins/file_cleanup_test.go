@@ -6,13 +6,13 @@ import (
 	"runtime"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
@@ -21,7 +21,7 @@ func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
 	path := filepath.Join(dir, "actionlint.yml")
 	const original = "plugins: [old/plugin]\n"
 	fixturefiles.WriteText(t, path, original)
-	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
 			}
 		}
 	})
-	err = manifest.Save(t.Context(), []pluginref.Reference{manifestTestReference(t, "new/plugin")})
+	err = manifest.Save(t.Context(), []pluginreference.Reference{manifestTestReference(t, "new/plugin")})
 	if runtime.GOOS == "windows" {
 		if err == nil {
 			t.Fatal("replaced a read-only Windows destination")

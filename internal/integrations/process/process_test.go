@@ -15,7 +15,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"golang.org/x/sys/execabs"
 )
 
@@ -371,7 +370,7 @@ func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
 				directory = t.TempDir()
 			}
 			proc := NewProcessPool(t.Context(), 1)
-			cmd, err := proc.ConfiguredCommandRunner("", &processconfig.Options{
+			cmd, err := proc.ConfiguredCommandRunner("", &CommandOptions{
 				Executable: &relative,
 				WorkingDir: filepath.Dir(exe),
 				Environment: []string{

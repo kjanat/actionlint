@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -19,7 +19,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 	} {
 		t.Run(test.level, func(t *testing.T) {
 			t.Parallel()
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{{Name: "example", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: test.level}})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "example", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: test.level}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -27,7 +27,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err = rules.ResolveRules(repoconfig.Presets{}, cfg)
+			cfg, err = rules.ResolveRules(configuration.Presets{}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}

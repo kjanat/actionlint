@@ -14,34 +14,32 @@ import (
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
 // CallFacts projects caller effects from the owned syntax view.
-func CallFacts(view workflowdecl.StepView, platform runnerlang.Platform) (invocation.Facts, error) {
+func CallFacts(view workflowdecl.Step, platform runnerlang.Platform) (invocation.Facts, error) {
 	if !view.Present() {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}
 	action, ok := view.Action()
-	if !ok || !action.Present() {
+	if !ok {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}
 	position := invocation.Position{}
-	if pos, present := view.Pos(); present {
+	if pos, present := view.Position(); present {
 		position = invocation.Position{Line: pos.Line, Column: pos.Col}
 	}
-	uses := action.Uses()
+	env := workflowdecl.Environment(view.Env)
 	effects := invocation.Facts{
-		HasUses:                    uses.Present(),
+		HasUses:                    action.Uses != nil,
 		Step:                       position,
 		Condition:                  invocation.ConditionRuntimeDependent,
 		AfterFailure:               workflowconditions.CanRunAfterFailure(view.Condition()),
-		ContinueOnError:            workflowconditions.BoolMayBeTrue(view.ContinueOnError().Semantic()),
-		Background:                 workflowconditions.BoolMayBeTrue(view.Background().Semantic()),
-		ShellEnvironmentUnknown:    ShellEnvironmentUnknown(view.Env().Mapping()),
-		ShellPathUnknown:           ShellPathUnknown(view.Env().Mapping()),
-		CheckoutEnvironmentUnknown: CheckoutEnvironmentUnknown(view.Env().Mapping(), platform),
-		LookupEnvironmentUnknown:   ShellEnvironmentUnknownForPlatform(view.Env().Mapping(), platform) || ShellPathUnknownForPlatform(view.Env().Mapping(), platform),
+		ContinueOnError:            workflowconditions.BoolMayBeTrue(workflowdecl.Bool(view.ContinueOnError)),
+		Background:                 workflowconditions.BoolMayBeTrue(workflowdecl.Bool(view.Background)),
+		ShellEnvironmentUnknown:    ShellEnvironmentUnknown(env),
+		ShellPathUnknown:           ShellPathUnknown(env),
+		CheckoutEnvironmentUnknown: CheckoutEnvironmentUnknown(env, platform),
+		LookupEnvironmentUnknown:   ShellEnvironmentUnknownForPlatform(env, platform) || ShellPathUnknownForPlatform(env, platform),
 	}
-	if uses.Present() {
-		effects.Uses = uses.Value()
-	}
+	effects.Uses = action.Uses.Text()
 	if enabled, known := workflowconditions.Condition(view.Condition()); known {
 		effects.Condition = invocation.ConditionSkipped
 		if enabled {

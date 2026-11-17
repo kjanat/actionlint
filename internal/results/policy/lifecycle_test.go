@@ -4,10 +4,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	"actionlint.kjanat.dev/v2/internal/model/runtimes"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -44,30 +43,30 @@ func lifecycleFinding(t *testing.T, asOf string, current bool) *finding.Finding 
 	return &finding.Finding{Rule: "runner-support", Code: "unsupported", Severity: "warning", Message: "retirement", Start: source.Position{Line: 2, Column: 1}, LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.Runners, Name: "runner", Kind: lifecycle.SupportEnds, Service: svc, Effective: lifecycleDate(t, "2026-12-01"), AsOf: lifecycleDate(t, asOf), Current: current}}
 }
 
-func lifecycleRulesConfig(t *testing.T, text string) *config.Config {
+func lifecycleRulesConfig(t *testing.T, text string) *configuration.Config {
 	t.Helper()
 	rules := checking.ConfigurationRules()
 	cfg, err := rules.Parse([]byte(text))
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err = rules.ResolveRules(config.Presets{}, cfg)
+	cfg, err = rules.ResolveRules(configuration.Presets{}, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return cfg
 }
 
-func lifecycleApply(t *testing.T, cfg *config.Config, f *finding.Finding, edit func(*policy.Policy)) []*finding.Finding {
+func lifecycleApply(t *testing.T, cfg *configuration.Config, f *finding.Finding, edit func(*policy.Policy)) []*finding.Finding {
 	t.Helper()
 	p := policy.Policy{Path: "workflow.yml", Content: []byte("# actionlint-ignore-next-line runner-support -- intentional\nruns-on: old\n")}
 	if edit != nil {
 		edit(&p)
 	}
 	rules := checking.ConfigurationRules()
-	var sources map[string]*config.Config
+	var sources map[string]*configuration.Config
 	if f.Path != "" && f.Path != p.Path {
-		sources = map[string]*config.Config{f.Path: cfg}
+		sources = map[string]*configuration.Config{f.Path: cfg}
 	}
 	input := []*finding.Finding{f}
 	p = preparePolicy(rules, cfg, p, sources, input)
@@ -149,7 +148,7 @@ func TestLifecycleIntroductionPolicyPreservesUnavailableRuntime(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := lifecycleFinding(t, "2026-01-01", true)
-			evidence, message, known := runtimes.NodeLifecycle("26", lifecycleDate(t, "2026-01-01"), f.LifecycleEvidence.Service)
+			evidence, message, known := lifecycle.NodeLifecycle("26", lifecycleDate(t, "2026-01-01"), f.LifecycleEvidence.Service)
 			if !known || !evidence.Current || evidence.Kind != lifecycle.SupportStarts {
 				t.Fatalf("expected an unavailable Node.js release: %+v", evidence)
 			}
@@ -189,7 +188,7 @@ func TestRequiredLifecycleCannotBeWeakened(t *testing.T) {
 				}
 				if tc.name == "regex" {
 					var err error
-					p.IgnorePatterns, err = config.CompileIgnorePatterns([]string{"retirement"})
+					p.IgnorePatterns, err = configuration.CompileIgnorePatterns([]string{"retirement"})
 					if err != nil {
 						t.Fatal(err)
 					}

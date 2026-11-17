@@ -29,12 +29,12 @@ flowchart LR
 Release, CI, toolchain, matcher, action verification and schema-generation programs
 live under `tools/`, with their tests. The Docker action wrapper and container tests
 belong to `distribution/docker`. Comment Cop's helper belongs to its GitHub action.
-`internal/cli/action` contains the Go action runtime.
+`internal/cli/githubaction` contains the Go action runtime.
 
 ## Consequences
 
 Actionlint embeds a prebuilt Commitish component. Its
-[`source.json`](../../internal/plugins/bundled/commitish/source.json) records the
+[`source.json`](../../internal/plugins/execution/component/builtin_commitish.source.json) records the
 source revision, build commands and component digest. Updating the bundled
 resolver requires rebuilding that component and running actionlint's resolver
 tests. Other providers can release independently. Test them against actionlint

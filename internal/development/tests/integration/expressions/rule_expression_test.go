@@ -27,7 +27,7 @@ func TestRuleExpressionBareFunctionCondition(t *testing.T) {
 					column += 4
 				}
 				src := fmt.Sprintf("on: push\njobs:\n  test:\n%s    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n%spermissions: {}\n", job, step)
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(src)}})
 				if err != nil {
 					t.Fatal(err)
 				}

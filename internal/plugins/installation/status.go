@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 type ReleaseState string
@@ -71,7 +71,7 @@ func (s ReleaseStatus) validate() error {
 	default:
 		return errors.New("unknown registry release status")
 	}
-	if !canonicalName(s.Name) || !pluginref.ValidVersion(s.Version) || !digestPattern.MatchString(s.SHA256) ||
+	if !canonicalName(s.Name) || !pluginreference.ValidVersion(s.Version) || !digestPattern.MatchString(s.SHA256) ||
 		strings.TrimSpace(s.Reason) == "" || len(s.Reason) > 2048 || len(s.Replacement) > 512 || s.ChangedAt.IsZero() ||
 		s.Actor.Kind != "registry-admin" || !numericID(s.Actor.ID) || s.Actor.Name == "" || s.Actor.Workflow == "" || s.Actor.RunID == "" {
 		return errors.New("invalid registry release status identity or audit")

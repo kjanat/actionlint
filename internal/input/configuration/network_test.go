@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
@@ -36,7 +36,7 @@ func TestMetadataMirrorConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var decoded config.Config
+			var decoded configuration.Config
 			if err := rules.DecodeValue(encoded, &decoded); err != nil {
 				t.Fatal(err)
 			}

@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -54,7 +54,7 @@ func TestScriptRuntimeRuleSelection(t *testing.T) {
 					}
 				}
 				workflow := fmt.Sprintf("on: push\npermissions: {}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |%s\n          %s\n", tc.comment, rule.script)
-				all := testutil.WorkflowDiagnosticsWithOptions(t, workflow, config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict, Experimental: tc.experimental}})
+				all := testutil.WorkflowDiagnosticsWithOptions(t, workflow, config, checking.Options{Presets: configuration.Presets{Strict: tc.strict, Experimental: tc.experimental}})
 				var found []results.Diagnostic
 				for _, d := range all {
 					if d.Rule == rule.name || d.Rule == "unused-suppression" {

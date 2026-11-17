@@ -12,7 +12,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -40,7 +41,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 			}
 			result, err := checking.Analyze(t.Context(),
 				checking.Options{WorkingDir: t.TempDir()},
-				[]workspace.Source{{Path: "workflow.yml", Content: []byte(configurationWorkflow), Config: cfg}},
+				[]workspace.InputFile{{Path: "workflow.yml", Content: []byte(configurationWorkflow), Config: cfg}},
 			)
 			if err != nil {
 				t.Fatal(err)
@@ -70,7 +71,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	if err := os.WriteFile(path, []byte(configurationWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var overlays []config.Overlay
+	var overlays []configuration.Overlay
 	for _, source := range []string{"{require-job-timeout: {min-minutes: 20}}", "{require-job-timeout: {max-minutes: 10}}"} {
 		overlay, err := checking.ConfigurationRules().ParseOverlay("policy", []byte(source))
 		if err != nil {
@@ -88,7 +89,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 			} else {
 				_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: root})
 			}
-			var overlayError *config.OverlayError
+			var overlayError *configreport.OverlayError
 			if !errors.As(err, &overlayError) || errors.Unwrap(overlayError) == nil {
 				t.Fatalf("cannot classify merged overlay validation: %v", err)
 			}

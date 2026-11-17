@@ -10,8 +10,8 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -52,22 +52,15 @@ func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]too
 
 func documentBatchFixture(tb testing.TB, count int) tools.Batch {
 	tb.Helper()
-	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
-	graphData := checkinputs.CallGraphData{Entry: checkinputs.InvocationEntry{ID: checkinputs.OccurrenceID(fmt.Sprintf("%064x", 1)), Kind: checkinputs.WorkflowEntry, Reference: entry}, Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
-	batch := tools.Batch{}
-	for index := range count {
-		declaration := entry
-		declaration.Node = fmt.Sprintf("run%d", index)
-		occurrence := checkinputs.ScriptOccurrence{ID: checkinputs.OccurrenceID(fmt.Sprintf("%064x", index+2)), Owner: graphData.Entry.ID, Ancestry: []checkinputs.OccurrenceID{graphData.Entry.ID}, Declaration: declaration, Kind: checkinputs.RunScript}
-		graphData.Scripts = append(graphData.Scripts, occurrence)
-		fact := checkinputs.Script{Reference: declaration, Text: "echo test", Occurrence: occurrence, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	declared := make([]invocationfixture.Script, count)
+	for index := range declared {
+		declared[index] = invocationfixture.Script{Node: fmt.Sprintf("run%d", index), Entry: true}
+	}
+	batch := tools.Batch{CallGraph: invocationfixture.Graph(tb, declared...)}
+	for _, occurrence := range batch.CallGraph.Scripts() {
+		fact := checkinputs.Script{Reference: occurrence.Declaration, Text: "echo test", Occurrence: occurrence, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 		batch.Scripts = append(batch.Scripts, tools.Script{Fact: fact, Text: fact.Text, Path: "workflow.yml"})
 	}
-	graph, err := checkinputs.NewCallGraph(graphData)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	batch.CallGraph = graph
 	return batch
 }
 
@@ -76,20 +69,20 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	batch := documentBatchFixture(t, 3)
 	graph := batch.CallGraph
 	entry := graph.Entry().Reference
-	cfg, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
+	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	batch.Scripts[1].Config = cfg
 	guest := &fallbackGuest{}
 	nativeCalls := 0
-	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.Input{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *config.Config) (tools.Runner, error) {
+	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.Input{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *configuration.Config) (tools.Runner, error) {
 		if selected != cfg {
 			t.Fatal("fallback initialized with the workflow configuration instead of the declined script configuration")
 		}
 		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
 			nativeCalls++
-			if len(selected.Scopes) != 0 || selected.CallGraph != graph || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
+			if len(selected.Scopes) != 0 || !reflect.DeepEqual(selected.CallGraph, graph) || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
 				t.Fatal("native fallback lost graph or script fact")
 			}
 			return []tools.Finding{{Script: 0, Message: "native"}}, nil
@@ -107,7 +100,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Export().Scripts[want].ID || findings[index].Script != want {
+		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Scripts()[want].ID || findings[index].Script != want {
 			t.Fatal("plugin selection or finding index changed")
 		}
 	}

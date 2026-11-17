@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"path/filepath"
@@ -6,16 +6,16 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
 	t.Parallel()
-	invalid, err := repoconfig.NewSetting("bogus", nil)
+	invalid, err := configuration.NewSetting("bogus", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{"bad.yml"}, Lint: &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": invalid})}}}}}
+	project := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"bad.yml"}, Lint: &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": invalid})}}}}}
 	config, err := checking.ConfigurationRules().ForFile(project, "good.yml", "")
 	if err != nil {
 		t.Fatal(err)
@@ -23,7 +23,7 @@ func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
 	if len(config.Overrides) != 0 || len(project.Overrides) != 1 {
 		t.Fatal("file projection did not consume overrides independently of the project")
 	}
-	if _, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, config); err != nil {
+	if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, config); err != nil {
 		t.Fatalf("an unrelated override blocked this file: %v", err)
 	}
 	if _, err := checking.ConfigurationRules().ForFile(project, "bad.yml", ""); err == nil || !strings.Contains(err.Error(), "rule level") {
@@ -56,7 +56,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = resolveRules(t, repoconfig.Presets{Strict: true}, got)
+		got = resolveRules(t, configuration.Presets{Strict: true}, got)
 		if checking.ConfigurationRules().DiagnosticLevel(got, "if-cond") != "warn" || checking.ConfigurationRules().DiagnosticLevel(got, "expression-reference") != "off" {
 			t.Fatal(got.Lint.Rules)
 		}
@@ -163,12 +163,12 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, yaml string
-		lint       *repoconfig.LintConfig
-		want       repoconfig.Level
+		lint       *configuration.LintConfig
+		want       configuration.Level
 	}{
-		{"enabled", "{enabled: true}", &repoconfig.LintConfig{Enabled: new(true)}, "off"},
-		{"empty", "{}", &repoconfig.LintConfig{}, "off"},
-		{"clear", "{rules: {disable: []}}", &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Disable: []string{}}}, "on"},
+		{"enabled", "{enabled: true}", &configuration.LintConfig{Enabled: new(true)}, "off"},
+		{"empty", "{}", &configuration.LintConfig{}, "off"},
+		{"clear", "{rules: {disable: []}}", &configuration.LintConfig{Rules: configuration.LintRulesConfig{Disable: []string{}}}, "on"},
 		{"null-disable", "{rules: {disable: null}}", nil, "on"},
 		{"null-rules", "{rules: null}", nil, "on"},
 		{"null-lint", "null", nil, "on"},
@@ -184,7 +184,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 					t.Fatal(err)
 				}
 				if programmatic {
-					cfg.Overrides = []repoconfig.Override{{Includes: []string{"**"}, Lint: tc.lint}}
+					cfg.Overrides = []configuration.Override{{Includes: []string{"**"}, Lint: tc.lint}}
 				}
 				for range 2 {
 					effective, err := checking.ConfigurationRules().ForFile(cfg, "ci.yml", "")

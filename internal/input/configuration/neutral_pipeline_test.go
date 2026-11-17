@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
@@ -103,7 +103,7 @@ func TestNeutralLegacyPermissionScopeMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := checking.ConfigurationRules().ResolveRules(config.Presets{}, cfg)
+			resolved, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,7 +111,7 @@ func TestNeutralLegacyPermissionScopeMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(locations, []config.PermissionLocation{config.EveryJobPermissions}) {
+			if !reflect.DeepEqual(locations, []configuration.PermissionLocation{configuration.EveryJobPermissions}) {
 				t.Fatalf("locations=%v; migrated document=%s", locations, migration.Content)
 			}
 		})

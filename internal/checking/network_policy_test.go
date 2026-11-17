@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
@@ -26,8 +26,8 @@ func TestNetworkPolicyAppliesToPreparedSources(t *testing.T) {
 	if requests.actions[references.NoMirrors] != 1 || len(requests.actions) != 1 {
 		t.Fatalf("requests by mirror setting = %v, want one with mirrors disabled", requests.actions)
 	}
-	services := config.MetadataMirrorServices{"jsdelivr"}
-	sources[0].Config = &config.Config{Network: config.NetworkConfig{MetadataMirrors: config.MetadataMirrorsConfig{Services: &services}}}
+	services := configuration.MetadataMirrorServices{"jsdelivr"}
+	sources[0].Config = &configuration.Config{Network: configuration.NetworkConfig{MetadataMirrors: configuration.MetadataMirrorsConfig{Services: &services}}}
 	if _, err := Analyze(t.Context(), options, sources); err == nil || !strings.Contains(err.Error(), "forbidden") {
 		t.Fatalf("prepared config bypassed policy: %v", err)
 	}

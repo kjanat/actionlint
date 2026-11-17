@@ -46,7 +46,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 						t.Fatalf("prepare repository index: %v: %s", err, output)
 					}
 				}
-				input := workspace.Source{Path: path, Content: []byte(metadata), Project: workspace.Identity(root)}
+				input := workspace.InputFile{Path: path, Content: []byte(metadata), Project: workspace.Identity(root)}
 				if tc.disabled {
 					cfg, err := ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {action: off}}}\n"))
 					if err != nil {
@@ -58,7 +58,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 					input.Path = filepath.Join(root, "ci.yml")
 					input.Content = []byte("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}, {uses: $/local}]}}\n")
 				}
-				result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true}, []workspace.Source{input})
+				result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true}, []workspace.InputFile{input})
 				if err != nil {
 					t.Fatal(err)
 				}

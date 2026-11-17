@@ -42,7 +42,7 @@ func TestCompositeScriptKeywordPositions(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "inner/action.yml", Content: []byte(body), Config: cfg}})
+						result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "inner/action.yml", Content: []byte(body), Config: cfg}})
 						if err != nil {
 							t.Fatal(err)
 						}

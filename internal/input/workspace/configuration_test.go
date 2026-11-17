@@ -4,16 +4,16 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
 	t.Parallel()
-	var session *Session
+	var session *InputPreparer
 	var calls int
 	var reentered *Selection
 	var reentryErr error
-	session, err := New(t.Context(), Options{OnConfigLoaded: func(repoconfig.Report) {
+	session, err := New(t.Context(), Options{OnConfigLoaded: func(configreport.Report) {
 		calls++
 		if calls > 1 {
 			t.Error("reentry invoked the callback again")

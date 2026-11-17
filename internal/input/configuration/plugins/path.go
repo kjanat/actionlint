@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // FindOrDefaultPath selects an existing repository configuration in directory, or its default filename.
 func FindOrDefaultPath(directory string) (string, error) {
-	for _, name := range repoconfig.RepositoryConfigNames {
+	for _, name := range configuration.RepositoryConfigNames {
 		path := filepath.Join(directory, name)
 		if _, err := os.Stat(path); err == nil {
 			return path, nil
@@ -18,5 +18,5 @@ func FindOrDefaultPath(directory string) (string, error) {
 			return "", err
 		}
 	}
-	return filepath.Join(directory, repoconfig.FormatYAML.Filename()), nil
+	return filepath.Join(directory, configuration.FormatYAML.Filename()), nil
 }

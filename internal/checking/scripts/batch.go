@@ -10,14 +10,13 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/invocations"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -28,23 +27,23 @@ type Unit struct {
 	Coordinates  source.Coordinates
 	Occurrence   invocation.ID
 	Reference    source.Reference
-	Run          workflowdecl.ExecRunView `clone:"shared"`
+	Run          *workflowlang.ExecRun
 	Input        *ActionInput
 	Shell        *string
 	Path         string
-	Content      []byte `clone:"intern"`
+	Content      []byte
 	Origin       *findingmodel.IgnoreOrigin
 	Owner        *findingmodel.Owner
-	Scope        *Scope `clone:"shared"` // cloneInputs remaps scopes once to preserve occurrence identity.
+	Scope        *Scope
 	Execution    Execution
 	Environment  []scriptmodel.EnvironmentNames
-	Interpreters *commands.Registry `clone:"shared"`
+	Interpreters *commands.Registry
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value workflowdecl.InputView `clone:"shared"`
+	Value *workflowlang.Input
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.
@@ -72,8 +71,8 @@ type Scope struct {
 	Reader   *files.Reader // records the filesystem reads tools make in this scope
 	// Config is a host-owned prepared value. Internal consumers treat it as read-only;
 	// Tool detaches selected settings before invoking a registered Runner.
-	Config           *repoconfig.Config
-	ConfigProvenance repoconfig.Provenance
+	Config           *configuration.Config
+	ConfigProvenance configuration.Provenance
 	Deployment       Deployment
 	Composite        bool
 	Context          invocation.Context
@@ -90,11 +89,10 @@ var ErrInvalidBatch = errors.New("execution: invalid prepared batch")
 type Batch struct{ data *batchData }
 
 type batchData struct {
-	graph      invocation.Graph
-	projection invocations.Projection
-	scopes     []*Scope
-	scripts    []Unit
-	collected  bool
+	graph     invocation.Graph
+	scopes    []*Scope
+	scripts   []Unit
+	collected bool
 }
 
 // NewBatch validates complete script collection or an explicit scopes-only batch.
@@ -126,19 +124,11 @@ func NewBatch(graph invocation.Graph, collection Collection) (Batch, error) {
 			return Batch{}, fmt.Errorf("%w: completed invocation scope %q is missing", ErrInvalidBatch, call.ID())
 		}
 	}
-	scopes, _ = cloneInputs(scopes, nil)
-	for _, scope := range scopes {
-		owners[scope.Context.ID()] = scope
-	}
 	scripts, err := prepareScripts(graph, collection, owners)
 	if err != nil {
 		return Batch{}, err
 	}
-	projection, err := invocations.New(graph)
-	if err != nil {
-		return Batch{}, fmt.Errorf("%w: %w", ErrInvalidBatch, err)
-	}
-	return Batch{&batchData{graph: graph, projection: projection, scopes: scopes, scripts: scripts, collected: collected}}, nil
+	return Batch{&batchData{graph: graph, scopes: scopes, scripts: scripts, collected: collected}}, nil
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
@@ -182,13 +172,6 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 
 func (batch Batch) Valid() bool { return batch.data != nil }
 
-func (batch Batch) CallGraph() checkinputs.CallGraph {
-	if batch.data == nil {
-		return checkinputs.CallGraph{}
-	}
-	return batch.data.projection.Graph()
-}
-
 func (batch Batch) Invocations() invocation.Graph {
 	if batch.data == nil {
 		return invocation.Graph{}
@@ -198,13 +181,12 @@ func (batch Batch) Invocations() invocation.Graph {
 
 func (batch Batch) CollectedScripts() bool { return batch.data != nil && batch.data.collected }
 
-// Snapshot copies invocation data and retains immutable declaration views.
-// Scope links are preserved within the copy.
+// Snapshot returns the batch's scopes and scripts. Callers must not modify them.
 func (batch Batch) Snapshot() ([]*Scope, []Unit) {
 	if batch.data == nil {
 		return nil, nil
 	}
-	return cloneInputs(batch.data.scopes, batch.data.scripts)
+	return batch.data.scopes, batch.data.scripts
 }
 
 func (batch Batch) Scripts() []Unit  { _, scripts := batch.Snapshot(); return scripts }

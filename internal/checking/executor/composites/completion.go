@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"slices"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -39,7 +39,7 @@ func (analysis *compositeAnalyzer) recordUncheckedFiles(meta *actionmeta.Metadat
 	reason := fmt.Sprintf("could not determine availability of action execution files %q", unknown)
 	entry := analysis.invocations.RootContext().Site()
 	for _, pass := range analysis.passes {
-		if participant, consumesFiles := pass.(checkcalls.MetadataParticipant); consumesFiles && bindings.DiagnosticLevel(participant.Name()) != "off" {
+		if participant, consumesFiles := pass.(workflowvisit.MetadataParticipant); consumesFiles && bindings.DiagnosticLevel(participant.Name()) != "off" {
 			analysis.incompleteChecks = append(analysis.incompleteChecks, report.IncompleteCheck{Source: source, Invocation: report.CheckInvocation{Entry: entry, ID: context.ID()}, Rule: participant.Name(), Reason: reason})
 		}
 	}

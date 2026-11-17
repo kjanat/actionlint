@@ -16,9 +16,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	registry "actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	scriptbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
@@ -51,13 +51,13 @@ func (b *configuredBackend) Close(ctx context.Context) error {
 func configuredEngineSelections() registry.Selections {
 	selections := registry.Defaults()
 	for name, selection := range selections {
-		selection.Process = &processconfig.Options{Executable: new(""), AllowWasm: true}
+		selection.Process = &process.CommandOptions{Executable: new(""), AllowWasm: true}
 		selections[name] = selection
 	}
 	return selections
 }
 
-func configuredEngineFixture(t *testing.T) (string, []string, *config.Loaded) {
+func configuredEngineFixture(t *testing.T) (string, []string, *configuration.LoadedFile) {
 	t.Helper()
 	root := t.TempDir()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
@@ -90,7 +90,7 @@ func configuredEngineFixture(t *testing.T) (string, []string, *config.Loaded) {
 	return root, paths, cfg
 }
 
-func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *config.Loaded, options checking.Options) (*checking.Result, error) {
+func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.LoadedFile, options checking.Options) (*checking.Result, error) {
 	t.Helper()
 	if options.Tools == nil {
 		options.Tools = registry.Registrations(configuredEngineSelections())
@@ -103,13 +103,13 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 		options.ConfigFile = "actionlint.yaml"
 		return checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: root})
 	default:
-		var sources []workspace.Source
+		var sources []workspace.InputFile
 		for _, path := range paths {
 			content, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			sources = append(sources, workspace.Source{Path: path, Content: content, Config: cfg.Config, ConfigProvenance: cfg.Provenance})
+			sources = append(sources, workspace.InputFile{Path: path, Content: content, Config: cfg.Config, ConfigProvenance: cfg.Provenance})
 		}
 		return checking.Analyze(t.Context(), options, sources)
 	}
@@ -167,7 +167,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
-			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: new("")}}})
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); err != nil {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
@@ -265,7 +265,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				if result.Diagnostics[0].Rule != tool.name || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
-				disabled := scriptbackend.Selection{Process: &processconfig.Options{Executable: new("")}}
+				disabled := scriptbackend.Selection{Process: &process.CommandOptions{Executable: new("")}}
 				options.Tools = registry.Registrations(registry.Selections{tool.name: disabled})
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {
@@ -308,13 +308,13 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				}
 				return backend, nil
 			}}
-			var sources []workspace.Source
-			for i, selected := range []*config.Config{cfg, other} {
+			var sources []workspace.InputFile
+			for i, selected := range []*configuration.Config{cfg, other} {
 				content, err := os.ReadFile(paths[i])
 				if err != nil {
 					t.Fatal(err)
 				}
-				sources = append(sources, workspace.Source{Path: paths[i], Content: content, Config: selected})
+				sources = append(sources, workspace.InputFile{Path: paths[i], Content: content, Config: selected})
 			}
 			result, err := checking.Analyze(t.Context(), options, sources)
 			if err != nil || result == nil || len(result.Diagnostics) != 2 || loads.Load() != 1 || backend.checks.Load() != 2 || backend.closes.Load() != 1 {

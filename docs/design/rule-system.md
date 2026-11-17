@@ -119,7 +119,7 @@ of the resulting types. `needs` includes direct prerequisites only.
 rows. Unknown includes can add values and property names; unknown excludes only
 remove rows. The expression checker supplies inferred row element types and
 reports expression problems. Recursive value-to-type conversion belongs to
-`internal/model/contexts/values`, which uses inferred types only for unknown
+`internal/model/contexts/value`, which uses inferred types only for unknown
 parts and does not change evaluation state.
 
 `internal/model/workflows/cache` owns cache-grant inheritance and capability
@@ -138,7 +138,7 @@ invalid and explicit declarations and copies repository default maps.
 `internal/input/files/names` loads repository workflow names and records whether
 every name was read. `internal/model/workflows/names` owns the immutable inventory
 and workflow-name filter grammar. The workflow-run-names rule produces findings
-under `internal/checking/rules/correctness/workflow-run-names`; the input loader
+under `internal/checking/rules/correctness`; the input loader
 does not produce lint diagnostics. Incomplete inventories cannot prove that a
 producer is absent or that filters exclude every producer.
 
@@ -198,9 +198,9 @@ JSON carries rule and code separately. LSP qualifies diagnostic codes with their
 rule; SARIF uses `ruleId` for the rule and `properties.diagnosticCode` for the code.
 The latter replaces the old external-only `externalCode` property.
 
-Webhook observations are independent of this taxonomy. `internal/model/contexts/events/payload`
+Webhook observations are independent of this taxonomy. `internal/model/contexts/events/payload_catalogue.go`
 owns the generated graph and its provenance, and returns isolated data through
-`Variants` and `Node`. It has no project-language dependencies. The workflow adapter
+`PayloadVariants` and `PayloadNode`. It has no project-language dependencies. The workflow adapter
 in `internal/model/contexts/events` owns trigger/activity selection, Actions aliases,
 projection into expression types and Actions-specific overlays. Both checking and
 editor completion consume that projection. The expression checker does not load

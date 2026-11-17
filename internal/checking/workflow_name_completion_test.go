@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
@@ -31,8 +31,8 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 	}
 	cause := errors.New("script checker initialization failed")
 	tools := registry.Registrations(registry.Selections{
-		"shellcheck": {Process: &processconfig.Options{Executable: new("")}},
-		"ruff":       {Process: &processconfig.Options{Executable: new("")}},
+		"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
+		"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 	})
 	for i := range tools {
 		if tools[i].Descriptor.Name == "shellcheck" {
@@ -41,7 +41,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 		}
 	}
 	const source = "on: {workflow_run: {workflows: [Missing], types: [completed]}}\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Tools: tools}, []workspace.Source{{
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Tools: tools}, []workspace.InputFile{{
 		Path: filepath.Join(directory, "consumer.yml"), Content: []byte(source), Project: workspace.Identity(root),
 	}})
 	if !errors.Is(err, cause) || result == nil {
@@ -100,10 +100,10 @@ jobs:
 			result, err := Analyze(t.Context(), Options{
 				WorkingDir: root, SkipProjectConfig: true,
 				Tools: registry.Registrations(registry.Selections{
-					"shellcheck": {Process: &processconfig.Options{Executable: new("")}},
-					"ruff":       {Process: &processconfig.Options{Executable: new("")}},
+					"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
+					"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 				}),
-			}, []workspace.Source{{Path: filepath.Join(directory, "consumer.yml"), Content: []byte(strings.Replace(source, "ignore[workflow-run-names]", "ignore["+tc.selector+"]", 1)), Project: workspace.Identity(root)}})
+			}, []workspace.InputFile{{Path: filepath.Join(directory, "consumer.yml"), Content: []byte(strings.Replace(source, "ignore[workflow-run-names]", "ignore["+tc.selector+"]", 1)), Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}

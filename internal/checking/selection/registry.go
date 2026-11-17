@@ -9,9 +9,9 @@ import (
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	repository "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type Selection struct {
@@ -26,7 +26,7 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
-func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool) (Selection, error) {
+func CreateRules(ruleSet configuration.RuleSet, inputs ruleexec.Inputs, action bool) (Selection, error) {
 	inputs.Rules = ruleSet
 	var selected Selection
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
@@ -74,7 +74,7 @@ func ConfigureRules(rules []workflowvisit.Rule, scope *binding.Scope, debug io.W
 		config := scope.Rule(r.Name()).Config()
 		if configured, ok := r.(interface{ SetBindings(*binding.Scope) }); ok {
 			configured.SetBindings(scope)
-		} else if configured, ok := r.(interface{ SetConfig(*repoconfig.Config) }); ok && config != nil {
+		} else if configured, ok := r.(interface{ SetConfig(*configuration.Config) }); ok && config != nil {
 			configured.SetConfig(config)
 		}
 		if logged, ok := r.(interface{ EnableDebug(io.Writer) }); ok && debug != nil {
@@ -83,7 +83,7 @@ func ConfigureRules(rules []workflowvisit.Rule, scope *binding.Scope, debug io.W
 	}
 }
 
-func Describe(ruleSet repoconfig.RuleSet, rules []workflowvisit.Rule) []rule.Descriptor {
+func Describe(ruleSet configuration.RuleSet, rules []workflowvisit.Rule) []rule.Descriptor {
 	descriptions := make([]rule.Descriptor, 0, len(rules))
 	for _, r := range rules {
 		info, ok := ruleSet.FindRule(r.Name())
@@ -99,7 +99,7 @@ func Describe(ruleSet repoconfig.RuleSet, rules []workflowvisit.Rule) []rule.Des
 	return descriptions
 }
 
-func Templates(ruleSet repoconfig.RuleSet) []rule.Descriptor {
+func Templates(ruleSet configuration.RuleSet) []rule.Descriptor {
 	var rules []rule.Descriptor
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
 		if descriptor.Provider == "actionlint" && descriptor.Build == nil && descriptor.Script == nil {

@@ -1,4 +1,4 @@
-package config
+package configuration
 
 // projectSettings prepares internal policy settings from the selected rules.
 func (ruleSet RuleSet) projectSettings(c *Config) {

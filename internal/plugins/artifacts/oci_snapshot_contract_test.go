@@ -32,7 +32,7 @@ func TestOCIResolutionHookSnapshots(t *testing.T) {
 		if _, ok := ctx.Deadline(); !ok {
 			t.Fatal("hook has no acquisition deadline")
 		}
-		return &pluginartifact.Artifact{Info: pluginartifact.Info{Source: source, Kind: pluginartifact.Core, SHA256: digest, Size: 12, ModuleSize: 10, Metadata: metadata, Platform: "any", Manifest: digest, Blobs: blobs}, Bytes: module}, nil
+		return &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: source, Kind: pluginartifact.Core, SHA256: digest, Size: 12, ModuleSize: 10, Metadata: metadata, Platform: "any", Manifest: digest, Blobs: blobs}, Bytes: module}, nil
 	}
 	resolved, err := pluginartifact.Resolve(context.Background(), source, options)
 	if err != nil {

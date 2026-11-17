@@ -1,9 +1,9 @@
 # generate-webhook-events
 
-Generate the Actions trigger registry [`webhooks.gen.go`](../../../model/contexts/events/triggers/webhooks.gen.go) without network access:
+Generate the Actions trigger registry [`webhooks.gen.go`](../../../model/contexts/events/webhooks.gen.go) without network access:
 
 ```sh
-go run ./internal/development/generators/event-triggers --registry internal/model/contexts/events/triggers/webhooks.gen.go
+go run ./internal/development/generators/event-triggers --registry internal/model/contexts/events/webhooks.gen.go
 go test ./internal/development/generators/event-triggers
 ```
 

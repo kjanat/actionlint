@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -26,19 +27,19 @@ jobs:
 		t.Fatal(errs)
 	}
 	outline := FromWorkflow("ci.yml", workflow, false)
-	got := map[string]UsesReference{}
-	for _, job := range outline.Jobs() {
-		got[job.ID()] = job.Reference()
-		for _, step := range job.Steps() {
-			got[step.Uses()] = step.Reference()
+	got := map[string]callrefs.UsesReference{}
+	for _, job := range outline.Jobs {
+		got[job.ID] = job.Reference()
+		for _, step := range job.Steps {
+			got[step.Uses] = step.Reference()
 		}
 	}
-	want := map[string]UsesReference{
-		"local":                   SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
-		"self":                    SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+	want := map[string]callrefs.UsesReference{
+		"local":                   callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
 		"build":                   nil,
-		"./.github/actions/setup": WorkspaceReference{Path: ".github/actions/setup"},
-		"$/.github/actions/setup": SelfRepositoryReference{Path: ".github/actions/setup"},
+		"./.github/actions/setup": callrefs.WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": callrefs.SelfRepositoryReference{Path: ".github/actions/setup"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)
@@ -60,8 +61,8 @@ jobs:
 		t.Fatal("fixture must contain rejected workflow call")
 	}
 	outline := FromWorkflow("ci.yml", workflow, true)
-	job := outline.Jobs()[0]
-	if outline.ParseStatus() != "partial" || job.Uses() != "owner/repo/.github/workflows/build.yml@main" || job.Reference() == nil || len(job.Steps()) != 1 {
+	job := outline.Jobs[0]
+	if outline.ParseStatus != "partial" || job.Uses != "owner/repo/.github/workflows/build.yml@main" || job.Reference() == nil || len(job.Steps) != 1 {
 		t.Fatalf("partial call declaration lost: %+v", outline)
 	}
 }
@@ -93,8 +94,8 @@ jobs:
 				t.Fatal("fixture must contain conflicting execution keys")
 			}
 			outline := FromWorkflow("ci.yml", workflow, true)
-			step := outline.Jobs()[0].Steps()[0]
-			if outline.ParseStatus() != "partial" || step.Kind() != tc.kind || step.Uses() != "actions/checkout@v7" || step.Reference() == nil {
+			step := outline.Jobs[0].Steps[0]
+			if outline.ParseStatus != "partial" || step.Kind != tc.kind || step.Uses != "actions/checkout@v7" || step.Reference() == nil {
 				t.Fatalf("partial uses declaration lost: %+v", step)
 			}
 		})
@@ -120,12 +121,12 @@ jobs:
 		t.Fatalf("unexpected parse errors: %v", errors)
 	}
 	outline := FromWorkflow("ci.yml", workflow, false)
-	steps := outline.Jobs()[0].Steps()
-	if len(steps) != 3 || steps[0].Kind() != "parallel" || steps[1].Kind() != "wait" || steps[2].Kind() != "cancel" {
+	steps := outline.Jobs[0].Steps
+	if len(steps) != 3 || steps[0].Kind != "parallel" || steps[1].Kind != "wait" || steps[2].Kind != "cancel" {
 		t.Fatalf("wrong control step kinds: %+v", steps)
 	}
-	children := steps[0].Steps()
-	if len(children) != 2 || children[0].ID() != "child" || children[0].Kind() != "run" || children[1].Uses() != "actions/checkout@v7" {
+	children := steps[0].Steps
+	if len(children) != 2 || children[0].ID != "child" || children[0].Kind != "run" || children[1].Uses != "actions/checkout@v7" {
 		t.Fatalf("parallel children lost: %+v", children)
 	}
 }

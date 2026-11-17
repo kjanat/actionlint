@@ -45,7 +45,7 @@ func TestPublicAnalysisContract(t *testing.T) {
 	failure := errors.New("partial analysis")
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{failure}}}}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{failure}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
 	if !errors.Is(err, failure) {
 		t.Fatalf("err=%v", err)
@@ -78,7 +78,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%v err=%v", result, err)
 	}
-	result, err = checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
+	result, err = checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%v err=%v", result, err)
 	}
@@ -88,7 +88,7 @@ func TestPublicActionScriptFacts(t *testing.T) {
 	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{}}}}, []workspace.Source{{Path: "action.yml", Content: []byte("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n")}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{}}}}, []workspace.InputFile{{Path: "action.yml", Content: []byte("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n")}},
 	)
 	if err != nil || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "custom-script" {
 		t.Fatalf("result=%v err=%v", result, err)

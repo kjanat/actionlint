@@ -7,6 +7,21 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
+func TestCacheOperationStepWithoutDeclaringJobUsesWorkflowMode(t *testing.T) {
+	t.Parallel()
+	const source = "on: push\ncache-mode: read\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"
+	decoded, errors := workflowparser.Parse([]byte(source))
+	if len(errors) != 0 {
+		t.Fatal(errors)
+	}
+	workflow := declaration.Publish(source, decoded, false, "").Bind("test").Workflow()
+	check := CacheOperationCheck(workflow, nil)
+	// Composite action steps have no declaring workflow job.
+	if findings := check.Step(declaration.Step{}); len(findings) != 0 {
+		t.Fatalf("absent step produced findings: %+v", findings)
+	}
+}
+
 func TestCacheOperationStepCallbackUsesItsDeclaringJob(t *testing.T) {
 	t.Parallel()
 	const source = `on: push

@@ -13,23 +13,18 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
-
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	namecheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-run-names"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
-	workflowcommands "actionlint.kjanat.dev/v2/internal/checking/commands"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/runtimechecks"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -42,8 +37,8 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -55,16 +50,16 @@ import (
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
 	Bindings                    *binding.Scope
-	RequiredPermissionLocations []repoconfig.PermissionLocation
+	RequiredPermissionLocations []configuration.PermissionLocation
 	Lifecycle                   actionmeta.LifecycleContext
 
 	Debug                         io.Writer
-	Rules                         repoconfig.RuleSet
+	Rules                         configuration.RuleSet
 	SourceSnapshot                parsing.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
-	Config                        *repoconfig.Config
+	Config                        *configuration.Config
 	Repository                    repository.Snapshot
 	Actions                       *workspaceactions.Resolver
 	RemoteActions                 *actionremote.ResolvedActions
@@ -79,7 +74,7 @@ type Inputs struct {
 
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
-	repoconfig.Rule
+	configuration.Rule
 	// Prepare distinguishes usable inputs, unavailable knowledge and operation
 	// failures before construction. Nil means no preparation is needed.
 	Prepare func(Inputs) (InputPreparation, error)
@@ -143,7 +138,7 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 		}}),
 		newSpec(correctness.RunnerLabelDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}
-			if known, available := repoconfig.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
+			if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 				labels = runnerlang.KnownLabels(known.Values())
 			}
 			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
@@ -173,14 +168,14 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 		newSpec(correctness.WorkflowCallDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
-			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
+			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, configuration.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}}),
 		newSpec(correctness.ExpressionDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
-			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
+			return expressions.NewExpressionRule(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}}),
-		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: workflowcommands.Checker{}}),
-		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: runtimechecks.Errexit()}),
-		newSpec(suspicious.WorkflowCommandSyntaxDeclaration(), implementation{Script: runtimechecks.WorkflowCommand()}),
+		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: correctness.DeprecatedCommandsChecker{}}),
+		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: suspicious.ErrexitChecker()}),
+		newSpec(suspicious.WorkflowCommandSyntaxDeclaration(), implementation{Script: suspicious.WorkflowCommandChecker()}),
 		newSpec(correctness.InvalidOutputFileDeclaration(), implementation{Script: correctness.InvalidOutputFileChecker{}}),
 		declarationSpec(correctness.IfCondCheck()),
 		declarationSpec(correctness.NumericValuesCheck()),
@@ -222,7 +217,7 @@ func declarationImplementation(check checkinputs.DeclarationCheck) implementatio
 }
 
 // Registrations returns check implementations in rule-declaration order.
-func Registrations(rules repoconfig.RuleSet) []Registration {
+func Registrations(rules configuration.RuleSet) []Registration {
 	behaviors := make(map[string]implementation)
 	for _, spec := range nativeRuleCatalog() {
 		behavior := spec.behavior
@@ -277,7 +272,7 @@ func prepareWorkflowRunNames(c Inputs) (InputPreparation, error) {
 		return PreparedInputs{Inputs: c}, nil
 	}
 	workflow, available := c.SourceSnapshot.WorkflowView()
-	if !available || len(namecheck.WorkflowRunFilters(workflow)) == 0 {
+	if !available || len(correctness.WorkflowRunFilters(workflow)) == 0 {
 		return PreparedInputs{Inputs: c}, nil
 	}
 	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))

@@ -13,8 +13,8 @@ import (
 func MatrixCheck(checkMixedTypeFilters bool) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: MatrixDeclaration(),
-		Job: func(job workflowdecl.JobView) []reporting.Finding {
-			return reporting.FromDiagnostics(matrixcheck.Check(job.Strategy().MatrixResolution(), checkMixedTypeFilters))
+		Job: func(job workflowdecl.Job) []reporting.Finding {
+			return reporting.FromDiagnostics(matrixcheck.Check(workflowdecl.MatrixResolution(job.Strategy), checkMixedTypeFilters))
 		},
 	}
 }

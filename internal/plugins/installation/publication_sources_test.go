@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestRegistryInspectionCannotGrantPrivateArtifactAccess(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRegistryInspectionCannotGrantPrivateArtifactAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.SetFile(url, data)
-	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,11 +118,11 @@ func TestManifestPublicationIdentity(t *testing.T) {
 	if err := pin.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := pin.Verify(artifacts.Info{Kind: pin.Kind, SHA256: pin.SHA256, Metadata: metadata}); err != nil {
+	if err := pin.Verify(artifacts.ArtifactProvenance{Kind: pin.Kind, SHA256: pin.SHA256, Metadata: metadata}); err != nil {
 		t.Fatal(err)
 	}
 	pin.Contract = "wasm-core-json/1"
-	if err := pin.Verify(artifacts.Info{Kind: pin.Kind, SHA256: pin.SHA256, Metadata: metadata}); err == nil {
+	if err := pin.Verify(artifacts.ArtifactProvenance{Kind: pin.Kind, SHA256: pin.SHA256, Metadata: metadata}); err == nil {
 		t.Fatal("process manifest accepted with a Wasm contract")
 	}
 }

@@ -2,7 +2,6 @@ package finding
 
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -21,7 +20,7 @@ func (e *Finding) Canonical(source []byte) results.Diagnostic {
 	}
 	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
 	if !e.UnavailableSource.Present() && e.End == (sourcepos.Position{}) && snippet != "" {
-		end.Column = text.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
+		end.Column = sourcepos.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
 	}
 	if e.EndPosition != nil {
 		end = sourcepos.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}

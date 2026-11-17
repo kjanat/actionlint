@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 // LocalActionSources maps generated local action directories to source directories.
@@ -20,7 +20,7 @@ func normalizeLocalActionSourceNode(value any) {
 		return
 	}
 	for key, value := range object {
-		if normalized, err := reference.NormalizeLocalDirectory(key); err == nil && normalized != key {
+		if normalized, err := actionmeta.NormalizeLocalActionDirectory(key); err == nil && normalized != key {
 			delete(object, key)
 			object[normalized] = value
 		}
@@ -58,11 +58,11 @@ func (sources *LocalActionSources) DecodeConfig(value any) error {
 		if !ok {
 			return binding.At(key, errors.New("local-actions paths must be strings"))
 		}
-		from, err := reference.NormalizeLocalDirectory(key)
+		from, err := actionmeta.NormalizeLocalActionDirectory(key)
 		if err != nil {
 			return binding.At(key, err)
 		}
-		to, err := reference.NormalizeLocalDirectory(selected)
+		to, err := actionmeta.NormalizeLocalActionDirectory(selected)
 		if err != nil {
 			return binding.At(key, err)
 		}

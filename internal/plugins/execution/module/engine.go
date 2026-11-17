@@ -20,7 +20,6 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptcoords "actionlint.kjanat.dev/v2/internal/input/source/scripts"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
@@ -188,7 +187,7 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 	if err != nil {
 		return nil, fmt.Errorf("engine %s: table declarations: %w", path, err)
 	}
-	tableBytes, err := wasmbudget.Tables(tables, uint64(limits.MemoryPages)<<16)
+	tableBytes, err := ReservedTableBytes(tables, uint64(limits.MemoryPages)<<16)
 	if err != nil {
 		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}

@@ -5,19 +5,17 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {
 	t.Parallel()
-	anchor := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "value", Anchor: "a"}
-	for _, invalid := range []*syntax.Node{
-		{Kind: syntax.AliasNode, Value: "a", Alias: anchor},
-		{Kind: syntax.SequenceNode, Content: []*syntax.Node{{Kind: syntax.AliasNode, Value: "a", Alias: anchor}, anchor}},
-		{Kind: syntax.SequenceNode, Content: []*syntax.Node{anchor, {Kind: syntax.AliasNode, Value: "different", Alias: anchor}}},
-		{Kind: syntax.ScalarNode, Value: "value", Anchor: "bad anchor"},
+	anchor := &Node{Kind: ScalarNode, Tag: "!!str", Value: "value", Anchor: "a"}
+	for _, invalid := range []*Node{
+		{Kind: AliasNode, Value: "a", Alias: anchor},
+		{Kind: SequenceNode, Content: []*Node{{Kind: AliasNode, Value: "a", Alias: anchor}, anchor}},
+		{Kind: SequenceNode, Content: []*Node{anchor, {Kind: AliasNode, Value: "different", Alias: anchor}}},
+		{Kind: ScalarNode, Value: "value", Anchor: "bad anchor"},
 	} {
 		var output bytes.Buffer
 		encoder := NewEncoder(&output)
@@ -50,17 +48,17 @@ func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {
 
 func TestGraphRejectsInvalidStructure(t *testing.T) {
 	t.Parallel()
-	cycle := &syntax.Node{Kind: syntax.SequenceNode}
-	cycle.Content = []*syntax.Node{cycle}
-	aliasCycle := &syntax.Node{Kind: syntax.AliasNode, Line: 5, Column: 3}
+	cycle := &Node{Kind: SequenceNode}
+	cycle.Content = []*Node{cycle}
+	aliasCycle := &Node{Kind: AliasNode, Line: 5, Column: 3}
 	aliasCycle.Alias = aliasCycle
-	for _, node := range []*syntax.Node{
+	for _, node := range []*Node{
 		{Value: "untyped"},
-		{Kind: syntax.SequenceNode, Content: []*syntax.Node{{}}},
-		{Kind: syntax.SequenceNode, Content: []*syntax.Node{nil}},
-		{Kind: syntax.AliasNode, Value: "missing"},
-		{Kind: syntax.ScalarNode, Alias: &syntax.Node{Kind: syntax.ScalarNode}},
-		{Kind: syntax.MappingNode, Content: []*syntax.Node{{Kind: syntax.ScalarNode}}},
+		{Kind: SequenceNode, Content: []*Node{{}}},
+		{Kind: SequenceNode, Content: []*Node{nil}},
+		{Kind: AliasNode, Value: "missing"},
+		{Kind: ScalarNode, Alias: &Node{Kind: ScalarNode}},
+		{Kind: MappingNode, Content: []*Node{{Kind: ScalarNode}}},
 		cycle,
 		aliasCycle,
 	} {
@@ -72,7 +70,7 @@ func TestGraphRejectsInvalidStructure(t *testing.T) {
 			t.Errorf("opened invalid graph with root kind %v", node.Kind)
 		}
 	}
-	if _, err := Marshal(&syntax.Node{}); err != nil {
+	if _, err := Marshal(&Node{}); err != nil {
 		t.Fatalf("zero root: %v", err)
 	}
 }
@@ -105,7 +103,7 @@ func TestKindAndStyleMappings(t *testing.T) {
 		t.Fatal("stream accepted as document node")
 	}
 	for mask := range 1 << len(styles) {
-		var wantOwned syntax.Style
+		var wantOwned Style
 		var wantParser upstream.Style
 		for i, pair := range styles {
 			if mask&(1<<i) != 0 {

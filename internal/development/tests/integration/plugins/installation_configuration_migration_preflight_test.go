@@ -14,7 +14,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
@@ -95,11 +95,11 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
+	ref, err := pluginreference.New(pin.Name, pin.Version, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs := []pluginref.Reference{ref}
+	refs := []pluginreference.Reference{ref}
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}

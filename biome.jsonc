@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/model/contexts/events/payload/catalogue.json"]
+    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/model/contexts/events/payload_catalogue.json"]
   },
   "formatter": {
     "enabled": false,
@@ -36,7 +36,7 @@
   },
   "overrides": [
     {
-      "includes": ["internal/model/contexts/events/payload/catalogue.json"],
+      "includes": ["internal/model/contexts/events/payload_catalogue.json"],
       "files": {
         "maxSize": 3145728
       }

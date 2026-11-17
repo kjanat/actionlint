@@ -31,7 +31,7 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Result, refer
 		document, exists := composed.SourceDocuments[path]
 		if !exists {
 			failure = errors.Join(failure, fmt.Errorf("source %q has no admitted parse provenance", path))
-			sourceRejected(rejected, path, capture.Snapshot{})
+			sourceRejected(rejected, path, capture.CapturedDocument{})
 			address := path
 			if path != "<stdin>" && !filepath.IsAbs(path) {
 				address = filepath.Join(s.workingDir, path)
@@ -141,7 +141,7 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 	return accepted, failure
 }
 
-func sourceRejected(rejected map[string]bool, path string, captured capture.Snapshot) {
+func sourceRejected(rejected map[string]bool, path string, captured capture.CapturedDocument) {
 	rejected[path] = true
 	if captured.Valid() {
 		rejected[captured.Revision().Document()] = true

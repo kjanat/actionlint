@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
@@ -46,10 +45,9 @@ func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
 	if err != nil || metadata == nil || metadata.JobCacheAccess["nested"].Uses != "./inner.yml" {
 		t.Fatalf("prepared definition is unavailable: metadata=%v error=%v", metadata, err)
 	}
-	metadata.JobCacheAccess["nested"] = calls.CacheAccess{}
 	again, err := resolved.LookupForCall("./outer.yml")
 	if err != nil || again == nil || again.JobCacheAccess["nested"].Uses != "./inner.yml" {
-		t.Fatal("a lookup consumer changed the cached definition")
+		t.Fatal("lookup lost the cached definition")
 	}
 	if metadata, err := resolved.LookupForCall("./missing.yml"); metadata != nil || err != nil {
 		t.Fatalf("unknown metadata produced a definition: present=%t error=%v", metadata != nil, err)

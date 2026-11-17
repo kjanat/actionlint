@@ -10,13 +10,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -63,7 +63,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 		explicit[captured.Revision().Document()] = struct{}{}
 	}
-	f.cache.Configure(workspaceactions.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.Snapshot, path string, metadata *actionmeta.Metadata, _ error) {
+	f.cache.Configure(workspaceactions.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.CapturedDocument, path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
 		f.mutableMetadata[path] = metadata
 		if f.mutateMeta != nil {
@@ -238,7 +238,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {
 				t.Fatalf("validation fetched a body beyond the budget: %v", f.parsed)
 			}
-			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo initial" {
+			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo initial" {
 				t.Fatal("budget lost prior facts or incomplete state")
 			}
 			if tc.total {

@@ -12,10 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -70,7 +69,7 @@ type resolverDocuments struct {
 type SourceDocument struct {
 	path       string
 	address    string
-	captured   capture.Snapshot
+	captured   capture.CapturedDocument
 	provenance parsing.Provenance
 	files      actionmeta.ReferencedFiles
 }
@@ -85,7 +84,7 @@ func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
 
 func (d SourceDocument) ReferencedFiles() actionmeta.ReferencedFiles { return d.files }
 
-func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
+func (d SourceDocument) Capture() capture.CapturedDocument { return d.captured }
 
 // Provenance is the parse record to pass to parsing.SourceSnapshots.Document
 // when admitting this source. It is zero when the manifest was never parsed.
@@ -197,7 +196,7 @@ func (c *Resolver) SetRepositorySource(load func(string) (RepositoryDocument, er
 
 type RepositoryDocument struct {
 	Parsed   parsing.Document
-	Captured capture.Snapshot
+	Captured capture.CapturedDocument
 	Valid    bool
 }
 
@@ -259,7 +258,7 @@ func missingLocalActionMetadata(spec string) error {
 func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataResult, bool) {
 	original := spec
 	mapped := false
-	if normalized, err := reference.NormalizeLocalDirectory(spec); err == nil {
+	if normalized, err := actionmeta.NormalizeLocalActionDirectory(spec); err == nil {
 		if source, exists := c.sourceMappings[normalized]; exists {
 			spec, mapped = source, true
 		}
@@ -394,30 +393,30 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 }
 
 // ObserveCheckout updates action resolution after a checkout step.
-func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
+func (c *Resolver) ObserveCheckout(step workflowdecl.Step) {
 	enabled, known := workflowconditions.Condition(step.Condition())
 	if known && !enabled {
 		return
 	}
-	if _, parallel := step.Parallel(); parallel {
+	if _, parallel := step.ParallelSteps(); parallel {
 		c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 		return
 	}
 	action, ok := step.Action()
-	if !ok || !action.Uses().Present() {
+	if !ok || action.Uses == nil {
 		return
 	}
-	name, _, versioned := strings.Cut(action.Uses().Value(), "@")
+	name, _, versioned := strings.Cut(action.Uses.Text(), "@")
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(step.Env().Mapping(), c.platform) {
+	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(workflowdecl.Environment(step.Env), c.platform) {
 		// Git may write outside the requested path or execute a wrapper. Literal
 		// metadata fallback is not evidence of the resulting repository contents.
 		c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true}, execution.CheckoutPlacement{}))
 		return
 	}
-	checkoutPath, pathKnown := checkoutInput(action.ResolvedInputs(), "path")
+	checkoutPath, pathKnown := checkoutInput(workflowdecl.ResolvedInputs(action), "path")
 	checkoutPath, representable := execution.RunnerRelativePath(checkoutPath, c.platform)
 	if !pathKnown || !representable {
 		c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
@@ -431,13 +430,13 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
 			return
 		}
 	}
-	certain := known && !workflowconditions.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !workflowconditions.BoolMayBeTrue(step.Background().Semantic())
+	certain := known && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.Background))
 	if !certain {
 		checkout.Kind = execution.DirectoryUnknown
 	}
 	foreign, self := false, true
 	for _, key := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
-		item, inputKnown := checkoutInput(action.ResolvedInputs(), key)
+		item, inputKnown := checkoutInput(workflowdecl.ResolvedInputs(action), key)
 		if !inputKnown || item != "" {
 			checkout.Kind = execution.DirectoryUnknown
 			self = false
@@ -449,7 +448,7 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
 		}
 	}
 	previous := c.CheckoutState()
-	if self && !known && !workflowconditions.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !workflowconditions.BoolMayBeTrue(step.Background().Semantic()) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
+	if self && !known && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.Background)) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
 		if previous.SameSelfCheckout(checkout.Path) {

@@ -6,7 +6,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 
@@ -15,7 +15,7 @@ import (
 )
 
 // filterConfigured applies resolved ignore selectors to the same logical invocation.
-func (processor Processor) filterConfigured(path, root string, source []byte, findings []*findingmodel.Finding, cfg *repoconfig.Config, foreign bool, level func(string) repoconfig.Level, additional ...string) []*findingmodel.Finding {
+func (processor Processor) filterConfigured(path, root string, source []byte, findings []*findingmodel.Finding, cfg *configuration.Config, foreign bool, level func(string) configuration.Level, additional ...string) []*findingmodel.Finding {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -56,7 +56,7 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 					continue
 				}
 				mode := cfg.Policy.DisallowSuppressions.ReportFor(processor.RuleSet.ResolveAlias(ignore.Rule))
-				if mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll {
+				if mode == configuration.ReportSuppression || mode == configuration.ReportAll {
 					policyError := *finding
 					policyError.Rule = "forbidden-suppression"
 					policyError.Binding = bindingmodel.ID{}
@@ -64,7 +64,7 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)
 				}
-				ignored = mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression
+				ignored = mode == configuration.SuppressionsAllowed || mode == configuration.ReportSuppression
 				break
 			}
 		}
@@ -76,6 +76,6 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 }
 
 // levels projects resolved rule severity lookup without exposing traversal.
-func (processor Processor) levels(cfg *repoconfig.Config) func(string) repoconfig.Level {
-	return func(name string) repoconfig.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
+func (processor Processor) levels(cfg *configuration.Config) func(string) configuration.Level {
+	return func(name string) configuration.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
 }

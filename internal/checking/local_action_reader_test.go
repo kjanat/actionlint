@@ -30,7 +30,7 @@ func TestLocalActionSourceCustomReader(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, ReadFile: reader}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: workspace.Identity(root)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, ReadFile: reader}, []workspace.InputFile{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: workspace.Identity(root)}})
 			if err != nil || len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, manifest) {
 				t.Fatalf("direct analysis: %+v, %v", result, err)
 			}

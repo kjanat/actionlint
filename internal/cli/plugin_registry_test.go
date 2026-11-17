@@ -9,12 +9,12 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func pluginCommandTest(t *testing.T, acquisition plugininstall.Acquisition, want int, args ...string) string {
@@ -61,7 +61,7 @@ func TestRegistryCLI(t *testing.T) {
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.9.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	lockPath := filepath.Join(root, ".github", "actionlint.plugins.lock.json")
 	configPath := filepath.Join(root, ".github", "actionlint.yaml")
-	readDeclarations := func() repoconfig.PluginDeclarations {
+	readDeclarations := func() configuration.PluginDeclarations {
 		t.Helper()
 		cfg, err := checking.ConfigurationRules().Load(configPath, "no-sudo")
 		if err != nil {
@@ -239,22 +239,22 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 
 func TestRequestedPlugin(t *testing.T) {
 	t.Parallel()
-	existing := []pluginref.Reference{testReference(t, fixtureregistry.FixturePluginName, "v1", fixtureregistry.FixtureRegistryURL)}
+	existing := []pluginreference.Reference{testReference(t, fixtureregistry.FixturePluginName, "v1", fixtureregistry.FixtureRegistryURL)}
 	for _, tc := range []struct {
 		name    string
-		options plugincmd.RegistryOptions
+		options plugincommand.RegistryOptions
 		version string
 	}{
-		{"Publisher/Plugin", plugincmd.RegistryOptions{}, "v1"},
-		{"publisher/plugin@v2", plugincmd.RegistryOptions{}, "v2"},
-		{"publisher/plugin", plugincmd.RegistryOptions{Version: "latest"}, "latest"},
+		{"Publisher/Plugin", plugincommand.RegistryOptions{}, "v1"},
+		{"publisher/plugin@v2", plugincommand.RegistryOptions{}, "v2"},
+		{"publisher/plugin", plugincommand.RegistryOptions{Version: "latest"}, "latest"},
 	} {
-		ref, err := plugincmd.RequestedPlugin(tc.name, tc.options, existing)
+		ref, err := plugincommand.RequestedPlugin(tc.name, tc.options, existing)
 		if err != nil || ref.Name() != fixtureregistry.FixturePluginName || ref.Registry() != fixtureregistry.FixtureRegistryURL || ref.Version() != tc.version {
 			t.Fatalf("request %q: %#v, %v", tc.name, ref, err)
 		}
 	}
-	if _, err := plugincmd.RequestedPlugin("publisher/plugin@v1", plugincmd.RegistryOptions{Version: "v2"}, existing); err == nil {
+	if _, err := plugincommand.RequestedPlugin("publisher/plugin@v1", plugincommand.RegistryOptions{Version: "v2"}, existing); err == nil {
 		t.Fatal("conflicting tag and --version accepted")
 	}
 }

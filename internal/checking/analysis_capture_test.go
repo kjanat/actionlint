@@ -13,10 +13,9 @@ import (
 	"testing/synctest"
 	"time"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -113,10 +112,10 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 type capturedTraversal struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	workflows *[]workflowdecl.StepView
+	workflows *[]workflowdecl.Step
 }
 
-func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.WorkflowView) error {
+func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.Workflow) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, job := range workflow.Jobs() {
@@ -131,7 +130,7 @@ func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.WorkflowView)
 func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
-	var workflows []workflowdecl.StepView
+	var workflows []workflowdecl.Step
 	content := []byte(commandGoodWorkflow)
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -160,24 +159,24 @@ type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
 	snapshots *[]parsing.SourceSnapshot
-	steps     *[]workflowdecl.StepView
+	steps     *[]workflowdecl.Step
 }
 
-func (r *sharedCompositeObserver) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.snapshots = append(*r.snapshots, scope.Source)
 	return nil
 }
 
-func (r *sharedCompositeObserver) VisitInvocationStep(step workflowdecl.StepView) error {
+func (r *sharedCompositeObserver) VisitInvocationStep(step workflowdecl.Step) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.steps = append(*r.steps, step)
 	return nil
 }
-func (*sharedCompositeObserver) VisitOpaqueAction(workflowdecl.StepView) error { return nil }
-func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error      { return nil }
+func (*sharedCompositeObserver) VisitOpaqueAction(workflowdecl.Step) error { return nil }
+func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error  { return nil }
 
 func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	t.Parallel()
@@ -192,7 +191,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
 	var snapshots []parsing.SourceSnapshot
-	var steps []workflowdecl.StepView
+	var steps []workflowdecl.Step
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
@@ -235,14 +234,14 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := func(snapshot capture.Snapshot, message string) *findingmodel.Finding {
+	finding := func(snapshot capture.CapturedDocument, message string) *findingmodel.Finding {
 		reference := source.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
 		return &findingmodel.Finding{Reference: &reference, Rule: "test", Message: message}
 	}
 	retained := finding(good, "unrelated finding")
 	result := analysisResult{files: []analyzedFile{
-		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: badPath})},
-		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: goodPath})},
+		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.Workflow{Path: badPath}},
+		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.Workflow{Path: goodPath}},
 	}}
 	_, err = store.Read(t.Context(), badPath, source.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)

@@ -11,6 +11,7 @@ import (
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -64,10 +65,10 @@ type Input struct {
 	Scripts         []Script
 	Invoked         []Script
 	ActionInputs    []ActionInput
-	CallGraph       CallGraph `clone:"shared"`
+	CallGraph       invocation.Graph `clone:"shared"`
 	// SelectedScripts limits materialized text to these occurrences. Nil selects
 	// every graph script; an empty non-nil slice selects none.
-	SelectedScripts []OccurrenceID
+	SelectedScripts []invocation.ID
 	Mappings        []workflowfacts.Mapping
 	Dependencies    []workflowfacts.Dependency
 	// ResolvedDependencies contains successful, validated resolver observations.
@@ -102,7 +103,7 @@ type ActionInput struct {
 // with the Execution input.
 type Script struct {
 	scriptmodel.Declaration
-	Occurrence   ScriptOccurrence
+	Occurrence   invocation.Script
 	Runtime      *scriptmodel.Execution
 	Environment  []scriptmodel.EnvironmentNames
 	Interpreters *commands.Registry `clone:"shared"`

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -70,7 +70,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+				cfg, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -149,7 +149,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{Strict: tc.strict}, cfg)
+		cfg, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{Strict: tc.strict}, cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
