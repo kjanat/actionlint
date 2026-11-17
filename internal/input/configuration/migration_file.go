@@ -211,7 +211,7 @@ func (m *FileMigration) Apply(ctx context.Context) error {
 		return err
 	}
 	lockPath := m.Path + ".migrate.lock"
-	if err := os.Mkdir(lockPath, 0700); err != nil {
+	if err := os.Mkdir(lockPath, 0o700); err != nil {
 		return fmt.Errorf("cannot lock config migration %q: %w", m.Path, err)
 	}
 	defer os.Remove(lockPath)

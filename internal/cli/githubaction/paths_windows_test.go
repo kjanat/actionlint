@@ -13,7 +13,7 @@ func TestWindowsForwardSlashActionPaths(t *testing.T) {
 		t.Run(map[bool]string{false: "forward", true: "mixed"}[mixed], func(t *testing.T) {
 			t.Parallel()
 			workspace := filepath.Join(resolved(t, t.TempDir()), "workspace with spaces #é")
-			if err := os.MkdirAll(filepath.Join(workspace, "nested dir"), 0700); err != nil {
+			if err := os.MkdirAll(filepath.Join(workspace, "nested dir"), 0o700); err != nil {
 				t.Fatal(err)
 			}
 			root, err := os.OpenRoot(workspace)

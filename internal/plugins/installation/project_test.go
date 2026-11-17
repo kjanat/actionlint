@@ -30,7 +30,7 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	concurrent := []byte("# user edit\nplugins: []\n")
-	if err := os.WriteFile(project.Manifest.Path, concurrent, 0600); err != nil {
+	if err := os.WriteFile(project.Manifest.Path, concurrent, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Save(t.Context(), []pluginreference.Reference{}); err == nil {
@@ -84,7 +84,7 @@ func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(project.Manifest.Path+".writing", 0700); err != nil {
+	if err := os.MkdirAll(project.Manifest.Path+".writing", 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Save(t.Context(), []pluginreference.Reference{}); err == nil {

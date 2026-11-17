@@ -153,7 +153,7 @@ func TestPinnedSyncVerifiesOfflineArtifacts(t *testing.T) {
 	if err := changed.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "artifact metadata disagrees") {
 		t.Fatalf("altered registry metadata was accepted for cached bytes: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(options.CacheDir, pin.SHA256), []byte("tampered"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(options.CacheDir, pin.SHA256), []byte("tampered"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := selected.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {

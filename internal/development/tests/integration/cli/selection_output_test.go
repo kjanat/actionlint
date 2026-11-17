@@ -12,7 +12,7 @@ func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 			t.Run(fmtTestName(modern, target), func(t *testing.T) {
 				t.Chdir(t.TempDir())
 				gitRepository(t, ".")
-				if err := os.MkdirAll(".github/workflows", 0700); err != nil {
+				if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
 					t.Fatal(err)
 				}
 				files := map[string]string{
@@ -21,7 +21,7 @@ func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 					".github/workflows/ci.yml": commandGoodWorkflow,
 				}
 				for path, content := range files {
-					if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+					if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 						t.Fatal(err)
 					}
 				}

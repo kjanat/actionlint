@@ -10,9 +10,9 @@ import (
 
 //go:wasmexport kjanat:actionlint-resolver/reference-resolver@0.1.0#resolve
 //export kjanat:actionlint-resolver/reference-resolver@0.1.0#resolve
-func wasmexport_Resolve(request0 *uint8, request1 uint32, request2 *uint8, request3 uint32, request4 uint32, request5 uint32, request6 uint64) (result *cm.Result[ResolutionShape, Resolution, string]) {
+func wasmexport_Resolve(request0 *uint8, request1 uint32, request2 *uint8, request3, request4, request5 uint32, request6 uint64) (result *cm.Result[ResolutionShape, Resolution, string]) {
 	request := lift_Request((*uint8)(request0), uint32(request1), (*uint8)(request2), uint32(request3), uint32(request4), uint32(request5), uint64(request6))
 	result_ := Exports.Resolve(request)
 	result = &result_
-	return
+	return result
 }

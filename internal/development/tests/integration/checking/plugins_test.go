@@ -155,7 +155,7 @@ func TestModuleKindSelection(t *testing.T) {
 		}
 	}
 	path := filepath.Join(t.TempDir(), "bad.wasm")
-	if err := os.WriteFile(path, []byte("not wasm"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("not wasm"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pluginartifact.Resolve(context.Background(), path, pluginartifact.Options{}); err == nil {

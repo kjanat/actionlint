@@ -37,7 +37,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 permissions: {}
 `,
 	} {
-		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(name, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -56,7 +56,7 @@ permissions: {}
 						if err := os.Mkdir(reports, 0o700); err != nil {
 							t.Fatal(err)
 						}
-						if err := os.WriteFile(report, []byte("previous report"), 0600); err != nil {
+						if err := os.WriteFile(report, []byte("previous report"), 0o600); err != nil {
 							t.Fatal(err)
 						}
 						args = append(args, "--yes", "--output-file", report)

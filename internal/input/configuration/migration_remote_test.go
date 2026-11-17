@@ -18,7 +18,7 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 	path := filepath.Join(files.PhysicalPath(t.TempDir()), "actionlint.yaml")
 	remote := fixtureregistry.FixtureRegistryURL + "base.yaml"
 	original := "extends: [" + remote + "]\nconfig-variables: [LOCAL]\n"
-	if err := os.WriteFile(path, []byte(original), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	body := []byte("policy: {require-commit-hash: true}")

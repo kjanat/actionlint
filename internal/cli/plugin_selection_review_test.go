@@ -13,11 +13,11 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	for _, directory := range []string{".git", ".github"} {
-		if err := os.Mkdir(directory, 0700); err != nil {
+		if err := os.Mkdir(directory, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(".github", "actionlint.yaml"), []byte("plugins: ["), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(".github", "actionlint.yaml"), []byte("plugins: ["), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, command := range []string{"check", "lsp", "rules"} {

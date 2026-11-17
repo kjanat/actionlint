@@ -18,7 +18,7 @@ func testProjectDir(t *testing.T, fixture string) string {
 	if err := os.CopyFS(d, os.DirFS(fixture)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(d, ".git"), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(d, ".git"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	return d
@@ -307,10 +307,10 @@ func TestProjectsLoadingBrokenProjectConfig(t *testing.T) {
 func writeShellcheckFixture(t *testing.T, root, path, content string) {
 	t.Helper()
 	path = filepath.Join(root, path)
-	if err := os.MkdirAll(filepath.Dir(path), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
