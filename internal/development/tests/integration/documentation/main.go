@@ -497,7 +497,7 @@ func Main(args []string) error {
 	}
 
 	log.Printf("Overwrite the file with the updated content (%d bytes) at %q", len(out), path)
-	return os.WriteFile(path, out, 0666)
+	return os.WriteFile(path, out, 0o666)
 }
 
 func main() {

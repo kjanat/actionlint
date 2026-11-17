@@ -20,7 +20,7 @@ func TestConfigMigrationRejectsMixedRemoteSnapshots(t *testing.T) {
 	path := filepath.Join(root, "actionlint.yaml")
 	remote := fixtureregistry.FixtureRegistryURL + "base.yaml"
 	original := "extends: [" + remote + "]\nconfig-variables: [LOCAL]\n"
-	if err := os.WriteFile(path, []byte(original), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetFileSequence(remote, []byte("plugins: []"), []byte("plugins: [github.com/example/plugin@v1.0.0]"))

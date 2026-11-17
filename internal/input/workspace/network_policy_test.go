@@ -16,7 +16,7 @@ import (
 func TestNetworkPolicyAppliesWithoutProjectConfiguration(t *testing.T) {
 	root := t.TempDir()
 	policy := filepath.Join(root, "network-policy.toml")
-	if err := os.WriteFile(policy, []byte("[restrictions.network.metadata-mirrors]\nexclude-services = ['jsdelivr']\n"), 0600); err != nil {
+	if err := os.WriteFile(policy, []byte("[restrictions.network.metadata-mirrors]\nexclude-services = ['jsdelivr']\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", policy)
@@ -65,7 +65,7 @@ func TestNetworkPolicyAppliesWithoutProjectConfiguration(t *testing.T) {
 func TestProjectOverlayCannotEnableForbiddenMirror(t *testing.T) {
 	root := t.TempDir()
 	policy := filepath.Join(root, "network-policy.toml")
-	if err := os.WriteFile(policy, []byte("[restrictions.network.metadata-mirrors]\nrequire-public = true\n"), 0600); err != nil {
+	if err := os.WriteFile(policy, []byte("[restrictions.network.metadata-mirrors]\nrequire-public = true\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", policy)
@@ -93,14 +93,14 @@ func TestAdditionalPolicyCannotReplaceUserPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := filepath.Join(user, "actionlint")
-	if err := os.MkdirAll(directory, 0700); err != nil {
+	if err := os.MkdirAll(directory, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(directory, "network-policy.toml"), []byte("[restrictions.network.metadata-mirrors]\nrequire-public = true\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "network-policy.toml"), []byte("[restrictions.network.metadata-mirrors]\nrequire-public = true\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	extra := filepath.Join(root, "team.toml")
-	if err := os.WriteFile(extra, []byte("[restrictions.network.metadata-mirrors]\nrequire-public = false\n"), 0600); err != nil {
+	if err := os.WriteFile(extra, []byte("[restrictions.network.metadata-mirrors]\nrequire-public = false\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", extra)

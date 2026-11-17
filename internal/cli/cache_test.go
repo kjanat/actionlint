@@ -30,10 +30,10 @@ func TestCacheManagementCommands(t *testing.T) {
 		t.Fatalf("empty list: status=%d output=%s log=%s error=%v", code, output, log, err)
 	}
 	file := filepath.Join(directory, "configs", "example")
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(file, []byte("cached config"), 0600); err != nil {
+	if err := os.WriteFile(file, []byte("cached config"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	old := time.Now().Add(-48 * time.Hour)

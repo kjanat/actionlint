@@ -177,7 +177,7 @@ func TestRemoteAndCache(t *testing.T) {
 			if _, err := Resolve(t.Context(), location, options); err != nil {
 				t.Fatalf("verified cache not usable offline: %v", err)
 			}
-			if err := os.WriteFile(filepath.Join(options.CacheDir, pin), module(`{}`), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(options.CacheDir, pin), module(`{}`), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := Resolve(t.Context(), location, options); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
@@ -241,7 +241,7 @@ func TestRemoteFailures(t *testing.T) {
 func TestLocalURI(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "space # plugin.wasm")
-	if err := os.WriteFile(path, module(`{}`), 0600); err != nil {
+	if err := os.WriteFile(path, module(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	uri := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}

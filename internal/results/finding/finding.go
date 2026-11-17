@@ -45,7 +45,7 @@ func (e *Finding) String() string {
 }
 
 // At creates a finding at a workflow source position.
-func At(pos *source.Position, kind string, msg string) *Finding {
+func At(pos *source.Position, kind, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
 		Start: *pos,
@@ -53,7 +53,7 @@ func At(pos *source.Position, kind string, msg string) *Finding {
 }
 
 // Errorf formats a finding at a workflow source position.
-func Errorf(pos *source.Position, kind string, format string, args ...any) *Finding {
+func Errorf(pos *source.Position, kind, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
 		Start: *pos,

@@ -43,7 +43,7 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("PATH", t.TempDir())
 	config := filepath.Join(t.TempDir(), "native.yaml")
-	if err := os.WriteFile(config, []byte("plugins: []\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("plugins: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	run := func(input string, args ...string) commandTranscript {

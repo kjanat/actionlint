@@ -10,7 +10,7 @@ import (
 
 //go:wasmimport kjanat:actionlint-resolver/repository-objects@0.1.0 open
 //go:noescape
-func wasmimport_Open(repository0 *uint8, repository1 uint32, expectedId0 uint32, expectedId1 uint64, result *cm.Result[RepositoryShape, Repository, string])
+func wasmimport_Open(repository0 *uint8, repository1, expectedId0 uint32, expectedId1 uint64, result *cm.Result[RepositoryShape, Repository, string])
 
 //go:wasmimport kjanat:actionlint-resolver/repository-objects@0.1.0 get-ref
 //go:noescape

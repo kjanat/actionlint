@@ -133,5 +133,5 @@ func CacheAction(uses string) string {
 // SplitRef separates an action name from its ref or Docker digest.
 func SplitRef(spec string) (name, ref string) {
 	name, ref, _ = strings.Cut(spec, "@")
-	return
+	return name, ref
 }

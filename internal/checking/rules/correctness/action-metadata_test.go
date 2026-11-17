@@ -47,10 +47,10 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	first, second, alias := filepath.Join(root, "first", "action.yml"), filepath.Join(root, "second", "action.yml"), filepath.Join(root, "alias.yml")
 	content := []byte("name: source\ndescription: source\nruns: {using: node24, main: index.js}\n")
 	for _, path := range []string{first, second} {
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, content, 0600); err != nil {
+		if err := os.WriteFile(path, content, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

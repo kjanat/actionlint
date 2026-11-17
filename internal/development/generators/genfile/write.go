@@ -29,9 +29,9 @@ func Write(ctx context.Context, path string, content []byte, exclusive bool) err
 		return fmt.Errorf("format generated %s: %w: %s", path, err, &stderr)
 	}
 	if !exclusive {
-		return os.WriteFile(path, formatted, 0644)
+		return os.WriteFile(path, formatted, 0o644)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	return writeNewFile(path, formatted)

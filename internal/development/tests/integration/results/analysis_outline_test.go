@@ -125,10 +125,10 @@ runs:
 `
 	for name, content := range map[string]string{"action.yml": manifest, "broken/action.yml": "runs: ["} {
 		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -188,11 +188,11 @@ runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(tc.manifest), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(tc.manifest), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if tc.name == "conflicting runtime" {
-				if err := os.WriteFile(filepath.Join(dir, "main.mjs"), nil, 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, "main.mjs"), nil, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}

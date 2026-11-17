@@ -644,7 +644,7 @@ func (g *GitHub) storeAt(ctx context.Context, manifest repositoryFile, tagObject
 		key = tagObject
 	}
 	bucket := g.bucket(manifest.reference, key)
-	if err := os.MkdirAll(bucket, 0700); err != nil {
+	if err := os.MkdirAll(bucket, 0o700); err != nil {
 		return err
 	}
 	file, err := os.CreateTemp(bucket, ".metadata-*")
