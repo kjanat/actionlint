@@ -53,7 +53,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			config := filepath.Join(root, "config.yaml")
-			if err := os.WriteFile(config, []byte("tools:\n  shellcheck:\n    backend:\n      wasm: {path: checker.wasm}\n"), 0600); err != nil {
+			if err := os.WriteFile(config, []byte("tools:\n  shellcheck:\n    backend:\n      wasm: {path: checker.wasm}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithCancel(t.Context())

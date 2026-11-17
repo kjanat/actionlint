@@ -17,7 +17,7 @@ import (
 
 func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	workspace := filepath.Join(t.TempDir(), "workspace with a long name")
-	if err := os.Mkdir(workspace, 0700); err != nil {
+	if err := os.Mkdir(workspace, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	longPath, err := windows.UTF16PtrFromString(workspace)
@@ -39,7 +39,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	}
 	t.Chdir(shortPath)
 	const workflow = "on: [\n"
-	if err := os.WriteFile("ci.yml", []byte(workflow), 0600); err != nil {
+	if err := os.WriteFile("ci.yml", []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer

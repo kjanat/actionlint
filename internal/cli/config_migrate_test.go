@@ -18,7 +18,7 @@ func TestConfigMigrationCommand(t *testing.T) {
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	path := filepath.Join(root, "config.yaml")
 	original := []byte("plugins: []\nconfig-variables: []\npolicy: {cache-operation: false}\n")
-	if err := os.WriteFile(path, original, 0600); err != nil {
+	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	preview := pluginCommandTest(t, pluginacquisition.Options{}, 0, "config", "migrate", "--config", path)

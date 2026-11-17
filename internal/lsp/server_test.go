@@ -90,7 +90,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 		})
 	}()
 	reader := bufio.NewReader(receive)
-	send := func(method string, id any, params any) {
+	send := func(method string, id, params any) {
 		t.Helper()
 		m := map[string]any{"jsonrpc": "2.0", "method": method, "params": params}
 		if id != nil {
@@ -223,7 +223,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 		})
 	}()
 	read := bufio.NewReader(client)
-	send := func(method string, id any, params any) {
+	send := func(method string, id, params any) {
 		t.Helper()
 		message := map[string]any{"jsonrpc": "2.0", "method": method, "params": params}
 		if id != nil {
@@ -322,7 +322,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 		})
 	}()
 	reader := bufio.NewReader(client)
-	send := func(method string, id any, params any) {
+	send := func(method string, id, params any) {
 		t.Helper()
 		m := map[string]any{"jsonrpc": "2.0", "method": method, "params": params}
 		if id != nil {

@@ -24,7 +24,7 @@ func TestWindowsForwardSlashCheckPaths(t *testing.T) {
 			t.Run(fmtTestName(modern, spelling), func(t *testing.T) {
 				root := filepath.Join(t.TempDir(), "repo with spaces #é")
 				for _, dir := range []string{".git", ".github/workflows", "config dir", "report dir"} {
-					if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+					if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -36,7 +36,7 @@ func TestWindowsForwardSlashCheckPaths(t *testing.T) {
 					"report template.tmpl":       "{{json .}}",
 				}
 				for name, content := range files {
-					if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
+					if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
 						t.Fatal(err)
 					}
 				}

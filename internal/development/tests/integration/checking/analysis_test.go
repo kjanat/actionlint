@@ -71,7 +71,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	}
 	directory := t.TempDir()
 	path := filepath.Join(directory, "workflow.yml")
-	if err := os.WriteFile(path, []byte(workflow), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})

@@ -43,7 +43,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := filepath.Join(filepath.Dir(project.Manifest.Path), "base.yml")
-	if err := os.MkdirAll(filepath.Dir(base), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(base), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, base, "dependency: &plugin\n  name: "+fixtureregistry.FixturePluginName+"\n  version: v1.0.0\n  registry: "+fixtureregistry.FixtureRegistryURL+"\nplugins: [*plugin]\npolicy: {bad: true}\n")
@@ -95,7 +95,7 @@ func TestRuleSelectionRejectsDependencyErrors(t *testing.T) {
 			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			directory := filepath.Join(root, ".github")
-			if err := os.MkdirAll(directory, 0700); err != nil {
+			if err := os.MkdirAll(directory, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			if tc.base != "" {

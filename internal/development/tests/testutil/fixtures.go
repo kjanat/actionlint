@@ -174,7 +174,7 @@ func Main(m *testing.M) {
 		panic(err)
 	}
 	global := filepath.Join(directory, "gitconfig")
-	if err := os.WriteFile(global, nil, 0600); err != nil {
+	if err := os.WriteFile(global, nil, 0o600); err != nil {
 		panic(err)
 	}
 	for name, value := range map[string]string{"GIT_CONFIG_GLOBAL": global, "GIT_CONFIG_NOSYSTEM": "1", "XDG_CONFIG_HOME": directory} {

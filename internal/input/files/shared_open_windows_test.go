@@ -14,7 +14,7 @@ import (
 func TestSharedReaderAcceptsOpenRenameHandle(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "artifact")
-	if err := os.WriteFile(path, []byte("published artifact"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("published artifact"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	name, err := sharedFilePath(path)

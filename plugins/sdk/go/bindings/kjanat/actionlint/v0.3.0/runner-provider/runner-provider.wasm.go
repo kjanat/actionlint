@@ -9,7 +9,7 @@ package runnerprovider
 func wasmexport_Describe() (result *Descriptor) {
 	result_ := Exports.Describe()
 	result = &result_
-	return
+	return result
 }
 
 //go:wasmexport kjanat:actionlint/runner-provider@0.3.0#resolve
@@ -18,5 +18,5 @@ func wasmexport_Resolve(request *Request) (result *Outcome) {
 	request_ := *request
 	result_ := Exports.Resolve(request_)
 	result = &result_
-	return
+	return result
 }

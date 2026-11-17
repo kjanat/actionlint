@@ -29,11 +29,11 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	registry.Add(t, "v1.0.0", module)
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	original := []byte("plugins:\n  - name: " + fixtureregistry.FixturePluginName + "\n    version: v1.0.0\n    registry: " + fixtureregistry.FixtureRegistryURL + "\n")
-	if err := os.WriteFile(path, original, 0600); err != nil {
+	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})

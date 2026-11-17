@@ -64,7 +64,7 @@ func TestNativeRuffDefaultAndPyflakesSelection(t *testing.T) {
 		t.Skipf("Ruff integration requires a compatible executable (%s): %v", ruff, err)
 	}
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
-	if err := os.WriteFile(config, []byte("plugins: []\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("plugins: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	script := "x = 1\nimport os\nif x == None:\n    print(missing)\n"

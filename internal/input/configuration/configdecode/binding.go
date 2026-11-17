@@ -71,13 +71,13 @@ func Context(message string, err error) error {
 
 // Decode binds values strictly. Unknown struct fields and scalar coercions fail.
 // A failed decode leaves dst unchanged.
-func Decode(value any, dst any) error { return decode(value, dst, true) }
+func Decode(value, dst any) error { return decode(value, dst, true) }
 
 // DecodeKnown permits ignored fields in legacy mappings. Nested Decoder hooks
 // continue to apply their own strict contracts.
-func DecodeKnown(value any, dst any) error { return decode(value, dst, false) }
+func DecodeKnown(value, dst any) error { return decode(value, dst, false) }
 
-func decode(value any, dst any, strict bool) error {
+func decode(value, dst any, strict bool) error {
 	target := reflect.ValueOf(dst)
 	if target.Kind() != reflect.Pointer || target.IsNil() {
 		return errors.New("configuration destination must be a non-nil pointer")
