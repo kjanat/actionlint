@@ -1,4 +1,5 @@
 name: Browser package preview
+env: { MISE_CACHE_DIR: "${{ github.workspace }}-mise/cache", MISE_LOCKED: "1", MISE_TASK_RUN_AUTO_INSTALL: "false" }
 
 on:
   workflow_dispatch:
@@ -37,7 +38,11 @@ jobs:
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: 2026.11.4
+          mise_dir: "${{ github.workspace }}-mise"
+          cache: true
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           monorepo: false
+          add_shims_to_path: false
       - run: bun install --frozen-lockfile
       - name: Build the browser language server and Wasm runtime
         working-directory: libraries/browser-lsp
