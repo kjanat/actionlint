@@ -46,9 +46,15 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			failure := errors.New("negotiation failed")
 			guest := &partialGuest{failAt: failureAt, grant: grant, failure: failure}
 			nativeCalls := 0
+			completed := 0
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}, Completed: func(name string) {
+					if name != "shellcheck" {
+						t.Fatalf("completed unexpected rule %q", name)
+					}
+					completed++
+				}},
 				native: func(*configuration.Config) (contract.Runner, error) {
 					return fallbackRunner(func(_ context.Context, selected scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 						nativeCalls++
@@ -60,6 +66,9 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 				},
 			}
 			findings, err := runner.Analyze(t.Context(), batch)
+			if completed != 1 {
+				t.Fatalf("completed %d plugin checks, want 1", completed)
+			}
 			if grant {
 				if err == nil || !strings.Contains(err.Error(), "source access requires") {
 					t.Fatalf("source failure lost: %v", err)

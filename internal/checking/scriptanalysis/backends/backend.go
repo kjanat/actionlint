@@ -167,6 +167,7 @@ type check struct {
 // had a directory grant, holds the display copy of each reported source read
 // through that grant; reported sources missing from it are unreadable.
 type outcome struct {
+	skipped     bool
 	diagnostics []scriptengine.Diagnostic
 	sources     []string
 	directory   string
@@ -187,6 +188,9 @@ func (r runner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]cont
 		findings, err := r.findings(c, batch.Scripts[c.index], outcomes[i])
 		out = append(out, findings...)
 		failures = errors.Join(failures, outcomes[i].err, err)
+		if !outcomes[i].skipped && outcomes[i].err == nil && err == nil && r.context.Completed != nil {
+			r.context.Completed(r.descriptor.Name)
+		}
 	}
 	return out, failures
 }
@@ -290,7 +294,7 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 	run := func(i int) {
 		if reporting {
 			result, err := processes.Run(ctx, checks[i].request, checks[i].prepared.Vars)
-			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, err: err}
+			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, skipped: result.Skipped, err: err}
 			return
 		}
 		outcomes[i] = r.checkGranted(ctx, checks[i])

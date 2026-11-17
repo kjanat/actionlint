@@ -351,7 +351,7 @@ func (b *Backend) run(ctx context.Context, request scriptengine.Request, vars ma
 		return DecodedCheck{}, errors.New(b.commandProblem)
 	}
 	if available, err := b.available(ctx); err != nil || !available {
-		return DecodedCheck{}, err
+		return DecodedCheck{Skipped: true}, err
 	}
 	directory, err := b.directory(request.Directory)
 	if err != nil {

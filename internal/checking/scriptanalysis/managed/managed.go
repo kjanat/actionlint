@@ -326,7 +326,11 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 			mapped.Severity = r.severity(string(mapped.Severity))
 			findings = append(findings, mapped)
 		}
-		failure = errors.Join(failure, err, files.close())
+		err = errors.Join(err, files.close())
+		failure = errors.Join(failure, err)
+		if err == nil && r.context.Completed != nil {
+			r.context.Completed(r.name)
+		}
 	}
 	// Scopes without analyzed runs still negotiate configuration. Source grants
 	// are materialized only for scripts that need them.

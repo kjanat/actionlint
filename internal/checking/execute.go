@@ -97,7 +97,8 @@ type analysisRequest struct {
 // analysisResult contains findings, their sources, and every local input read during analysis.
 type analysisResult struct {
 	report.Analysis
-	files []analyzedFile
+	files     []analyzedFile
+	completed map[string]int
 }
 
 type analyzedFile struct {
@@ -502,6 +503,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		err = errors.Join(err, completionErr)
 	}
 	result.IncompleteChecks = session.checkCompletion.incompleteChecks()
+	result.completed = session.checkCompletion.completedRules()
 	err = result.revalidateCaptures(captures, rows, filepath.FromSlash(canonicalWorkingDir), err)
 	slices.SortFunc(session.runnerReports, func(a, b runnerapi.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
@@ -704,7 +706,7 @@ func (r *analysisResult) publishDiagnostics() error {
 	completed := r.completedRules()
 	r.CollectedByRule = make([]report.RuleCollection, 0, len(collected))
 	for _, name := range slices.Sorted(maps.Keys(collected)) {
-		r.CollectedByRule = append(r.CollectedByRule, report.RuleCollection{Rule: name, Findings: collected[name], Completed: completed[name]})
+		r.CollectedByRule = append(r.CollectedByRule, report.RuleCollection{Rule: name, Findings: collected[name], Completed: max(completed[name], r.completed[name])})
 	}
 	if r.Diagnostics == nil {
 		r.Diagnostics = []results.PublishedDiagnostic{}

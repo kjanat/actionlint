@@ -53,8 +53,8 @@ type LintedFile struct {
 
 // RuleCollection counts the findings one rule collected in one analysis,
 // before publication policy. A rule that ran without findings has Findings 0.
-// Completed counts the linted entry documents where the rule was selected
-// and no incomplete check names it.
+// Completed counts entry documents where the rule completed analysis, or a tool
+// completed at least one script check even if another check was incomplete.
 type RuleCollection struct {
 	Rule      string
 	Findings  int

@@ -30,6 +30,9 @@ type Context struct {
 	// Skipped receives the rule name of an enabled check that could not run.
 	// Providers may call it concurrently; disabling a check does not call it.
 	Skipped func(string)
+	// Completed receives the rule name after a script check succeeds, including
+	// checks without findings. Providers may call it concurrently.
+	Completed func(string)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
 	Document             checkinputs.AnalyzerInput

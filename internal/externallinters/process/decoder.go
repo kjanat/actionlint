@@ -35,6 +35,8 @@ type DecodedCheck struct {
 	Sources     []string                  `json:"sources,omitempty"`
 	Errors      []string                  `json:"errors,omitempty"`
 	Directory   string                    `json:"-"`
+	// Skipped is set by the host when an optional process could not run.
+	Skipped bool `json:"-"`
 }
 
 // checkInput rejects stdout larger than any decoder accepts.

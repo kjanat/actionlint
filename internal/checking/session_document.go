@@ -333,6 +333,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		skippedMu.Lock()
 		skipped[name] = true
 		skippedMu.Unlock()
+	}, Completed: func(name string) {
+		s.checkCompletion.markCompleted(snapshot.Reference(), name)
 	}, Warn: func(err error) {
 		if s.logOut != nil {
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
