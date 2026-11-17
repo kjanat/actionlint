@@ -5,23 +5,23 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-type rangeReviewBackend struct{ end checkinputs.ScriptPosition }
+type rangeReviewBackend struct{ end sourcetext.Position }
 
-func (b rangeReviewBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
-	return []checkinputs.ScriptDiagnostic{
-		{Message: "valid", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2}},
-		{Message: "reversed", Location: checkinputs.ScriptPosition{Row: 2, Column: 5}, EndLocation: b.end},
+func (b rangeReviewBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
+	return []scriptengine.Diagnostic{
+		{Message: "valid", Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 2}},
+		{Message: "reversed", Location: sourcetext.Position{Line: 2, Column: 5}, EndLocation: b.end},
 	}, nil
 }
 
@@ -50,7 +50,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 	ownedRun, _ := stepView.Run()
 	scriptRun := *run
 	scriptRun.Source = ownedRun.Source
-	for _, end := range []checkinputs.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
+	for _, end := range []sourcetext.Position{{Line: 2, Column: 3}, {Line: 1, Column: 7}} {
 		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})
 		if err != nil {
 			t.Fatal(err)
@@ -59,7 +59,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := checker.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: &scriptRun, Path: "ci.yml", Content: content, Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}})
+		findings, err := checker.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: &scriptRun, Path: "ci.yml", Content: content, Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}}})
 		if err != nil || len(findings) != 2 || findings[0].Message != "valid" || findings[1].Message != "reversed" ||
 			findings[1].Start != (sourcetext.Position{Line: 8, Column: 15}) || findings[1].End != (sourcetext.Position{}) {
 			t.Fatalf("reversed end kept or finding lost: findings=%+v err=%v", findings, err)

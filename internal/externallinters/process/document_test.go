@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
@@ -96,7 +97,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 				}
 				return
 			}
-			var request checkinputs.DocumentRequest
+			var request DocumentRequest
 			if err := json.Unmarshal([]byte(echo.Report.Stdin), &request); err != nil {
 				t.Fatal(err)
 			}
@@ -265,12 +266,12 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	filename := filepath.Join(directory, "current.yml")
-	request := checkinputs.ScriptRequest{Filename: filename}
+	request := scriptengine.Request{Filename: filename}
 	foreign := "file://remote.example" + filepath.ToSlash(filename)
 	if filepath.VolumeName(filename) != "" {
 		foreign = "file://remote.example/" + filepath.ToSlash(filename)
 	}
-	findings := documentFindings([]checkinputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
+	findings := documentFindings([]scriptengine.Diagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
 	if len(findings) != 1 || findings[0].Filename != filename {
 		t.Fatal("foreign file URI admitted as local capture", findings)
 	}

@@ -113,8 +113,8 @@ func lowerScript(script checkinputs.Script) *wacogo.ValRecord {
 	runtime := wacogo.ValOptionNone()
 	if script.Runtime != nil {
 		runtime = wacogo.ValOptionSome(wacogo.NewValRecord(
-			field("shell", wacogo.ValString(script.Runtime.Shell)), field("shell-known", wacogo.ValBool(script.Runtime.ShellKnown)),
-			field("shell-implicit", wacogo.ValBool(script.Runtime.ShellImplicit)), field("directory", wacogo.ValString(script.Runtime.Directory)),
+			field("shell", wacogo.ValString(script.Runtime.Shell.Name)), field("shell-known", wacogo.ValBool(script.Runtime.Shell.Known())),
+			field("shell-implicit", wacogo.ValBool(script.Runtime.Shell.Implicit)), field("directory", wacogo.ValString(script.Runtime.Directory)),
 			field("directory-known", wacogo.ValBool(script.Runtime.DirectoryKnown)),
 		))
 	}

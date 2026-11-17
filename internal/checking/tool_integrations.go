@@ -9,7 +9,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -103,7 +102,7 @@ func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured
 
 func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
 	for _, registration := range registrations {
-		if validation.IsNil(registration.Checker) {
+		if checkinputs.IsNilChecker(registration.Checker) {
 			return errors.New("nil analyzer registration")
 		}
 	}

@@ -8,11 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)
+var _ interface{ Limits() guestlimits.Limits } = (*module.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()
@@ -48,13 +50,13 @@ func Example_moduleLoading() {
 	defer engine.Close(ctx)
 	limits := engine.Limits()
 	fmt.Println("loaded", engine.Metadata().ID, "with", limits)
-	diagnostics, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	diagnostics, err := engine.Check(ctx, scriptengine.Request{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return
 	}
 	for _, d := range diagnostics {
-		fmt.Printf("%s:%d:%d %s %s\n", d.Filename, d.Location.Row, d.Location.Column, d.Code, d.Message)
+		fmt.Printf("%s:%d:%d %s %s\n", d.Filename, d.Location.Line, d.Location.Column, d.Code, d.Message)
 	}
 	// Output:
 	// loaded actionlint-engine-echo with memory 256 MiB, time 10s
@@ -74,13 +76,13 @@ func Example_componentScriptEngine() {
 		fmt.Println("config:", err)
 		return
 	}
-	findings, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	findings, err := engine.Check(ctx, scriptengine.Request{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return
 	}
 	for _, finding := range findings {
-		fmt.Printf("%s:%d:%d %s\n", finding.Filename, finding.Location.Row, finding.Location.Column, finding.Code)
+		fmt.Printf("%s:%d:%d %s\n", finding.Filename, finding.Location.Line, finding.Location.Column, finding.Code)
 	}
 	// Output:
 	// script engine: true echo

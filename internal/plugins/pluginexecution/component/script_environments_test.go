@@ -16,12 +16,8 @@ import (
 
 func TestScriptEnvironmentResponseLimit(t *testing.T) {
 	t.Parallel()
-	scriptEnvs := []checkinputs.ScriptEnvironment{{
-		OperatingSystem:  runnerapi.Linux,
-		MergeComparison:  scripts.NameSensitive,
-		LookupComparison: scripts.NameSensitive,
-		Names:            []checkinputs.EnvironmentVariableName{{Name: strings.Repeat("x", int(maxScriptResultBytes)), Scope: scripts.EnvironmentStep, CaseKnown: true}},
-	}}
+	scriptEnvs := scripts.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux},
+		scripts.EnvironmentLayer{Scope: scripts.EnvironmentStep, Names: []string{strings.Repeat("x", int(maxScriptResultBytes))}})
 	result, err := environmentResult(scriptEnvs)
 	if _, refused := result.(environments.ResultListEnvironmentStringErr); err != nil || !refused {
 		t.Fatalf("oversized environment response was accepted: %T, %v", result, err)
@@ -30,9 +26,9 @@ func TestScriptEnvironmentResponseLimit(t *testing.T) {
 
 func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 	t.Parallel()
-	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(
+	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(
 		scripts.EnvironmentAlternatives("bash", nil, scripts.EnvironmentLayer{Scope: scripts.EnvironmentRuntime, UnknownNames: true}, scripts.EnvironmentLayer{Scope: scripts.EnvironmentStep, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}}),
-	)))
+	))
 	engine := wacogo.NewEngine(ctx)
 	t.Cleanup(func() {
 		if err := engine.Close(context.WithoutCancel(ctx)); err != nil {
@@ -101,7 +97,7 @@ func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 	t.Parallel()
 	scriptEnvs := scripts.EnvironmentAlternatives("pwsh", []runnerapi.OS{runnerapi.Windows}, scripts.EnvironmentLayer{Scope: scripts.EnvironmentWorkflow, Names: []string{"lowercase"}})
-	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(scriptEnvs)))
+	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(scriptEnvs))
 	result, err := (scriptEnvironments{}).Current(ctx)
 	value, ok := result.(environments.ResultListEnvironmentStringOk)
 	if err != nil || !ok || len(value.Value) != 1 || value.Value[0].LookupComparison != environments.NameComparisonInsensitive || value.Value[0].UnknownNames {

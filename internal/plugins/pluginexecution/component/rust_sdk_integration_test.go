@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 // TestRustSDKScriptWorlds builds the downstream fixture from the SDK's Cargo
@@ -77,7 +77,7 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 			if err := p.ValidateConfig(t.Context(), nil); err != nil {
 				t.Fatal(err)
 			}
-			findings, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: "pass", Filename: "example.py"})
+			findings, err := p.Check(t.Context(), scriptengine.Request{Source: "pass", Filename: "example.py"})
 			if err != nil || len(findings) != 0 {
 				t.Fatalf("check = %#v, %v", findings, err)
 			}

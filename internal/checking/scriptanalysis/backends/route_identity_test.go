@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -17,7 +18,7 @@ func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
 	t.Parallel()
 	sites := []checkinputs.ScriptInput{{Action: "owner/action/SubPath", Input: "source", Language: "python"}, {Action: "owner/action", Input: "code", Language: "javascript"}, {Action: "owner/action", Input: "other", Language: "python"}}
 	var names []string
-	registration, err := RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent"}, Shells: []string{"bash"}, ScriptInputs: sites}, routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	registration, err := RegisterEngine(scriptengine.Descriptor{Rule: rule.Descriptor{Name: "independent"}, Shells: []string{"bash"}, ScriptInputs: sites}, routingBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		names = append(names, request.Filename)
 		return nil, nil
 	}))
@@ -28,7 +29,7 @@ func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := []scriptanalysis.Unit{{Run: runBody("echo run", nil), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}
+	scripts := []scriptanalysis.Unit{{Run: runBody("echo run", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}}
 	for _, site := range sites {
 		scripts = append(scripts, scriptanalysis.Unit{Input: actionInput(site, "code", nil)})
 	}

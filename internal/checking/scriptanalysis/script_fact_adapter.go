@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -37,7 +36,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if adapter.IncludeExecution {
 		available = append(available, rule.Execution)
 	}
-	if validation.IsNil(adapter.Analyzer) {
+	if checkinputs.IsNilChecker(adapter.Analyzer) {
 		return nil, errors.New("nil analyzer registration")
 	}
 	descriptor := adapter.Analyzer.Descriptor()

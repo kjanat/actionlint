@@ -5,7 +5,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 // ConfigureAnalyzers applies presets and per-rule settings to explicit registrations.
@@ -13,7 +12,7 @@ import (
 func ConfigureAnalyzers(scope *rulebinding.Scope, registrations []checkinputs.Registration) ([]checkinputs.Registration, error) {
 	selected := make([]checkinputs.Registration, 0, len(registrations))
 	for _, registration := range registrations {
-		if validation.IsNil(registration.Checker) {
+		if checkinputs.IsNilChecker(registration.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		name := registration.Checker.Descriptor().Name

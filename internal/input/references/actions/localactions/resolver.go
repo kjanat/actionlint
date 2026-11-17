@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -54,7 +55,7 @@ type Resolver struct {
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
 	shellEnvUnknown      bool
-	checkoutShell        execution.Shell
+	checkoutShell        scripts.Shell
 }
 
 // resolverDocuments owns the consulted-source map and its synchronization.

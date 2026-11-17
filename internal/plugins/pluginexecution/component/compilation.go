@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
@@ -24,7 +25,7 @@ func newComponentCompilation() *componentCompilation {
 	return &componentCompilation{cache: wazero.NewCompilationCache(), gate: semaphore.NewWeighted(1)}
 }
 
-func (c *componentCompilation) newEngine(ctx context.Context, limits Limits) *wacogo.Engine {
+func (c *componentCompilation) newEngine(ctx context.Context, limits guestlimits.Limits) *wacogo.Engine {
 	config := wazero.NewRuntimeConfig().
 		WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExtendedConst).
 		WithCloseOnContextDone(true).

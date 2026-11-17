@@ -5,6 +5,7 @@ package contract
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
@@ -23,7 +24,7 @@ type Context struct {
 	Config, ProjectConfig   *configuration.Config
 	WorkingDir, ProjectRoot string
 	Processes               *hostprocess.ProcessPool
-	LoadEngine              func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadEngine              func(context.Context, string) (scriptengine.Backend, error)
 	Debug                   func(string, ...any)
 	Warn                    func(error)
 	// Skipped receives the rule name of an enabled check that could not run.
@@ -44,14 +45,14 @@ type Registration struct {
 	rule.Declaration
 	ScriptInputs      []checkinputs.ScriptInput
 	InputSelectors    func(Context) ([]checkinputs.ScriptInput, error)
-	ConfiguredBackend func(Context) (checkinputs.ScriptBackend, error)
+	ConfiguredBackend func(Context) (scriptengine.Backend, error)
 	RequiresExecution bool
 	NeedsProcess      func(context.Context, *configuration.Config, *configuration.Config) (bool, error)
 	Validate          func() error
 	Enabled           func(Context) bool
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
-	WithBackend       func(checkinputs.ScriptBackend) (Registration, error)
+	WithBackend       func(scriptengine.Backend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
 	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.

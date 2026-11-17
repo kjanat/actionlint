@@ -10,11 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 // WithScriptInputs routes run steps through the registration and action inputs
 // through the supplied engine.
-func WithScriptInputs(registration contract.Registration, descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend) (contract.Registration, error) {
+func WithScriptInputs(registration contract.Registration, descriptor scriptengine.Descriptor, backend scriptengine.Backend) (contract.Registration, error) {
 	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil
 	descriptor.Rule = registration.Descriptor
@@ -120,14 +121,14 @@ func Configure(registration contract.Registration) contract.Registration {
 
 // WithConfiguredEngine discovers routes through the same invocation-owned loader
 // used by the native adapter, including each composite's effective configuration.
-func WithConfiguredEngine(registration contract.Registration, load func(contract.Context) (checkinputs.ScriptBackend, error)) contract.Registration {
+func WithConfiguredEngine(registration contract.Registration, load func(contract.Context) (scriptengine.Backend, error)) contract.Registration {
 	original := registration
 	registration.InputSelectors = func(c contract.Context) ([]checkinputs.ScriptInput, error) {
 		engine, err := load(c)
 		if err != nil {
 			return nil, err
 		}
-		if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+		if described, ok := engine.(scriptengine.DescribedBackend); ok {
 			descriptor := described.ScriptDescriptor()
 			if descriptor.Engine != registration.Name {
 				return nil, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, registration.Name)
@@ -150,7 +151,7 @@ type configuredRouting struct {
 	native       contract.Runner
 	registration contract.Registration
 	context      contract.Context
-	load         func(contract.Context) (checkinputs.ScriptBackend, error)
+	load         func(contract.Context) (scriptengine.Backend, error)
 }
 
 func (r configuredRouting) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {
@@ -181,7 +182,7 @@ func (r configuredRouting) Analyze(ctx context.Context, batch scriptanalysis.Bat
 			failures = errors.Join(failures, err)
 			continue
 		}
-		described, ok := engine.(checkinputs.DescribedScriptBackend)
+		described, ok := engine.(scriptengine.DescribedBackend)
 		if !ok {
 			nativeScripts[cfg] = nil
 			continue

@@ -33,10 +33,4 @@ func TestScriptInputSelectors(t *testing.T) {
 			t.Fatalf("duplicate input target accepted with language %s", language)
 		}
 	}
-	descriptor := ScriptEngineDescriptor{ScriptInputs: []ScriptInput{valid}}
-	cloned := descriptor.Clone()
-	cloned.ScriptInputs[0].Language = "python"
-	if descriptor.ScriptInputs[0] != valid {
-		t.Fatal("cloned input selectors alias descriptor")
-	}
 }

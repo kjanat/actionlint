@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -230,7 +231,7 @@ type Stdin string
 const (
 	// StdinSource sends the prepared script source.
 	StdinSource Stdin = "source"
-	// StdinRequest sends the JSON analyzer.ScriptRequest.
+	// StdinRequest sends the JSON scriptengine.Request.
 	StdinRequest Stdin = "request"
 )
 
@@ -277,8 +278,8 @@ type ProcessSpec struct {
 	Output       Output          `json:"output"`
 	// TemplateEffects maps diagnostic codes to template effects. It is honoured
 	// only when the probed version equals Version.TemplateEffects.
-	TemplateEffects map[string]checkinputs.ScriptTemplateEffect `json:"template_effects,omitempty"`
-	UserArgs        *UserArgs                                   `json:"user_args,omitempty"`
+	TemplateEffects map[string]scriptengine.TemplateEffect `json:"template_effects,omitempty"`
+	UserArgs        *UserArgs                              `json:"user_args,omitempty"`
 	// Concurrency defaults to ConcurrencyPool.
 	Concurrency Concurrency `json:"concurrency,omitempty"`
 }
@@ -382,7 +383,7 @@ const (
 )
 
 // Coordinates describe a tool's position convention. Omitted means
-// lf/chars/exclusive, the analyzer.ScriptPosition contract.
+// lf/chars/exclusive, the scriptengine.Diagnostic contract.
 type Coordinates struct {
 	Rows    RowConvention `json:"rows"`
 	Columns ColumnUnit    `json:"columns"`

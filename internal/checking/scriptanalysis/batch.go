@@ -101,13 +101,13 @@ func (u Unit) Config() *configuration.Config {
 	return u.Scope.Config
 }
 
-// RuntimeShell returns the resolved shell and whether the runner supplies it
-// implicitly. Unresolved execution returns no shell.
-func (u Unit) RuntimeShell() (string, bool) {
+// RuntimeShell returns the resolved shell. Unresolved execution returns the
+// zero shell.
+func (u Unit) RuntimeShell() scripts.Shell {
 	if u.Execution == nil {
-		return "", false
+		return scripts.Shell{}
 	}
-	return u.Execution.Shell, u.Execution.ShellImplicit
+	return u.Execution.Shell
 }
 
 // WorkingDirectory returns the directory a tool runs the script in and whether

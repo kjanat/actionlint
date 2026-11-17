@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -54,8 +55,8 @@ type SelectedProvider struct {
 	Repository bool
 }
 type ScriptEngineRegistration struct {
-	Backend    checkinputs.ScriptBackend
-	Descriptor checkinputs.ScriptEngineDescriptor
+	Backend    scriptengine.Backend
+	Descriptor scriptengine.Descriptor
 }
 
 func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {

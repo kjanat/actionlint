@@ -11,8 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/python"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -68,12 +69,12 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	}
 	lines := strings.Split(prepared.Source, "\n")
 	column := 1
-	finding := checkinputs.ScriptDiagnostic{Location: checkinputs.ScriptPosition{Row: 4, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: 4, Column: len(lines[3]) + 1}, TemplateEffect: checkinputs.TemplateEffectExportedName}
+	finding := scriptengine.Diagnostic{Location: sourcetext.Position{Line: 4, Column: column}, EndLocation: sourcetext.Position{Line: 4, Column: len(lines[3]) + 1}, TemplateEffect: scriptengine.TemplateEffectExportedName}
 	if prepared.AcceptDiagnostic(finding) {
 		t.Fatal("generated Python identifier was reported after row insertion")
 	}
-	finding.Location.Row = 5
-	finding.EndLocation.Row = 5
+	finding.Location.Line = 5
+	finding.EndLocation.Line = 5
 	if !prepared.AcceptDiagnostic(finding) {
 		t.Fatal("real Python identifier was discarded")
 	}

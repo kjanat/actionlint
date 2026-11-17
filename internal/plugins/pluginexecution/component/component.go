@@ -9,6 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -29,14 +31,14 @@ const HostInterface = host.InterfaceName
 // SourceAnnotationsInterface provides optional, source-local YAML comments.
 const SourceAnnotationsInterface = sourceannotations.InterfaceName
 
-// Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
+// Plugin is a loaded component. It implements checkinputs.Checker. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
 	reservedRules rule.Names
 	// A non-nil descriptor identifies a validated, available role.
 	analyzerDescriptor *checkinputs.Descriptor
 	runnerDescriptor   *runnerapi.Descriptor
-	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
+	scriptDescriptor   *scriptengine.Descriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
 	// runner is the negotiated runner-provider version, nil without the
@@ -49,7 +51,7 @@ type Plugin struct {
 
 	digest string
 	path   string
-	limits Limits
+	limits guestlimits.Limits
 	log    func(string)
 
 	engine             *wacogo.Engine
@@ -73,7 +75,7 @@ func (p *Plugin) ArtifactDigest() string { return p.digest }
 func (p *Plugin) Path() string { return p.path }
 
 // Limits returns the resource bounds for this plugin.
-func (p *Plugin) Limits() Limits { return p.limits }
+func (p *Plugin) Limits() guestlimits.Limits { return p.limits }
 
 // Close releases the runtime. The plugin cannot be used afterwards.
 func (p *Plugin) Close(ctx context.Context) error {

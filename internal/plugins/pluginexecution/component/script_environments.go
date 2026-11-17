@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 )
 
@@ -13,8 +14,8 @@ const ScriptEnvironmentsInterface = environments.InterfaceName
 type environmentContextKey struct{}
 
 type (
-	documentEnvironmentNames map[string][]checkinputs.ScriptEnvironment
-	snippetEnvironmentNames  []checkinputs.ScriptEnvironment
+	documentEnvironmentNames map[string][]scripts.EnvironmentNames
+	snippetEnvironmentNames  []scripts.EnvironmentNames
 )
 
 type scriptEnvironments struct{}
@@ -44,11 +45,11 @@ func (scriptEnvironments) Current(ctx context.Context) (environments.ResultListE
 
 // scriptEnvironmentBytes includes string bytes and record storage, bounding
 // responses even when declaration keys are empty strings.
-func scriptEnvironmentBytes(scriptEnvs []checkinputs.ScriptEnvironment) uint64 {
+func scriptEnvironmentBytes(scriptEnvs []scripts.EnvironmentNames) uint64 {
 	var size uint64
 	for _, environment := range scriptEnvs {
 		size += 64
-		for _, name := range environment.Names {
+		for _, name := range environment.Names() {
 			size += 32 + uint64(len(name.Name))
 		}
 	}
@@ -65,29 +66,30 @@ func environmentEnum[T fmt.Stringer](name string, cases []T) (T, error) {
 	return zero, fmt.Errorf("unsupported environment value %q", name)
 }
 
-func environmentResult(scriptEnvs []checkinputs.ScriptEnvironment) (environments.ResultListEnvironmentString, error) {
+func environmentResult(scriptEnvs []scripts.EnvironmentNames) (environments.ResultListEnvironmentString, error) {
 	if scriptEnvironmentBytes(scriptEnvs) > maxScriptResultBytes {
 		return environments.ResultListEnvironmentStringErr{Value: "script environment response exceeds 8 MiB"}, nil
 	}
 	result := make([]environments.Environment, len(scriptEnvs))
 	for i, environment := range scriptEnvs {
-		os, err := environmentEnum(string(environment.OperatingSystem), []environments.OperatingSystem{
+		os, err := environmentEnum(string(environment.OperatingSystem()), []environments.OperatingSystem{
 			environments.OperatingSystemLinux, environments.OperatingSystemMacos, environments.OperatingSystemWindows,
 		})
 		if err != nil {
 			return nil, err
 		}
 		comparisons := []environments.NameComparison{environments.NameComparisonSensitive, environments.NameComparisonInsensitive, environments.NameComparisonUnknown}
-		merge, err := environmentEnum(string(environment.MergeComparison), comparisons)
+		merge, err := environmentEnum(string(environment.MergeComparison()), comparisons)
 		if err != nil {
 			return nil, err
 		}
-		lookup, err := environmentEnum(string(environment.LookupComparison), comparisons)
+		lookup, err := environmentEnum(string(environment.LookupComparison()), comparisons)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = environments.Environment{OperatingSystem: os, MergeComparison: merge, LookupComparison: lookup, UnknownNames: environment.UnknownNames, Names: make([]environments.VariableName, len(environment.Names))}
-		for j, variable := range environment.Names {
+		names := environment.Names()
+		result[i] = environments.Environment{OperatingSystem: os, MergeComparison: merge, LookupComparison: lookup, UnknownNames: environment.UnknownNames(), Names: make([]environments.VariableName, len(names))}
+		for j, variable := range names {
 			scope, err := environmentEnum(string(variable.Scope), []environments.EnvironmentScope{
 				environments.EnvironmentScopeWorkflow, environments.EnvironmentScopeJob, environments.EnvironmentScopeCaller,
 				environments.EnvironmentScopeStep, environments.EnvironmentScopeRuntime,
@@ -103,16 +105,16 @@ func environmentResult(scriptEnvs []checkinputs.ScriptEnvironment) (environments
 
 func documentEnvironments(input checkinputs.AnalyzerInput) documentEnvironmentNames {
 	scope := make(documentEnvironmentNames)
-	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
-		for _, script := range scripts {
+	for _, declared := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
+		for _, script := range declared {
 			if script.Occurrence.ID != "" {
-				scope[string(script.Occurrence.ID)] = checkinputs.ScriptEnvironments(script.Environment)
+				scope[string(script.Occurrence.ID)] = script.Environment
 			}
 		}
 	}
 	for _, actionInput := range input.ActionInputs {
 		if actionInput.Occurrence.ID != "" {
-			scope[string(actionInput.Occurrence.ID)] = checkinputs.ScriptEnvironments(actionInput.Environment)
+			scope[string(actionInput.Occurrence.ID)] = actionInput.Environment
 		}
 	}
 	return scope

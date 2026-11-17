@@ -18,8 +18,8 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 	reference := sourcetext.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
 	bashID, shID := invocation.ID(strings.Repeat("a", 64)), invocation.ID(strings.Repeat("b", 64))
 	scripts := []checkinputs.Script{
-		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}},
-		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: shID}, Runtime: &scripts.Execution{Shell: "sh", ShellKnown: true}},
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}},
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: shID}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "sh"}}},
 	}
 	prepare := NewShellScriptInputBuilder(scripts)
 	bash, err := prepare(t.Context(), bashID, nil)
@@ -35,7 +35,7 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 	t.Parallel()
 	const id invocation.ID = "known"
-	script := checkinputs.Script{Text: "echo hi", Occurrence: invocation.Script{ID: id}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	script := checkinputs.Script{Text: "echo hi", Occurrence: invocation.Script{ID: id}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 	prepare := NewShellScriptInputBuilder([]checkinputs.Script{script})
 	for name, occurrence := range map[string]invocation.ID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []facts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcetext.Position{Line: 4, Column: 7}}}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []facts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcetext.Position{Line: 4, Column: 7}}}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)
@@ -79,12 +79,12 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 
 func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil || prepared.Dialect == nil || *prepared.Dialect != "bash" || prepared.ShellSetup != "set -e -o pipefail" {
 		t.Fatalf("prepared=%+v err=%v", prepared, err)
 	}
-	script.Runtime.Shell = "python"
+	script.Runtime.Shell.Name = "python"
 	prepared, err = BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil || prepared.Dialect != nil {
 		t.Fatalf("unknown POSIX dialect lost its source: %+v %v", prepared, err)
@@ -98,7 +98,7 @@ func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t 
 // template, so no part of it reaches the plugin.
 func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)

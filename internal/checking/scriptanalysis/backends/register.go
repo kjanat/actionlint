@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -32,7 +33,7 @@ type ToolSelection struct {
 	// skipped, with a warning, when it cannot run.
 	Process *hostprocess.CommandOptions
 	// Backend replaces the process with a snippet engine.
-	Backend checkinputs.ScriptBackend
+	Backend scriptengine.Backend
 	// Runner replaces the process with an in-process function that has no
 	// filesystem, such as an embedding program's ShellCheck build.
 	Runner func(args []string, stdin string) ([]byte, error)
@@ -163,14 +164,14 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 			}
 			return nil
 		},
-		ConfiguredBackend: func(c contract.Context) (checkinputs.ScriptBackend, error) {
+		ConfiguredBackend: func(c contract.Context) (scriptengine.Backend, error) {
 			if sel.Backend != nil {
 				return sel.Backend, nil
 			}
 			return LoadConfiguredModule(name, sel.Command, sel.Process, c.Config, engineLoader(c))
 		},
 	}
-	registration.WithBackend = func(backend checkinputs.ScriptBackend) (contract.Registration, error) {
+	registration.WithBackend = func(backend scriptengine.Backend) (contract.Registration, error) {
 		if !sel.selected(name) {
 			return registration, nil
 		}
@@ -197,11 +198,11 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 
 // engineLoader loads repository-selected WebAssembly engines through the
 // invocation's loader.
-func engineLoader(c contract.Context) func(string) (checkinputs.ScriptBackend, error) {
+func engineLoader(c contract.Context) func(string) (scriptengine.Backend, error) {
 	if c.LoadEngine == nil {
 		return nil
 	}
-	return func(path string) (checkinputs.ScriptBackend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
+	return func(path string) (scriptengine.Backend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
 }
 
 // transports builds the runner each configuration selects, sharing a
@@ -332,27 +333,27 @@ func (t *transports) process(key string, command *hostprocess.Command, via route
 	if err != nil {
 		return "", err
 	}
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, ScriptInputs: m.Selectors.Inputs, TemplateContract: m.Capabilities.TemplateContract}
+	descriptor := scriptengine.Descriptor{Rule: m.Rule, Shells: m.Selectors.Shells, ScriptInputs: m.Selectors.Inputs, TemplateContract: m.Capabilities.TemplateContract}
 	return t.register(key, descriptor, backend, via)
 }
 
 // engine builds the runner of a snippet engine, which declares its own
 // template contract.
-func (t *transports) engine(key string, engine checkinputs.ScriptBackend) (string, error) {
+func (t *transports) engine(key string, engine scriptengine.Backend) (string, error) {
 	if _, ok := t.built[key]; ok {
 		return key, nil
 	}
 	m := t.provider.Manifest
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
+	descriptor := scriptengine.Descriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
 	// The manifest bounds what findings carry; the engine states the
 	// resources it needs for each check.
-	if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+	if described, ok := engine.(scriptengine.DescribedBackend); ok {
 		descriptor.Resources = described.ScriptDescriptor().Resources
 	}
 	return t.register(key, descriptor, engine, routeEngine)
 }
 
-func (t *transports) register(key string, descriptor checkinputs.ScriptEngineDescriptor, engine checkinputs.ScriptBackend, via route) (string, error) {
+func (t *transports) register(key string, descriptor scriptengine.Descriptor, engine scriptengine.Backend, via route) (string, error) {
 	m := t.provider.Manifest
 	options := engineOptions{
 		enabled:  t.registration.Enabled,
@@ -375,11 +376,11 @@ func (t *transports) register(key string, descriptor checkinputs.ScriptEngineDes
 // templateContract is the template-effects contract an engine declares: the
 // result of its TemplateContract method, as embedding programs' backends
 // declare it, or the contract in its script descriptor.
-func templateContract(engine checkinputs.ScriptBackend) string {
+func templateContract(engine scriptengine.Backend) string {
 	if declared, ok := engine.(interface{ TemplateContract() string }); ok {
 		return declared.TemplateContract()
 	}
-	if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+	if described, ok := engine.(scriptengine.DescribedBackend); ok {
 		return described.ScriptDescriptor().TemplateContract
 	}
 	return ""

@@ -50,8 +50,8 @@ func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellS
 // directives. Invalid interpreter invocations return no input.
 func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
 	shell := Shell{Name: script.Shell, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
-	if script.Runtime != nil && script.Runtime.ShellKnown {
-		shell = Shell{Name: script.Runtime.Shell, Implicit: script.Runtime.ShellImplicit, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
+	if script.Runtime != nil && script.Runtime.Shell.Known() {
+		shell.Shell = script.Runtime.Shell
 	}
 	if shell.Invocation().Status == commands.Invalid {
 		return nil, nil

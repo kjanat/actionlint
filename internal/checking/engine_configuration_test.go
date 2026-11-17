@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 type configurationEngine struct {
@@ -30,7 +30,7 @@ func (e *configurationEngine) ValidateConfig(_ context.Context, options json.Raw
 	return e.failure
 }
 
-func (e *configurationEngine) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (e *configurationEngine) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	e.checked++
 	return nil, nil
 }
@@ -67,7 +67,7 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 					if injected {
 						options = registry.ToolSelections{"ruff": {Backend: engine}}
 					} else {
-						applicationOptions.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }
+						applicationOptions.LoadScriptEngine = func(context.Context, string) (scriptengine.Backend, error) { return engine, nil }
 					}
 					applicationOptions.Tools = registry.Registrations(options)
 					result, err := checking.Check(t.Context(), applicationOptions, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]})
@@ -88,7 +88,7 @@ func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { return engine, nil }}
 	_, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]})
 	if !errors.Is(err, failure) || len(engine.validated) != 1 || engine.checked != 0 {
 		t.Fatalf("error=%v validations=%d checks=%d", err, len(engine.validated), engine.checked)

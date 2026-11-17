@@ -12,25 +12,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-type scriptBackend func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error)
+type scriptBackend func(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error)
 
-func (f scriptBackend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (f scriptBackend) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	return f(ctx, request)
 }
 
-func (scriptBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
+func (scriptBackend) TemplateContract() string { return scriptengine.TemplateEffectsContract }
 
 func TestScriptBackendsWithoutCommands(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("backend partially completed")
 	var mu sync.Mutex
-	seen := map[string]checkinputs.ScriptRequest{}
-	backend := scriptBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	seen := map[string]scriptengine.Request{}
+	backend := scriptBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		mu.Lock()
 		seen[request.Filename] = request
 		mu.Unlock()
@@ -49,7 +50,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 				break
 			}
 		}
-		return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: code, Message: "test finding", Severity: "warning", Location: checkinputs.ScriptPosition{Row: row, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: 2}, TemplateEffect: checkinputs.TemplateEffectNone}}, failure
+		return []scriptengine.Diagnostic{{Filename: request.Filename, Code: code, Message: "test finding", Severity: "warning", Location: sourcetext.Position{Line: row, Column: 1}, EndLocation: sourcetext.Position{Line: row, Column: 2}, TemplateEffect: scriptengine.TemplateEffectNone}}, failure
 	})
 	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools:\n  ruff:\n    config:\n      target-version: py312\n      lint: {extend-select: [B]}\n"))
 	if err != nil {
@@ -103,7 +104,7 @@ jobs:
 
 func TestBackendSelectionIsExclusive(t *testing.T) {
 	t.Parallel()
-	backend := scriptBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+	backend := scriptBackend(func(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 		t.Fatal("ambiguous selection ran")
 		return nil, nil
 	})

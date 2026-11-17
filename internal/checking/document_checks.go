@@ -5,7 +5,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -17,7 +16,7 @@ func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Regis
 		findings, err := executor.Run(ctx, input, registrations)
 		analysisErr = err
 		for _, registration := range registrations {
-			if !validation.IsNil(registration.Checker) {
+			if !checkinputs.IsNilChecker(registration.Checker) {
 				*usedRules = append(*usedRules, registration.Checker.Descriptor().Descriptor.Clone())
 			}
 		}

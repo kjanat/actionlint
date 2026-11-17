@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -17,7 +17,7 @@ func TestOfflineRunsNativeTool(t *testing.T) {
 	}
 	ctx, session := network.WithSession(t.Context(), network.Options{Offline: true})
 	for range 2 {
-		result, err := backend.Run(ctx, checkinputs.ScriptRequest{Source: "echo ok", Filename: "test.sh"}, nil)
+		result, err := backend.Run(ctx, scriptengine.Request{Source: "echo ok", Filename: "test.sh"}, nil)
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "ECHO" {
 			t.Fatalf("result=%+v error=%v", result, err)
 		}

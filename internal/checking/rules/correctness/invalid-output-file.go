@@ -44,10 +44,10 @@ func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput
 		if err := ctx.Err(); err != nil {
 			return diagnostics, err
 		}
-		if script.Runtime == nil || !script.Runtime.ShellKnown {
+		if script.Runtime == nil || !script.Runtime.Shell.Known() {
 			continue
 		}
-		file, known := scripts.KnownOutputFile(script.Text, script.Runtime.Shell)
+		file, known := scripts.KnownOutputFile(script.Text, script.Runtime.Shell.Name)
 		if !known {
 			continue
 		}

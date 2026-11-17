@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -19,32 +19,32 @@ import (
 // unchanged: a row preparation generated, or one whose expressions it
 // masked, makes the whole fix unavailable, as do indentation changes and
 // overlapping replacements. A fix may edit several rows.
-func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
+func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix scriptengine.Fix) (results.Fix, bool) {
 	if source == nil || !source.Literal || len(fix.Replacements) == 0 {
 		return results.Fix{}, false
 	}
 	seen := strings.Split(prepared.Source, "\n")
 	edits := make([]results.Edit, 0, len(fix.Replacements))
 	for _, replacement := range fix.Replacements {
-		line := replacement.Row
+		line := replacement.Start.Line
 		if prepared.LineMap != nil {
-			mapped := prepared.LineMap(replacement.Row)
+			mapped := prepared.LineMap(replacement.Start.Line)
 			if mapped.Origin != preparation.LineScript {
 				return results.Fix{}, false
 			}
 			line = mapped.Line
 		}
-		if replacement.Row != replacement.EndRow || line < 1 || line > len(source.Lines) || replacement.Row < 1 || replacement.Row > len(seen) ||
+		if replacement.Start.Line != replacement.End.Line || line < 1 || line > len(source.Lines) || replacement.Start.Line < 1 || replacement.Start.Line > len(seen) ||
 			strings.ContainsAny(replacement.Text, "\x00\r\n") || !utf8.ValidString(replacement.Text) {
 			return results.Fix{}, false
 		}
 		bounds := source.Lines[line-1]
 		original := source.Value[bounds.Start:bounds.End]
-		if original != seen[replacement.Row-1] {
+		if original != seen[replacement.Start.Line-1] {
 			return results.Fix{}, false
 		}
-		startOffset, startOK := sourcetext.ByteOffsetAtColumn(original, replacement.Column)
-		endOffset, endOK := sourcetext.ByteOffsetAtColumn(original, replacement.EndColumn)
+		startOffset, startOK := sourcetext.ByteOffsetAtColumn(original, replacement.Start.Column)
+		endOffset, endOK := sourcetext.ByteOffsetAtColumn(original, replacement.End.Column)
 		if !startOK || !endOK || startOffset > endOffset {
 			return results.Fix{}, false
 		}

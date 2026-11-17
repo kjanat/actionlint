@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -66,7 +66,7 @@ func TestPathExpansionValidatesUserAndExecutionSettingsSeparately(t *testing.T) 
 		t.Fatal("execution schema was skipped")
 	}
 	stdout := `[]`
-	if _, err := EvaluateFixture(t.Context(), manifest, nil, checkinputs.ScriptRequest{Source: "pass", Filename: "snippet.py", Config: []byte(`{"path":"wrong"}`)}, &stdout, nil, nil); err == nil {
+	if _, err := EvaluateFixture(t.Context(), manifest, nil, scriptengine.Request{Source: "pass", Filename: "snippet.py", Config: []byte(`{"path":"wrong"}`)}, &stdout, nil, nil); err == nil {
 		t.Fatal("user schema was skipped for path-only configuration")
 	}
 }
@@ -75,7 +75,7 @@ func TestEvaluateFixtureUsesRuntimeTransformsAndReviewsOutput(t *testing.T) {
 	t.Parallel()
 	manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:$vars.mode, severity:"warning", location:{row:1,column:1}, fixes:[{description:"fix",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
 	config := json.RawMessage(`{"selected":true,"mode":"config"}`)
-	request := checkinputs.ScriptRequest{Source: "abc", Filename: "snippet.py", Config: config}
+	request := scriptengine.Request{Source: "abc", Filename: "snippet.py", Config: config}
 	stdout := `{}`
 	got, err := EvaluateFixture(context.Background(), manifest, nil, request, &stdout, map[string]string{"mode": "fixture", "drop": "present"}, nil)
 	if err != nil {
@@ -101,7 +101,7 @@ func TestEvaluateFixtureFixApplicability(t *testing.T) {
 	for _, label := range []string{"safe", "unsafe", "suggested", "automatic"} {
 		manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:"fix", location:{row:1,column:1}, fixes:[{applicability:"`+label+`",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
 		stdout := `{}`
-		got, err := EvaluateFixture(t.Context(), manifest, nil, checkinputs.ScriptRequest{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
+		got, err := EvaluateFixture(t.Context(), manifest, nil, scriptengine.Request{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
 		want, parseErr := results.ParseApplicability(label)
 		if parseErr != nil {
 			if err == nil {
@@ -122,12 +122,12 @@ func TestEvaluateFixtureChecksOutputAndConfigFailures(t *testing.T) {
 	t.Parallel()
 	manifest := authoringManifest(t, `[{code:"E1", filename:"other.py", message:"bad", severity:"warning", location:{row:1,column:1}}]`)
 	stdout := `{}`
-	_, err := EvaluateFixture(context.Background(), manifest, nil, checkinputs.ScriptRequest{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
+	_, err := EvaluateFixture(context.Background(), manifest, nil, scriptengine.Request{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "unexpected file") {
 		t.Fatalf("error=%v, want source identity validation", err)
 	}
 	manifest.Process.Config.Forbidden = []string{"selected"}
-	_, err = EvaluateFixture(context.Background(), manifest, nil, checkinputs.ScriptRequest{Filename: "snippet.py", Config: json.RawMessage(`{"selected":true}`)}, nil, nil, nil)
+	_, err = EvaluateFixture(context.Background(), manifest, nil, scriptengine.Request{Filename: "snippet.py", Config: json.RawMessage(`{"selected":true}`)}, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "unavailable") {
 		t.Fatalf("error=%v, want forbidden config error", err)
 	}
@@ -137,7 +137,7 @@ func TestEvaluateFixtureJQHasEmptyEnvironment(t *testing.T) {
 	t.Parallel()
 	manifest := authoringManifest(t, `[]`)
 	manifest.Process.Config.Transform.Inline = `{config:{variable:$ENV, function:env},vars:{}}`
-	got, err := EvaluateFixture(context.Background(), manifest, nil, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil)
+	got, err := EvaluateFixture(context.Background(), manifest, nil, scriptengine.Request{Filename: "a.py"}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := tester.Evaluate(canceled, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil, nil); !errors.Is(err, context.Canceled) {
+	if _, err := tester.Evaluate(canceled, scriptengine.Request{Filename: "a.py"}, nil, nil, nil, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled evaluation error=%v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 	}
 	timed, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 	defer cancel()
-	_, err = tester.Evaluate(timed, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil, nil)
+	_, err = tester.Evaluate(timed, scriptengine.Request{Filename: "a.py"}, nil, nil, nil, nil)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("nonterminating jq error=%v, want deadline", err)
 	}
@@ -180,7 +180,7 @@ func TestAuthoringEvaluatesShellCheckPreparation(t *testing.T) {
 		t.Fatal(err)
 	}
 	facts := preparation.SourcePlanInput{Language: "bash", Startup: "set -e", EnvironmentStartup: "export lowercase", EnvironmentKnown: true}
-	request := checkinputs.ScriptRequest{Filename: "script.sh", Source: "# shellcheck shell=sh\n[[ -n \"$HOME\" ]]\n", Config: json.RawMessage(`{"disable":["SC2086"]}`)}
+	request := scriptengine.Request{Filename: "script.sh", Source: "# shellcheck shell=sh\n[[ -n \"$HOME\" ]]\n", Config: json.RawMessage(`{"disable":["SC2086"]}`)}
 	stdout := `{"comments":[]}`
 	result, err := tester.Evaluate(t.Context(), request, &stdout, nil, nil, &facts)
 	if err != nil {

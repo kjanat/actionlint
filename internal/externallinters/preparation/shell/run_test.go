@@ -28,22 +28,22 @@ func TestPrepareRunVariables(t *testing.T) {
 		source string
 	}{
 		{
-			name: "explicit bash", run: Run{Shell: Shell{Name: "bash"}, Sources: true, ConfigFile: "/rc"}, text: "echo $1",
+			name: "explicit bash", run: Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}, Sources: true, ConfigFile: "/rc"}, text: "echo $1",
 			vars:   map[string]string{"dialect": "bash", "exclude": exclude, "config_file": "/rc", "external_sources": "true"},
 			source: "set -e -o pipefail\necho $1\n",
 		},
 		{
-			name: "unknown directory follows no sources", run: Run{Shell: Shell{Name: "bash", Implicit: true}}, text: "echo $1",
+			name: "unknown directory follows no sources", run: Run{Shell: Shell{Shell: scripts.Shell{Name: "bash", Implicit: true}}}, text: "echo $1",
 			vars:   map[string]string{"dialect": "bash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\nset -e\necho $1\n",
 		},
 		{
-			name: "directive selects the dialect", run: Run{Shell: Shell{Name: "sh"}, Sources: true}, text: "# shellcheck shell=bash\necho $1",
+			name: "directive selects the dialect", run: Run{Shell: Shell{Shell: scripts.Shell{Name: "sh"}}, Sources: true}, text: "# shellcheck shell=bash\necho $1",
 			vars:   map[string]string{"exclude": exclude, "external_sources": "true"},
 			source: "# shellcheck shell=bash\necho $1\n",
 		},
 		{
-			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &integrationconfig.ResolvedSettings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
+			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}, Sources: true, Settings: &integrationconfig.ResolvedSettings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
 			vars:   map[string]string{"dialect": "dash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\necho ________\n",
 		},
@@ -64,7 +64,7 @@ func TestPrepareRunVariables(t *testing.T) {
 
 func TestPrepareRunLineOrigins(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.ResolvedSettings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}, Settings: &integrationconfig.ResolvedSettings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestPrepareRunLineOrigins(t *testing.T) {
 
 func TestPrepareRunSkipsUnknownDialects(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "pwsh"}}, "Write-Host hi")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "pwsh"}}}, "Write-Host hi")
 	if err != nil || prepared.Skip == "" || prepared.Source != "" {
 		t.Fatalf("got %+v, %v", prepared, err)
 	}
@@ -86,7 +86,7 @@ func TestPrepareRunSkipsUnknownDialects(t *testing.T) {
 
 func TestPrepareRunForEngines(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "sh"}, Sources: true, Engine: true}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "sh"}}, Sources: true, Engine: true}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestEngineInputRefusesSources(t *testing.T) {
 func TestInvalidInvocationCannotBeOverriddenByDirective(t *testing.T) {
 	t.Parallel()
 	for _, command := range []string{"bash -euo -pipefail {0}", "bash -O definitely_not_a_shopt {0}"} {
-		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: command}}, "# shellcheck shell=bash\necho hi\n")
+		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: command}}}, "# shellcheck shell=bash\necho hi\n")
 		if err != nil || prepared.Skip == "" || prepared.Source != "" {
 			t.Fatalf("prepared=%+v error=%v", prepared, err)
 		}

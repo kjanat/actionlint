@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 // Envelope decodes the {ok, diagnostics, errors} check result a core-WASM
@@ -23,9 +23,9 @@ func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) 
 		return DecodedCheck{}, err
 	}
 	var envelope struct {
-		OK          *bool                          `json:"ok"`
-		Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
-		Errors      []string                       `json:"errors"`
+		OK          *bool                     `json:"ok"`
+		Diagnostics []scriptengine.Diagnostic `json:"diagnostics"`
+		Errors      []string                  `json:"errors"`
 	}
 	if err := jsonv2.Unmarshal(stdout, &envelope); err != nil {
 		return DecodedCheck{}, fmt.Errorf("decode tool response: %w", err)

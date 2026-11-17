@@ -34,7 +34,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 		Mappings:     []facts.Mapping{{Scope: "original", Entries: []mappings.Declaration{{Name: "original"}}}},
 		Dependencies: []facts.Dependency{{Uses: "original"}}, Files: []checkinputs.FileSystem{{Path: "/original", FS: fstest.MapFS{}}},
 		SourceRoots: []checkinputs.SourceRoot{{Host: "/host", Guest: "/original"}},
-		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "# original"}}, Runtime: &scripts.Execution{Shell: "bash"}}},
+		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "# original"}}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}},
 	}
 	registration := checkinputs.Registration{Options: options, Checker: testAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "single", Explanation: "explain", Help: "help", DocumentationURL: "https://example.invalid/rule"}},
@@ -46,7 +46,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 			supplied.AvailableInputs[0] = rule.Source
 			supplied.Scripts[0].Spans[0].End = 99
 			supplied.Scripts[0].Comments[0].Text = "changed"
-			supplied.Scripts[0].Runtime.Shell = "changed"
+			supplied.Scripts[0].Runtime.Shell.Name = "changed"
 			supplied.Scripts[0].Text = "changed"
 			supplied.Mappings[0].Scope = "changed"
 			supplied.Mappings[0].Entries[0].Name = "changed"
@@ -66,7 +66,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	if got := findings[1]; got.Path != "foreign.sh" || got.Rule != "explicit" || got.Explanation != "own" || got.Help != "own" || got.DocumentationURL != "https://example.invalid/own" {
 		t.Fatalf("explicit diagnostic values overwritten: %+v", got)
 	}
-	if string(options) != `{"mode":"safe"}` || string(input.Options) != `{"unregistered":true}` || input.AvailableInputs[0] != rule.Scripts || input.Scripts[0].Spans[0].End != 8 || input.Scripts[0].Comments[0].Text != "# original" || input.Scripts[0].Runtime.Shell != "bash" {
+	if string(options) != `{"mode":"safe"}` || string(input.Options) != `{"unregistered":true}` || input.AvailableInputs[0] != rule.Scripts || input.Scripts[0].Spans[0].End != 8 || input.Scripts[0].Comments[0].Text != "# original" || input.Scripts[0].Runtime.Shell.Name != "bash" {
 		t.Fatal("RunOne mutated parent input or registration")
 	}
 	if input.Scripts[0].Text != "echo ok" || input.Mappings[0].Scope != "original" || input.Mappings[0].Entries[0].Name != "original" || input.Dependencies[0].Uses != "original" || input.Files[0].Path != "/original" || input.Files[0].FS == nil || input.SourceRoots[0].Guest != "/original" {
@@ -300,7 +300,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	runID, inputID, entry := occurrences[0].ID, occurrences[1].ID, graph.Entry().Reference
 	input := checkinputs.AnalyzerInput{
 		Reference: entry, CallGraph: graph, AvailableInputs: []rule.InputKind{rule.Scripts, rule.Invocations}, SelectedScripts: []invocation.ID{runID, inputID},
-		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scripts.Execution{Shell: "bash"}}},
+		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}},
 		ActionInputs: []checkinputs.ActionInput{{Reference: occurrences[1].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "original"}}, Occurrence: occurrences[1], Site: checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}
 	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "mutator"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -309,7 +309,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 		supplied.Invoked[0].Occurrence.Owner = "changed"
 		supplied.Invoked[0].Spans[0].End = 99
 		supplied.Invoked[0].Comments[0].Text = "changed"
-		supplied.Invoked[0].Runtime.Shell = "changed"
+		supplied.Invoked[0].Runtime.Shell.Name = "changed"
 		supplied.ActionInputs[0].Text = "changed"
 		supplied.ActionInputs[0].Occurrence.Owner = "changed"
 		supplied.ActionInputs[0].Spans[0].End = 99
@@ -320,7 +320,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	if _, err := RunOne(t.Context(), input, prepared); err != nil {
 		t.Fatal(err)
 	}
-	if input.SelectedScripts[0] != runID || input.Invoked[0].Text != "original" || input.Invoked[0].Occurrence != occurrences[0] || input.Invoked[0].Spans[0].End != 8 || input.Invoked[0].Comments[0].Text != "original" || input.Invoked[0].Runtime.Shell != "bash" {
+	if input.SelectedScripts[0] != runID || input.Invoked[0].Text != "original" || input.Invoked[0].Occurrence != occurrences[0] || input.Invoked[0].Spans[0].End != 8 || input.Invoked[0].Comments[0].Text != "original" || input.Invoked[0].Runtime.Shell.Name != "bash" {
 		t.Fatal("RunOne mutated invoked script or selection")
 	}
 	if input.ActionInputs[0].Text != "original" || input.ActionInputs[0].Occurrence != occurrences[1] || input.ActionInputs[0].Spans[0].End != 8 || input.ActionInputs[0].Comments[0].Text != "original" || input.ActionInputs[0].Site.Language != "javascript" {

@@ -12,12 +12,13 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"github.com/google/go-cmp/cmp"
 )
 
-func diagnostic(filename, code, message string, row, column int) checkinputs.ScriptDiagnostic {
-	return checkinputs.ScriptDiagnostic{Filename: filename, Code: code, Message: message, Location: checkinputs.ScriptPosition{Row: row, Column: column}}
+func diagnostic(filename, code, message string, row, column int) scriptengine.Diagnostic {
+	return scriptengine.Diagnostic{Filename: filename, Code: code, Message: message, Location: sourcetext.Position{Line: row, Column: column}}
 }
 
 func TestPointDiagnosticJSONOmitsEndLocation(t *testing.T) {
@@ -34,7 +35,7 @@ func TestPointDiagnosticJSONOmitsEndLocation(t *testing.T) {
 		t.Errorf("point diagnostic has zero end_location: %s", encoded)
 	}
 	ranged := diagnostic("a.py", "E1", "range", 1, 1)
-	ranged.EndLocation = checkinputs.ScriptPosition{Row: 1, Column: 2}
+	ranged.EndLocation = sourcetext.Position{Line: 1, Column: 2}
 	encoded, err = json.Marshal(ranged)
 	if err != nil {
 		t.Fatal(err)
@@ -55,8 +56,8 @@ func TestEnvelopeDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := diagnostic("actionlint.sh", "X1", "m", 2, 3)
-	want.Severity, want.EndLocation, want.TemplateEffect = "warning", checkinputs.ScriptPosition{Row: 2, Column: 5}, checkinputs.TemplateEffectOpaqueName
-	if diff := cmp.Diff(process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{want}, Errors: []string{"partial analysis"}}, got); diff != "" {
+	want.Severity, want.EndLocation, want.TemplateEffect = "warning", sourcetext.Position{Line: 2, Column: 5}, scriptengine.TemplateEffectOpaqueName
+	if diff := cmp.Diff(process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{want}, Errors: []string{"partial analysis"}}, got); diff != "" {
 		t.Errorf("result (-want +got):\n%s", diff)
 	}
 }
@@ -103,13 +104,13 @@ func TestSARIFDecodeRuffCapture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := func(code, message, url string, row, column, endColumn int) checkinputs.ScriptDiagnostic {
+	finding := func(code, message, url string, row, column, endColumn int) scriptengine.Diagnostic {
 		d := diagnostic("actionlint.py", code, message, row, column)
-		d.Severity, d.URL, d.EndLocation = "error", url, checkinputs.ScriptPosition{Row: row, Column: endColumn}
+		d.Severity, d.URL, d.EndLocation = "error", url, sourcetext.Position{Line: row, Column: endColumn}
 		return d
 	}
 	const unused = "https://docs.astral.sh/ruff/rules/unused-import"
-	want := process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{
+	want := process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{
 		finding("E401", "Multiple imports on one line", "https://docs.astral.sh/ruff/rules/multiple-imports-on-one-line", 1, 1, 15),
 		finding("F401", "`os` imported but unused", unused, 1, 8, 10),
 		finding("F401", "`sys` imported but unused", unused, 1, 12, 15),
@@ -136,8 +137,8 @@ func TestSARIFDecodeEdges(t *testing.T) {
 	byIndex.Name, byIndex.Severity = "second-rule", "warning"
 	followed := diagnostic("lib/common.sh", "EX1", "finding in a followed file", 4, 3)
 	followed.Name, followed.Severity, followed.URL, followed.Source = "first-rule", "note", "https://example.invalid/EX1", "lib/common.sh"
-	followed.EndLocation = checkinputs.ScriptPosition{Row: 4, Column: 9}
-	if diff := cmp.Diff(process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{byIndex, followed}}, got); diff != "" {
+	followed.EndLocation = sourcetext.Position{Line: 4, Column: 9}
+	if diff := cmp.Diff(process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{byIndex, followed}}, got); diff != "" {
 		t.Errorf("result (-want +got):\n%s", diff)
 	}
 }
@@ -217,7 +218,7 @@ func TestJQDecodesBothResultShapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{diagnostic("actionlint.sh", "X1", "plain text", 1, 1)}}
+	want := process.DecodedCheck{Diagnostics: []scriptengine.Diagnostic{diagnostic("actionlint.sh", "X1", "plain text", 1, 1)}}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("array result (-want +got):\n%s", diff)
 	}

@@ -64,7 +64,7 @@ func documentBatchFixture(tb testing.TB, count int) scriptanalysis.Batch {
 		batch.Scripts = append(batch.Scripts, scriptanalysis.Unit{
 			Occurrence: occurrence.ID, Reference: occurrence.Declaration, Path: "workflow.yml",
 			Run:       &definition.ExecRun{Run: &definition.String{Value: "echo test"}},
-			Execution: &scripts.Execution{Shell: "bash", ShellKnown: true},
+			Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}},
 		})
 	}
 	return batch

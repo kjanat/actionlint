@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
@@ -21,8 +22,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
@@ -91,7 +90,7 @@ type analysisRequest struct {
 	LocalDependencyRoot  string
 	ReadFile             func(string) ([]byte, error)
 	RulePresets          configuration.Presets
-	LoadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadScriptEngine     func(context.Context, string) (scriptengine.Backend, error)
 	LogWriter            io.Writer
 	LogLevel             LogLevel
 	Processes            *hostprocess.ProcessPool
@@ -190,7 +189,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	var extensions []rule.Descriptor
 	for _, analyzer := range request.Analyzers {
-		if validation.IsNil(analyzer.Checker) {
+		if checkinputs.IsNilChecker(analyzer.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		extensions = append(extensions, analyzer.Checker.Descriptor().Descriptor)
@@ -352,7 +351,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
-		request.LoadScriptEngine = func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
+		request.LoadScriptEngine = func(ctx context.Context, path string) (scriptengine.Backend, error) {
 			reference, local, err := pluginreference.NormalizeSource(path, request.WorkingDir)
 			if err != nil {
 				return nil, err

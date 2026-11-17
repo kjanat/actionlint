@@ -15,6 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
@@ -34,7 +35,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -80,7 +80,7 @@ type Options struct {
 	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
-	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadScriptEngine             func(context.Context, string) (scriptengine.Backend, error)
 	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
@@ -136,7 +136,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var definitions []commands.Definition
 	for _, registration := range options.Analyzers {
-		if !validation.IsNil(registration.Checker) {
+		if !checkinputs.IsNilChecker(registration.Checker) {
 			definitions = append(definitions, registration.Checker.Descriptor().InvocationDefinitions...)
 		}
 	}
@@ -281,7 +281,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if !validation.IsNil(registration.Checker) {
+		if !checkinputs.IsNilChecker(registration.Checker) {
 			names = append(names, registration.Checker.Descriptor().Name)
 		}
 	}

@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 // SARIF decodes a SARIF 2.1.0 log. Results of every run become diagnostics;
@@ -169,10 +170,10 @@ func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	return result, nil
 }
 
-func sarifDiagnostic(run sarifRun, entry sarifResult, vars map[string]string) (checkinputs.ScriptDiagnostic, error) {
+func sarifDiagnostic(run sarifRun, entry sarifResult, vars map[string]string) (scriptengine.Diagnostic, error) {
 	descriptor, componentIndex, ruleIndex, err := sarifResultRule(run, entry)
 	if err != nil {
-		return checkinputs.ScriptDiagnostic{}, err
+		return scriptengine.Diagnostic{}, err
 	}
 	code := entry.RuleID
 	if code == "" && entry.Rule != nil {
@@ -182,23 +183,23 @@ func sarifDiagnostic(run sarifRun, entry sarifResult, vars map[string]string) (c
 		code = descriptor.ID
 	}
 	if code == "" || entry.Message.Text == "" || len(entry.Locations) == 0 {
-		return checkinputs.ScriptDiagnostic{}, errors.New("SARIF result needs a rule id, message text and a location")
+		return scriptengine.Diagnostic{}, errors.New("SARIF result needs a rule id, message text and a location")
 	}
 	location := entry.Locations[0].PhysicalLocation
 	region := location.Region
 	if region.StartLine < 1 {
-		return checkinputs.ScriptDiagnostic{}, fmt.Errorf("SARIF result %s has no line region", code)
+		return scriptengine.Diagnostic{}, fmt.Errorf("SARIF result %s has no line region", code)
 	}
 	level := entry.Level
 	if level == "" && ruleIndex >= 0 && entry.Provenance != nil && entry.Provenance.InvocationIndex != nil && *entry.Provenance.InvocationIndex >= 0 {
 		i := *entry.Provenance.InvocationIndex
 		if i >= len(run.Invocations) {
-			return checkinputs.ScriptDiagnostic{}, errors.New("SARIF invocation index out of range")
+			return scriptengine.Diagnostic{}, errors.New("SARIF invocation index out of range")
 		}
 		for _, override := range run.Invocations[i].RuleConfigurationOverrides {
 			_, component, rule, err := sarifResultRule(run, sarifResult{Rule: &override.Descriptor})
 			if err != nil {
-				return checkinputs.ScriptDiagnostic{}, err
+				return scriptengine.Diagnostic{}, err
 			}
 			if component == componentIndex && rule == ruleIndex {
 				level = override.Configuration.Level
@@ -212,12 +213,12 @@ func sarifDiagnostic(run sarifRun, entry sarifResult, vars map[string]string) (c
 	if level == "" {
 		level = "warning"
 	}
-	d := checkinputs.ScriptDiagnostic{
+	d := scriptengine.Diagnostic{
 		Code: code, Name: descriptor.Name, Message: entry.Message.Text, Severity: level, URL: descriptor.HelpURI,
-		Location: checkinputs.ScriptPosition{Row: region.StartLine, Column: max(region.StartColumn, 1)},
+		Location: sourcetext.Position{Line: region.StartLine, Column: max(region.StartColumn, 1)},
 	}
 	if region.EndColumn > 0 {
-		d.EndLocation = checkinputs.ScriptPosition{Row: max(region.EndLine, region.StartLine), Column: region.EndColumn}
+		d.EndLocation = sourcetext.Position{Line: max(region.EndLine, region.StartLine), Column: region.EndColumn}
 	}
 	uri := location.ArtifactLocation.URI
 	if sameArtifact(uri, vars["filename"]) || sameArtifact(uri, vars["filename_abs"]) {

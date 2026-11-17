@@ -21,7 +21,7 @@ func TestScriptRoutingUsesSharedInvocationLanguage(t *testing.T) {
 		{"actions-shell rust {0}", "actions-shell"},
 		{`"/path with spaces/bash" {0}`, `path`},
 	} {
-		got := scriptShell(scriptanalysis.Unit{Execution: &scripts.Execution{Shell: tc.command, ShellKnown: true}, Interpreters: registry})
+		got := scriptShell(scriptanalysis.Unit{Execution: &scripts.Execution{Shell: scripts.Shell{Name: tc.command}}, Interpreters: registry})
 		if got != tc.want {
 			t.Fatalf("%q: got %q, want %q", tc.command, got, tc.want)
 		}

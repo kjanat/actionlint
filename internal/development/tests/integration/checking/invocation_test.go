@@ -90,7 +90,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if declared.Path != "" || declared.JobID != "build" || declared.Occurrence.Owner != input.CallGraph.RootID() || declared.Runtime == nil {
 		t.Fatalf("declared script=%+v", declared)
 	}
-	if declared.Runtime.Shell != "bash" || !declared.Runtime.ShellKnown || !declared.Runtime.ShellImplicit {
+	if declared.Runtime.Shell.Name != "bash" || !declared.Runtime.Shell.Known() || !declared.Runtime.Shell.Implicit {
 		t.Fatalf("declared runtime=%+v", declared.Runtime)
 	}
 	invoked := input.Invoked[0]
@@ -105,7 +105,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if invoked.Reference.Node == "" || invoked.Reference.Document == input.Reference.Document || call.Site().Document != input.Reference.Document || call.Site().Node == "" || invoked.Reference.Address != "runs.steps[0]" {
 		t.Fatalf("source and invocation identities were conflated: %+v %+v", invoked.Reference, call.Site())
 	}
-	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
+	if invoked.Runtime == nil || invoked.Runtime.Shell.Name != "bash" || invoked.Runtime.Shell.Implicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
 	}
 	if invoked.Start != (sourcetext.Position{Line: 6, Column: 12}) {
