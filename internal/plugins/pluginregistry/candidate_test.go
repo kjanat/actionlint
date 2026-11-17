@@ -40,10 +40,10 @@ func localCandidate(t *testing.T) (string, *pluginregistry.Client) {
 		"artifacts/plugin.wasm": data,
 	} {
 		file := filepath.Join(root, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(file, data, 0600); err != nil {
+		if err := os.WriteFile(file, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -101,7 +101,7 @@ func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
 			if bytes.Equal(data, changed) {
 				t.Fatal("fixture mutation did not apply")
 			}
-			if err := os.WriteFile(file, changed, 0600); err != nil {
+			if err := os.WriteFile(file, changed, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {
@@ -123,7 +123,7 @@ func TestCandidateSearchFiltersNamesAndIDsInNameOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "index.json"), data, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "index.json"), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
@@ -167,20 +167,20 @@ func TestCandidateBoundsAndStrictJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			padded := append(bytes.Clone(data), bytes.Repeat([]byte(" "), (4<<20)-len(data))...)
-			if err := os.WriteFile(file, padded, 0600); err != nil {
+			if err := os.WriteFile(file, padded, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err != nil {
 				t.Fatalf("valid JSON at size limit: %v", err)
 			}
-			if err := os.WriteFile(file, append(padded, ' '), 0600); err != nil {
+			if err := os.WriteFile(file, append(padded, ' '), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil || !strings.Contains(err.Error(), "4 MiB") {
 				t.Fatalf("oversize record: %v", err)
 			}
 			duplicate := bytes.Replace(data, []byte(`"source":"candidate"`), []byte(`"source":"candidate","source":"candidate"`), 1)
-			if err := os.WriteFile(file, duplicate, 0600); err != nil {
+			if err := os.WriteFile(file, duplicate, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {
@@ -189,7 +189,7 @@ func TestCandidateBoundsAndStrictJSON(t *testing.T) {
 			if err := os.Remove(file); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.Mkdir(file, 0700); err != nil {
+			if err := os.Mkdir(file, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {

@@ -13,10 +13,10 @@ import (
 func writeEntry(t *testing.T, root, name string, modified time.Time) string {
 	t.Helper()
 	file := filepath.Join(root, filepath.FromSlash(name))
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(file, []byte(name), 0600); err != nil {
+	if err := os.WriteFile(file, []byte(name), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(file, modified, modified); err != nil {
@@ -115,7 +115,7 @@ func TestCacheCleanupRejectsRewrittenFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(file, []byte("new download"), 0600); err != nil {
+	if err := os.WriteFile(file, []byte("new download"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	root, err := open(directory)

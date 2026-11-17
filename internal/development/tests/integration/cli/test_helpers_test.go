@@ -27,7 +27,7 @@ type commandTranscript struct {
 
 func gitRepository(t *testing.T, dir string) {
 	t.Helper()
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if out, err := gitcommand.Command(t.Context(), "git", dir, "init", "--quiet").CombinedOutput(); err != nil {

@@ -15,7 +15,7 @@ type Base struct {
 }
 
 // NewBase initializes a visitor accumulator with its rule identity.
-func NewBase(name string, desc string) Base {
+func NewBase(name, desc string) Base {
 	return Base{name: name, description: desc}
 }
 

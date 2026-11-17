@@ -12,7 +12,7 @@ func TestRootedReader(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	for _, name := range []string{"z", "a"} {
-		if err := os.WriteFile(filepath.Join(directory, name), []byte(name), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(name), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

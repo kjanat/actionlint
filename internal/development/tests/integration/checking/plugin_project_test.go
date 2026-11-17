@@ -63,7 +63,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if _, err := project.SelectedPlugins(t.Context(), project.Manifest.References); err == nil || !strings.Contains(err.Error(), "not published") {
 		t.Fatalf("changed declaration accepted stale pin: %v", err)
 	}
-	if err := os.WriteFile(project.Manifest.Path, []byte("plugins: []\n"), 0600); err != nil {
+	if err := os.WriteFile(project.Manifest.Path, []byte("plugins: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetOffline(true)
@@ -107,10 +107,10 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 func TestPluginProjectMissingPinsAndForeignScope(t *testing.T) {
 	t.Parallel()
 	root, foreign := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
-	if err := os.MkdirAll(filepath.Join(foreign, ".github"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(foreign, ".github"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(foreign, ".github", "actionlint.yaml"), []byte("plugins: [owner/plugin]\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(foreign, ".github", "actionlint.yaml"), []byte("plugins: [owner/plugin]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	input := checkrequest.Request{Kind: checkrequest.Repository}

@@ -75,7 +75,7 @@ func TestCommandActionInputs(t *testing.T) {
 	dir := t.TempDir()
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
 	for name, content := range map[string]string{"action.yml": manifest, "workflow.yml": testutil.GoodWorkflow} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -120,7 +120,7 @@ func TestCommandDefaultActionDiscovery(t *testing.T) {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
-	if err := os.WriteFile("action.yml", []byte(manifest), 0600); err != nil {
+	if err := os.WriteFile("action.yml", []byte(manifest), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, modern := range []bool{false, true} {

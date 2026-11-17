@@ -14,11 +14,11 @@ func wasmimport_Describe(result *cm.Result[SummaryShape, Summary, string])
 
 //go:wasmimport kjanat:actionlint/invocation-context@0.2.0 calls
 //go:noescape
-func wasmimport_Calls(offset0 uint32, limit0 uint32, result *cm.Result[cm.List[Call], cm.List[Call], string])
+func wasmimport_Calls(offset0, limit0 uint32, result *cm.Result[cm.List[Call], cm.List[Call], string])
 
 //go:wasmimport kjanat:actionlint/invocation-context@0.2.0 scripts
 //go:noescape
-func wasmimport_Scripts(offset0 uint32, limit0 uint32, result *cm.Result[cm.List[ScriptOccurrence], cm.List[ScriptOccurrence], string])
+func wasmimport_Scripts(offset0, limit0 uint32, result *cm.Result[cm.List[ScriptOccurrence], cm.List[ScriptOccurrence], string])
 
 //go:wasmimport kjanat:actionlint/invocation-context@0.2.0 call-by-id
 //go:noescape

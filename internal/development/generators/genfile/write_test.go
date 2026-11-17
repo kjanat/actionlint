@@ -16,7 +16,7 @@ func TestFormatterFailurePreservesDestination(t *testing.T) {
 				t.Setenv("PATH", root)
 				path := filepath.Join(root, "test.schema.json")
 				if exists {
-					if err := os.WriteFile(path, []byte("original\n"), 0644); err != nil {
+					if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
 						t.Fatal(err)
 					}
 				}

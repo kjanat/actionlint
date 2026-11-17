@@ -68,7 +68,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 	first, second, alias := filepath.Join(root, "first.yml"), filepath.Join(root, "second.yml"), filepath.Join(root, "alias.yml")
 	content := []byte("invalid action source")
 	for _, path := range []string{first, second} {
-		if err := os.WriteFile(path, content, 0600); err != nil {
+		if err := os.WriteFile(path, content, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

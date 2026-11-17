@@ -15,11 +15,11 @@ func configuredOutputFixture(t *testing.T, settings string) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	config := filepath.Join(dir, "actionlint.yaml")
-	if err := os.WriteFile(config, []byte("plugins: []\n"+settings), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("plugins: []\n"+settings), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	workflow := filepath.Join(dir, "workflow.yml")
-	if err := os.WriteFile(workflow, []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"), 0600); err != nil {
+	if err := os.WriteFile(workflow, []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return config, workflow
@@ -79,13 +79,13 @@ func TestConfiguredOutputEnvironmentOverrides(t *testing.T) {
 func TestConfiguredOutputNoConfigAndStdin(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	if err := os.MkdirAll(filepath.Join(dir, ".git"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, ".github"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, ".github"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("plugins: []\noutput: {formats: [github], summary: false}\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("plugins: []\noutput: {formats: [github], summary: false}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, disabled := range []bool{false, true} {
@@ -116,11 +116,11 @@ func TestConfiguredOutputInheritsAcrossFormats(t *testing.T) {
 	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "")
 	dir := filepath.Dir(config)
-	if err := os.WriteFile(filepath.Join(dir, "base.jsonc"), []byte("{ // shared output\n\"output\": {\"formats\": [\"github\"], \"summary\": true,},\n}"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "base.jsonc"), []byte("{ // shared output\n\"output\": {\"formats\": [\"github\"], \"summary\": true,},\n}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	config = filepath.Join(dir, "actionlint.toml")
-	if err := os.WriteFile(config, []byte("extends = ['base.jsonc']\nplugins = []\n[output]\nsummary = false\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("extends = ['base.jsonc']\nplugins = []\n[output]\nsummary = false\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	status, out, log := runConfiguredOutput(t, config, workflow)
@@ -134,16 +134,16 @@ func TestConfiguredOutputUsesInvokingRepository(t *testing.T) {
 	makeRepo := func(name, output string) string {
 		t.Helper()
 		dir := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Join(dir, ".github"), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Join(dir, ".github"), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		if result, err := exec.CommandContext(t.Context(), "git", "init", "-q", dir).CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, result)
 		}
-		if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("plugins: []\noutput: "+output+"\n"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("plugins: []\noutput: "+output+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "workflow.yml"), []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "workflow.yml"), []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		return dir
@@ -167,7 +167,7 @@ func TestConfiguredExperimentalAndOverrides(t *testing.T) {
 			t.Run(fmt.Sprintf("config=%t/flag=%s", enabled, flag), func(t *testing.T) {
 				t.Parallel()
 				config, workflow := configuredOutputFixture(t, fmt.Sprintf("lint: {experimental: %t}\noutput: {formats: [json], summary: false}\n", enabled))
-				if err := os.WriteFile(workflow, []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo \"::notice:Up to date\"\n"), 0600); err != nil {
+				if err := os.WriteFile(workflow, []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo \"::notice:Up to date\"\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				var flags []string

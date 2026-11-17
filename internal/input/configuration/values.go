@@ -56,8 +56,8 @@ func setField(value any, key string, child any) {
 	}
 	object[key] = rawValue(child)
 }
-func removeField(value any, key string)    { delete(members(value), key) }
-func decodeValue(value any, dst any) error { return configdecode.Decode(rawValue(value), dst) }
+func removeField(value any, key string) { delete(members(value), key) }
+func decodeValue(value, dst any) error  { return configdecode.Decode(rawValue(value), dst) }
 
 func cloneValue(value any) any {
 	switch value := value.(type) {

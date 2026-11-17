@@ -235,7 +235,7 @@ func (lex *Lexer) skipWhite() {
 	}
 }
 
-func (lex *Lexer) unexpected(r rune, where string, expected string) *Token {
+func (lex *Lexer) unexpected(r rune, where, expected string) *Token {
 	var what string
 	if r == scanner.EOF {
 		what = "EOF"

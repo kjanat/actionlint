@@ -187,7 +187,7 @@ permissions: {}
 `,
 	}
 	for name, source := range files {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -279,7 +279,7 @@ permissions: {}
 				files["caller.yaml"] = strings.TrimRight(files["caller.yaml"], "\n") + "\npermissions: {}\n"
 				root := t.TempDir()
 				for name, source := range files {
-					if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+					if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0o600); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -402,7 +402,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 	}
 	root := t.TempDir()
 	for name, source := range sources {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

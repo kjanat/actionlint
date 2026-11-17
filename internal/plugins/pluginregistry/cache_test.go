@@ -42,7 +42,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 		t.Fatal("candidate rebuild did not change bytes")
 	}
 	secondDigest := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
-	if err := os.WriteFile(artifactPath, rebuilt, 0600); err != nil {
+	if err := os.WriteFile(artifactPath, rebuilt, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	recordPath := filepath.Join(root, candidateRecordPath)
@@ -50,7 +50,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(first.SHA256), []byte(secondDigest)), 0600); err != nil {
+	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(first.SHA256), []byte(secondDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	second, err := client.Resolve(t.Context(), first.Name, first.Version)

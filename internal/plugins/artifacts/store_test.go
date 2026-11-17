@@ -74,7 +74,7 @@ func TestPublishRepairsCorruptArtifacts(t *testing.T) {
 			store := Store{Dir: t.TempDir()}
 			data := []byte("correct")
 			digest := digestOf(data)
-			if err := os.WriteFile(filepath.Join(store.Dir, digest), []byte(corrupt), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(store.Dir, digest), []byte(corrupt), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if err := store.Publish(t.Context(), digest, data); err != nil {

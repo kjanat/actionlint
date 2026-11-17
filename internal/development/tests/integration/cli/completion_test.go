@@ -17,7 +17,7 @@ import (
 
 func TestCompletionProtocolWithFilename(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if err := os.WriteFile("__complete", []byte(commandBadWorkflow), 0600); err != nil {
+	if err := os.WriteFile("__complete", []byte(commandBadWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var out, stderr strings.Builder
@@ -187,7 +187,7 @@ run actionlint --ignore ''
 	}
 }
 
-func testCheckShellSyntax(t *testing.T, shell string, script string) {
+func testCheckShellSyntax(t *testing.T, shell, script string) {
 	t.Helper()
 
 	var file string
