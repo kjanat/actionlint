@@ -36,11 +36,8 @@ type Document struct {
 	Provenance Provenance
 }
 
-// Provenance seals the source text and declarations published by one decode,
-// before a registry assigns them a document identity. Only this package
-// creates it, so admission cannot bind a hand-built tree to captured bytes;
-// its zero value has no parse provenance. SourceSnapshots binds it to a
-// workflows.BoundDocument once the capture names the document.
+// Provenance associates source text with the declarations decoded from it.
+// SourceSnapshots binds it to a workflows.BoundDocument during admission.
 type Provenance struct {
 	parsed   bool
 	text     string

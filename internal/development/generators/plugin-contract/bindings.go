@@ -68,7 +68,10 @@ func generateBindings(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("share list binding %s: %w", relative, err)
 		}
-		data, err = format.Source(data, format.Options{})
+		data, err = format.Source(data, format.Options{
+			LangVersion: "go1.27", ModulePath: "actionlint.kjanat.dev/v2",
+			Extra: format.Extra{GroupParams: true, BalanceCalls: true, ClotheReturns: true},
+		})
 		if err != nil {
 			return fmt.Errorf("format binding %s: %w", relative, err)
 		}

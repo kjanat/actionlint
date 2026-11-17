@@ -74,7 +74,7 @@ func actionAnnotations(analysis *report.Analysis) string {
 		if fields.Snippet != "" {
 			message += "\n\n" + fields.Snippet
 		}
-		annotations.WriteString(output.FormatGitHubCommand(output.GitHubAnnotationCommand(fields.Severity), []output.GitHubCommandProperty{
+		annotations.WriteString(output.FormatGitHubCommand(output.GitHubAnnotationCommand(finding.Severity), []output.GitHubCommandProperty{
 			{Name: "file", Value: fields.Filepath},
 			{Name: "line", Value: strconv.Itoa(fields.Line)},
 			{Name: "col", Value: strconv.Itoa(fields.Column)},

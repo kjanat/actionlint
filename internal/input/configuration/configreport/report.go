@@ -24,8 +24,7 @@ type Inspection struct {
 }
 
 // Origin identifies the default, project file, policy file or Action input that supplied a setting.
-// Line and Column stay flat, rather than a sourcetext.Position, because they are
-// part of the JSON and YAML report, where both are omitted when zero.
+// The JSON and YAML reports expose Line and Column as separate fields and omit zero values.
 type Origin struct {
 	File   string `json:"file,omitempty" yaml:"file,omitempty"`
 	Source string `json:"source" yaml:"source"`

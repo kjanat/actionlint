@@ -243,9 +243,7 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 
 func (batch Batch) Valid() bool { return batch.CallGraph.Valid() }
 
-// ForTool returns the batch the named tool analyzes. Each scope carries a
-// detached copy of the configuration bound to the tool, and each script its own
-// environment, so a tool cannot change what other analyzers read.
+// ForTool returns a batch with independent configuration and environment values for the named tool.
 func (batch Batch) ForTool(name string) (Batch, error) {
 	view := Batch{CallGraph: batch.CallGraph, Collected: batch.Collected, Scopes: make([]*Scope, 0, len(batch.Scopes)), Scripts: slices.Clone(batch.Scripts)}
 	scopes := make(map[*Scope]*Scope, len(batch.Scopes))

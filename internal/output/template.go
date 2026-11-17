@@ -10,7 +10,6 @@ import (
 	"text/template"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 // TemplateFields holds all fields to format one finding with a Go template.
@@ -28,7 +27,7 @@ type TemplateFields struct {
 	// Code is the native diagnostic identifier, when supplied by the check.
 	Code string `json:"code,omitempty"`
 	// Severity is info, warning or error; empty means the default error level.
-	Severity severity.Severity `json:"severity,omitempty"`
+	Severity string `json:"severity,omitempty"`
 	// Snippet is a source excerpt and an indicator of the diagnostic position.
 	Snippet string `json:"snippet,omitempty"`
 	// EndColumn is a column number where the error indicator (^~~~~~~) ends. When no indicator

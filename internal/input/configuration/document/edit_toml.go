@@ -352,7 +352,7 @@ func tomlRangeOffsets(raw unstable.Range, sourceLength int) (int, int) {
 }
 
 // underMembers reports whether a TOML key path starts with one of members.
-func underMembers(path []string, members []string) bool {
+func underMembers(path, members []string) bool {
 	return len(path) > 0 && slices.Contains(members, path[0])
 }
 

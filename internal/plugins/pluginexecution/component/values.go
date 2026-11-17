@@ -420,9 +420,7 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 	if err != nil {
 		return results.Diagnostic{}, err
 	}
-	// The text stays as the guest wrote it: a tool integration's manifest
-	// table may map an alias such as "note". hostSeverities normalizes it for
-	// other analyzers.
+	// Preserve guest severity for manifest mapping; hostSeverities normalizes other analyzers.
 	d.Severity = severity.Severity(level)
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err

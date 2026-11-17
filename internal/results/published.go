@@ -5,10 +5,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
-// PublishedDiagnostic is one diagnostic as analysis publishes it: the canonical
-// diagnostic, the source text its positions refer to, and the source line
-// renderers display. Publish resolves the diagnostic's End and Snippet and the
-// Excerpt together, so consumers read them instead of deriving them again.
+// PublishedDiagnostic contains a diagnostic, its source and its display excerpt.
+// Publish resolves End, Snippet and Excerpt together.
 type PublishedDiagnostic struct {
 	Diagnostic
 	Source  DiagnosticSource `json:"-"`

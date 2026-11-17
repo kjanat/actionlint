@@ -18,8 +18,7 @@ type Location struct {
 	Host, Repository, Commit, Path string
 }
 
-// Content is the file obtained for one immutable location. Name is part of the
-// content's identity, so a provider cannot switch files at one location.
+// Content is the file obtained for one immutable location. Name identifies the file.
 type Content struct {
 	Location Location
 	Name     string

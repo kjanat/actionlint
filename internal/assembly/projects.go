@@ -50,9 +50,7 @@ func CheckProjects(ctx context.Context, options checking.Options, input checkreq
 	}
 	check := func(input checkrequest.Request) (*report.Analysis, error) {
 		selection, options := selection, options
-		// Plugin selection reads configuration from disk. Selection and the
-		// session share the files the caller parsed, and those either parses,
-		// only when the session would read the same bytes.
+		// Share parsed configuration when selection and analysis use the same disk files.
 		if options.ReadFile == nil && len(options.SourceOverlays) == 0 {
 			if options.ConfigSources == nil {
 				options.ConfigSources = document.NewFiles()

@@ -104,9 +104,8 @@ func writePrettyLocation(b *strings.Builder, prefix, path string, position sourc
 	writeWrapped(b, prefix, fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column), width, nil, hyperlinks)
 }
 
-// writeRemoteLocation writes a URL location on one line so the URL is never
-// split. The visible text names the line and column; the link target adds a
-// #L<line> anchor, which GitHub blob pages scroll to.
+// writeRemoteLocation prints an unbroken URL with its line and column.
+// The hyperlink points to the corresponding line on GitHub.
 func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcetext.Position, hyperlinks bool) {
 	b.WriteString(prefix)
 	if hyperlinks {

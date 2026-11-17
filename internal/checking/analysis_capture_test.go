@@ -381,8 +381,6 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 	}
 }
 
-// Completion outlines a manifest composition already parsed from the
-// document it parsed, not from a second parse of the sealed bytes.
 func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	t.Parallel()
 	address := filepath.Join(t.TempDir(), "action.yml")
@@ -400,8 +398,7 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A stand-in for composition's parse: its outline differs from the
-	// captured bytes, so a second parse would be visible.
+	// The outline must retain "parsed", the name from composition's document.
 	documents.parsed(captured, parsing.Action(address, []byte("name: parsed\ndescription: outline\nruns: {using: composite, steps: []}\n")))
 	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
