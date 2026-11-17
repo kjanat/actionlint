@@ -491,7 +491,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
 		'upkeep.yml:go-toolchain': 'bun,npm:runner-run',
-		'package-previews.yml:publish': 'go,bun,uv,yamllint,zizmor,npm:runner-run',
+		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor,npm:runner-run',
 		'changelog-release.yml:publish': 'bun,npm:runner-run',
 		'pages.yml:build': 'go,node,npm,bun,pandoc,npm:runner-run',
 		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc,npm:runner-run',
@@ -735,6 +735,16 @@ test('preview consumers share the successful CI snapshot and cannot trigger sepa
 		const publish = yamlMapping(yamlMapping(workflow.jobs).publish);
 		assert.ok(Array.isArray(publish.steps));
 		const consumer = publish.steps.map(step => yamlMapping(step));
+		if (name === 'package-previews') {
+			const setupGo = consumer.findIndex(step => String(step.uses).startsWith('actions/setup-go@'));
+			const registryChecks = consumer.flatMap((step, index) =>
+				String(step.uses).startsWith('kjanat/actionlint-registry/check@') ? [index] : []
+			);
+			const buildBrowser = consumer.findIndex(step => step.run === 'bun run --cwd libraries/browser-lsp build');
+			assert.ok(registryChecks.length > 0 && registryChecks.every(index => index < setupGo));
+			assert.equal(yamlMapping(consumer[setupGo]?.with)['go-version-file'], 'go.mod');
+			assert.ok(buildBrowser > setupGo && consumer.findIndex(step => step.id === 'publish') > buildBrowser);
+		}
 		const download = consumer.find(step =>
 			typeof step.uses === 'string' && step.uses.startsWith('actions/download-artifact@')
 		);
