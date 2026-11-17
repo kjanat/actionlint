@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -79,10 +80,11 @@ func TestPluginInstallSpellingsShareHelp(t *testing.T) {
 
 func TestPluginAliasesStayOutOfHelpAndCompletion(t *testing.T) {
 	t.Parallel()
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	// Help and completion both start each listed command line with its name.
 	listed := func(output string) []string {
 		var names []string
-		for line := range strings.Lines(output) {
+		for line := range strings.Lines(ansi.ReplaceAllString(output, "")) {
 			if fields := strings.Fields(line); len(fields) > 0 {
 				names = append(names, fields[0])
 			}
@@ -96,6 +98,8 @@ func TestPluginAliasesStayOutOfHelpAndCompletion(t *testing.T) {
 		{[]string{"--help"}, "plugin", "plugins"},
 		{[]string{"plugin", "--help"}, "install", "add"},
 		{[]string{"plugins", "--help"}, "install", "add"},
+		{[]string{"--help", "--color"}, "plugin", "plugins"},
+		{[]string{"--help", "--no-color"}, "plugin", "plugins"},
 		{[]string{"__complete", "plug"}, "plugin", "plugins"},
 		{[]string{"__complete", "plugin", ""}, "install", "add"},
 		{[]string{"__complete", "plugins", ""}, "install", "add"},

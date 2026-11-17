@@ -208,7 +208,10 @@ func (r *fromJSONReader) number() (any, error) {
 			return nil, r.fail("invalid non-decimal JSON integer")
 		}
 		// Convert.ToInt64(base) interprets the high bit as a sign bit.
-		return float64(int64(n)), nil
+		if n > math.MaxInt64 {
+			return float64(math.MinInt64 + int64(n&math.MaxInt64)), nil
+		}
+		return float64(n), nil
 	}
 	if strings.ContainsAny(text, "xXabcdfABCDF_") {
 		return nil, r.fail("invalid JSON number")
