@@ -8,6 +8,7 @@
 
 - Remove the retired GitHub-hosted `macos-14`, `macos-14-large`, and `macos-14-xlarge` labels. Custom self-hosted labels can still be configured explicitly. (kjanat/actionlint#216)
 
+- **Breaking:** Report `error while parsing reusable workflow` at every call site when the callee's `on.workflow_call` declarations are invalid. Callers previously got no error for: an input without `type`, a `type` other than `boolean`, `number` or `string`, an output without `value`, `required` written as a string such as `'yes'`, unknown or duplicate keys, YAML `<<:` merge keys, and a misspelled `Workflow_Call` event. GitHub rejects these workflows, so fix the callee. (kjanat/actionlint#417)
 - **Breaking:** Remove the `required-actions` rule and configuration. Remove its entries before migrating configuration.
 - With no arguments, check the current Git repository, or print help on stdout and exit 0 outside a repository. Use `actionlint check` to request repository discovery explicitly; it exits 3 when no workflow or action inputs are found.
 - Download the newest release when `download-actionlint.bash` runs without a version argument. Pass a version to pin the download.
