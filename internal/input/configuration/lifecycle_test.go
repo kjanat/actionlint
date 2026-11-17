@@ -46,10 +46,10 @@ func TestLifecycleInheritedOriginsAndOverrides(t *testing.T) {
 	makePolicy := func(id string) string {
 		return fmt.Sprintf("  - id: %s\n    description: description\n    match: {subjects: [runners], events: [support-ends]}\n    notifications: [{starts: {before: 90d}, severity: warning}]\n", id)
 	}
-	if err := os.WriteFile(base, []byte("lint:\n lifecycle:\n  policies:\n"+makePolicy("a")+makePolicy("b")), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("lint:\n lifecycle:\n  policies:\n"+makePolicy("a")+makePolicy("b")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(child, []byte("extends: [base.yml]\nlint:\n lifecycle:\n  policies:\n"+makePolicy("a")+makePolicy("c")), 0600); err != nil {
+	if err := os.WriteFile(child, []byte("extends: [base.yml]\nlint:\n lifecycle:\n  policies:\n"+makePolicy("a")+makePolicy("c")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := (RuleSet{}).Read(child, os.ReadFile)
@@ -77,10 +77,10 @@ func TestLifecycleOverridesRetainOrigins(t *testing.T) {
 	child := filepath.Join(dir, "child.yml")
 	input := "lint:\n  lifecycle:\n    policies:\n      - id: one\n        description: one\n        match: {subjects: [runners], events: [support-ends]}\n        notifications: [{starts: {before: 90d}, severity: warning}]\n      - id: two\n        description: two\n        match: {subjects: [runners], events: [support-ends]}\n        notifications: [{starts: {before: 90d}, severity: warning}]\n"
 	override := "extends: [base.yml]\noverrides:\n  - includes: [release.yml]\n    lint:\n      lifecycle:\n        policies:\n          - id: two\n            description: replaced\n            match: {subjects: [runners], events: [support-ends]}\n            notifications: [{starts: {before: 30d}, severity: error}]\n"
-	if err := os.WriteFile(base, []byte(input), 0600); err != nil {
+	if err := os.WriteFile(base, []byte(input), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(child, []byte(override), 0600); err != nil {
+	if err := os.WriteFile(child, []byte(override), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	rules := RuleSet{}
@@ -106,10 +106,10 @@ func TestRepositoryNullThenPartialRetainsUnknownFacts(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yml")
 	child := filepath.Join(dir, "child.yml")
-	if err := os.WriteFile(base, []byte("repository: null\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("repository: null\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(child, []byte("extends: [base.yml]\nrepository: {service: github.com}\n"), 0600); err != nil {
+	if err := os.WriteFile(child, []byte("extends: [base.yml]\nrepository: {service: github.com}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := (RuleSet{}).Read(child, os.ReadFile)

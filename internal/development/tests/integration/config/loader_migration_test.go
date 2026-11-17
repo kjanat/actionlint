@@ -158,7 +158,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			t.Parallel()
 			directory := t.TempDir()
 			path := filepath.Join(directory, tc.name)
-			if err := os.WriteFile(path, []byte(tc.source), 0600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
@@ -194,11 +194,11 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			t.Parallel()
 			directory := t.TempDir()
 			base, path := filepath.Join(directory, "base.yaml"), filepath.Join(directory, "actionlint.yaml")
-			if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
+			if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			source := []byte("extends: [base.yaml]\npolicy: {require-job-timeout: false}\n")
-			if err := os.WriteFile(path, source, 0600); err != nil {
+			if err := os.WriteFile(path, source, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
@@ -209,7 +209,7 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if changeBase {
 				edited = base
 			}
-			if err := os.WriteFile(edited, []byte("config-variables: [USER_EDIT]\n"), 0600); err != nil {
+			if err := os.WriteFile(edited, []byte("config-variables: [USER_EDIT]\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
@@ -238,16 +238,16 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 			other:      filepath.Join(directory, "other.yaml"),
 			linkedBase: filepath.Join(directory, "linked-base.yaml"),
 		}
-		if err := os.WriteFile(paths.base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
+		if err := os.WriteFile(paths.base, []byte("config-variables: [BASE]\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(paths.other, []byte("config-variables: [OTHER]\n"), 0600); err != nil {
+		if err := os.WriteFile(paths.other, []byte("config-variables: [OTHER]\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Symlink(paths.base, paths.linkedBase); err != nil {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
-		if err := os.WriteFile(paths.selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
+		if err := os.WriteFile(paths.selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		return paths
@@ -279,7 +279,7 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 			return os.Symlink(paths.other, paths.linkedBase)
 		}},
 		{name: "mutated target", change: func(paths inputs) error {
-			return os.WriteFile(paths.base, []byte("config-variables: [CHANGED]\n"), 0600)
+			return os.WriteFile(paths.base, []byte("config-variables: [CHANGED]\n"), 0o600)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -358,7 +358,7 @@ func TestMigrationRetainsInheritedResetsAndEmptyMaps(t *testing.T) {
 config-secrets: [TOKEN]
 paths: {'**': {ignore: [legacy]}}
 policy: {require-job-timeout: {max-minutes: 30}}
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte(`extends: [base.yaml]
@@ -366,7 +366,7 @@ config-variables: []
 config-secrets: null
 paths: {'**': {}}
 policy: {require-job-timeout: false}
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -392,11 +392,11 @@ func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
 	directory := t.TempDir()
 	base := filepath.Join(directory, "base.toml")
 	path := filepath.Join(directory, "config.toml")
-	if err := os.WriteFile(base, []byte("[policy.require-job-timeout]\nmax-minutes = 30\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("[policy.require-job-timeout]\nmax-minutes = 30\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	original := []byte("extends = ['base.toml']\n[policy]\nrequire-job-timeout = true\n")
-	if err := os.WriteFile(path, original, 0600); err != nil {
+	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{}); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {

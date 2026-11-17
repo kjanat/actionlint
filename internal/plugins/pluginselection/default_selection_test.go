@@ -26,7 +26,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{tool}, RepositoryID: 99}, "v1.0.0", emptyComponent)
 			root := t.TempDir()
 			path := filepath.Join(root, "actionlint.yaml")
-			if err := os.WriteFile(path, []byte("{}"), 0600); err != nil {
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{tool}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
@@ -93,7 +93,7 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			path := filepath.Join(root, "actionlint.yaml")
-			if err := os.WriteFile(path, []byte(tc.config), 0600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.config), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})
@@ -114,10 +114,10 @@ func TestResolveForRulesHonorsInheritedDefaultSelection(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base.yml")
 	leaf := filepath.Join(root, "actionlint.yml")
-	if err := os.WriteFile(base, []byte("tools: {shellcheck: false}\nlint: {rules: {correctness: {expression: {level: [invalid]}}}}\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("tools: {shellcheck: false}\nlint: {rules: {correctness: {expression: {level: [invalid]}}}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(leaf, []byte("extends: [base.yml]\n"), 0600); err != nil {
+	if err := os.WriteFile(leaf, []byte("extends: [base.yml]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})

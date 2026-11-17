@@ -46,7 +46,7 @@ func TestNoToolsOverridesConfiguredBackends(t *testing.T) {
 		t.Run(backend, func(t *testing.T) {
 			t.Parallel()
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
-			if err := os.WriteFile(config, []byte("plugins: []\ntools: {ruff: {backend: {"+backend+"}}}\n"), 0600); err != nil {
+			if err := os.WriteFile(config, []byte("plugins: []\ntools: {ruff: {backend: {"+backend+"}}}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\npermissions: {}\n"

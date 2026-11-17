@@ -78,10 +78,10 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
-	if err := os.Mkdir(".git", 0700); err != nil {
+	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo test}]\n"), 0600); err != nil {
+	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo test}]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)

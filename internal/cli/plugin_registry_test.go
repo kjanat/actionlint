@@ -48,10 +48,10 @@ func TestRegistryCLI(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Setenv("ACTIONLINT_CONFIG", "")
-	if err := os.Mkdir(".git", 0700); err != nil {
+	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\npermissions: {}\n"), 0600); err != nil {
+	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\npermissions: {}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	search := pluginCommandTest(t, acquisition, 0, "plugin", "search", "sudo", "--registry", fixtureregistry.FixtureRegistryURL, "--json")

@@ -16,7 +16,7 @@ func canParseByGoYAML(data []byte) (ret bool) {
 	}()
 	var n yaml.Node
 	_ = yaml.Unmarshal(data, &n)
-	return
+	return ret
 }
 
 func FuzzParse(f *testing.F) {

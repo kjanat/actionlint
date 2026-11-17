@@ -41,15 +41,15 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 					dir := t.TempDir()
 					configPath := filepath.Join(dir, "config.yaml")
 					if discovery {
-						if err := os.Mkdir(filepath.Join(dir, ".git"), 0755); err != nil {
+						if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
 							t.Fatal(err)
 						}
-						if err := os.MkdirAll(filepath.Join(dir, ".github", "workflows"), 0755); err != nil {
+						if err := os.MkdirAll(filepath.Join(dir, ".github", "workflows"), 0o755); err != nil {
 							t.Fatal(err)
 						}
 						configPath = filepath.Join(dir, ".github", "actionlint.yaml")
 					}
-					if err := os.WriteFile(configPath, []byte(tc.config), 0600); err != nil {
+					if err := os.WriteFile(configPath, []byte(tc.config), 0o600); err != nil {
 						t.Fatal(err)
 					}
 					job := "  report: { uses: example/repository/.github/workflows/report.yml@main }"
@@ -68,7 +68,7 @@ jobs:
 						args = append(args, "-config-file", configPath)
 					} else {
 						input = filepath.Join(dir, ".github", "workflows", "test.yaml")
-						if err := os.WriteFile(input, []byte(source), 0600); err != nil {
+						if err := os.WriteFile(input, []byte(source), 0o600); err != nil {
 							t.Fatal(err)
 						}
 					}
@@ -131,7 +131,7 @@ jobs:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
-			if err := os.WriteFile(config, []byte("lint:\n  rules: {policy: {disallow-suppressions: on}}\n"+tc.configIgnore), 0600); err != nil {
+			if err := os.WriteFile(config, []byte("lint:\n  rules: {policy: {disallow-suppressions: on}}\n"+tc.configIgnore), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			var stdout, stderr strings.Builder

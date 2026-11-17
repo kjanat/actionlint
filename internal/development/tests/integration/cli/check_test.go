@@ -31,12 +31,12 @@ func TestCommandWorkflowPaths(t *testing.T) {
 	root := t.TempDir()
 	repo := filepath.Join(root, "repo")
 	gitRepository(t, repo)
-	if err := os.MkdirAll(filepath.Join(repo, ".github", "workflows"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(repo, ".github", "workflows"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	outside := filepath.Join(root, "outside.yml")
 	for _, path := range []string{outside, filepath.Join(repo, ".github", "workflows", "ci.yml")} {
-		if err := os.WriteFile(path, []byte(commandBadWorkflow), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(commandBadWorkflow), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -339,7 +339,7 @@ func TestReportCannotReplaceConsumedFile(t *testing.T) {
 				root := t.TempDir()
 				gitRepository(t, root)
 				for _, dir := range []string{".github/workflows", "local"} {
-					if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+					if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -375,7 +375,7 @@ jobs:
 permissions: {}
 `
 				}
-				if err := os.WriteFile(target, []byte(content), 0644); err != nil {
+				if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
 					t.Fatal(err)
 				}
 				report := target
@@ -394,7 +394,7 @@ permissions: {}
 				args := []string{"--yes", "--output-file", report, "--stdin-filename", target, "-"}
 				stdin := workflow
 				if kind != "stdin" {
-					if err := os.WriteFile(input, []byte(workflow), 0644); err != nil {
+					if err := os.WriteFile(input, []byte(workflow), 0o644); err != nil {
 						t.Fatal(err)
 					}
 					args = []string{"--yes", "--output-file", report, input}
@@ -421,7 +421,7 @@ func TestReportMayReplaceUnselectedConfig(t *testing.T) {
 		t.Run(fmtTestName(modern, "config"), func(t *testing.T) {
 			t.Chdir(commandTestRepo(t))
 			selected := filepath.Join(".github", "actionlint.yaml")
-			if err := os.WriteFile(selected, []byte("{}\n"), 0600); err != nil {
+			if err := os.WriteFile(selected, []byte("{}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			unused := filepath.Join(".github", "actionlint.yml")
@@ -450,7 +450,7 @@ func TestReportPreservesPermissions(t *testing.T) {
 		t.Skip("POSIX permission bits")
 	}
 	report := filepath.Join(t.TempDir(), "report")
-	if err := os.WriteFile(report, []byte("old"), 0640); err != nil {
+	if err := os.WriteFile(report, []byte("old"), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	got := testRunCommand(commandGoodWorkflow, "check", "--yes", "--output-file", report, "--no-config", "-")
@@ -461,7 +461,7 @@ func TestReportPreservesPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0640 {
+	if info.Mode().Perm() != 0o640 {
 		t.Fatal(info.Mode())
 	}
 }

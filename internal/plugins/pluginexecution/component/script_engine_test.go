@@ -384,7 +384,7 @@ func TestScriptEngineRejectsChangedInterface(t *testing.T) {
 				t.Fatal("fixture did not contain interface field")
 			}
 			path := filepath.Join(t.TempDir(), "changed.wasm")
-			if err := os.WriteFile(path, changed, 0600); err != nil {
+			if err := os.WriteFile(path, changed, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			p, err := LoadComponentPlugin(t.Context(), path, Options{})

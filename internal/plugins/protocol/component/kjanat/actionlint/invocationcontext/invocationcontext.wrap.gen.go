@@ -64,7 +64,7 @@ func (w *invocationContextWrapper) CallByID(ctx context.Context, id string) (Res
 	return resVal_, nil
 }
 
-func (w *invocationContextWrapper) Calls(ctx context.Context, offset uint32, limit uint32) (ResultListCallString, error) {
+func (w *invocationContextWrapper) Calls(ctx context.Context, offset, limit uint32) (ResultListCallString, error) {
 	var resVal_ ResultListCallString
 	arg0_ := offset
 	arg1_ := limit
@@ -141,7 +141,7 @@ func (w *invocationContextWrapper) ScriptByID(ctx context.Context, id string) (R
 	return resVal_, nil
 }
 
-func (w *invocationContextWrapper) Scripts(ctx context.Context, offset uint32, limit uint32) (ResultListScriptOccurrenceString, error) {
+func (w *invocationContextWrapper) Scripts(ctx context.Context, offset, limit uint32) (ResultListScriptOccurrenceString, error) {
 	var resVal_ ResultListScriptOccurrenceString
 	arg0_ := offset
 	arg1_ := limit

@@ -59,12 +59,12 @@ jobs:
     uses: $/leaf.yaml
     ` + field.key + ": " + field.value + "\n")
 				for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee} {
-					if err := os.WriteFile(filepath.Join(root, name), source, 0600); err != nil {
+					if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
 						t.Fatal(err)
 					}
 				}
 				if leaf.source != "" {
-					if err := os.WriteFile(filepath.Join(root, "leaf.yaml"), []byte(leaf.source), 0600); err != nil {
+					if err := os.WriteFile(filepath.Join(root, "leaf.yaml"), []byte(leaf.source), 0o600); err != nil {
 						t.Fatal(err)
 					}
 				}

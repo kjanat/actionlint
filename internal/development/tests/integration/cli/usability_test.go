@@ -53,7 +53,7 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
-			if err := os.Mkdir("nested", 0700); err != nil {
+			if err := os.Mkdir("nested", 0o700); err != nil {
 				t.Fatal(err)
 			}
 			t.Chdir("nested")
@@ -180,7 +180,7 @@ func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		t.Run(fmtTestName(modern, "report"), func(t *testing.T) {
 			t.Chdir(commandTestRepo(t))
-			if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
+			if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			args := []string{"--json", "--output-file", "report.json"}
@@ -211,7 +211,7 @@ func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 func TestReportOverwriteEnvironmentAndSymlinks(t *testing.T) {
 	t.Chdir(commandTestRepo(t))
 	t.Setenv("ACTIONLINT_OUTPUT_FILE", "report.json")
-	if err := os.WriteFile("report.json", []byte("keep"), 0600); err != nil {
+	if err := os.WriteFile("report.json", []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if got := testRunCommand("", "check", "missing.yml"); got.Status != 3 || !strings.Contains(got.Stderr, "already exists") {
@@ -238,7 +238,7 @@ type reportCreatingInput struct {
 
 func (r *reportCreatingInput) Read(p []byte) (int, error) {
 	if r.destination != "" {
-		if err := os.WriteFile(r.destination, []byte("created during analysis"), 0600); err != nil {
+		if err := os.WriteFile(r.destination, []byte("created during analysis"), 0o600); err != nil {
 			return 0, err
 		}
 		r.destination = ""

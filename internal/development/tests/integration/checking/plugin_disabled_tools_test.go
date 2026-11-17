@@ -43,7 +43,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	}
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
 	content := "plugins: [{name: '" + pin.Name + "', version: '" + pin.Version + "', registry: '" + pin.Registry + "'}]\n"
-	if err := os.WriteFile(config, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,7 +101,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	}
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
 	content := "plugins: [{name: '" + pin.Name + "', version: '" + pin.Version + "', registry: '" + pin.Registry + "'}]\n"
-	if err := os.WriteFile(config, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

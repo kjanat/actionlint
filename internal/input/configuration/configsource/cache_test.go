@@ -40,7 +40,7 @@ func TestReadConfigCachesHTTPSAcrossReaders(t *testing.T) {
 func TestReadCacheCapturesOneCommand(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
-	if err := os.WriteFile(path, []byte("first"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	ctx := WithReadCache(t.Context())
@@ -49,7 +49,7 @@ func TestReadCacheCapturesOneCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	first[0] = 'X'
-	if err := os.WriteFile(path, []byte("second"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("second"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	captured, err := New(ctx, nil, acquisitionhttp.Connections{}).ReadConfig(path)

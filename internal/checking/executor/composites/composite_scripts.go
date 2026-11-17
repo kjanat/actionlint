@@ -124,7 +124,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflows.BoundStep, 
 	return callFrame.visitMetadataScripts(meta, snapshot, address, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call workflows.BoundStep, declaration workflows.BoundStep, actionView *definition.ExecAction, parents []workflowvisit.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows.BoundStep, actionView *definition.ExecAction, parents []workflowvisit.InvocationParticipant) error {
 	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)

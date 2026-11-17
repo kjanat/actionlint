@@ -103,7 +103,7 @@ func TestRunnerSupportServiceAndDateCLI(t *testing.T) {
 func TestRunnerServiceConfigurationAndFlagPrecedence(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("GITHUB_SERVER_URL", "https://github.com")
-	if err := os.WriteFile("actionlint.toml", []byte("plugins = []\n[repository]\nservice = {kind = 'ghes', version = '3.19'}\n"), 0600); err != nil {
+	if err := os.WriteFile("actionlint.toml", []byte("plugins = []\n[repository]\nservice = {kind = 'ghes', version = '3.19'}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

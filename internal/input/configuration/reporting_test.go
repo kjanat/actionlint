@@ -16,10 +16,10 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yaml")
 	child := filepath.Join(dir, "actionlint.yaml")
-	if err := os.WriteFile(base, []byte("output: {formats: [github, pretty], log-level: debug, summary: true, network-stats: true}\nlint: {experimental: true, rules: {disable: [uninstalled-rule], plugins: {uninstalled-rule: warn}}}\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("output: {formats: [github, pretty], log-level: debug, summary: true, network-stats: true}\nlint: {experimental: true, rules: {disable: [uninstalled-rule], plugins: {uninstalled-rule: warn}}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(child, []byte("extends: [base.yaml]\noutput: {summary: false, quiet: false}\nlint: {experimental: false}\n"), 0600); err != nil {
+	if err := os.WriteFile(child, []byte("extends: [base.yaml]\noutput: {summary: false, quiet: false}\nlint: {experimental: false}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	rules, err := NewRuleSet(nil)

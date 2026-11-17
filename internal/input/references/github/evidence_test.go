@@ -237,11 +237,11 @@ func TestOfflineRejectsCorruptionAndIgnoresPreviousLayout(t *testing.T) {
 	}
 	request := ref(t, "example/action@"+sha)
 	bucket := client.bucket(request, sha)
-	if err := os.MkdirAll(bucket, 0700); err != nil {
+	if err := os.MkdirAll(bucket, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	previous := cacheRecordJSON(1, `"repository_id":42,`, actionSource, sha256hex.Digest([]byte(actionSource)))
-	if err := os.WriteFile(filepath.Join(bucket, "42.json"), []byte(previous), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(bucket, "42.json"), []byte(previous), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	result, err := client.Lookup(t.Context(), request)
@@ -254,7 +254,7 @@ func TestOfflineRejectsCorruptionAndIgnoresPreviousLayout(t *testing.T) {
 		"zero ID":          cacheRecordJSON(2, `"repository_id":0,`, actionSource, sha256hex.Digest([]byte(actionSource))),
 		"unparseable":      `{"version":2,"content":`,
 	} {
-		if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(record), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(record), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		result, err := client.Lookup(t.Context(), request)
@@ -321,7 +321,7 @@ func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
 	if warm, err := offline.Lookup(t.Context(), request); err != nil || !warm.Available() || warm.Identity().RepositoryID() != knownRepositoryID(t, 42) {
 		t.Fatalf("offline record with ID=%v,%v", warm, err)
 	}
-	if err := os.WriteFile(path, []byte(cacheRecordJSON(2, "", actionSource, sha256hex.Digest([]byte(actionSource)))), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(cacheRecordJSON(2, "", actionSource, sha256hex.Digest([]byte(actionSource)))), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	warm, err := offline.Lookup(t.Context(), request)
@@ -333,7 +333,7 @@ func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
 	if err != nil || !hit.Available() || !hit.Identity().RepositoryID().IsZero() || len(hosts.recorded()) != before {
 		t.Fatalf("online record without ID=%v,%v requests=%v", hit, err, hosts.recorded()[before:])
 	}
-	if err := os.WriteFile(path, []byte(cacheRecordJSON(2, `"repository_id":99,`, actionSource, sha256hex.Digest([]byte(actionSource)))), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(cacheRecordJSON(2, `"repository_id":99,`, actionSource, sha256hex.Digest([]byte(actionSource)))), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, exists, err := online.cached(t.Context(), request, knownRepositoryID(t, 42), sha, []string{"action.yml"}); exists || err == nil {
@@ -418,10 +418,10 @@ func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
 					t.Fatal(err)
 				}
 				bucket := seeded.bucket(ref(t, "example/action@"+sha), sha)
-				if err := os.MkdirAll(bucket, 0700); err != nil {
+				if err := os.MkdirAll(bucket, 0o700); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(cacheRecordJSON(2, `"repository_id":42,`, actionSource, sha256hex.Digest([]byte(actionSource)))), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(cacheRecordJSON(2, `"repository_id":42,`, actionSource, sha256hex.Digest([]byte(actionSource)))), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}

@@ -10,7 +10,7 @@ func TestFileOverridesSelectToolConfigOrigin(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.yml")
 	content := "tools: {shellcheck: {config: file.conf}, ruff: {config: {}}}\noverrides: [{includes: [selected.yml], tools: {shellcheck: {config: selected.conf}}}]\n"
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	rules := RuleSet{}
