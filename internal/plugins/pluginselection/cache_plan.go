@@ -2,7 +2,6 @@ package pluginselection
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"maps"
 	"net/url"
@@ -12,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
@@ -58,7 +58,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 		if !strings.Contains(path, "://") {
 			continue
 		}
-		if artifacts.IsOCI(path) {
+		if pluginreference.IsOCI(path) {
 			digests, err := s.ociDigests(ctx, path)
 			if err != nil {
 				return CachePlan{}, err
@@ -71,8 +71,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 			return CachePlan{}, err
 		}
 		if location.Scheme == "sha256" {
-			decoded, err := hex.DecodeString(location.Host)
-			if err != nil || len(decoded) != 32 || location.Host != strings.ToLower(location.Host) || location.User != nil || location.Path != "" || location.RawQuery != "" || location.ForceQuery || location.Fragment != "" {
+			if pluginreference.CheckDigest(location.Host) != nil || location.User != nil || location.Path != "" || location.RawQuery != "" || location.ForceQuery || location.Fragment != "" {
 				return CachePlan{}, errors.New("cache URI must be sha256://<64 lowercase hex digits>")
 			}
 			plan.Artifacts = append(plan.Artifacts, location.Host)
@@ -81,12 +80,12 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 		if location.Scheme != "https" && location.Scheme != "http" || location.Fragment == "" {
 			continue
 		}
-		digest, ok := strings.CutPrefix(location.Fragment, "sha256=")
-		decoded, err := hex.DecodeString(digest)
-		if !ok || err != nil || len(decoded) != 32 {
+		digest, prefixed := strings.CutPrefix(location.Fragment, "sha256=")
+		digest, ok := pluginreference.NormalizeDigest(digest)
+		if !prefixed || !ok {
 			return CachePlan{}, errors.New("plugin URI fragment must be sha256=<64 hex digits>")
 		}
-		plan.Artifacts = append(plan.Artifacts, strings.ToLower(digest))
+		plan.Artifacts = append(plan.Artifacts, digest)
 	}
 	slices.Sort(plan.Artifacts)
 	plan.Artifacts = slices.Compact(plan.Artifacts)

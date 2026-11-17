@@ -63,7 +63,7 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	if got := knowledge.Job(foreignJob); !reflect.DeepEqual(got, runners.JobKnowledge{}) {
 		t.Fatalf("foreign registry handle received prepared facts: %+v", got)
 	}
-	if got := knowledge.Job(workflows.Job{}); !reflect.DeepEqual(got, runners.JobKnowledge{}) {
+	if got := knowledge.Job(workflows.BoundJob{}); !reflect.DeepEqual(got, runners.JobKnowledge{}) {
 		t.Fatalf("zero handle received prepared facts: %+v", got)
 	}
 }

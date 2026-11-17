@@ -21,7 +21,7 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 	return cache
 }
 
-func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*reusableworkflows.Cache, *capturedSnapshots) {
+func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*reusableworkflows.Cache, *declarations.CapturedSnapshots) {
 	tb.Helper()
 	cache := reusableworkflows.NewCache(root, debug)
 	store, snapshots := newCapturedSnapshots(tb, sourceFixtureBase(tb))
@@ -29,11 +29,9 @@ func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug
 	return cache, snapshots
 }
 
-type capturedSnapshots = declarations.CapturedSnapshots
-
 // newCapturedSnapshots returns the capture store for caches under test and
 // the fixture that admits documents into the same store.
-func newCapturedSnapshots(tb testing.TB, base string) (*capture.Store, *capturedSnapshots) {
+func newCapturedSnapshots(tb testing.TB, base string) (*capture.Store, *declarations.CapturedSnapshots) {
 	tb.Helper()
 	_, store, snapshots := declarations.NewCapturedSnapshots(tb, base)
 	return store, snapshots

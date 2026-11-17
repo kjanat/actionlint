@@ -119,7 +119,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, nil, err
 	}
-	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules, s.ruleRegistrations)
+	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules)
 	var cfg *configuration.Config
 	if action {
 		cfg, err = settings.action(sourcePath)
@@ -184,7 +184,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]facts.SourceIndex{sourcePath: snapshot.Bound().SourceIndex()}
+	references := map[string]facts.SourceIndex{sourcePath: snapshot.BoundDocument().SourceIndex()}
 	defer func() {
 		if resultErr != nil {
 			invocations := indexCheckInvocations(composed.Invocations)

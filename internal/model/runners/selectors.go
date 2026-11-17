@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
-func Selectors(job workflows.Job) []runnerapi.Selector {
+func Selectors(job workflows.BoundJob) []runnerapi.Selector {
 	alternatives := selectorAlternatives(job)
 	if alternatives == nil {
 		return nil
@@ -31,7 +31,7 @@ type Alternative struct {
 
 // Alternatives joins execution rows to the provider selector that resolves them.
 // A matrix unrelated to runs-on does not change the provider's request or certainty.
-func Alternatives(job workflows.Job) []Alternative {
+func Alternatives(job workflows.BoundJob) []Alternative {
 	alternatives := selectorAlternatives(job)
 	for index := range alternatives {
 		alternatives[index].AnswerIndex = index
@@ -57,7 +57,7 @@ func Alternatives(job workflows.Job) []Alternative {
 	return result
 }
 
-func selectorAlternatives(job workflows.Job) []Alternative {
+func selectorAlternatives(job workflows.BoundJob) []Alternative {
 	if !job.Present() || job.RunsOn == nil {
 		return nil
 	}

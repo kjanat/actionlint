@@ -1,16 +1,9 @@
 package runnerapi
 
 import (
-	"time"
-
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
-
-type Date = lifecycle.Date
-
-func ParseDate(value string) (Date, error) { return lifecycle.ParseDate(value) }
-func DateOf(value time.Time) Date          { return lifecycle.DateOf(value) }
 
 type Hosting string
 
@@ -43,8 +36,8 @@ type ServiceScope struct {
 }
 type (
 	SupportChange struct {
-		On    Date         `json:"on"`
-		State SupportState `json:"state"`
+		On    lifecycle.Date `json:"on"`
+		State SupportState   `json:"state"`
 	}
 	SupportPolicy struct {
 		ID            string          `json:"id"`

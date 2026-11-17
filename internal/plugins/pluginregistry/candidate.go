@@ -146,7 +146,7 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 		return Pin{}, errors.New("candidate declaration disagrees with catalogue")
 	}
 	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract}
-	if artifacts.IsOCI(r.URL) {
+	if pluginreference.IsOCI(r.URL) {
 		pin.Asset = ""
 	}
 	if !strings.EqualFold(p.Name, repository) {
@@ -168,8 +168,8 @@ func (p Pin) validateCandidate() error {
 	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !p.validIdentity() || !idPattern.MatchString(p.PluginID) || !pluginreference.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || (p.Kind != artifacts.Core && p.Kind != artifacts.Component && p.Kind != artifacts.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return errors.New("invalid local candidate pin")
 	}
-	if artifacts.IsOCI(p.URL) {
-		ref, err := artifacts.ParseOCI(p.URL)
+	if pluginreference.IsOCI(p.URL) {
+		ref, err := pluginreference.ParseOCI(p.URL)
 		if err != nil || ref.String() != p.URL || ref.Digest() != p.SHA256 || p.Asset != "" {
 			return errors.New("invalid local candidate OCI pin")
 		}
@@ -185,7 +185,7 @@ func (p Pin) validateCandidate() error {
 func (p Pin) importCandidate(ctx context.Context, options artifacts.Options) error {
 	if a, err := artifacts.Resolve(ctx, p.Source(), options); err == nil {
 		return p.Verify(a.Info)
-	} else if artifacts.IsOCI(p.URL) || !errors.Is(err, os.ErrNotExist) {
+	} else if pluginreference.IsOCI(p.URL) || !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	directory, err := pluginreference.LocalRegistryDirectory(p.Registry)

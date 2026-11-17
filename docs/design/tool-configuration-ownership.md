@@ -24,7 +24,7 @@ validation and defaults.
 Bundled manifests and jq transforms under `internal/model/bundledproviders`
 define native commands and output conversion. `internal/checking/scriptanalysis/registry`
 constructs registrations from those declarations. `internal/checking/scriptanalysis/backends`
-selects the execution route, and `internal/plugins/pluginexecution/process` runs the
+selects the execution route, and `internal/externallinters/process` runs the
 manifest's process protocol. Both native and WebAssembly routes use shared script
 scheduling, source mapping and diagnostic processing.
 

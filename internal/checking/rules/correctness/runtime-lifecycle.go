@@ -30,7 +30,7 @@ var RuntimeLifecycleRule = &define.Rule{
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 	return define.Checks{
-		Step: func(step workflows.Step) []reporting.StepFinding {
+		Step: func(step workflows.BoundStep) []reporting.StepFinding {
 			action, ok := step.Action()
 			if !ok {
 				return nil

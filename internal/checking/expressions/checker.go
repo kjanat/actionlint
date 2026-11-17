@@ -50,7 +50,7 @@ type Checker struct {
 	inputsTy          *exprtypes.ObjectType
 	dispatchInputsTy  *exprtypes.ObjectType
 	jobsTy            *exprtypes.ObjectType
-	workflow          workflows.Workflow
+	workflow          workflows.BoundWorkflow
 	eventTy           *exprtypes.ObjectType
 	expressionSource  *definition.ScriptSource
 	scriptSources     map[sourcetext.Position]*definition.ScriptSource
@@ -59,7 +59,7 @@ type Checker struct {
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
 	scriptInsertion   correctness.ScriptInsertionKind
-	scriptJob         workflows.Job
+	scriptJob         workflows.BoundJob
 	compositeScript   bool
 	jobReferences     *ReferenceNames
 }
@@ -81,7 +81,7 @@ type Options struct {
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool
 	ScriptInjectionDisabled   bool
-	JobReferences             func(workflows.Job) ReferenceNames
+	JobReferences             func(workflows.BoundJob) ReferenceNames
 }
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.

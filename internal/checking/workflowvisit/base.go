@@ -31,19 +31,19 @@ func (r *Base) Report(findings ...*finding.Finding) {
 }
 
 // VisitStep is the default callback for a step.
-func (r *Base) VisitStep(node workflows.Step) error { return nil }
+func (r *Base) VisitStep(node workflows.BoundStep) error { return nil }
 
 // VisitJobPre is the default callback before visiting a job's children.
-func (r *Base) VisitJobPre(node workflows.Job) error { return nil }
+func (r *Base) VisitJobPre(node workflows.BoundJob) error { return nil }
 
 // VisitJobPost is the default callback after visiting a job's children.
-func (r *Base) VisitJobPost(node workflows.Job) error { return nil }
+func (r *Base) VisitJobPost(node workflows.BoundJob) error { return nil }
 
 // VisitWorkflowPre is the default callback before visiting a workflow's children.
-func (r *Base) VisitWorkflowPre(node workflows.Workflow) error { return nil }
+func (r *Base) VisitWorkflowPre(node workflows.BoundWorkflow) error { return nil }
 
 // VisitWorkflowPost is the default callback after visiting a workflow's children.
-func (r *Base) VisitWorkflowPost(node workflows.Workflow) error { return nil }
+func (r *Base) VisitWorkflowPost(node workflows.BoundWorkflow) error { return nil }
 
 // Error records a finding at pos. Errs returns the recorded findings.
 func (r *Base) Error(pos *sourcetext.Position, msg string) {

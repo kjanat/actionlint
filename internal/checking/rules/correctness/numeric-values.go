@@ -22,7 +22,7 @@ var NumericValuesRule = &define.Rule{
 }
 
 // NumericValues reports a max-parallel GitHub truncates or that cannot take effect.
-func NumericValues(job workflows.Job) []reporting.StepFinding {
+func NumericValues(job workflows.BoundJob) []reporting.StepFinding {
 	if !job.Present() || job.Strategy == nil {
 		return nil
 	}

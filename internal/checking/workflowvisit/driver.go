@@ -25,16 +25,16 @@ type Options struct {
 // visit so the caller can attribute what the pass reports to the job.
 // ParallelBoundary invalidates caller-owned assumptions between parallel branches.
 type Hooks struct {
-	Workflow         func(workflows.Workflow) error
-	Job              func(workflows.Job) error
-	JobPass          func(pass Pass, job workflows.Job, visit func() error) error
-	Step             func(workflows.Step) error
+	Workflow         func(workflows.BoundWorkflow) error
+	Job              func(workflows.BoundJob) error
+	JobPass          func(pass Pass, job workflows.BoundJob, visit func() error) error
+	Step             func(workflows.BoundStep) error
 	ParallelBoundary func()
 }
 
 // Visit traverses n depth-first, jobs in source order, and returns the first
 // error a hook or pass reports.
-func Visit(n workflows.Workflow, options Options) error {
+func Visit(n workflows.BoundWorkflow, options Options) error {
 	v := visitor{passes: options.Passes, hooks: options.Hooks, dbg: options.Debug}
 	return v.visitWorkflow(n)
 }
@@ -50,7 +50,7 @@ func (v *visitor) reportElapsedTime(what string, start time.Time) {
 	_, _ = fmt.Fprintf(v.dbg, "[Visitor] %s took %vms\n", what, time.Since(start).Milliseconds())
 }
 
-func (v *visitor) visitWorkflow(n workflows.Workflow) error {
+func (v *visitor) visitWorkflow(n workflows.BoundWorkflow) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -74,13 +74,13 @@ func (v *visitor) visitWorkflow(n workflows.Workflow) error {
 
 	// Stable source order also makes reusable metadata findings select the first
 	// visible caller consistently, including calls through nested composites.
-	jobs := slices.SortedFunc(func(yield func(workflows.Job) bool) {
+	jobs := slices.SortedFunc(func(yield func(workflows.BoundJob) bool) {
 		for _, job := range n.Jobs() {
 			if !yield(job) {
 				return
 			}
 		}
-	}, func(a, b workflows.Job) int {
+	}, func(a, b workflows.BoundJob) int {
 		left, leftPresent := a.Position()
 		right, rightPresent := b.Position()
 		switch {
@@ -122,7 +122,7 @@ func (v *visitor) visitWorkflow(n workflows.Workflow) error {
 	return nil
 }
 
-func (v *visitor) visitJob(n workflows.Job) error {
+func (v *visitor) visitJob(n workflows.BoundJob) error {
 	if v.hooks.Job != nil {
 		if err := v.hooks.Job(n); err != nil {
 			return err
@@ -170,14 +170,14 @@ func (v *visitor) visitJob(n workflows.Job) error {
 	return nil
 }
 
-func (v *visitor) visitJobPass(p Pass, n workflows.Job, visit func() error) error {
+func (v *visitor) visitJobPass(p Pass, n workflows.BoundJob, visit func() error) error {
 	if v.hooks.JobPass != nil {
 		return v.hooks.JobPass(p, n, visit)
 	}
 	return visit()
 }
 
-func (v *visitor) visitStep(n workflows.Step) error {
+func (v *visitor) visitStep(n workflows.BoundStep) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()

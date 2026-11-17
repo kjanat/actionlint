@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/content"
@@ -38,7 +39,7 @@ const (
 // The client answers the registry's bearer challenge with an anonymous
 // token and retries as oras-go's retry client does, honouring Retry-After;
 // the caller's context deadline bounds every pull.
-func repository(ref artifacts.OCIReference, options artifacts.Options) (*remote.Repository, error) {
+func repository(ref pluginreference.OCIReference, options artifacts.Options) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(ref.Host() + "/" + ref.Repository())
 	if err != nil {
 		return nil, err
@@ -78,14 +79,14 @@ func (d document) index() bool {
 // puller fetches the manifests and blobs of one oci:// source through the
 // store.
 type puller struct {
-	ref    artifacts.OCIReference
+	ref    pluginreference.OCIReference
 	repo   *remote.Repository
 	store  artifacts.Store
 	limit  int64
 	inline map[string][]byte
 }
 
-func newPuller(ref artifacts.OCIReference, options artifacts.Options) (*puller, error) {
+func newPuller(ref pluginreference.OCIReference, options artifacts.Options) (*puller, error) {
 	repo, err := repository(ref, options)
 	if err != nil {
 		return nil, err
@@ -305,7 +306,7 @@ func (p *puller) hostLayers(ctx context.Context) ([]ocispec.Descriptor, error) {
 // layer: Layer and PullLayers do, so an executable is downloaded only when
 // the provider is about to run, or by an explicit install, sync or cache
 // fill. It implements artifact.PullOCI.
-func Pull(ctx context.Context, ref artifacts.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
+func Pull(ctx context.Context, ref pluginreference.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "plugin-oci", Priority: accounting.Required, RequestKind: accounting.OCI})
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -319,7 +320,7 @@ func Pull(ctx context.Context, ref artifacts.OCIReference, options artifacts.Opt
 // Cached reconstructs an OCI artifact exclusively from verified stored blobs.
 // It creates no registry client and refuses missing or corrupt content without
 // network access. It implements artifact.PullOCI for cache-only consumers.
-func Cached(ctx context.Context, ref artifacts.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
+func Cached(ctx context.Context, ref pluginreference.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
 	limit := options.MaxBytes
@@ -373,7 +374,7 @@ func (p *puller) resolve(ctx context.Context) (*artifacts.Artifact, error) {
 func Layer(ctx context.Context, source, digest string, options artifacts.Options) ([]byte, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
-	ref, err := artifacts.ParseOCI(source)
+	ref, err := pluginreference.ParseOCI(source)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +399,7 @@ func PullLayers(ctx context.Context, source string, options artifacts.Options) e
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "plugin-oci", Priority: accounting.Required, RequestKind: accounting.OCI})
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
-	ref, err := artifacts.ParseOCI(source)
+	ref, err := pluginreference.ParseOCI(source)
 	if err != nil {
 		return err
 	}
@@ -423,7 +424,7 @@ func PullLayers(ctx context.Context, source string, options artifacts.Options) e
 func Digests(ctx context.Context, source string, options artifacts.Options) ([]string, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
-	ref, err := artifacts.ParseOCI(source)
+	ref, err := pluginreference.ParseOCI(source)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +458,7 @@ func Digests(ctx context.Context, source string, options artifacts.Options) ([]s
 func Describe(ctx context.Context, source string, options artifacts.Options) (map[string]artifacts.OCIPlatform, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
-	ref, err := artifacts.ParseOCI(source)
+	ref, err := pluginreference.ParseOCI(source)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +495,7 @@ func Describe(ctx context.Context, source string, options artifacts.Options) (ma
 func Pin(ctx context.Context, source string, options artifacts.Options) (string, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
-	ref, err := artifacts.ParseOCITag(source)
+	ref, err := pluginreference.ParseOCITag(source)
 	if err != nil {
 		return "", err
 	}
@@ -524,7 +525,7 @@ func Pin(ctx context.Context, source string, options artifacts.Options) (string,
 // algorithms.
 func descriptorDigest(desc ocispec.Descriptor) (string, error) {
 	hex, ok := strings.CutPrefix(desc.Digest.String(), "sha256:")
-	if !ok || artifacts.CheckDigest(hex) != nil {
+	if !ok || pluginreference.CheckDigest(hex) != nil {
 		return "", fmt.Errorf("unsupported OCI digest %q: want sha256:<64 lowercase hex digits>", desc.Digest)
 	}
 	return hex, nil

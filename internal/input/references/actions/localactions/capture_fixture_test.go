@@ -43,9 +43,7 @@ func bindCapturedActionSources(tb testing.TB, cache *Cache, overlays ...capture.
 	capturefixture.CloseCaptures(tb, store)
 }
 
-type capturedSnapshots = declarations.CapturedSnapshots
-
-func newCapturedSnapshots(tb testing.TB, base string) *capturedSnapshots {
+func newCapturedSnapshots(tb testing.TB, base string) *declarations.CapturedSnapshots {
 	tb.Helper()
 	_, _, snapshots := declarations.NewCapturedSnapshots(tb, base)
 	return snapshots

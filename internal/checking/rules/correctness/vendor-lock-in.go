@@ -17,13 +17,13 @@ import (
 // VendorLockInChecks binds the execution target to job and step reference checks.
 func VendorLockInChecks(target string) define.Checks {
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			if !job.Present() || job.WorkflowCall == nil {
 				return nil
 			}
 			return reporting.FromDiagnostics(VendorLockIn(job.Workflow(), job.WorkflowCall.Uses, target))
 		},
-		Step: func(step workflows.Step) []reporting.StepFinding {
+		Step: func(step workflows.BoundStep) []reporting.StepFinding {
 			if action, present := step.Action(); present {
 				findings := reporting.FromDiagnostics(VendorLockIn(step.Workflow(), action.Uses, target))
 				for i := range findings {
@@ -55,7 +55,7 @@ var VendorLockInRule = &define.Rule{
 	Checks:          func(c define.RuleInputs) define.Checks { return VendorLockInChecks(c.Runners.Target()) },
 }
 
-func VendorLockIn(w workflows.Workflow, uses *definition.String, target string) []results.Diagnostic {
+func VendorLockIn(w workflows.BoundWorkflow, uses *definition.String, target string) []results.Diagnostic {
 	if target != "github" || uses == nil || uses.ContainsExpression() {
 		return nil
 	}

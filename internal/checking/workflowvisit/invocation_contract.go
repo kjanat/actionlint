@@ -25,8 +25,8 @@ type Invocation struct {
 type InvocationParticipant interface {
 	Rule
 	EnterInvocation(Invocation) error
-	VisitInvocationStep(workflows.Step) error
-	VisitOpaqueAction(workflows.Step) error
+	VisitInvocationStep(workflows.BoundStep) error
+	VisitOpaqueAction(workflows.BoundStep) error
 	LeaveInvocation(invocation.Context) error
 }
 
@@ -34,7 +34,7 @@ type InvocationParticipant interface {
 // entering that child's invocation. Opaque call sites use VisitOpaqueAction.
 type ExpandedActionParticipant interface {
 	InvocationParticipant
-	VisitExpandedAction(workflows.Step) error
+	VisitExpandedAction(workflows.BoundStep) error
 }
 
 // CheckoutParticipant adapts its own script paths to the checkout placement

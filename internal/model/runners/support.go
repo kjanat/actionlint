@@ -14,8 +14,8 @@ const (
 	armRetirementURL  = "https://github.blog/changelog/2026-11-12-actions-for-arm32-linux-windows-retirement/"
 )
 
-func supportDate(s string) runnerapi.Date {
-	d, err := runnerapi.ParseDate(s)
+func supportDate(s string) lifecycle.Date {
+	d, err := lifecycle.ParseDate(s)
 	if err != nil {
 		panic(err)
 	}
@@ -57,24 +57,24 @@ func builtinSupport(scope string) runnerapi.SupportCatalog {
 type SupportProblem struct {
 	Policy    runnerapi.SupportPolicy
 	State     runnerapi.SupportState
-	Effective runnerapi.Date
+	Effective lifecycle.Date
 	Next      *runnerapi.SupportChange
 	Selector  runnerapi.Selector
 	Evidence  *lifecycle.Evidence
 }
 
 // Support reports policy effects established for every candidate of a selector.
-func (k *Knowledge) Support(job workflows.Job, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) Support(job workflows.BoundJob, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, false)
 }
 
 // UpcomingSupport reports future events that one policy establishes for every candidate.
 // These observations do not establish a current support problem.
-func (k *Knowledge) UpcomingSupport(job workflows.Job, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) UpcomingSupport(job workflows.BoundJob, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, true)
 }
 
-func (k *Knowledge) supportProblems(job workflows.Job, capability runnerapi.Capability, upcoming bool) []SupportProblem {
+func (k *Knowledge) supportProblems(job workflows.BoundJob, capability runnerapi.Capability, upcoming bool) []SupportProblem {
 	if k == nil || k.report.AsOf.IsZero() {
 		return nil
 	}
@@ -158,7 +158,7 @@ func (k *Knowledge) supportProblems(job workflows.Job, capability runnerapi.Capa
 // Each candidate needs an established policy; overlapping policies are alternatives
 // for that candidate. Keeping their dates separate lets notification policy require
 // every candidate to reach a stage without inventing an aggregate deadline.
-func currentSupportProof(problems []SupportProblem, candidates []runnerapi.Candidate, service services.Service, asOf runnerapi.Date) []lifecycle.Evidence {
+func currentSupportProof(problems []SupportProblem, candidates []runnerapi.Candidate, service services.Service, asOf lifecycle.Date) []lifecycle.Evidence {
 	proof := make([]lifecycle.Evidence, 0, len(candidates))
 	for _, candidate := range candidates {
 		var alternatives []lifecycle.Evidence
@@ -176,7 +176,7 @@ func currentSupportProof(problems []SupportProblem, candidates []runnerapi.Candi
 	return proof
 }
 
-func upcomingChange(policy runnerapi.SupportPolicy, asOf runnerapi.Date, state runnerapi.SupportState) *runnerapi.SupportChange {
+func upcomingChange(policy runnerapi.SupportPolicy, asOf lifecycle.Date, state runnerapi.SupportState) *runnerapi.SupportChange {
 	for _, change := range policy.Changes {
 		if change.On.Compare(asOf) <= 0 {
 			continue
@@ -197,7 +197,7 @@ func upcomingChange(policy runnerapi.SupportPolicy, asOf runnerapi.Date, state r
 	return nil
 }
 
-func supportEvidence(problem SupportProblem, service services.Service, asOf runnerapi.Date, current bool) *lifecycle.Evidence {
+func supportEvidence(problem SupportProblem, service services.Service, asOf lifecycle.Date, current bool) *lifecycle.Evidence {
 	e := &lifecycle.Evidence{Subject: lifecycle.Runners, Name: problem.Policy.ID, Kind: lifecycle.SupportEnds, Service: service, AsOf: asOf, Source: problem.Policy.URL, Current: current}
 	switch {
 	case current && problem.State == runnerapi.Unsupported:
@@ -252,9 +252,9 @@ func serviceMatches(scope runnerapi.ServiceScope, service services.Service) bool
 	return (scope.MinVersion == "" || services.CompareVersions(version, scope.MinVersion) >= 0) && (scope.BeforeVersion == "" || services.CompareVersions(version, scope.BeforeVersion) < 0)
 }
 
-func policyState(p runnerapi.SupportPolicy, date runnerapi.Date) (runnerapi.SupportState, runnerapi.Date, *runnerapi.SupportChange) {
+func policyState(p runnerapi.SupportPolicy, date lifecycle.Date) (runnerapi.SupportState, lifecycle.Date, *runnerapi.SupportChange) {
 	state := p.Initial
-	var effective runnerapi.Date
+	var effective lifecycle.Date
 	var next *runnerapi.SupportChange
 	for _, c := range p.Changes {
 		if c.On.Compare(date) > 0 {

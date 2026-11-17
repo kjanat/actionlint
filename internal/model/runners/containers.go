@@ -36,7 +36,7 @@ type ContainerTarget struct {
 
 // ContainerLimitations uses provider evidence rather than inferring an
 // external provider's capabilities from the spelling of its labels.
-func (k *Knowledge) ContainerLimitations(job workflows.Job) []ContainerTarget {
+func (k *Knowledge) ContainerLimitations(job workflows.BoundJob) []ContainerTarget {
 	if k == nil || k.report.Target != "github" {
 		return nil
 	}

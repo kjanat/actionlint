@@ -26,10 +26,10 @@ var CacheCallUnrestrictedRule = &define.Rule{
 
 // CacheCallUnrestrictedChecks requires an explicit cache ceiling on low-trust
 // reusable calls, using the supplied workflow's triggering events.
-func CacheCallUnrestrictedChecks(workflow workflows.Workflow) define.Checks {
+func CacheCallUnrestrictedChecks(workflow workflows.BoundWorkflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckCall(job))
 		},
 	}

@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
+func (rule *Checker) VisitWorkflowPre(n workflows.BoundWorkflow) error {
 	rule.workflow = n
 	rule.eventTy = new(events.Type(n))
 	rule.checkString(n.Name, "")
@@ -125,18 +125,18 @@ func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
 	return nil
 }
 
-func (rule *Checker) VisitWorkflowPost(n workflows.Workflow) error {
+func (rule *Checker) VisitWorkflowPost(n workflows.BoundWorkflow) error {
 	for _, event := range n.On {
 		if call, ok := event.(*definition.WorkflowCallEvent); ok {
 			rule.checkWorkflowCallOutputs(call, n)
 			break
 		}
 	}
-	rule.workflow = workflows.Workflow{}
+	rule.workflow = workflows.BoundWorkflow{}
 	return nil
 }
 
-func (rule *Checker) VisitJobPre(n workflows.Job) error {
+func (rule *Checker) VisitJobPre(n workflows.BoundJob) error {
 	rule.jobReferences = nil
 	if rule.options.JobReferences != nil {
 		names := rule.options.JobReferences(n)
@@ -205,9 +205,9 @@ func (rule *Checker) VisitJobPre(n workflows.Job) error {
 	return nil
 }
 
-func (rule *Checker) VisitJobPost(n workflows.Job) error {
+func (rule *Checker) VisitJobPost(n workflows.BoundJob) error {
 	defer func() {
-		rule.jobEnv, rule.scriptJob = nil, workflows.Job{}
+		rule.jobEnv, rule.scriptJob = nil, workflows.BoundJob{}
 		rule.jobReferences = nil
 	}()
 	rule.checkSnapshot(n.Snapshot)
@@ -225,7 +225,7 @@ func (rule *Checker) VisitJobPost(n workflows.Job) error {
 	return nil
 }
 
-func (rule *Checker) VisitStep(n workflows.Step) error {
+func (rule *Checker) VisitStep(n workflows.BoundStep) error {
 	rule.scriptEnv = n.Env
 	defer func() { rule.scriptEnv = nil }()
 	rule.checkString(n.Name, "jobs.<job_id>.steps.name")

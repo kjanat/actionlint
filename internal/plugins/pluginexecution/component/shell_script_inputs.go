@@ -6,9 +6,9 @@ import (
 	"math"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 )
 

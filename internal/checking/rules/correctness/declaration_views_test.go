@@ -100,7 +100,7 @@ jobs:
 	workers.Wait()
 }
 
-func jobView(w workflows.Workflow, key string) workflows.Job {
+func jobView(w workflows.BoundWorkflow, key string) workflows.BoundJob {
 	job, _ := w.Job(key)
 	return job
 }

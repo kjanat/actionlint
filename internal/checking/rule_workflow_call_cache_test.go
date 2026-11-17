@@ -46,7 +46,7 @@ permissions: {}
 			var err error
 
 			cache := newCapturedWorkflowCache(t, proj.RootDir(), root, nil)
-			errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: proj, Config: proj.Config()}, nil, nil, cache)
+			errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "caller.yaml", Content: caller, Project: proj, Config: proj.Config()}, nil, nil, cache)
 			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
 				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
 			}
@@ -56,7 +56,7 @@ permissions: {}
 			var wg sync.WaitGroup
 			for range 8 {
 				wg.Go(func() {
-					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "middle.yaml", Content: middle, Project: proj, Config: proj.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "middle.yaml", Content: middle, Project: proj, Config: proj.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Error(err)
 						return

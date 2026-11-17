@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
@@ -48,8 +49,8 @@ permissions: {}
 	workflows := reusableworkflows.NewCache(project.RootDir(), nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}}
-	var declarations *capturedSnapshots
-	session.snapshots, session.captures, declarations = newCapturedSnapshots(t, root)
+	var fixture *declarations.CapturedSnapshots
+	session.snapshots, session.captures, fixture = newCapturedSnapshots(t, root)
 	actions.Configure(localactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
@@ -58,7 +59,7 @@ permissions: {}
 			t.Fatal(err)
 		}
 		var rules []rule.Descriptor
-		captured, err := declarations.Capture(workflow, source, sourcetext.YAML)
+		captured, err := fixture.Capture(workflow, source, sourcetext.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -91,7 +92,7 @@ func TestLifecycleOutput(t *testing.T) {
 	}
 	t.Run("pretty", func(t *testing.T) {
 		t.Parallel()
-		renderer, err := New(outputformat.Pretty, "", false, testVersion, []Rule{{Name: "runner", Category: "workflow"}})
+		renderer, err := New(outputformat.Pretty, "", false, testVersion, []rule.Descriptor{{Name: "runner", Category: "workflow"}})
 		if err != nil {
 			t.Fatal(err)
 		}

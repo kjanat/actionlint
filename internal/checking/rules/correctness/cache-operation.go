@@ -30,16 +30,16 @@ var CacheOperationRule = &define.Rule{
 
 // CacheOperationChecks checks action operations and reusable calls against their
 // effective cache grant. Each callback derives its job mode from its own input.
-func CacheOperationChecks(workflow workflows.Workflow, lookup *reusableworkflows.ResolvedWorkflows) define.Checks {
+func CacheOperationChecks(workflow workflows.BoundWorkflow, lookup *reusableworkflows.ResolvedWorkflows) define.Checks {
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			if lookup == nil {
 				return nil
 			}
 			mode := cache.EffectiveMode(workflow.CacheMode, job.CacheMode)
 			return reporting.FromDiagnostics(cachepolicy.CheckCallOperations(job.WorkflowCall, mode, lookup))
 		},
-		Step: func(step workflows.Step) []reporting.StepFinding {
+		Step: func(step workflows.BoundStep) []reporting.StepFinding {
 			// Composite action steps have no declaring workflow job, so the
 			// job layer contributes no cache override.
 			var jobMode *definition.CacheMode

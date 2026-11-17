@@ -54,6 +54,6 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 	if result.ResolveExecution {
 		input.AvailableInputs = append(input.AvailableInputs, rule.Execution)
 	}
-	input.Mappings, input.Dependencies = result.EntrySnapshot.Bound().Declarations()
+	input.Mappings, input.Dependencies = result.EntrySnapshot.BoundDocument().Declarations()
 	return input, nil
 }

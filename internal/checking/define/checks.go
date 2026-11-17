@@ -15,9 +15,9 @@ import (
 // and may run without any preceding or following callback. Findings may leave
 // Rule empty; the adapter attaches the rule's name.
 type Checks struct {
-	Workflow func(workflows.Workflow) []reporting.StepFinding
-	Job      func(workflows.Job) []reporting.StepFinding
-	Step     func(workflows.Step) []reporting.StepFinding
+	Workflow func(workflows.BoundWorkflow) []reporting.StepFinding
+	Job      func(workflows.BoundJob) []reporting.StepFinding
+	Step     func(workflows.BoundStep) []reporting.StepFinding
 }
 
 // checksVisitor is the traversal adapter for stateless checks.
@@ -51,11 +51,11 @@ func (r *invocationChecksVisitor) LeaveInvocation(scope invocation.Context) erro
 	return nil
 }
 
-func (r *invocationChecksVisitor) VisitInvocationStep(step workflows.Step) error {
+func (r *invocationChecksVisitor) VisitInvocationStep(step workflows.BoundStep) error {
 	return r.VisitStep(step)
 }
 
-func (r *invocationChecksVisitor) VisitOpaqueAction(step workflows.Step) error {
+func (r *invocationChecksVisitor) VisitOpaqueAction(step workflows.BoundStep) error {
 	if len(r.contexts) == 0 {
 		return nil
 	}
@@ -99,21 +99,21 @@ func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 	}
 }
 
-func (r *checksVisitor) VisitWorkflowPre(w workflows.Workflow) error {
+func (r *checksVisitor) VisitWorkflowPre(w workflows.BoundWorkflow) error {
 	if r.checks.Workflow != nil {
 		r.collect(r.checks.Workflow(w), "")
 	}
 	return nil
 }
 
-func (r *checksVisitor) VisitJobPre(j workflows.Job) error {
+func (r *checksVisitor) VisitJobPre(j workflows.BoundJob) error {
 	if r.checks.Job != nil {
 		r.collect(r.checks.Job(j), j.ID.Text())
 	}
 	return nil
 }
 
-func (r *checksVisitor) VisitStep(s workflows.Step) error {
+func (r *checksVisitor) VisitStep(s workflows.BoundStep) error {
 	if r.checks.Step != nil {
 		r.collect(r.checks.Step(s), s.DeclaringJob())
 	}

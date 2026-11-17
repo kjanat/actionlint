@@ -43,11 +43,11 @@ func checkPermissionMapping(p *definition.Permissions) []reporting.StepFinding {
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
 
-func checkWorkflowPermissions(w workflows.Workflow) []reporting.StepFinding {
+func checkWorkflowPermissions(w workflows.BoundWorkflow) []reporting.StepFinding {
 	return checkPermissionMapping(w.Permissions)
 }
 
-func checkJobPermissions(job workflows.Job) []reporting.StepFinding {
+func checkJobPermissions(job workflows.BoundJob) []reporting.StepFinding {
 	return checkPermissionMapping(job.Permissions)
 }
 

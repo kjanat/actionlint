@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func Type(workflow workflows.Workflow) exprtypes.ObjectType {
+func Type(workflow workflows.BoundWorkflow) exprtypes.ObjectType {
 	if !workflow.Present() {
 		return exprtypes.NewEmptyObjectType()
 	}

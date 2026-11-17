@@ -17,7 +17,7 @@ type mutateCanonicalCallRule struct {
 	unchanged bool
 }
 
-func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflows.Workflow) error {
+func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflows.BoundWorkflow) error {
 	rule.visits++
 	job, _ := workflow.Job("test")
 	for step := range job.Steps() {

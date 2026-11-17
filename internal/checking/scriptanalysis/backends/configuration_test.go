@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/mask"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/python"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/python"
 )
 
 func TestConfigurationTransformsReachEachOptionsOnlyProfile(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
@@ -32,7 +33,7 @@ func TestAnalysisSharesNetworkSession(t *testing.T) {
 				if entry == "Check" {
 					_, err = Check(ctx, options, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(workflow), Name: "workflow.yml"})
 				} else {
-					_, err = Analyze(ctx, options, []sourceUnit{{Path: "workflow.yml", Content: []byte(workflow)}})
+					_, err = Analyze(ctx, options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 				}
 				if err != nil || observed == nil || supplied && observed != expected {
 					t.Fatalf("acquisition session=%p supplied=%p error=%v", observed, expected, err)

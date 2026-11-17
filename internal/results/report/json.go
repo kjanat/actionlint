@@ -13,24 +13,20 @@ import (
 // ExitCode describes analysis, even when a caller chooses not to fail on findings.
 // Consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
-	IncompleteChecks []IncompleteCheck      `json:"incomplete_checks,omitempty"`
-	ActionMetadata   []ActionMetadataResult `json:"action_metadata"`
-	SchemaVersion    int                    `json:"schema_version"`
-	Status           string                 `json:"status"`
-	Completed        bool                   `json:"completed"`
-	ExitCode         int                    `json:"exit_code"`
-	FileCount        *int                   `json:"file_count"`
-	Diagnostics      []results.Diagnostic   `json:"diagnostics"`
-	Documents        outline.Outlines       `json:"documents"`
-	Configs          []ResultConfig         `json:"configurations"`
-	Hints            []string               `json:"hints"`
-	SARIF            json.RawMessage        `json:"sarif,omitempty"`
-	Error            string                 `json:"error,omitempty"`
+	IncompleteChecks []IncompleteCheck        `json:"incomplete_checks,omitempty"`
+	ActionMetadata   []actions.MetadataReport `json:"action_metadata"`
+	SchemaVersion    int                      `json:"schema_version"`
+	Status           string                   `json:"status"`
+	Completed        bool                     `json:"completed"`
+	ExitCode         int                      `json:"exit_code"`
+	FileCount        *int                     `json:"file_count"`
+	Diagnostics      []results.Diagnostic     `json:"diagnostics"`
+	Documents        outline.Outlines         `json:"documents"`
+	Configs          []ResultConfig           `json:"configurations"`
+	Hints            []string                 `json:"hints"`
+	SARIF            json.RawMessage          `json:"sarif,omitempty"`
+	Error            string                   `json:"error,omitempty"`
 }
-
-// ActionMetadataResult describes inspected evidence for one distinct requested
-// action reference. Unavailable metadata has a reason, never an invented identity.
-type ActionMetadataResult = actions.MetadataReport
 
 // ResultConfig identifies the configuration used for a project, including overlays.
 type ResultConfig struct {
@@ -43,7 +39,7 @@ type ResultConfig struct {
 
 // FromAnalysis projects captured analysis data without deciding command status.
 func FromAnalysis(analysis Analysis) CheckResult {
-	r := CheckResult{SchemaVersion: 1, Diagnostics: []results.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}, ActionMetadata: []ActionMetadataResult{}}
+	r := CheckResult{SchemaVersion: 1, Diagnostics: []results.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}, ActionMetadata: []actions.MetadataReport{}}
 	count := analysis.FileCount
 	r.FileCount = &count
 	r.Documents = analysis.Documents

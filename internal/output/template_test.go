@@ -5,6 +5,8 @@ import (
 	"math"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestFormatterGitHubCommandEscaping(t *testing.T) {
@@ -79,15 +81,15 @@ func TestFormatterPrintJSONEncodeError(t *testing.T) {
 
 func TestFormatterRegisterRuleInParallel(t *testing.T) {
 	t.Parallel()
-	f, err := NewFormatter("{{json .}}", func() string { return "" }, []Rule{{Name: "seed", Description: "seeded"}})
+	f, err := NewFormatter("{{json .}}", func() string { return "" }, []rule.Descriptor{{Name: "seed", Description: "seeded"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	initialRules := len(f.rules.rules)
 
-	rules := make([]Rule, 0, 100)
+	rules := make([]rule.Descriptor, 0, 100)
 	for i := range 100 {
-		rules = append(rules, Rule{Name: fmt.Sprintf("rule%d", i), Description: fmt.Sprintf("description for rule%d", i)})
+		rules = append(rules, rule.Descriptor{Name: fmt.Sprintf("rule%d", i), Description: fmt.Sprintf("description for rule%d", i)})
 	}
 
 	done := make(chan struct{})

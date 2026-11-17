@@ -31,12 +31,12 @@ var MissingActionMetadataRule = &define.Rule{
 // MissingActionMetadataChecks reads acquisition outcomes prepared by the host.
 // It does not start provider requests or depend on preceding step callbacks.
 func MissingActionMetadataChecks(remote *remote.ResolvedActions) define.Checks {
-	return define.Checks{Step: func(step workflows.Step) []reporting.StepFinding {
+	return define.Checks{Step: func(step workflows.BoundStep) []reporting.StepFinding {
 		return missingActionMetadata(step, remote)
 	}}
 }
 
-func missingActionMetadata(step workflows.Step, remote *remote.ResolvedActions) []reporting.StepFinding {
+func missingActionMetadata(step workflows.BoundStep, remote *remote.ResolvedActions) []reporting.StepFinding {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil || action.Uses.ContainsExpression() {
 		return nil

@@ -64,9 +64,12 @@ type Options struct {
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
-	// configSources holds the configuration files plugin selection parsed for
-	// this run, so the session merges them without reading them again.
-	configSources     *document.Files
+	// ConfigSources holds the configuration files already parsed in this run,
+	// such as those the command read for its output settings. Plugin selection
+	// and the session merge them without reading or parsing them again. Nil
+	// makes assembly.CheckProjects start one set per check. It is ignored when ReadFile
+	// or SourceOverlays supply other bytes than the files on disk.
+	ConfigSources     *document.Files
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
@@ -88,15 +91,38 @@ type Options struct {
 	AllowConfigProcesses bool
 }
 
+// sharedConfigSources returns the parsed configuration files this check may
+// use. A session that reads through ReadFile or SourceOverlays reads other bytes
+// than the files on disk, so it shares nothing.
+func (options Options) sharedConfigSources() *document.Files {
+	if options.ReadFile != nil || len(options.SourceOverlays) != 0 {
+		return nil
+	}
+	return options.ConfigSources
+}
+
 // SourceOverlay supplies bytes without selecting the document as an entry.
 type SourceOverlay struct {
 	Path    string
 	Content []byte
 }
 
+// PrepareInvocation loads the enforced lifecycle policies and fixes the
+// runner evaluation date once, so every Check given the returned options
+// shares them. Check prepares its options itself; a caller that splits one
+// invocation into several checks calls PrepareInvocation first.
+func PrepareInvocation(ctx context.Context, options Options) (Options, error) {
+	options, err := prepareEnforcedLifecycle(ctx, options)
+	if err != nil {
+		return options, err
+	}
+	options.ExecutionEnvironment = options.captureDate(time.Now)
+	return options, nil
+}
+
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input checkrequest.Request) (result *report.Analysis, err error) {
-	options, err = prepareEnforcedLifecycle(ctx, options)
+	options, err = PrepareInvocation(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +131,6 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, options.enforcedPolicyInputs...))))
 		}
 	}()
-	options.ExecutionEnvironment = options.captureDate(time.Now)
 	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
 		return nil, err
 	}
@@ -268,14 +293,14 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	rules, err := ConfigurationRules().WithRegisteredRules(configurationRegistrations(options.Analyzers, options.Tools)...)
+	rules, err := ConfigurationRules().WithRegisteredRules(ConfigurationRegistrations(options.Analyzers, options.Tools)...)
 	if err != nil {
 		return nil, err
 	}
 	session, err := workspace.New(ctx, workspace.Options{
 		Rules:      rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
-		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.configSources, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
+		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.sharedConfigSources(), OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})
@@ -356,7 +381,10 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 }
 
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
-// It does not discover configuration or read the supplied source paths.
+// It does not discover configuration or read the supplied source paths. Each
+// source's Config is used as supplied, so a configuration file must be loaded
+// with ConfigurationRules plus the rules of options' analyzers and tools; the
+// analysis does not normalize its rule settings again.
 func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, checkrequest.Request{Kind: checkrequest.Prepared, Sources: sources})

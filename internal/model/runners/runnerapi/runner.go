@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
@@ -80,7 +81,7 @@ func (s Snapshot) Digest() string {
 
 type Request struct {
 	Service   services.Service
-	AsOf      Date
+	AsOf      lifecycle.Date
 	Target    string
 	Scope     string
 	Snapshot  Snapshot
@@ -167,7 +168,7 @@ type Registration struct {
 // built-in GitHub provider; loading a component never changes that selection.
 type Options struct {
 	Service   *services.Service
-	AsOf      Date
+	AsOf      lifecycle.Date
 	Target    string
 	Provider  string
 	Scope     string
@@ -179,7 +180,7 @@ type Options struct {
 // Consumers caching dependent findings must include CacheKey in their cache key.
 type Report struct {
 	Service                                         services.Service
-	AsOf                                            Date
+	AsOf                                            lifecycle.Date
 	Support                                         SupportCatalog
 	Path                                            string
 	CacheKey                                        string

@@ -32,7 +32,7 @@ var RunnerLabelRule = &define.Rule{
 // it checks labels against the supplied repository label set.
 func RunnerLabelChecks(knownRunners *runners.Knowledge, labels runners.LabelSet) define.Checks {
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			var rejections []runnerapi.Rejection
 			if knownRunners != nil {
 				rejections = knownRunners.Job(job).Rejections

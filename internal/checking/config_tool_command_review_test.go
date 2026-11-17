@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
@@ -137,7 +138,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 				options["shellcheck"] = backends.ToolSelection{Command: "shellcheck"}
 				shell = "bash"
 			}
-			request.Sources = []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\npermissions: {}\n")}}
+			request.Sources = []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\npermissions: {}\n")}}
 			request.Tools = registry.Registrations(options)
 			result, err := runTestAnalysis(t.Context(), request)
 			if err != nil {

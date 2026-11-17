@@ -25,11 +25,6 @@ func (ruleSet RuleSet) ForAction(config *Config, path, root string) (*Config, er
 }
 
 func (ruleSet RuleSet) scopedConfigForFile(config *Config, path, root string, selectLint func(any) any) (*Config, error) {
-	var err error
-	config, err = ruleSet.capturedRuleConfig(config)
-	if err != nil {
-		return nil, err
-	}
 	if config == nil {
 		return nil, nil
 	}

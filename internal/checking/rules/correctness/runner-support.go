@@ -29,7 +29,7 @@ var RunnerSupportRule = &define.Rule{
 // RunnerSupportChecks reports support facts without changing which runners match.
 func RunnerSupportChecks(runners *runners.Knowledge) define.Checks {
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			var findings []reporting.StepFinding
 			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
 			for _, problem := range problems {
@@ -50,7 +50,7 @@ func RunnerSupportChecks(runners *runners.Knowledge) define.Checks {
 	}
 }
 
-func supportPosition(job workflows.Job, selector runnerapi.Selector) sourcetext.Position {
+func supportPosition(job workflows.BoundJob, selector runnerapi.Selector) sourcetext.Position {
 	for _, label := range selector.Labels {
 		if label.Position.Line > 0 {
 			return label.Position

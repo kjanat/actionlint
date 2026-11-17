@@ -126,7 +126,7 @@ sources = [
   "internal/input/configuration/**/*.go",
   "internal/checking/**/*.go",
   "internal/model/bundledproviders/**",
-  "internal/plugins/pluginexecution/preparation/**/*.go",
+  "internal/externallinters/preparation/**/*.go",
   "schemas/**"
 ]
 outputs = ["actionlint.schema.json", "schemas/policy/network.schema.json"]

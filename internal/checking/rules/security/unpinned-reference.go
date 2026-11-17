@@ -42,8 +42,8 @@ var UnpinnedReferenceRule = &define.Rule{
 // UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
 func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
 	return define.Checks{
-		Job:  func(job workflows.Job) []reporting.StepFinding { return CommitHashJob(job, excluded) },
-		Step: func(step workflows.Step) []reporting.StepFinding { return CommitHashStep(step, excluded) },
+		Job:  func(job workflows.BoundJob) []reporting.StepFinding { return CommitHashJob(job, excluded) },
+		Step: func(step workflows.BoundStep) []reporting.StepFinding { return CommitHashStep(step, excluded) },
 	}
 }
 
@@ -61,19 +61,19 @@ type commitHashCheck struct {
 	excluded func(string) bool
 }
 
-func CommitHashStep(step workflows.Step, excluded func(string) bool) []reporting.StepFinding {
+func CommitHashStep(step workflows.BoundStep, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{excluded: excluded}
 	rule.checkStep(step)
 	return rule.Findings
 }
 
-func CommitHashJob(job workflows.Job, excluded func(string) bool) []reporting.StepFinding {
+func CommitHashJob(job workflows.BoundJob, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{excluded: excluded}
 	rule.checkJob(job)
 	return rule.Findings
 }
 
-func (rule *commitHashCheck) checkStep(n workflows.Step) {
+func (rule *commitHashCheck) checkStep(n workflows.BoundStep) {
 	e, ok := n.Action()
 	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses.Value)) {
 		return
@@ -114,7 +114,7 @@ func (rule *commitHashCheck) checkImageDigest(image string, uses *definition.Str
 	)
 }
 
-func (rule *commitHashCheck) checkJob(n workflows.Job) {
+func (rule *commitHashCheck) checkJob(n workflows.BoundJob) {
 	if !n.Present() || n.WorkflowCall == nil {
 		return
 	}

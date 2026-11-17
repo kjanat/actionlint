@@ -53,7 +53,7 @@ func TestAnalysisDiagnosticProjects(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				request.Sources = append(request.Sources, sourceUnit{
+				request.Sources = append(request.Sources, workspace.InputFile{
 					Path: ".github/workflows/ci.yml", Content: []byte(commandBadWorkflow), Project: project,
 				})
 			}
@@ -76,7 +76,7 @@ func TestAnalysisConcurrentLogRecords(t *testing.T) {
 			var log analysisRecordingLog
 			request := analysisRequest{}
 			for i := range 32 {
-				request.Sources = append(request.Sources, sourceUnit{Path: fmt.Sprintf("workflow-%d.yml", i), Content: []byte(commandGoodWorkflow)})
+				request.Sources = append(request.Sources, workspace.InputFile{Path: fmt.Sprintf("workflow-%d.yml", i), Content: []byte(commandGoodWorkflow)})
 			}
 			request.LogWriter, request.LogLevel = &log, level
 			result, err := runTestAnalysis(t.Context(), request)
@@ -109,7 +109,7 @@ type analysisFailingRule struct {
 	err error
 }
 
-func (r *analysisFailingRule) VisitWorkflowPre(workflows.Workflow) error { return r.err }
+func (r *analysisFailingRule) VisitWorkflowPre(workflows.BoundWorkflow) error { return r.err }
 
 func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 	t.Parallel()
@@ -119,7 +119,7 @@ func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 			return []workflowvisit.Rule{&analysisFailingRule{workflowvisit.NewBase("failing", ""), cause}}
 		}}
 		for _, path := range paths {
-			request.Sources = append(request.Sources, sourceUnit{Path: path, Content: []byte(commandGoodWorkflow)})
+			request.Sources = append(request.Sources, workspace.InputFile{Path: path, Content: []byte(commandGoodWorkflow)})
 		}
 		_, err := runTestAnalysis(t.Context(), request)
 		if !errors.Is(err, cause) {

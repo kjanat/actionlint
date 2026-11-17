@@ -20,12 +20,13 @@ type frameObserver struct {
 
 func (p *frameObserver) EnterInvocation(call workflowvisit.Invocation) error { return p.enter(call) }
 func (p *frameObserver) LeaveInvocation(invocation.Context) error            { return nil }
-func (p *frameObserver) VisitStep(workflows.Step) error                      { return p.step() }
-func (p *frameObserver) VisitInvocationStep(step workflows.Step) error {
+func (p *frameObserver) VisitStep(workflows.BoundStep) error                 { return p.step() }
+
+func (p *frameObserver) VisitInvocationStep(step workflows.BoundStep) error {
 	return p.VisitStep(step)
 }
 
-func (p *frameObserver) VisitOpaqueAction(step workflows.Step) error {
+func (p *frameObserver) VisitOpaqueAction(step workflows.BoundStep) error {
 	return p.VisitStep(step)
 }
 

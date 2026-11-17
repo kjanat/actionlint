@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -179,7 +180,7 @@ func sarifFixes(fixes []results.Fix) []sarifFix {
 	return result
 }
 
-func sarifRules(rules []*Rule) []sarifRule {
+func sarifRules(rules []*rule.Descriptor) []sarifRule {
 	result := make([]sarifRule, 0, len(rules))
 	for _, rule := range rules {
 		description := rule.Explanation
@@ -208,7 +209,7 @@ func sarifRules(rules []*Rule) []sarifRule {
 
 // WriteSARIF encodes diagnostics as a SARIF 2.1.0 log with Unicode code point columns
 // and exclusive range ends.
-func WriteSARIF(out io.Writer, version string, rules []*Rule, diagnostics []results.Diagnostic) error {
+func WriteSARIF(out io.Writer, version string, rules []*rule.Descriptor, diagnostics []results.Diagnostic) error {
 	results := make([]sarifResult, 0, len(diagnostics))
 	for _, d := range diagnostics {
 		result := sarifResult{

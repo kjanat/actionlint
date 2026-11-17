@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -43,7 +44,7 @@ func TestAutomaticOCIInitialAndPinNeverDialPrivate(t *testing.T) {
 func TestOCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority(t *testing.T) {
 	t.Parallel()
 	const initial = "oci://127.0.0.1:8443/actionlint/provider@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	ref, err := artifacts.ParseOCI(initial)
+	ref, err := pluginreference.ParseOCI(initial)
 	if err != nil {
 		t.Fatal(err)
 	}

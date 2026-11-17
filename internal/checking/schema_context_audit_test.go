@@ -168,7 +168,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow, workflowvisit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflows.BoundWorkflow, workflowvisit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -195,5 +195,5 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow,
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return workflows.Workflow{}, nil
+	return workflows.BoundWorkflow{}, nil
 }

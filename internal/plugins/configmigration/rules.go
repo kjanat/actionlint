@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -39,11 +40,11 @@ func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acqu
 		}
 		options := sources.ArtifactOptions(source)
 		options.PullOCI = oci.Cached
-		cachedSource, local, err := artifacts.NormalizeSource(source, directory)
+		cachedSource, local, err := pluginreference.NormalizeSource(source, directory)
 		if err != nil {
 			return nil, err
 		}
-		if local == "" && !artifacts.IsOCI(cachedSource) {
+		if local == "" && !pluginreference.IsOCI(cachedSource) {
 			location, err := url.Parse(cachedSource)
 			if err != nil {
 				return nil, err

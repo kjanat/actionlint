@@ -8,16 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 	t.Parallel()
 	metadata := testRunCommand("", "rules", "--no-config", "--json")
-	want, err := checking.RulesWithPlugins(t.Context(), pluginselection.Sources{})
+	want, err := assembly.RulesWithPlugins(t.Context(), pluginselection.Sources{})
 	if err != nil {
 		t.Fatal(err)
 	}

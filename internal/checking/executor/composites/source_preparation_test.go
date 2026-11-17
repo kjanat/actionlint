@@ -23,7 +23,7 @@ type preparationObserver struct {
 
 var _ workflowvisit.InvocationParticipant = (*preparationObserver)(nil)
 
-func (r *preparationObserver) VisitWorkflowPre(workflows.Workflow) error {
+func (r *preparationObserver) VisitWorkflowPre(workflows.BoundWorkflow) error {
 	if !r.prepared[r.entryDocument] {
 		r.t.Fatal("workflow checks started before source preparation")
 	}
@@ -38,9 +38,9 @@ func (r *preparationObserver) EnterInvocation(call workflowvisit.Invocation) err
 	return nil
 }
 
-func (*preparationObserver) LeaveInvocation(invocation.Context) error { return nil }
-func (*preparationObserver) VisitInvocationStep(workflows.Step) error { return nil }
-func (*preparationObserver) VisitOpaqueAction(workflows.Step) error   { return nil }
+func (*preparationObserver) LeaveInvocation(invocation.Context) error      { return nil }
+func (*preparationObserver) VisitInvocationStep(workflows.BoundStep) error { return nil }
+func (*preparationObserver) VisitOpaqueAction(workflows.BoundStep) error   { return nil }
 
 func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, snapshot parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	if !r.prepared[snapshot.Reference().Document] {

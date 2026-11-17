@@ -26,10 +26,10 @@ var CacheWriteUntrustedRule = &define.Rule{
 
 // CacheWriteUntrustedChecks reports write-capable cache declarations reachable
 // from low-trust events. It prepares declaration ownership before callbacks run.
-func CacheWriteUntrustedChecks(workflow workflows.Workflow) define.Checks {
+func CacheWriteUntrustedChecks(workflow workflows.BoundWorkflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckWrites(job))
 		},
 	}

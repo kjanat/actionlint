@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
@@ -14,7 +15,7 @@ func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
 	failure := errors.New("stop traversal")
 	var completed atomic.Bool
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
-		Sources: []sourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
+		Sources: []workspace.InputFile{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
 
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			return []workflowvisit.Rule{&failAfterScheduling{Base: workflowvisit.NewBase("fail", ""), failure: failure}}

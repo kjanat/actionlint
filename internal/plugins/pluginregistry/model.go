@@ -144,7 +144,7 @@ type Pin struct {
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
 
 func (p Pin) Source() string {
-	if artifacts.IsOCI(p.URL) {
+	if pluginreference.IsOCI(p.URL) {
 		return p.URL
 	}
 	if p.Origin == "candidate" {
@@ -225,8 +225,8 @@ func (p Pin) Validate() error {
 			return err
 		}
 	}
-	if artifacts.IsOCI(p.URL) {
-		ref, err := artifacts.ParseOCI(p.URL)
+	if pluginreference.IsOCI(p.URL) {
+		ref, err := pluginreference.ParseOCI(p.URL)
 		if err != nil || ref.String() != p.URL || ref.Digest() != p.SHA256 || p.Asset != "" {
 			return errors.New("invalid registry OCI pin")
 		}

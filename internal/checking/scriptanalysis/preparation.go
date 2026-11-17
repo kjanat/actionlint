@@ -45,7 +45,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 	if _, exists := collection.Declarations.Lookup(graph.Entry().Reference); !exists {
 		return nil, fmt.Errorf("%w: entry source is absent from declaration registry", ErrInvalidBatch)
 	}
-	declarations := make(map[sourcetext.Reference]workflows.Step)
+	declarations := make(map[sourcetext.Reference]workflows.BoundStep)
 	contents := make(map[sourcetext.Reference][]byte)
 	units := make([]Unit, 0, len(requests))
 	for _, record := range graph.Scripts() {
@@ -117,7 +117,7 @@ func scriptJob(graph invocation.Graph, declarations *parsing.SourceSnapshots, ow
 	return outer.DeclaringJob(), nil
 }
 
-func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflows.Step) error {
+func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflows.BoundStep) error {
 	switch record.Kind {
 	case invocation.ScriptRun:
 		run, hasRun := declaration.Run()

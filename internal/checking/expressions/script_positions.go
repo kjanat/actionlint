@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-func (rule *Checker) scriptShell(step workflows.Step) string {
+func (rule *Checker) scriptShell(step workflows.BoundStep) string {
 	run, ok := step.Run()
 	if !ok {
 		return ""

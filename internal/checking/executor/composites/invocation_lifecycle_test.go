@@ -61,7 +61,7 @@ func (p *invocationLifecycleProbe) LeaveInvocation(call invocation.Context) erro
 	return p.leaveFailure
 }
 
-func (p *invocationLifecycleProbe) VisitInvocationStep(step workflows.Step) error {
+func (p *invocationLifecycleProbe) VisitInvocationStep(step workflows.BoundStep) error {
 	p.emit("step", step.Reference())
 	if p.cancel != nil {
 		p.cancel()
@@ -69,7 +69,7 @@ func (p *invocationLifecycleProbe) VisitInvocationStep(step workflows.Step) erro
 	return p.stepFailure
 }
 
-func (p *invocationLifecycleProbe) VisitOpaqueAction(step workflows.Step) error {
+func (p *invocationLifecycleProbe) VisitOpaqueAction(step workflows.BoundStep) error {
 	p.emit("opaque", step.Reference())
 	return p.stepFailure
 }

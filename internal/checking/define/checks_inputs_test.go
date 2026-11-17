@@ -19,7 +19,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 		t.Run(map[bool]string{false: "workflow", true: "workflow and actions"}[supportsActions], func(t *testing.T) {
 			t.Parallel()
 			native := rule.Declaration{Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions}
-			checks := Checks{Step: func(workflows.Step) []reporting.StepFinding { return nil }}
+			checks := Checks{Step: func(workflows.BoundStep) []reporting.StepFinding { return nil }}
 			rules, err := configuration.NewRuleSet([]rule.Declaration{native})
 			if err != nil {
 				t.Fatal(err)
@@ -53,7 +53,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			calls := 0
 			switch scope {
 			case "workflow":
-				checks.Workflow = func(input workflows.Workflow) []reporting.StepFinding {
+				checks.Workflow = func(input workflows.BoundWorkflow) []reporting.StepFinding {
 					if input.Name.Text() != "Native" {
 						t.Fatal("callback received a different workflow")
 					}
@@ -61,7 +61,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "job":
-				checks.Job = func(input workflows.Job) []reporting.StepFinding {
+				checks.Job = func(input workflows.BoundJob) []reporting.StepFinding {
 					if input.ID.Text() != "build" {
 						t.Fatal("callback received a different job")
 					}
@@ -69,7 +69,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "step":
-				checks.Step = func(input workflows.Step) []reporting.StepFinding {
+				checks.Step = func(input workflows.BoundStep) []reporting.StepFinding {
 					if input.Reference() != step.Reference() {
 						t.Fatal("callback received a different step")
 					}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/kjanat/wacogo"
@@ -40,7 +41,7 @@ func runnerSupportRequest(t *testing.T, kind, version string) runnerapi.Request 
 	if err != nil {
 		t.Fatal(err)
 	}
-	date, err := runnerapi.ParseDate("2026-12-08")
+	date, err := lifecycle.ParseDate("2026-12-08")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func TestRunnerSupportComponentRejectsMalformedCatalogues(t *testing.T) {
 	if err != nil || len(response.Answers) != 1 || response.Support.DatasetStatus.DatasetID != "" || len(response.Support.Policies) != 0 {
 		t.Fatalf("absent support changed inventory facts: %+v, error=%v", response, err)
 	}
-	request.AsOf = runnerapi.Date{}
+	request.AsOf = lifecycle.Date{}
 	if _, err := plugin.ResolveRunners(t.Context(), request); err == nil {
 		t.Fatal("support provider accepted an absent assessment date")
 	}

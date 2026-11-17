@@ -73,7 +73,7 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 	root, manifest, _ := virtualActionPaths(t)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources: []sourceUnit{{
+		Sources: []workspace.InputFile{{
 			Path: "workflow.yml", Project: workspace.Identity(root),
 			Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/physical/virtual}, {uses: $/alias/virtual}]}}\n"),
 		}},
@@ -108,11 +108,11 @@ func TestSharedActionOutlinesAreCompleteAfterBatch(t *testing.T) {
 				manifest = "runs: [\n"
 			}
 			writeShellcheckFixture(t, root, "shared/action.yml", manifest)
-			var sources []sourceUnit
+			var sources []workspace.InputFile
 			for index := range 4 {
 				name := fmt.Sprintf("unique-%d", index)
 				writeShellcheckFixture(t, root, name+"/action.yml", "name: "+name+"\ndescription: test\nruns: {using: composite, steps: []}\n")
-				sources = append(sources, sourceUnit{
+				sources = append(sources, workspace.InputFile{
 					Path: fmt.Sprintf("workflow-%d.yml", index), Project: workspace.Identity(root),
 					Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/shared}, {uses: $/" + name + "}]}}\n"),
 				})

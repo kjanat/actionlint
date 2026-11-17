@@ -79,7 +79,7 @@ the action sources that supplied them. An analysis directory is not a filesystem
 grant. Read-only filesystems are supplied separately for one call.
 
 `internal/checking/scriptanalysis` prepares and executes script-check batches.
-`internal/plugins/pluginexecution/preparation` owns masking, shell preparation, language
+`internal/externallinters/preparation` owns masking, shell preparation, language
 settings and mappings to the original source. Preparation does not launch tools.
 `internal/integrations/hostprocess` owns process limits and completion.
 

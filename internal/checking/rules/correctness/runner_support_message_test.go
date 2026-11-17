@@ -3,13 +3,14 @@ package correctness
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerSupportMessagesDescribeTheNextState(t *testing.T) {
 	t.Parallel()
-	date, err := runnerapi.ParseDate("2027-01-01")
+	date, err := lifecycle.ParseDate("2027-01-01")
 	if err != nil {
 		t.Fatal(err)
 	}

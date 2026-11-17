@@ -18,7 +18,7 @@ type ExecutionEnvironment struct {
 
 func (environment ExecutionEnvironment) captureDate(now func() time.Time) ExecutionEnvironment {
 	if environment.Runners.AsOf.IsZero() {
-		environment.Runners.AsOf = runnerapi.DateOf(now())
+		environment.Runners.AsOf = lifecycle.DateOf(now())
 	}
 	return environment
 }

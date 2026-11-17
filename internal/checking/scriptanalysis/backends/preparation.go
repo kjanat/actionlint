@@ -9,16 +9,16 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/mask"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/python"
+	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
+	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/python"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 // route is the transport a preparation feeds.

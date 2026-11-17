@@ -61,7 +61,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 	fileManifest.ID = "example.test/providers/file-tool"
 	fileManifest.Rule.Name = "file-tool"
 	fileManifest.ConfigSchema = json.RawMessage(`{"$id":"settings.json","$defs":{"limit":{"type":"integer","minimum":1}},"type":"object","properties":{"limit":{"$ref":"#/$defs/limit"}},"additionalProperties":false}`)
-	fileManifest.ConfigShorthands = map[string]toolmanifest.ConfigShorthand{"limit": {Path: []string{"limit"}, Precedence: "shorthand"}}
+	fileManifest.ConfigShorthands = map[string]toolsettings.Shorthand{"limit": {Path: []string{"limit"}, Precedence: "shorthand"}}
 	fileManifest.Process.ConfigSchema = json.RawMessage(`{"$id":"settings.json","$defs":{"limit":{"type":"integer","maximum":10}},"type":"object","properties":{"limit":{"$ref":"#/$defs/limit"}},"additionalProperties":false}`)
 	encoded, err := json.Marshal(fileManifest)
 	if err != nil {

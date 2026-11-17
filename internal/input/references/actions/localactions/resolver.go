@@ -393,7 +393,7 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 }
 
 // ObserveCheckout updates action resolution after a checkout step.
-func (c *Resolver) ObserveCheckout(step workflows.Step) {
+func (c *Resolver) ObserveCheckout(step workflows.BoundStep) {
 	enabled, known := conditions.Condition(step.Condition())
 	if known && !enabled {
 		return

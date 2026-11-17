@@ -24,15 +24,15 @@ var JobNeedsRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Workflow: checkJobDependencies}),
 }
 
-func checkJobDependencies(w workflows.Workflow) []reporting.StepFinding {
-	jobs := slices.Collect(func(yield func(workflows.Job) bool) {
+func checkJobDependencies(w workflows.BoundWorkflow) []reporting.StepFinding {
+	jobs := slices.Collect(func(yield func(workflows.BoundJob) bool) {
 		for _, job := range w.Jobs() {
 			if !yield(job) {
 				return
 			}
 		}
 	})
-	slices.SortStableFunc(jobs, func(a, b workflows.Job) int {
+	slices.SortStableFunc(jobs, func(a, b workflows.BoundJob) int {
 		left, _ := a.Position()
 		right, _ := b.Position()
 		if left.Line != right.Line {

@@ -13,7 +13,7 @@ import (
 type runnerFixture struct {
 	Jobs     map[string]*definition.Job
 	Snapshot parsing.SourceSnapshot
-	Views    map[string]workflows.Job
+	Views    map[string]workflows.BoundJob
 }
 
 func TestJobOperatingSystemsPreserveUncertainty(t *testing.T) {
@@ -62,7 +62,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 	if !available {
 		t.Fatal("workflow snapshot is unavailable")
 	}
-	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflows.Job{}}
+	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflows.BoundJob{}}
 	for id := range fixture.Jobs {
 		view, ok := workflow.Job(id)
 		if !ok {

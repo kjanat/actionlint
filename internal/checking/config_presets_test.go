@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 // configRecorder records the prepared configuration supplied to a custom rule.
@@ -45,7 +46,7 @@ jobs:
 			rule := newConfigRecorder()
 			called := false
 			_, err := runTestAnalysis(t.Context(), analysisRequest{
-				Sources:     []sourceUnit{{Path: "test.yml", Content: content, Config: tc.config}},
+				Sources:     []workspace.InputFile{{Path: "test.yml", Content: content, Config: tc.config}},
 				WorkingDir:  t.TempDir(),
 				RulePresets: tc.presets,
 				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
@@ -77,7 +78,7 @@ jobs:
 			return append(rules, rule)
 		}}
 
-		request.Sources = []sourceUnit{{Path: filepath.Join(root, "test.yml"), InputPath: filepath.Join(root, "test.yml"), Content: content, Project: nil}}
+		request.Sources = []workspace.InputFile{{Path: filepath.Join(root, "test.yml"), InputPath: filepath.Join(root, "test.yml"), Content: content, Project: nil}}
 		if _, err := testFindings(runTestAnalysis(t.Context(), request)); err != nil {
 			t.Fatal(err)
 		}

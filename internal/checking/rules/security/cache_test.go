@@ -45,7 +45,7 @@ jobs:
 	first, _ = workflow.Job("z_first")
 	second, _ = workflow.Job("a_second")
 	check = CacheCallUnrestrictedChecks(workflow)
-	for _, job := range []workflows.Job{second, first, second} {
+	for _, job := range []workflows.BoundJob{second, first, second} {
 		findings := check.Job(job)
 		if len(findings) != 1 || findings[0].Rule != "cache-call-unrestricted" {
 			t.Fatalf("call lost its independent ceiling check: %+v", findings)

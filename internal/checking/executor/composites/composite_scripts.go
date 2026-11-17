@@ -29,7 +29,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func (analysis *compositeAnalyzer) visitActionScripts(call workflows.Step, parents []workflowvisit.InvocationParticipant, validate func() error) (err error) {
+func (analysis *compositeAnalyzer) visitActionScripts(call workflows.BoundStep, parents []workflowvisit.InvocationParticipant, validate func() error) (err error) {
 	if err := analysis.sourceSnapshot.ValidateStep(call); err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflows.Step, paren
 	return callFrame.visitMetadataScripts(meta, snapshot, address, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows.Step, actionView *definition.ExecAction, parents []workflowvisit.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows.BoundStep, actionView *definition.ExecAction, parents []workflowvisit.InvocationParticipant) error {
 	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)
@@ -250,7 +250,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitInvocationStep(step workflows.Step, participants []workflowvisit.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitInvocationStep(step workflows.BoundStep, participants []workflowvisit.InvocationParticipant) error {
 	for _, participant := range participants {
 		compositeCheckoutPaths(participant, analysis.actions)
 		if err := invocationOutput(analysis.bindings, participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
@@ -262,7 +262,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflows.Step, part
 	return nil
 }
 
-func (analysis *compositeAnalyzer) validateMetadataStep(step workflows.Step, config *configuration.Config) error {
+func (analysis *compositeAnalyzer) validateMetadataStep(step workflows.BoundStep, config *configuration.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -290,7 +290,7 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *localactions.Resol
 	participant.ApplyCheckout(actions)
 }
 
-func (analysis *compositeAnalyzer) describeCall(step workflows.Step) (sourcetext.Reference, invocation.Facts, error) {
+func (analysis *compositeAnalyzer) describeCall(step workflows.BoundStep) (sourcetext.Reference, invocation.Facts, error) {
 	if !analysis.sourceSnapshot.Present() {
 		return sourcetext.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}

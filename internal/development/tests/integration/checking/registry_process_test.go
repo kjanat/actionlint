@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -83,11 +84,11 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	input := func() checkrequest.Request {
 		return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 	}
-	if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
+	if _, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 		t.Fatalf("repository process did not require consent: %v", err)
 	}
 	network.SetOffline(true)
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources)
+	result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources)
 	if err != nil {
 		t.Fatal(err)
 	}

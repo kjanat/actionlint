@@ -3,8 +3,8 @@ package managed
 import (
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )

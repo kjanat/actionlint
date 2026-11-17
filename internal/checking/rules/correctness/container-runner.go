@@ -93,7 +93,7 @@ func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *r
 	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[sourcetext.Reference]string{}}
 }
 
-func (r *containerAdapter) VisitJobPre(job workflows.Job) error {
+func (r *containerAdapter) VisitJobPre(job workflows.BoundJob) error {
 	r.targets = r.runners.ContainerLimitations(job)
 	r.guards = []string{job.If.Text()}
 	r.reportUses(r.runners.JobContainerUses(job))
@@ -106,12 +106,12 @@ func (r *containerAdapter) reportUses(uses []runners.ContainerUse) {
 	}
 }
 
-func (r *containerAdapter) VisitStep(step workflows.Step) error {
+func (r *containerAdapter) VisitStep(step workflows.BoundStep) error {
 	r.conditions[step.Reference()] = step.If.Text()
 	return r.checkStep(step)
 }
 
-func (r *containerAdapter) checkStep(step workflows.Step) error {
+func (r *containerAdapter) checkStep(step workflows.BoundStep) error {
 	if len(r.targets) == 0 {
 		return nil
 	}
@@ -173,9 +173,9 @@ func (r *containerAdapter) LeaveInvocation(scope invocation.Context) error {
 	return nil
 }
 
-func (r *containerAdapter) VisitInvocationStep(workflows.Step) error { return nil }
+func (r *containerAdapter) VisitInvocationStep(workflows.BoundStep) error { return nil }
 
-func (r *containerAdapter) VisitOpaqueAction(step workflows.Step) error {
+func (r *containerAdapter) VisitOpaqueAction(step workflows.BoundStep) error {
 	if len(r.frames) == 0 {
 		return nil
 	}

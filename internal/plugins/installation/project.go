@@ -19,8 +19,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
 // Project edits exact plugin declarations in configuration.
@@ -52,7 +52,7 @@ func (p *Project) SyncDirect(ctx context.Context) error {
 		if _, err := artifacts.Resolve(ctx, source, p.artifactOptions()); err != nil {
 			return err
 		}
-		if artifacts.IsOCI(source) {
+		if pluginreference.IsOCI(source) {
 			if err := oci.PullLayers(ctx, source, p.artifactOptions()); err != nil {
 				return err
 			}
@@ -133,7 +133,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
 			if toolmanifest.IsLocalManifest(source) {
-				if err := process.ValidateLocalProvider(ctx, source); err != nil {
+				if err := toolproviders.ValidateLocalProvider(ctx, source); err != nil {
 					return err
 				}
 				continue
@@ -145,11 +145,11 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			}
 			if pulled.Info.Kind == artifacts.ProviderManifest {
 				// Refuse an unusable provider before saving its declaration.
-				if err := process.ValidateProviderArtifact(ctx, pulled, options); err != nil {
+				if err := toolproviders.ValidateProviderArtifact(ctx, pulled, options); err != nil {
 					return err
 				}
 			}
-			if artifacts.IsOCI(source) {
+			if pluginreference.IsOCI(source) {
 				if err := oci.PullLayers(ctx, source, p.artifactOptions()); err != nil {
 					return err
 				}
@@ -212,7 +212,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 		if pulled.Info.Kind != artifacts.ProviderManifest {
 			return fmt.Errorf("plugin %s@%s: expected a process provider manifest, found %s", pin.Name, pin.Version, pulled.Info.Kind)
 		}
-		if err := process.ValidateProviderArtifact(ctx, pulled, options); err != nil {
+		if err := toolproviders.ValidateProviderArtifact(ctx, pulled, options); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 	}

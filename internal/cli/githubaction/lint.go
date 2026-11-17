@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -153,7 +154,7 @@ func runLinter(req *lintRequest) *lintResult {
 		input = checkrequest.Request{Kind: checkrequest.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
-	analysis, err = checking.CheckProjects(ctx, opts, input, selection)
+	analysis, err = assembly.CheckProjects(ctx, opts, input, selection)
 	if analysis != nil {
 		restorePath := func(path string) string {
 			if original, ok := inputNames[filepath.Clean(path)]; ok {
@@ -178,7 +179,7 @@ func runLinter(req *lintRequest) *lintResult {
 		if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
 			code = exitcode.ExitInvalidCommandOption
 		}
-		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
+		if _, ok := errors.AsType[*assembly.UnknownToolError](err); ok {
 			code = exitcode.ExitInvalidCommandOption
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}

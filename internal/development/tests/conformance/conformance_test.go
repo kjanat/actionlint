@@ -22,6 +22,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
@@ -497,7 +498,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	case "workflow":
 		// The pinned SchemaStore and runner archives were captured on 2026-09-08.
 		// Keep lifecycle observations stable as the wall clock advances.
-		asOf, err := runnerapi.ParseDate("2026-09-08")
+		asOf, err := lifecycle.ParseDate("2026-09-08")
 		if err != nil {
 			t.Fatal(err)
 		}

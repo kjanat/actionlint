@@ -31,7 +31,7 @@ var UncancellableConditionRule = &define.Rule{
 }
 
 // UncancellableCondition reports a condition of w that keeps running after cancellation.
-func UncancellableCondition(w workflows.Workflow, value *definition.String) []reporting.StepFinding {
+func UncancellableCondition(w workflows.BoundWorkflow, value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
@@ -74,6 +74,6 @@ func decodedConditionPosition(value string, offset int) (line, column int) {
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 }
 
-func checkJobCancellationCondition(job workflows.Job) []reporting.StepFinding {
+func checkJobCancellationCondition(job workflows.BoundJob) []reporting.StepFinding {
 	return UncancellableCondition(job.Workflow(), job.If)
 }

@@ -1,8 +1,6 @@
 package pluginreference
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"net/url"
 	"path/filepath"
@@ -48,18 +46,17 @@ func ParseModuleLocation(source string) (ModuleLocation, error) {
 	}
 	pin := ""
 	if u.Fragment != "" {
-		pin = strings.TrimPrefix(u.Fragment, "sha256=")
-		decoded, err := hex.DecodeString(pin)
-		if !strings.HasPrefix(u.Fragment, "sha256=") || err != nil || len(decoded) != sha256.Size {
+		digest, prefixed := strings.CutPrefix(u.Fragment, "sha256=")
+		normalized, ok := NormalizeDigest(digest)
+		if !prefixed || !ok {
 			return ModuleLocation{}, errors.New("plugin URI fragment must be sha256=<64 hex digits>")
 		}
-		pin = strings.ToLower(pin)
+		pin = normalized
 	}
 	u.Fragment, u.RawFragment = "", ""
 	switch u.Scheme {
 	case "sha256":
-		decoded, err := hex.DecodeString(u.Host)
-		if err != nil || len(decoded) != sha256.Size || u.Host != strings.ToLower(u.Host) || u.Path != "" || u.RawQuery != "" || u.ForceQuery || pin != "" {
+		if CheckDigest(u.Host) != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || pin != "" {
 			return ModuleLocation{}, errors.New("invalid cached artifact digest")
 		}
 		return ModuleLocation{Endpoint: u, Pin: u.Host}, nil

@@ -14,7 +14,7 @@ import (
 
 func newTestChecker() *Checker { return New(Dependencies{}, Options{UnsoundTernary: true}) }
 
-func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.Workflow) {
+func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.BoundWorkflow) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -38,7 +38,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.W
 	return checker, workflow
 }
 
-func testJob(tb testing.TB, workflow workflows.Workflow, key string) workflows.Job {
+func testJob(tb testing.TB, workflow workflows.BoundWorkflow, key string) workflows.BoundJob {
 	tb.Helper()
 	job, present := workflow.Job(key)
 	if !present {
@@ -47,7 +47,7 @@ func testJob(tb testing.TB, workflow workflows.Workflow, key string) workflows.J
 	return job
 }
 
-func testStep(tb testing.TB, job workflows.Job, index int) workflows.Step {
+func testStep(tb testing.TB, job workflows.BoundJob, index int) workflows.BoundStep {
 	tb.Helper()
 	steps := slices.Collect(job.Steps())
 	if index < 0 || index >= len(steps) {
@@ -58,7 +58,7 @@ func testStep(tb testing.TB, job workflows.Job, index int) workflows.Step {
 
 // Pure checker fixtures freeze synthetic typed models; they do not admit bytes
 // to a SourceSnapshots registry or claim captured parse provenance.
-func ownedWorkflowFixture(workflow *definition.Workflow) workflows.Workflow {
+func ownedWorkflowFixture(workflow *definition.Workflow) workflows.BoundWorkflow {
 	return workflows.Bind("unit-expression", "", workflow, false, "").Workflow()
 }
 

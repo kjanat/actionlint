@@ -30,11 +30,11 @@ func TestAnalyzeOpaqueCompositeInputsPublishCapturedInspectExpression(t *testing
 					if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 						t.Fatal(err)
 					}
-					unit := sourceUnit{Path: "ci.yml", Content: []byte("on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n"), Project: workspace.Identity(root)}
+					unit := workspace.InputFile{Path: "ci.yml", Content: []byte("on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n"), Project: workspace.Identity(root)}
 					if standalone {
 						unit.Path, unit.Content = filepath.Join("outer", "action.yml"), []byte(content)
 					}
-					result, err := Analyze(t.Context(), Options{WorkingDir: root}, []sourceUnit{unit})
+					result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{unit})
 					if err != nil || result == nil {
 						t.Fatalf("opaque composite analysis failed: %v", err)
 					}

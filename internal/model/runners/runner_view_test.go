@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func runnerJobView(t *testing.T, source string) workflows.Job {
+func runnerJobView(t *testing.T, source string) workflows.BoundJob {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)

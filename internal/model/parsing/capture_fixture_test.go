@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflows.Workflow {
+func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflows.BoundWorkflow {
 	tb.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {
@@ -22,7 +22,7 @@ func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflows.Workflow
 	return workflow
 }
 
-func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflows.Step {
+func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflows.BoundStep {
 	tb.Helper()
 	job, present := snapshotWorkflow(tb, snapshot).Job(key)
 	if !present {
@@ -31,7 +31,7 @@ func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []work
 	return slices.Collect(job.Steps())
 }
 
-func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflows.Step {
+func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflows.BoundStep {
 	tb.Helper()
 	action, present := snapshot.ActionView()
 	if !present {

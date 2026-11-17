@@ -23,7 +23,7 @@ func copyOwnedManifest(in Manifest) Manifest {
 	out.ConfigurationTransform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.ConfigurationTransform)
 	out.PreparationTransform = copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in.PreparationTransform)
 	out.ConfigurationPaths = slices.Clone(in.ConfigurationPaths)
-	out.ConfigShorthands = copyOwnedValue_c25b4926e4b5aed854bb2725c299c964(in.ConfigShorthands)
+	out.ConfigShorthands = copyOwnedValue_babbb6ca94d2d1c2744156b41c1d5618(in.ConfigShorthands)
 	out.Process = copyOwnedValue_0df6c5b433b0095d5c5fbad84e349bc8(in.Process)
 	out.Integration = copyOwnedValue_473a548b1255f1e9aad85edff119fa6d(in.Integration)
 	out.DeprecatedFlags = copyOwnedValue_3708090e414b6818241d2ba331dc12a0(in.DeprecatedFlags)
@@ -74,11 +74,11 @@ func copyOwnedValue_6bafc34ba29adc1636ccf4d4502279c4(in *Transform) *Transform {
 	return (*Transform)(&out)
 }
 
-func copyOwnedValue_c25b4926e4b5aed854bb2725c299c964(in map[string]ConfigShorthand) map[string]ConfigShorthand {
+func copyOwnedValue_babbb6ca94d2d1c2744156b41c1d5618(in map[string]toolsettings.Shorthand) map[string]toolsettings.Shorthand {
 	if in == nil {
 		return nil
 	}
-	out := make(map[string]ConfigShorthand, len(in))
+	out := make(map[string]toolsettings.Shorthand, len(in))
 	for key, value := range in {
 		out[key] = copyOwnedShorthand_d7363070bedd5a3162054e434cd212c5(value)
 	}

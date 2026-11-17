@@ -17,7 +17,7 @@ func TestCacheOperationStepWithoutDeclaringJobUsesWorkflowMode(t *testing.T) {
 	workflow := workflows.Bind("test", source, decoded, false, "").Workflow()
 	check := CacheOperationChecks(workflow, nil)
 	// Composite action steps have no declaring workflow job.
-	if findings := check.Step(workflows.Step{}); len(findings) != 0 {
+	if findings := check.Step(workflows.BoundStep{}); len(findings) != 0 {
 		t.Fatalf("absent step produced findings: %+v", findings)
 	}
 }

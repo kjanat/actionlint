@@ -1,6 +1,10 @@
 package configuration
 
-import "actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+import (
+	"maps"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+)
 
 // normalizeRuleLocations gives named settings one merge key across accepted
 // category spellings. Group defaults stay in their declared groups because
@@ -9,6 +13,11 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 	rules := field(lint, "rules")
 	if !isMapping(rules) {
 		return lint, nil
+	}
+	for category, group := range members(rules) {
+		if err := validateRuleAliases(ruleSet, category, maps.All(members(group))); err != nil {
+			return nil, err
+		}
 	}
 	nextRules := cloneMapping(rules)
 	changed := false
@@ -107,4 +116,21 @@ func settingLevelNode(setting any) (ruleconfig.Level, error) {
 	var level ruleconfig.Level
 	err := decodeValue(setting, &level)
 	return level, err
+}
+
+// normalizeRuleLint gives the lint settings in value one merge key per rule.
+// Other fields, including extends, are kept.
+func (ruleSet RuleSet) normalizeRuleLint(value any) (any, error) {
+	if !isMapping(value) {
+		return value, nil
+	}
+	next := cloneMapping(value)
+	if lint := field(value, "lint"); lint != nil {
+		lint, err := ruleSet.normalizeRuleLocations(lint)
+		if err != nil {
+			return nil, err
+		}
+		setField(next, "lint", ruleSet.expandLintShorthands(lint))
+	}
+	return next, nil
 }

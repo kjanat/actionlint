@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
@@ -97,7 +98,7 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	bad[11].Revision, bad[11].Path = absentRevision, "absent.yml"
 	bad[12].Revision = second.Revision()
 	primary := &finding.Finding{Path: "ci.yml", Message: "primary", Related: append(append([]results.Related{good, eof}, bad...), results.Related{Path: "ci.yml"})}
-	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*finding.Finding{primary}}}}
+	result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: path}, errors: []*finding.Finding{primary}}}}
 	err = result.revalidateCaptures(store, rows, root, nil)
 	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != len(bad)+1 || len(result.files[0].errors) != 1 || result.files[0].errors[0] != primary || len(primary.Related) != 2 || primary.Related[0] != good || primary.Related[1] != eof {
@@ -153,7 +154,7 @@ func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
 
 func testRelatedBridgeAndSeal(t *testing.T, root string) {
 	t.Helper()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)

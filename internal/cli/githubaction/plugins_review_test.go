@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -113,7 +114,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			needed, err := checking.RequiredToolsWithPlugins(t.Context(), checking.Options{
+			needed, err := assembly.RequiredToolsWithPlugins(t.Context(), checking.Options{
 				WorkingDir: plan.workingDir, ConfigFile: plan.configFile, ConfigOverlays: plan.overlays,
 				IgnorePatterns: plan.ignore, Tools: registry.Registrations(plan.toolSelections()),
 			}, plan.files, selected)

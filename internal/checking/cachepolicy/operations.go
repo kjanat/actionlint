@@ -94,7 +94,7 @@ func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec
 }
 
 // CheckStep reports cache action operations disabled by an explicit cache mode.
-func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagnostic {
+func CheckStep(step workflows.BoundStep, mode *definition.CacheMode) []results.Diagnostic {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil {
 		return nil

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func TestNetworkPolicyAppliesToPreparedSources(t *testing.T) {
@@ -19,7 +20,7 @@ func TestNetworkPolicyAppliesToPreparedSources(t *testing.T) {
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", path)
 	requests := &mirrorRequests{actions: map[references.MirrorAccess]int{}, workflows: map[references.MirrorAccess]int{}}
 	options := Options{WorkingDir: root, SkipProjectConfig: true, RemoteActions: mirrorProvider{requests: requests}}
-	sources := []sourceUnit{{Path: filepath.Join(root, "workflow.yml"), Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}}
+	sources := []workspace.InputFile{{Path: filepath.Join(root, "workflow.yml"), Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}}
 	if _, err := Analyze(t.Context(), options, sources); err != nil {
 		t.Fatal(err)
 	}

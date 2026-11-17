@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -49,7 +50,7 @@ func TestFinalPublicationCannotAuditConflictedSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: entryPath, InputPath: entryPath, Content: entry.Bytes()}, publication: batch}}}
+			result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: entryPath, InputPath: entryPath, Content: entry.Bytes()}, publication: batch}}}
 			validationErr := result.revalidateCaptures(store, rows, root, nil)
 			if conflicted && !errors.Is(validationErr, conflict) {
 				t.Fatalf("lost source conflict: %v", validationErr)

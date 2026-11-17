@@ -136,7 +136,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		return nil, err
 	}
 	reference := sourcetext.NewReferenceIndex(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
-	workflow := sourceUnit{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}
+	workflow := workspace.InputFile{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}
 	findings, err := checkWithCaches(t, t.Context(), analysisRequest{
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
@@ -201,7 +201,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, RemoteActions: checkoutManifestProvider(t), Sources: []sourceUnit{{
+			result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, RemoteActions: checkoutManifestProvider(t), Sources: []workspace.InputFile{{
 				Path: ".github/workflows/ci.yml", Config: cfg, Project: workspace.Identity(root),
 				Content: []byte(`on: push
 jobs:

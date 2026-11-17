@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func lifecycleRunnerKnowledge(t *testing.T, date string, candidates []runnerapi.Candidate, policies []runnerapi.SupportPolicy) (*Knowledge, workflows.Job) {
+func lifecycleRunnerKnowledge(t *testing.T, date string, candidates []runnerapi.Candidate, policies []runnerapi.SupportPolicy) (*Knowledge, workflows.BoundJob) {
 	t.Helper()
 	workflow := runnerWorkflow(t, "queue")
 	service, err := services.ParseService("github.com", "")

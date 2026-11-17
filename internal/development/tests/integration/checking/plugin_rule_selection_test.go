@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
@@ -55,7 +56,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		if err != nil || len(sources.Paths) != 1 || sources.Paths[0] != pin.Source() {
 			t.Fatalf("inherited plugin lost: %+v %v", sources, err)
 		}
-		rules, err := checking.RulesWithPlugins(t.Context(), sources)
+		rules, err := assembly.RulesWithPlugins(t.Context(), sources)
 		if err != nil {
 			t.Fatal(err)
 		}

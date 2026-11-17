@@ -26,7 +26,7 @@ var EmptyJobRule = &define.Rule{
 }
 
 // EmptyJob reports a job that runs no steps. Reusable workflow calls have none.
-func EmptyJob(job workflows.Job) []reporting.StepFinding {
+func EmptyJob(job workflows.BoundJob) []reporting.StepFinding {
 	if job.WorkflowCall != nil || job.DeclaredUses != nil {
 		return nil
 	}

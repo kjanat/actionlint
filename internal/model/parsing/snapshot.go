@@ -14,12 +14,12 @@ import (
 )
 
 // SourceSnapshot is a read-only handle to the declarations of one admitted
-// source revision. Over the declaration.Bound it holds, it adds the captured
+// source revision. Over the workflows.BoundDocument it holds, it adds the captured
 // bytes, the document kind and the owning registry, and it withholds the
 // declarations once the capture store quarantines those bytes. Copies share
 // one admission record, which callers cannot reach or overwrite. The zero
 // SourceSnapshot is absent: Present reports false, Kind reports KindUnknown,
-// Bound returns nil and every validation fails.
+// BoundDocument returns nil and every validation fails.
 type SourceSnapshot struct{ admission *admission }
 
 // admission binds immutable declarations to their admitted source revision.
@@ -29,7 +29,7 @@ type admission struct {
 	registry *SourceSnapshots
 	captured capture.CapturedDocument
 	action   bool
-	bound    *workflows.Bound
+	bound    *workflows.BoundDocument
 }
 
 // Present reports whether s came from a registry. A present snapshot can still
@@ -287,9 +287,9 @@ func (s SourceSnapshot) Kind() DocumentKind {
 	return KindWorkflow
 }
 
-func (s SourceSnapshot) WorkflowView() (workflows.Workflow, bool) {
+func (s SourceSnapshot) WorkflowView() (workflows.BoundWorkflow, bool) {
 	if s.Kind() != KindWorkflow {
-		return workflows.Workflow{}, false
+		return workflows.BoundWorkflow{}, false
 	}
 	view := s.admission.bound.Workflow()
 	return view, view.Present()
@@ -303,20 +303,20 @@ func (s SourceSnapshot) ActionView() (workflows.ActionBody, bool) {
 	return view, view.Present()
 }
 
-func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows.Step, bool) {
+func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows.BoundStep, bool) {
 	if s == nil {
-		return workflows.Step{}, false
+		return workflows.BoundStep{}, false
 	}
 	s.mu.Lock()
 	admitted := s.documents[reference.Document]
 	s.mu.Unlock()
 	if admitted == nil || admitted.verify() != nil {
-		return workflows.Step{}, false
+		return workflows.BoundStep{}, false
 	}
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflows.Step) bool {
+func (s *SourceSnapshots) Owns(step workflows.BoundStep) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
@@ -326,10 +326,10 @@ func (s *SourceSnapshots) Owns(step workflows.Step) bool {
 	return admitted != nil && admitted.verify() == nil && admitted.bound.Owns(step)
 }
 
-// Bound returns the snapshot's declarations while its capture remains
-// admitted, and nil otherwise. Bound's SourceIndex and Declarations accept a
+// BoundDocument returns the snapshot's declarations while its capture remains
+// admitted, and nil otherwise. BoundDocument's SourceIndex and Declarations accept a
 // nil receiver, so callers read either through this method directly.
-func (s SourceSnapshot) Bound() *workflows.Bound {
+func (s SourceSnapshot) BoundDocument() *workflows.BoundDocument {
 	if s.verify() != nil {
 		return nil
 	}
@@ -340,7 +340,7 @@ func (s SourceSnapshot) Bound() *workflows.Bound {
 // that view was bound by this snapshot, returning the quarantine cause when the
 // capture is no longer admitted. It also rejects the workflow view of an action
 // body. ValidateJob and ValidateStep apply the same checks to jobs and steps.
-func (s SourceSnapshot) ValidateWorkflow(view workflows.Workflow) error {
+func (s SourceSnapshot) ValidateWorkflow(view workflows.BoundWorkflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflows.Workflow) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateJob(view workflows.Job) error {
+func (s SourceSnapshot) ValidateJob(view workflows.BoundJob) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -360,7 +360,7 @@ func (s SourceSnapshot) ValidateJob(view workflows.Job) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateStep(view workflows.Step) error {
+func (s SourceSnapshot) ValidateStep(view workflows.BoundStep) error {
 	if err := s.verify(); err != nil {
 		return err
 	}

@@ -26,6 +26,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -92,7 +93,7 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	pkg := publishOCIProvider(t)
 	check := func() *report.Analysis {
 		t.Helper()
-		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
+		result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -147,7 +148,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 			if !slices.Equal(sources.Paths, []string{pkg.reference}) {
 				t.Fatalf("selected %q", sources.Paths)
 			}
-			if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
+			if _, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
 				t.Fatalf("repository-selected private endpoint was contacted: %v", err)
 			}
 			if got := pkg.registry.Fetches(pkg.executable); got != 0 {
@@ -156,7 +157,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(acquisition.ArtifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
 				t.Fatalf("executable materialized without opt-in: %v", err)
 			}
-			if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
+			if _, err := assembly.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
 				t.Fatalf("process permission granted private network access: %v", err)
 			}
 		})
@@ -172,7 +173,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	sources.DisabledTools, sources.NamedTools = []string{"oci-tool"}, []string{"oci-tool"}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
+	result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
 	if err != nil {
 		t.Fatal(err)
 	}

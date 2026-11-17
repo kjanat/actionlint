@@ -237,8 +237,8 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 		t.Run(tc.declared, func(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
-			rule := Rule{Name: "example", DefaultLevel: tc.declared, DefaultEnabled: &tc.enabled}
-			if err := WriteSARIF(&output, "test", []*Rule{&rule}, []results.Diagnostic{{Rule: "example", Severity: "warning"}}); err != nil {
+			descriptor := rule.Descriptor{Name: "example", DefaultLevel: tc.declared, DefaultEnabled: &tc.enabled}
+			if err := WriteSARIF(&output, "test", []*rule.Descriptor{&descriptor}, []results.Diagnostic{{Rule: "example", Severity: "warning"}}); err != nil {
 				t.Fatal(err)
 			}
 			var document sarifDocument
@@ -259,8 +259,8 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 
 func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 	t.Parallel()
-	metadata := Rule{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
-	renderer, err := New(outputformat.SARIF, "", false, testVersion, []Rule{metadata})
+	metadata := rule.Descriptor{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
+	renderer, err := New(outputformat.SARIF, "", false, testVersion, []rule.Descriptor{metadata})
 	if err != nil {
 		t.Fatal(err)
 	}

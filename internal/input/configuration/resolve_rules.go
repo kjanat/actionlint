@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -199,20 +200,31 @@ type RuleRegistration struct {
 	Options json.RawMessage
 }
 
-// ResolveRegisteredRules binds descriptors with their validated tool roles.
+// ResolveRegisteredRules adds registrations to ruleSet and resolves config's
+// rule settings with the result, as ResolveSettings does.
 func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registrations ...RuleRegistration) (*Config, error) {
 	if config == nil && !p.Strict && p.Experimental == nil && len(registrations) == 0 {
 		return nil, nil
 	}
-	registered, err := ruleSet.prepareRegistrations(registrations)
+	registered, err := ruleSet.WithRegisteredRules(registrations...)
 	if err != nil {
 		return nil, err
 	}
-	ruleSet = registered.rules
-	config, err = ruleSet.capturedRuleConfig(config)
-	if err != nil {
-		return nil, err
+	return registered.resolveSettings(p, config)
+}
+
+// ResolveSettings resolves the level and options of every rule ruleSet
+// declares, from config and presets p. ruleSet already holds the run's
+// registrations, from WithRegisteredRules; the configuration was loaded with
+// the same rule set, so its rule settings are read as they are.
+func (ruleSet RuleSet) ResolveSettings(p Presets, config *Config) (*Config, error) {
+	if config == nil && !p.Strict && p.Experimental == nil && len(ruleSet.registered) == 0 {
+		return nil, nil
 	}
+	return ruleSet.resolveSettings(p, config)
+}
+
+func (ruleSet RuleSet) resolveSettings(p Presets, config *Config) (*Config, error) {
 	next := Config{}
 	if config != nil {
 		next = *config
@@ -223,8 +235,8 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	next.Lint.Rules.boundSettings = make(map[string]boundSetting)
 	next.Lint.Rules.ruleSet = ruleSet
 	descriptors := ruleSet.Rules()
-	seen, optionOverrides := registered.seen, registered.options
-	if err := ruleSet.bindSettings(&next, descriptors, seen, optionOverrides); err != nil {
+	seen := ruleSet.registered
+	if err := ruleSet.bindSettings(&next, descriptors, seen, ruleSet.optionOverrides); err != nil {
 		return nil, err
 	}
 	for _, d := range descriptors {
@@ -239,23 +251,9 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	return &next, nil
 }
 
-type registeredRules struct {
-	rules   RuleSet
-	seen    map[string]bool
-	options map[string]json.RawMessage
-}
-
 // WithRegisteredRules adds plugin declarations before selecting source-specific settings.
 // It validates declarations without decoding options from an unrelated source.
 func (ruleSet RuleSet) WithRegisteredRules(registrations ...RuleRegistration) (RuleSet, error) {
-	registered, err := ruleSet.prepareRegistrations(registrations)
-	if err != nil {
-		return RuleSet{}, err
-	}
-	return registered.rules, nil
-}
-
-func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*registeredRules, error) {
 	providers := maps.Clone(ruleSet.providers)
 	if providers == nil {
 		providers = map[string]toolProvider{}
@@ -275,22 +273,22 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 		switch declaration.Scope {
 		case rule.CallerConfiguration, rule.SourceConfiguration, rule.CompositeConfiguration:
 		default:
-			return nil, fmt.Errorf("rule %q declares invalid configuration scope %d", descriptor.Name, declaration.Scope)
+			return RuleSet{}, fmt.Errorf("rule %q declares invalid configuration scope %d", descriptor.Name, declaration.Scope)
 		}
 		if descriptor.Name == "" || strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, " \t\r\n") {
-			return nil, fmt.Errorf("invalid rule name %q", descriptor.Name)
+			return RuleSet{}, fmt.Errorf("invalid rule name %q", descriptor.Name)
 		}
 		if canonical := ruleSet.ResolveAlias(descriptor.Name); canonical != descriptor.Name {
-			return nil, fmt.Errorf("registered rule %q conflicts with existing alias for %q", descriptor.Name, canonical)
+			return RuleSet{}, fmt.Errorf("registered rule %q conflicts with existing alias for %q", descriptor.Name, canonical)
 		}
 		if seen[descriptor.Name] {
-			return nil, fmt.Errorf("duplicate registered rule %q", descriptor.Name)
+			return RuleSet{}, fmt.Errorf("duplicate registered rule %q", descriptor.Name)
 		}
 		seen[descriptor.Name] = true
 		if registration.ToolSettings != nil {
 			provider, err := compileToolProvider(*registration.ToolSettings)
 			if err != nil {
-				return nil, fmt.Errorf("tool %q: %w", descriptor.Name, err)
+				return RuleSet{}, fmt.Errorf("tool %q: %w", descriptor.Name, err)
 			}
 			provider.scope = declaration.Scope
 			providers[descriptor.Name] = provider
@@ -299,22 +297,22 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			optionOverrides[descriptor.Name] = slices.Clone(registration.Options)
 		}
 		if !rule.ValidCategory(descriptor.Category) {
-			return nil, fmt.Errorf("rule %q has invalid category %q; expected one of %s", descriptor.Name, descriptor.Category, strings.Join(rule.Categories(), ", "))
+			return RuleSet{}, fmt.Errorf("rule %q has invalid category %q; expected one of %s", descriptor.Name, descriptor.Category, strings.Join(rule.Categories(), ", "))
 		}
 		if !rule.ValidMaturity(descriptor.Maturity) {
-			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
+			return RuleSet{}, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
 		}
 		if descriptor.DefaultLevel != "" && !ruleconfig.Level(descriptor.DefaultLevel).Valid() {
-			return nil, fmt.Errorf("rule %q declares invalid default level %q", descriptor.Name, descriptor.DefaultLevel)
+			return RuleSet{}, fmt.Errorf("rule %q declares invalid default level %q", descriptor.Name, descriptor.DefaultLevel)
 		}
 		if len(descriptor.OptionsSchema) > 0 {
 			if _, err := toolsettings.Compile(descriptor.OptionsSchema); err != nil {
-				return nil, fmt.Errorf("options schema for rule %q: %w", descriptor.Name, err)
+				return RuleSet{}, fmt.Errorf("options schema for rule %q: %w", descriptor.Name, err)
 			}
 		}
 		if len(registration.Options) != 0 {
 			if err := validateOptionsJSON(rule.Declaration{Descriptor: descriptor}, registration.Options); err != nil {
-				return nil, configdecode.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
+				return RuleSet{}, configdecode.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
 			}
 		}
 		replaced := false
@@ -322,7 +320,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			if descriptors[i].Name == descriptor.Name {
 				_, bundled := toolProviders()[descriptor.Name]
 				if !bundled || registration.ReplacesTool == "" || registration.ReplacesTool != descriptor.Name {
-					return nil, fmt.Errorf("registered rule %q conflicts with existing rule from provider %q", descriptor.Name, descriptors[i].Provider)
+					return RuleSet{}, fmt.Errorf("registered rule %q conflicts with existing rule from provider %q", descriptor.Name, descriptors[i].Provider)
 				}
 				descriptors[i].Descriptor = descriptor
 				descriptors[i].Scope = declaration.Scope
@@ -343,9 +341,9 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	}
 	names, err := rule.NewNames(metadata)
 	if err != nil {
-		return nil, err
+		return RuleSet{}, err
 	}
-	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}, seen: seen, options: optionOverrides}, nil
+	return RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}, nil
 }
 
 func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declaration, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {
@@ -408,13 +406,11 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 			if group.Preset() != "" && !group.Preset().Valid() {
 				return fmt.Errorf("invalid preset %q in lint.rules.%s", group.Preset(), category)
 			}
-			names := map[string]string{}
+			if err := validateRuleAliases(ruleSet, category, group.Rules()); err != nil {
+				return err
+			}
 			for spelling, setting := range group.Rules() {
 				name := ruleSet.ResolveAlias(spelling)
-				if previous, duplicate := names[name]; duplicate {
-					return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
-				}
-				names[name] = spelling
 				descriptor, known := index[name]
 				if !known {
 					return fmt.Errorf("unknown rule %q in lint.rules.%s", name, category)
@@ -447,6 +443,18 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func validateRuleAliases[V any](ruleSet RuleSet, category string, settings iter.Seq2[string, V]) error {
+	names := map[string]string{}
+	for spelling := range settings {
+		name := ruleSet.ResolveAlias(spelling)
+		if previous, duplicate := names[name]; duplicate {
+			return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
+		}
+		names[name] = spelling
 	}
 	return nil
 }

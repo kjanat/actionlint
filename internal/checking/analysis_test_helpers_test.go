@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
@@ -50,7 +51,7 @@ type capturedWorkflowCache struct {
 	*reusableworkflows.Cache
 	registry  *parsing.SourceSnapshots
 	captures  *capture.Store
-	snapshots *capturedSnapshots
+	snapshots *declarations.CapturedSnapshots
 }
 
 func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *capturedWorkflowCache {
@@ -65,13 +66,13 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *hostprocess.ProcessPool, actions *localactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
-	registrations := configurationRegistrations(request.Analyzers, request.Tools)
+	registrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
 	ruleSet, err := ConfigurationRules().WithRegisteredRules(registrations...)
 	if err != nil {
 		tb.Fatal(err)
@@ -81,20 +82,20 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(tb)
 	}
-	var declarations *capturedSnapshots
+	var fixture *declarations.CapturedSnapshots
 	var workflowCache *reusableworkflows.Cache
 	if workflows != nil {
-		session.snapshots, session.captures, declarations = workflows.registry, workflows.captures, workflows.snapshots
+		session.snapshots, session.captures, fixture = workflows.registry, workflows.captures, workflows.snapshots
 		workflowCache = workflows.Cache
 	} else {
-		session.snapshots, session.captures, declarations = newCapturedSnapshots(tb, session.workingDir)
+		session.snapshots, session.captures, fixture = newCapturedSnapshots(tb, session.workingDir)
 	}
 	address := source.InputPath
 	if address == "" {
 		address = source.Path
 	}
-	address = declarations.Path(address)
-	captured, err := declarations.Capture(address, source.Content, sourcetext.YAML)
+	address = fixture.Path(address)
+	captured, err := fixture.Capture(address, source.Content, sourcetext.YAML)
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +123,12 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 }
 
 // readFixtureSources reads snapshots for tests that supply their own project and config.
-func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []sourceUnit {
+func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.InputFile {
 	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
-	sources := make([]sourceUnit, 0, len(paths))
+	sources := make([]workspace.InputFile, 0, len(paths))
 	for _, path := range paths {
 		content, err := os.ReadFile(path)
 		if err != nil {
@@ -139,7 +140,7 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 				display = relative
 			}
 		}
-		sources = append(sources, sourceUnit{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
+		sources = append(sources, workspace.InputFile{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
 	}
 	return sources
 }
@@ -179,7 +180,7 @@ func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*finding.F
 			t.Fatal(err)
 		}
 	}
-	request.Sources = []sourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil, Config: lConfig}}
+	request.Sources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil, Config: lConfig}}
 	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)

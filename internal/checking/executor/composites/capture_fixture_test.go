@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflows.Workflow {
+func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflows.BoundWorkflow {
 	tb.Helper()
 	view, available := snapshot.WorkflowView()
 	if !available {
@@ -21,7 +21,7 @@ func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflows.Work
 	return view
 }
 
-func workflowJob(tb testing.TB, workflow workflows.Workflow, key string) workflows.Job {
+func workflowJob(tb testing.TB, workflow workflows.BoundWorkflow, key string) workflows.BoundJob {
 	tb.Helper()
 	job, available := workflow.Job(key)
 	if !available {
@@ -30,12 +30,12 @@ func workflowJob(tb testing.TB, workflow workflows.Workflow, key string) workflo
 	return job
 }
 
-func workflowStepViews(tb testing.TB, workflow workflows.Workflow, key string) []workflows.Step {
+func workflowStepViews(tb testing.TB, workflow workflows.BoundWorkflow, key string) []workflows.BoundStep {
 	tb.Helper()
 	return slices.Collect(workflowJob(tb, workflow, key).Steps())
 }
 
-func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflows.Step {
+func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflows.BoundStep {
 	tb.Helper()
 	action, available := snapshot.ActionView()
 	if !available {
@@ -44,7 +44,7 @@ func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflows
 	return slices.Collect(action.Steps())
 }
 
-func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflows.Step) sourcetext.Reference {
+func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflows.BoundStep) sourcetext.Reference {
 	tb.Helper()
 	if err := snapshot.ValidateStep(step); err != nil {
 		tb.Fatal(err)
@@ -52,7 +52,7 @@ func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflow
 	return step.Reference()
 }
 
-func stepPosition(tb testing.TB, step workflows.Step) sourcetext.Position {
+func stepPosition(tb testing.TB, step workflows.BoundStep) sourcetext.Position {
 	tb.Helper()
 	position, present := step.Position()
 	if !present {
@@ -66,11 +66,9 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-type capturedSnapshots = declarations.CapturedSnapshots
-
 // newCapturedSnapshots returns the registry and capture store for code under
 // test and the fixture that admits documents into them.
-func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
+func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *declarations.CapturedSnapshots) {
 	tb.Helper()
 	return declarations.NewCapturedSnapshots(tb, base)
 }

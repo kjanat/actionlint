@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -123,10 +124,10 @@ func TestOCIReferenceRequiresDigest(t *testing.T) {
 		})
 	}
 	source := "oci://GHCR.io/kjanat/tool@sha256:" + digest
-	if normalized, local, err := NormalizeSource(source, t.TempDir()); err != nil || local != "" || normalized != "oci://ghcr.io/kjanat/tool@sha256:"+digest {
+	if normalized, local, err := pluginreference.NormalizeSource(source, t.TempDir()); err != nil || local != "" || normalized != "oci://ghcr.io/kjanat/tool@sha256:"+digest {
 		t.Fatalf("NormalizeSource = %q, %q, %v", normalized, local, err)
 	}
-	tagged, err := ParseOCITag("oci://ghcr.io/kjanat/tool:v1")
+	tagged, err := pluginreference.ParseOCITag("oci://ghcr.io/kjanat/tool:v1")
 	if err != nil || tagged.Tag() != "v1" || tagged.Digest() != "" {
 		t.Fatalf("ParseOCITag = %+v, %v", tagged, err)
 	}

@@ -158,20 +158,3 @@ func TestCandidateCacheResolution(t *testing.T) {
 		})
 	}
 }
-
-// A cache locator cannot carry another location or a second digest.
-func TestCandidateCacheRejectsInvalidURI(t *testing.T) {
-	t.Parallel()
-	digest := strings.Repeat("ab", 32)
-	for _, source := range []string{
-		"sha256://", "sha256://../outside", "sha256://" + strings.Repeat("a", 63),
-		"sha256://" + strings.Repeat("z", 64), "sha256://" + strings.ToUpper(digest),
-		"sha256://user@" + digest, "sha256://" + digest + ":443", "sha256://" + digest + "/file",
-		"sha256://" + digest + "?", "sha256://" + digest + "?url=https://example.com",
-		"sha256://" + digest + "#sha256=" + digest,
-	} {
-		if _, _, err := NormalizeSource(source, t.TempDir()); err == nil {
-			t.Errorf("accepted cache locator %q", source)
-		}
-	}
-}

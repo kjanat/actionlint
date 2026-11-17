@@ -17,7 +17,7 @@ import (
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
-func (c *Resolver) ObserveExecution(step workflows.Step) {
+func (c *Resolver) ObserveExecution(step workflows.BoundStep) {
 	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
@@ -90,7 +90,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 }
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
-func (c *Resolver) ObserveOpaqueAction(step workflows.Step, action *definition.ExecAction) {
+func (c *Resolver) ObserveOpaqueAction(step workflows.BoundStep, action *definition.ExecAction) {
 	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return
 	}

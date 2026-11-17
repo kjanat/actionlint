@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
@@ -46,10 +47,10 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	}
 	// Remove the remote bytes: every later consumer must use the verified snapshot.
 	registry.DeleteFile(pin.URL)
-	if _, err := checking.RulesWithPlugins(t.Context(), sources); err != nil {
+	if _, err := assembly.RulesWithPlugins(t.Context(), sources); err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
+	result, err := assembly.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
 		Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\npermissions: {}\n"),
 	}, sources)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
@@ -32,7 +33,7 @@ func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.Analyz
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "entry observation" || result.Diagnostics[0].Reference == nil {
 		t.Fatalf("foreign path borrowed entry identity or entry finding was lost: result=%+v error=%v", result, err)
@@ -57,7 +58,7 @@ func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
 	}
 	retained := &finding.Finding{Path: "ci.yml", Message: "entry"}
 	entryReference := sourcetext.Reference{Document: entry.Revision().Document(), Revision: entry.Revision().Digest()}
-	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*finding.Finding{
+	result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: path}, errors: []*finding.Finding{
 		{Path: filepath.Join(root, "foreign.sh"), Message: "unmarked foreign"},
 		{Path: filepath.Join(root, "another.sh"), Message: "false entry claim", Reference: &entryReference},
 		retained,
@@ -102,7 +103,7 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
+			result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 			if err := result.revalidateCaptures(store, rows, root, nil); err != nil {
 				t.Fatal(err)
 			}
@@ -176,7 +177,7 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 	}
 	retained := &finding.Finding{Message: "entry observation"}
 	accepted = append(accepted, &finding.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}, Message: "reference-less dependency"}, retained)
-	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
+	result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 	err = result.revalidateCaptures(store, rows, root, nil)
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !errors.Is(err, conflict) || !ok || rejection.Count() != 2 || len(result.files[0].errors) != 1 || result.files[0].errors[0] != retained {
@@ -269,7 +270,7 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
+			result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 			err = result.revalidateCaptures(store, rows, root, admissionErr)
 			publishTestDiagnostics(t, &result)
 			if state == "captured" {

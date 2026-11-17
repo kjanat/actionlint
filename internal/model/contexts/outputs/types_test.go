@@ -29,6 +29,22 @@ func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtyp
 	return value
 }
 
+// Diagnostics name an output as declared: a near miss for MixedOutput
+// suggests "MixedOutput". Lookup stays case insensitive.
+func TestOutputTypesKeepDeclaredSpelling(t *testing.T) {
+	t.Parallel()
+	action := outputs.ActionType(actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {MixedOutput: {description: result}}\nruns: {using: node24, main: index.js}\n")))
+	workflow := outputs.WorkflowType(&calls.Metadata{Outputs: calls.Outputs{"mixedoutput": {Name: "MixedOutput"}}})
+	for name, object := range map[string]exprtypes.ObjectType{"action": action, "workflow": workflow} {
+		if _, ok := object.Property("mixedoutput"); !ok {
+			t.Fatalf("%s: output not found by its lowercase ID: %v", name, object)
+		}
+		if got := object.PropertyName("mixedoutput"); got != "MixedOutput" {
+			t.Fatalf("%s: output spelled %q, want MixedOutput", name, got)
+		}
+	}
+}
+
 func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
 	t.Parallel()
 	composite := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {value: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
@@ -63,7 +79,7 @@ func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
 	}
 }
 
-func outputWorkflow(t *testing.T) workflows.Workflow {
+func outputWorkflow(t *testing.T) workflows.BoundWorkflow {
 	t.Helper()
 	const source = `on: push
 jobs:
@@ -89,7 +105,7 @@ jobs:
 	return workflows.Bind("test", source, parsed, false, "").Workflow()
 }
 
-func job(t *testing.T, workflow workflows.Workflow, name string) workflows.Job {
+func job(t *testing.T, workflow workflows.BoundWorkflow, name string) workflows.BoundJob {
 	t.Helper()
 	view, found := workflow.Job(name)
 	if !found {
@@ -104,7 +120,7 @@ func TestJobsAndNeedsShareLoadedOutputDeclarations(t *testing.T) {
 	consumer := job(t, workflow, "consumer")
 	called := job(t, workflow, "call")
 	metadata := &calls.Metadata{Outputs: calls.Outputs{"artifact": {Name: "artifact"}}}
-	loaded := map[workflows.Job]*calls.Metadata{called: metadata}
+	loaded := map[workflows.BoundJob]*calls.Metadata{called: metadata}
 	dependencies := outputs.DirectDependencies(workflow, consumer)
 	for range 2 {
 		if names := slices.Collect(func(yield func(string) bool) {
@@ -148,9 +164,9 @@ func TestUnknownAndEmptyReusableOutputsAreDifferent(t *testing.T) {
 	workflow := outputWorkflow(t)
 	called := job(t, workflow, "call")
 	for _, known := range []bool{false, true} {
-		var loaded map[workflows.Job]*calls.Metadata
+		var loaded map[workflows.BoundJob]*calls.Metadata
 		if known {
-			loaded = map[workflows.Job]*calls.Metadata{called: {}}
+			loaded = map[workflows.BoundJob]*calls.Metadata{called: {}}
 		}
 		object, _ := property(t, outputs.JobType(called, loaded), "outputs").Object()
 		mapped, open := object.Mapped()

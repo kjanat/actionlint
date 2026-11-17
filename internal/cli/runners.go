@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/spf13/pflag"
@@ -44,7 +45,7 @@ func (c checkInvocation) runners() (runnerapi.Options, error) {
 		asOf = c.RunnerAsOf
 	}
 	if asOf != "" {
-		date, err := runnerapi.ParseDate(asOf)
+		date, err := lifecycle.ParseDate(asOf)
 		if err != nil {
 			return options, err
 		}

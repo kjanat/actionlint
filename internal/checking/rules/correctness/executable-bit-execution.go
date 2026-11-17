@@ -72,7 +72,7 @@ func (rule *ExecutableChecker) Errorf(pos *sourcetext.Position, format string, a
 	}
 }
 
-func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflows.Workflow) error {
+func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflows.BoundWorkflow) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit workflow declaration is unavailable")
 	}
@@ -93,7 +93,7 @@ func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflows.Workflow) 
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitJobPre(declaration workflows.Job) error {
+func (rule *ExecutableChecker) VisitJobPre(declaration workflows.BoundJob) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit job declaration is unavailable")
 	}
@@ -126,7 +126,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflows.Job) error {
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitStep(declaration workflows.Step) error {
+func (rule *ExecutableChecker) VisitStep(declaration workflows.BoundStep) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit step declaration is unavailable")
 	}

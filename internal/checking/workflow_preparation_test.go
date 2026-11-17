@@ -18,7 +18,7 @@ func TestWorkflowMetadataIsPreparedBeforeRuleConstruction(t *testing.T) {
 	constructed := false
 	_, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources:    []sourceUnit{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\npermissions: {}\njobs: {call: {uses: ./outer.yml}}\n")}},
+		Sources:    []workspace.InputFile{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\npermissions: {}\njobs: {call: {uses: ./outer.yml}}\n")}},
 		ReadFile: func(path string) ([]byte, error) {
 			switch filepath.Base(path) {
 			case "outer.yml":
@@ -55,7 +55,7 @@ func TestWorkflowPreparationObservesRequestCancellation(t *testing.T) {
 	constructed := false
 	_, err := runTestAnalysis(ctx, analysisRequest{
 		WorkingDir: root,
-		Sources:    []sourceUnit{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
+		Sources:    []workspace.InputFile{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
 		ReadFile: func(path string) ([]byte, error) {
 			if filepath.Base(path) == "callee.yml" {
 				cancel()
@@ -81,7 +81,7 @@ func TestWorkflowPreparationReportsInvalidDependencies(t *testing.T) {
 			root := t.TempDir()
 			result, err := runTestAnalysis(t.Context(), analysisRequest{
 				WorkingDir: root,
-				Sources:    []sourceUnit{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
+				Sources:    []workspace.InputFile{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
 				ReadFile: func(path string) ([]byte, error) {
 					if filepath.Base(path) == "callee.yml" {
 						if missing {
@@ -115,7 +115,7 @@ func TestWorkflowPreparationPreservesOperationalFailures(t *testing.T) {
 			constructed := false
 			result, err := runTestAnalysis(t.Context(), analysisRequest{
 				WorkingDir: root,
-				Sources:    []sourceUnit{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
+				Sources:    []workspace.InputFile{{Path: "caller.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {call: {uses: ./callee.yml}}\n")}},
 				ReadFile: func(path string) ([]byte, error) {
 					if filepath.Base(path) == "callee.yml" {
 						return nil, &os.PathError{Op: "read", Path: path, Err: cause}

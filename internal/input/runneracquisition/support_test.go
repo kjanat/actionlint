@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
@@ -28,9 +29,9 @@ func (p *supportProvider) ResolveRunners(_ context.Context, r runnerapi.Request)
 	return response, nil
 }
 
-func date(t *testing.T, s string) runnerapi.Date {
+func date(t *testing.T, s string) lifecycle.Date {
 	t.Helper()
-	d, err := runnerapi.ParseDate(s)
+	d, err := lifecycle.ParseDate(s)
 	if err != nil {
 		t.Fatal(err)
 	}

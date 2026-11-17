@@ -46,13 +46,13 @@ type workflowCallCheck struct {
 // WorkflowCallChecks validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallChecks(workflow workflows.Workflow, resolvedWorkflows *reusableworkflows.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
+func WorkflowCallChecks(workflow workflows.BoundWorkflow, resolvedWorkflows *reusableworkflows.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {
 		defaults = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
 	}
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			check := workflowCallCheck{
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
 				cache: resolvedWorkflows, defaultPermissions: defaults, log: log,
@@ -69,7 +69,7 @@ func (rule *workflowCallCheck) debug(format string, args ...any) {
 	}
 }
 
-func (rule *workflowCallCheck) checkJob(n workflows.Job) {
+func (rule *workflowCallCheck) checkJob(n workflows.BoundJob) {
 	if n.WorkflowCall == nil {
 		return
 	}

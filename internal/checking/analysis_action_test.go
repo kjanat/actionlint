@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 const standaloneComposite = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
@@ -17,7 +18,7 @@ func TestStandaloneActionCustomRules(t *testing.T) {
 			custom := workflowvisit.NewBase(name, "custom rule")
 			request := analysisRequest{
 				WorkingDir: t.TempDir(),
-				Sources: []sourceUnit{
+				Sources: []workspace.InputFile{
 					{Path: "action.yml", Content: []byte(standaloneComposite)},
 					{Path: "ci.yml", Content: []byte(commandGoodWorkflow)},
 				},

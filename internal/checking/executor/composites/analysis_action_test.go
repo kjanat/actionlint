@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
@@ -20,14 +21,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Composition, error) {
+func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*declarations.CapturedSnapshots) (Composition, error) {
 	t.Helper()
 	content, available := metadata.OriginalSource()
 	if !available {
 		t.Fatal("action fixture has no original source")
 	}
 	registry := options.SourceSnapshots
-	var fixture *capturedSnapshots
+	var fixture *declarations.CapturedSnapshots
 	if len(fixtures) != 0 {
 		fixture = fixtures[0]
 	}

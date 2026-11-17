@@ -25,7 +25,7 @@ var MatrixRule = &define.Rule{
 // not load configuration or depend on earlier jobs.
 func MatrixChecks(checkMixedTypeFilters bool) define.Checks {
 	return define.Checks{
-		Job: func(job workflows.Job) []reporting.StepFinding {
+		Job: func(job workflows.BoundJob) []reporting.StepFinding {
 			return reporting.FromDiagnostics(matrixcheck.Check(workflows.MatrixResolution(job.Strategy), checkMixedTypeFilters))
 		},
 	}
