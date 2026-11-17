@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -84,28 +83,14 @@ func Declarations() []rule.Declaration {
 	return out
 }
 
-// Registrations returns check implementations in rule-declaration order.
-func Registrations(rules configuration.RuleSet) []define.Registration {
-	executable := make(map[string]*define.Rule)
+// Find returns the native rule named name.
+func Find(name string) (*define.Rule, bool) {
 	for _, native := range All {
-		if !native.Executable() {
-			continue
+		if native.Name == name {
+			return native, true
 		}
-		if _, found := rules.FindRule(native.Name); !found {
-			panic("check implementation " + native.Name + " has no rule declaration")
-		}
-		executable[native.Name] = native
 	}
-	catalog := rules.Rules()
-	out := make([]define.Registration, len(catalog))
-	for i, metadata := range catalog {
-		if native, found := executable[metadata.Name]; found {
-			out[i] = native.Registration(metadata)
-			continue
-		}
-		out[i] = define.Registration{Declaration: metadata}
-	}
-	return out
+	return nil, false
 }
 
 // HasRule reports whether a check implementation uses this registration name.

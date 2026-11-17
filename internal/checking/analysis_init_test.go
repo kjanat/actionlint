@@ -171,7 +171,7 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 				}
 				var reads atomic.Int32
 				request := analysisRequest{
-					Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget,
+					Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget, Checks: testChecks(t, nil, nil),
 					SourceOverlays: []SourceOverlay{{Path: "first.yml"}, {Path: "later.yml"}},
 					ReadFile:       func(string) ([]byte, error) { reads.Add(1); return nil, nil },
 				}

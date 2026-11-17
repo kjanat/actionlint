@@ -3,14 +3,11 @@ package assembly
 import (
 	"context"
 	"errors"
-	"io"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -26,14 +23,11 @@ func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition plugi
 // RulesWithPlugins lists managed document replacements under their existing tool
 // rule. Explicit standalone components keep their independently declared rule.
 func RulesWithPlugins(ctx context.Context, sources pluginselection.Sources) (result []rule.Descriptor, err error) {
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
+	plugins, _, err := loadDeclarations(ctx, sources)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	if _, err := ConfigureManagedPlugins(plugins, checking.Options{Tools: registry.Registrations(nil), Analyzers: plugins.Registrations()}); err != nil {
-		return nil, err
-	}
 	var extensions []rule.Descriptor
 	for _, local := range plugins.Providers {
 		if local.Files.Manifest.Role == toolmanifest.RoleDocument {

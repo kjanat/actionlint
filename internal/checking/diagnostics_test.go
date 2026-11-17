@@ -20,7 +20,7 @@ func (a detailedAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "detailed-check", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a detailedAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a detailedAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return a.findings, nil
 }
 
@@ -33,7 +33,7 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 	third := base
 	third.End = sourcetext.Position{Line: 2, Column: 1}
 	input := []results.Diagnostic{base, second, third}
-	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}

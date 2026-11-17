@@ -38,7 +38,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
 		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcetext.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
 	}
-	if findings, err := guest.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
+	if findings, err := guest.AnalyzeDocument(t.Context(), input); err != nil || len(findings) != 0 {
 		t.Fatalf("guest graph traversal: findings=%v error=%v", findings, err)
 	}
 	want := make([]string, 0, len(calls)+len(scripts)+1)
@@ -55,14 +55,14 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	}
 	logs = nil
 	input.SelectedScripts, input.Invoked = []invocation.ID{}, nil
-	if _, err := guest.CheckDocument(t.Context(), input); err != nil {
+	if _, err := guest.AnalyzeDocument(t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
 	if logs[len(logs)-1] != fmt.Sprintf("graph:%s:257:257:0", graph.RootID()) {
 		t.Fatal("some(empty) selection changed at guest boundary")
 	}
 	logs = nil
-	if _, err := guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
+	if _, err := guest.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
 		t.Fatalf("graph leaked into following call: %v", err)
 	}
 	if len(logs) != 0 {

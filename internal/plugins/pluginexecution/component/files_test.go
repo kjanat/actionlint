@@ -35,7 +35,7 @@ func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
 			plugin := loadPlugin(t, "misbehave", component.Options{})
 			for call := range 2 {
 				files := &countedFiles{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte("echo hello")}}, closeErr: tc.err}
-				_, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{
+				_, err := plugin.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{
 					Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 					Files: []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 				})
@@ -71,7 +71,7 @@ func TestCallPreservesHostCloseFailureAfterCancellation(t *testing.T) {
 			}
 		},
 	}
-	_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{
+	_, err := plugin.AnalyzeDocument(ctx, checkinputs.AnalyzerInput{
 		Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 		Files: []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 	})
@@ -136,7 +136,7 @@ func TestFileGrantsAreReadOnlyAndInvocationScoped(t *testing.T) {
 		if tc.grant {
 			input.Files = []checkinputs.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte(tc.content)}}}}}
 		}
-		_, err := plugin.CheckDocument(t.Context(), input)
+		_, err := plugin.AnalyzeDocument(t.Context(), input)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("%s grant=%v: %v", tc.operation, tc.grant, err)
 		}
@@ -164,7 +164,7 @@ func TestFileGrantPreservesSymlinkParentTraversal(t *testing.T) {
 	}
 	defer files.Close()
 	guest := loadPlugin(t, "misbehave", component.Options{})
-	_, err = guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{
+	_, err = guest.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{
 		Content: "/workspace/link/../helper.sh", Options: json.RawMessage("read-file"),
 		Files: []checkinputs.FileSystem{{Path: "/workspace", FS: files}},
 	})

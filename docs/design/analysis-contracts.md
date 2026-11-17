@@ -65,12 +65,12 @@ configuration once for an occurrence. Execution and publication use that prepare
 decision. Two calls to the same remote action can therefore retain different
 settings. The execution environment captures the assessment date once per check.
 
-## Shared checker inputs
+## Shared analyzer inputs
 
-`internal/model/checkinputs.Checker` has two operations: `Descriptor` declares the
-check and its required inputs; `CheckDocument` receives one captured source and
+`internal/model/checkinputs.Analyzer` has two operations: `Descriptor` declares the
+check and its required inputs; `AnalyzeDocument` receives one captured source and
 returns findings together with an optional error. Implementations finish child
-work before returning and honor cancellation. The host can call a checker
+work before returning and honor cancellation. The host can call an analyzer
 concurrently for different sources.
 
 Inputs can include extracted scripts, mappings, dependencies and an invocation

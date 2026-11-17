@@ -1,8 +1,6 @@
 package checking
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -33,18 +31,18 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		}
 	}
 	for _, registration := range options.Analyzers {
-		integrator, ok := registration.Checker.(checkinputs.ToolIntegrator)
+		integrator, ok := registration.Analyzer.(checkinputs.ToolIntegrator)
 		if !ok || integrator.ToolIntegration() == nil {
 			remaining = append(remaining, registration)
 			continue
 		}
 		descriptor := integrator.ToolIntegration()
 		if len(registration.Options) != 0 {
-			if err := executor.ValidateOptions(registration.Checker.Descriptor().OptionsSchema, registration.Options); err != nil {
+			if err := executor.ValidateOptions(registration.Analyzer.Descriptor().OptionsSchema, registration.Options); err != nil {
 				return options, fmt.Errorf("analyzer %q options: %w", descriptor.Tool, err)
 			}
 		}
-		if descriptor.Tool == "" || registration.Checker.Descriptor().Name != descriptor.Tool {
+		if descriptor.Tool == "" || registration.Analyzer.Descriptor().Name != descriptor.Tool {
 			return options, errors.New("tool integration identifier must match analyzer rule identity")
 		}
 		if seen[descriptor.Tool] {
@@ -59,8 +57,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			if tool.WithAnalyzer == nil {
 				return options, fmt.Errorf("tool %q cannot use a document analyzer", descriptor.Tool)
 			}
-			bound := boundToolAnalyzer{Checker: registration.Checker, integrator: integrator, options: slices.Clone(registration.Options)}
-			replacement, err := tool.WithAnalyzer(bound)
+			replacement, err := tool.WithAnalyzer(checkinputs.Registration{Analyzer: registration.Analyzer, Options: slices.Clone(registration.Options)})
 			if err != nil {
 				return options, err
 			}
@@ -76,33 +73,9 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 	return options, nil
 }
 
-// boundToolAnalyzer keeps caller options opaque until guest negotiation.
-type boundToolAnalyzer struct {
-	checkinputs.Checker
-	integrator checkinputs.ToolIntegrator
-	options    json.RawMessage
-}
-
-func (b boundToolAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
-	return b.integrator.ToolIntegration()
-}
-
-func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*checkinputs.ToolNegotiation, error) {
-	effective := configured
-	if len(b.options) != 0 {
-		effective = b.options
-	}
-	if len(effective) != 0 {
-		if err := executor.ValidateOptions(b.Checker.Descriptor().OptionsSchema, effective); err != nil {
-			return nil, fmt.Errorf("analyzer %q options: %w", b.Checker.Descriptor().Name, err)
-		}
-	}
-	return b.integrator.NegotiateTool(ctx, config, slices.Clone(effective))
-}
-
 func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
 	for _, registration := range registrations {
-		if checkinputs.IsNilChecker(registration.Checker) {
+		if checkinputs.IsNilAnalyzer(registration.Analyzer) {
 			return errors.New("nil analyzer registration")
 		}
 	}

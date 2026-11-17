@@ -3,7 +3,6 @@ package lsp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
@@ -11,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
@@ -25,7 +23,7 @@ import (
 // because in-flight analyses may use an earlier version.
 type editorPluginHost struct {
 	options checking.Options
-	plugins *pluginexecution.Loaded
+	session *assembly.Session
 	engines *editorEngines
 	sources pluginselection.Sources
 }
@@ -39,55 +37,27 @@ func newEditorPluginHost(ctx context.Context, options checking.Options, paths []
 }
 
 func newEditorSources(ctx context.Context, options checking.Options, sources pluginselection.Sources) (*editorPluginHost, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	log := options.LogWriter
-	if log == nil {
-		log = io.Discard
-	}
-	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
-		return nil, err
-	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	session, err := assembly.Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
 	sources.Artifacts = nil
-	options, err = assembly.ConfigurePlugins(plugins, ctx, options)
-	if err != nil {
-		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
-	}
-	options, err = assembly.ConfigureManagedPlugins(plugins, options)
-	if err != nil {
-		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
+	options = session.Options
+	log := options.LogWriter
+	if log == nil {
+		log = io.Discard
 	}
 	engines := &editorEngines{
 		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]scriptengine.Backend),
 		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
 	options.LoadScriptEngine = engines.load
-	return &editorPluginHost{options: options, plugins: plugins, engines: engines, sources: sources}, nil
-}
-
-func checkEditorPluginStatuses(ctx context.Context, sources pluginselection.Sources, log io.Writer) error {
-	if sources.Releases == nil {
-		return nil
-	}
-	if log == nil {
-		log = io.Discard
-	}
-	if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) {
-		_, _ = fmt.Fprintln(log, "warning:", message)
-	}, Acquisition: sources.Acquisition}); err != nil {
-		return &pluginexecution.LoadError{Err: err}
-	}
-	return nil
+	return &editorPluginHost{options: options, session: session, engines: engines, sources: sources}, nil
 }
 
 // Serve waits for every analysis before this releases their shared resources.
 func (s *editorPluginHost) close(ctx context.Context) error {
-	return errors.Join(s.plugins.Close(ctx), s.engines.close(ctx))
+	return errors.Join(s.session.Close(ctx), s.engines.close(ctx))
 }
 
 type editorEngineIdentity struct {

@@ -16,13 +16,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CheckSelection holds the workflow rules and script checkers that
+// CheckSelection holds the workflow rules and script analyzers that
 // configuration enables, and the checks that cannot run because their
 // required inputs are unknown.
 type CheckSelection struct {
 	Unavailable []UnavailableCheck
 	Rules       []workflowvisit.Rule
-	Scripts     []checkinputs.Checker
+	Scripts     []checkinputs.Analyzer
 	ScriptInfo  []rule.Descriptor
 }
 
@@ -31,43 +31,50 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
+// CreateRules prepares and constructs the native rules that configuration
+// enables, in presentation order. For an action document it selects only the
+// rules that support actions. Every native rule that executes must be declared
+// in ruleSet.
 func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (CheckSelection, error) {
 	inputs.Rules = ruleSet
 	var selected CheckSelection
-	for _, descriptor := range registration.Registrations(ruleSet) {
-		if descriptor.Build == nil && descriptor.Script == nil || action && !descriptor.SupportsActions {
+	for _, native := range registration.All {
+		if !native.Executable() || action && !native.SupportsActions {
 			continue
+		}
+		if _, declared := ruleSet.FindRule(native.Name); !declared {
+			return selected, fmt.Errorf("rule %s is not declared", native.Name)
 		}
 		prepared := inputs
-		prepared.Config = inputs.Bindings.Rule(descriptor.Name).Config()
-		if descriptor.Enabled != nil && !descriptor.Enabled(prepared) {
+		prepared.Config = inputs.Bindings.Rule(native.Name).Config()
+		if native.Enabled != nil && !native.Enabled(prepared) {
 			continue
 		}
-		if descriptor.Prepare != nil {
-			outcome, err := descriptor.Prepare(prepared)
+		if native.Prepare != nil {
+			outcome, err := native.Prepare(prepared)
 			if err != nil {
-				return selected, fmt.Errorf("prepare %s inputs: %w", descriptor.Name, err)
+				return selected, fmt.Errorf("prepare %s inputs: %w", native.Name, err)
 			}
 			switch outcome := outcome.(type) {
 			case define.PreparedInputs:
 				prepared = outcome.RuleInputs
 			case define.UnavailableInputs:
-				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: descriptor.Name, Reason: outcome.Reason})
+				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: native.Name, Reason: outcome.Reason})
 				continue
 			default:
-				return selected, fmt.Errorf("prepare %s inputs: unsupported preparation result %T", descriptor.Name, outcome)
+				return selected, fmt.Errorf("prepare %s inputs: unsupported preparation result %T", native.Name, outcome)
 			}
 		}
-		if descriptor.Build != nil {
-			r := descriptor.Build(prepared)
+		if native.Visits() {
+			r := native.NewVisitor(prepared)
 			if consumer, ok := r.(interface{ SetRepository(repository.Snapshot) }); ok {
 				consumer.SetRepository(prepared.Repository)
 			}
 			selected.Rules = append(selected.Rules, r)
 		}
-		if descriptor.Script != nil {
-			selected.Scripts = append(selected.Scripts, descriptor.Script)
-			selected.ScriptInfo = append(selected.ScriptInfo, descriptor.Descriptor)
+		if analyzer, ok := native.ScriptAnalyzer(); ok {
+			selected.Scripts = append(selected.Scripts, analyzer)
+			selected.ScriptInfo = append(selected.ScriptInfo, native.ResolvedDeclaration().Descriptor)
 		}
 	}
 	return selected, nil
@@ -104,11 +111,13 @@ func Describe(ruleSet configuration.RuleSet, rules []workflowvisit.Rule) []rule.
 	return descriptions
 }
 
-func Templates(ruleSet configuration.RuleSet) []rule.Descriptor {
+// Templates describes the declaration-only native rules, whose findings
+// other components report.
+func Templates() []rule.Descriptor {
 	var rules []rule.Descriptor
-	for _, descriptor := range registration.Registrations(ruleSet) {
-		if descriptor.Provider == "actionlint" && descriptor.Build == nil && descriptor.Script == nil {
-			rules = append(rules, descriptor.Descriptor.Clone())
+	for _, native := range registration.All {
+		if declaration := native.ResolvedDeclaration(); !native.Executable() && declaration.Provider == "actionlint" {
+			rules = append(rules, declaration.Descriptor)
 		}
 	}
 	return rules

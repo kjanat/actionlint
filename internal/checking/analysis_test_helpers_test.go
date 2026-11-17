@@ -9,8 +9,10 @@ import (
 	"runtime"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -72,12 +74,11 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
-	registrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
-	ruleSet, err := ConfigurationRules().WithRegisteredRules(registrations...)
-	if err != nil {
-		tb.Fatal(err)
+	checks := request.Checks
+	if checks == nil {
+		checks = testChecks(tb, nil, nil)
 	}
-	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, rules: ruleSet, ruleRegistrations: registrations}
+	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), checks: checks, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated}
 	session.ignoreSelectors = request.IgnoreSelectors
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(tb)
@@ -145,9 +146,27 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 	return sources
 }
 
-// runTestAnalysis supplies the process pool that production callers must own.
-// It invokes application analysis without input selection or rendering.
+// testChecks registers analyzers and tools as Check registers them.
+func testChecks(tb testing.TB, analyzers []checkinputs.Registration, tools []contract.Registration) *registeredChecks {
+	tb.Helper()
+	checks, err := registerChecks(analyzers, tools)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return checks
+}
+
+// runTestAnalysis supplies the process pool and the registered checks that
+// production callers must own. A request without checks registers none. It
+// invokes application analysis without input selection or rendering.
 func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
+	if request.Checks == nil {
+		checks, err := registerChecks(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		request.Checks = checks
+	}
 	if request.Processes == nil {
 		request.Processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 		defer request.Processes.Wait()

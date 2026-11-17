@@ -20,7 +20,7 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 	}
 	options := checking.Options{
 		WorkingDir:        root,
-		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
+		Analyzers:         []checkinputs.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})

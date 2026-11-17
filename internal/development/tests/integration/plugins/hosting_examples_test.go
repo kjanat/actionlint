@@ -27,7 +27,7 @@ func Example_componentLoading() {
 	fmt.Println("loaded", component.Descriptor().Name, "with", component.Limits())
 	result, err := checking.Analyze(ctx,
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)

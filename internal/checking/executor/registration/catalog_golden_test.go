@@ -29,33 +29,30 @@ type catalogEntry struct {
 func catalogSnapshot(t *testing.T) []catalogEntry {
 	t.Helper()
 	declarations := Declarations()
-	rules, err := configuration.NewRuleSet(declarations)
-	if err != nil {
+	if _, err := configuration.NewRuleSet(declarations); err != nil {
 		t.Fatal(err)
 	}
-	registrations := Registrations(rules)
-	if len(registrations) != len(declarations) {
-		t.Fatalf("got %d registrations for %d declarations", len(registrations), len(declarations))
+	if len(All) != len(declarations) {
+		t.Fatalf("got %d native rules for %d declarations", len(All), len(declarations))
 	}
 	out := make([]catalogEntry, len(declarations))
 	for i, declaration := range declarations {
-		registration := registrations[i]
+		native := All[i]
 		entry := catalogEntry{
 			Descriptor: declaration.Descriptor, SupportsActions: declaration.SupportsActions,
 			Scope: uint8(declaration.Scope), Execution: "none",
-			Prepare: registration.Prepare != nil, Enabled: registration.Enabled != nil,
+			Prepare: native.Prepare != nil, Enabled: native.Enabled != nil,
 		}
 		if declaration.Options != nil {
 			entry.Options = fmt.Sprintf("%T", declaration.Options())
 		}
-		switch {
-		case registration.Build != nil:
+		if _, analyzes := native.ScriptAnalyzer(); native.Visits() {
 			entry.Execution = "build"
-		case registration.Script != nil:
+		} else if analyzes {
 			entry.Execution = "script"
 		}
-		if registration.Name != declaration.Name {
-			t.Fatalf("registration %d is %q, want %q", i, registration.Name, declaration.Name)
+		if native.Name != declaration.Name {
+			t.Fatalf("native rule %d is %q, want %q", i, native.Name, declaration.Name)
 		}
 		out[i] = entry
 	}

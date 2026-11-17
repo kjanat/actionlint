@@ -1,17 +1,14 @@
-package selection
+package workflowvisit
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // VisitWithOrigin annotates findings produced by a synchronous pass visit.
 // Asynchronous producers snapshot their own origins before scheduling work.
-func VisitWithOrigin(pass workflowvisit.Pass, origin *finding.IgnoreOrigin, hasIgnores bool, visit func() error) error {
-	rule, ok := pass.(workflowvisit.Rule)
+func VisitWithOrigin(pass Pass, origin *finding.IgnoreOrigin, hasIgnores bool, visit func() error) error {
+	rule, ok := pass.(Rule)
 	if !ok {
 		return visit()
 	}
@@ -22,7 +19,7 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *finding.IgnoreOrigin, hasI
 		}
 	})
 	// Metadata can have file-specific ignores even when its caller has none.
-	_, actionRule := rule.(workflowvisit.MetadataParticipant)
+	_, actionRule := rule.(MetadataParticipant)
 	if !actionRule && !hasIgnores {
 		return visit()
 	}
@@ -30,7 +27,6 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *finding.IgnoreOrigin, hasI
 		participant.SetIgnoreOrigin(origin)
 		return visit()
 	}
-
 	start := rule.FindingCount()
 	err := visit()
 	rule.AnnotateSince(start, func(item *finding.Finding) {
@@ -54,4 +50,5 @@ type originParticipant interface {
 	SetIgnoreOrigin(*finding.IgnoreOrigin)
 }
 
+// HasConfiguredIgnores reports whether cfg configures ignore patterns.
 func HasConfiguredIgnores(cfg *configuration.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

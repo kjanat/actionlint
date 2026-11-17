@@ -83,7 +83,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings, err := checker.CheckDocument(t.Context(), input)
+			findings, err := checker.AnalyzeDocument(t.Context(), input)
 			if err != nil || len(findings) != 1 {
 				t.Fatal(findings, err)
 			}
@@ -124,7 +124,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := checker.CheckDocument(t.Context(), input)
+	findings, err := checker.AnalyzeDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal(findings, err)
 	}
@@ -137,7 +137,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if findings, err := checker.CheckDocument(t.Context(), input); err == nil || len(findings) != 0 {
+	if findings, err := checker.AnalyzeDocument(t.Context(), input); err == nil || len(findings) != 0 {
 		t.Fatal("undeclared document fixes accepted", findings, err)
 	}
 }
@@ -161,7 +161,7 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings, err := checker.CheckDocument(t.Context(), input)
+			findings, err := checker.AnalyzeDocument(t.Context(), input)
 			if err != nil || len(findings) != 1 || findings[0].Start != (sourcetext.Position{Line: 2, Column: 2}) {
 				t.Fatal(findings, err)
 			}
@@ -185,7 +185,7 @@ func TestDocumentProcessFixApplicability(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := checker.CheckDocument(t.Context(), input)
+		findings, err := checker.AnalyzeDocument(t.Context(), input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -209,13 +209,13 @@ func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 	}
 	unselected := input
 	unselected.Kind = "action"
-	if _, err := checker.CheckDocument(t.Context(), unselected); err != nil || calls != 0 {
+	if _, err := checker.AnalyzeDocument(t.Context(), unselected); err != nil || calls != 0 {
 		t.Fatal("unselected document ran", err)
 	}
 	if err := os.WriteFile(input.Path, []byte("changed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checker.CheckDocument(t.Context(), input); err == nil || calls != 0 {
+	if _, err := checker.AnalyzeDocument(t.Context(), input); err == nil || calls != 0 {
 		t.Fatal("stale disk content executed", err)
 	}
 	manifest.Capabilities.Resources = nil
@@ -223,7 +223,7 @@ func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checker.CheckDocument(t.Context(), input); err != nil || calls != 1 {
+	if _, err := checker.AnalyzeDocument(t.Context(), input); err != nil || calls != 1 {
 		t.Fatal("stdin-only capture rejected", err)
 	}
 }
@@ -246,7 +246,7 @@ func TestDocumentProcessRejectsChangedDiskAfterExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := checker.CheckDocument(t.Context(), input)
+	findings, err := checker.AnalyzeDocument(t.Context(), input)
 	if err == nil || !strings.Contains(err.Error(), "on-disk source to match captured content") || len(findings) != 0 || calls != 1 {
 		t.Fatalf("changed disk admitted stale diagnostics: %+v, %v, calls=%d", findings, err, calls)
 	}

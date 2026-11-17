@@ -16,8 +16,8 @@ func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Regis
 		findings, err := executor.Run(ctx, input, registrations)
 		analysisErr = err
 		for _, registration := range registrations {
-			if !checkinputs.IsNilChecker(registration.Checker) {
-				*usedRules = append(*usedRules, registration.Checker.Descriptor().Descriptor.Clone())
+			if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+				*usedRules = append(*usedRules, registration.Analyzer.Descriptor().Descriptor.Clone())
 			}
 		}
 		for _, item := range findings {

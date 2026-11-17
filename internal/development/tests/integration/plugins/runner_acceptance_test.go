@@ -73,7 +73,7 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 	observer := &runtimeObserver{}
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-		Analyzers: []checkinputs.Registration{{Checker: observer}},
+		Analyzers: []checkinputs.Registration{{Analyzer: observer}},
 	}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}})
 	if err == nil || !strings.Contains(err.Error(), "invalid queue snapshot") {
 		t.Fatalf("missing operational error: %v", err)

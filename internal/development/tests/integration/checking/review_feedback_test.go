@@ -21,7 +21,7 @@ func (a namedFindingAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: string(a), Category: "correctness"}
 }
 
-func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (namedFindingAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Message: "same observation", Start: sourcetext.Position{Line: 6, Column: 14}}}, nil
 }
 
@@ -30,7 +30,7 @@ func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
 	result, err := checking.Analyze(t.Context(),
 
 		checking.Options{Analyzers: []checkinputs.Registration{
-			{Checker: namedFindingAnalyzer("first")}, {Checker: namedFindingAnalyzer("second")},
+			{Analyzer: namedFindingAnalyzer("first")}, {Analyzer: namedFindingAnalyzer("second")},
 		}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 	}
 	options := checking.Options{
 		WorkingDir:        root,
-		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
+		Analyzers:         []checkinputs.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})

@@ -13,7 +13,10 @@ import (
 func TestDeprecatedCommandsCheckerUsesItsRuleDeclaration(t *testing.T) {
 	t.Parallel()
 	declaration := correctness.DeprecatedCommandsRule.ResolvedDeclaration()
-	checker := correctness.DeprecatedCommandsRule.Registration(rule.Declaration{}).Script
+	checker, ok := correctness.DeprecatedCommandsRule.ScriptAnalyzer()
+	if !ok {
+		t.Fatal("deprecated-commands runs no script analyzer")
+	}
 	descriptor := checker.Descriptor()
 	if !reflect.DeepEqual(descriptor.Descriptor, declaration.Descriptor) ||
 		descriptor.Scope != declaration.Scope || descriptor.SupportsActions != declaration.SupportsActions {
@@ -23,7 +26,7 @@ func TestDeprecatedCommandsCheckerUsesItsRuleDeclaration(t *testing.T) {
 	if checker.Descriptor().RequiredInputs[0] != rule.Scripts {
 		t.Fatal("caller changed the checker's input requirements")
 	}
-	registration := checkinputs.Registration{Checker: checker}
+	registration := checkinputs.Registration{Analyzer: checker}
 	if _, err := executor.Prepare(registration, []rule.InputKind{rule.Scripts}); err == nil {
 		t.Fatal("prepared deprecated-command checking without invoked-script facts")
 	}

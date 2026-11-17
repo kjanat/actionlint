@@ -136,8 +136,8 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var definitions []commands.Definition
 	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			definitions = append(definitions, registration.Checker.Descriptor().InvocationDefinitions...)
+		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+			definitions = append(definitions, registration.Analyzer.Descriptor().InvocationDefinitions...)
 		}
 	}
 	for _, registration := range options.Tools {
@@ -166,13 +166,17 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
 		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
-			Checker: security.NewResolvedReferenceCheck(),
+			Analyzer: security.NewResolvedReferenceCheck(),
 			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err
 			},
 		})
+	}
+	checks, err := registerChecks(options.Analyzers, options.Tools)
+	if err != nil {
+		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -231,7 +235,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
+	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Checks: checks, ReadFile: options.ReadFile, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
 	request.NoIgnore = options.NoIgnore
 	request.RemoteActions = options.RemoteActions
@@ -279,29 +283,16 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 		}
 		return result, err
 	}
-	var names []string
-	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			names = append(names, registration.Checker.Descriptor().Name)
-		}
-	}
-	for _, registration := range options.Tools {
-		names = append(names, registration.Name)
-	}
 	selectionLog := func(args ...any) {
 		if options.LogSelection && request.LogLevel >= LogLevelVerbose {
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	rules, err := ConfigurationRules().WithRegisteredRules(ConfigurationRegistrations(options.Analyzers, options.Tools)...)
-	if err != nil {
-		return nil, err
-	}
 	session, err := workspace.New(ctx, workspace.Options{
-		Rules:      rules,
+		Rules:      checks.rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.sharedConfigSources(), OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
+		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: checks.names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})
 	if err != nil {

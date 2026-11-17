@@ -269,6 +269,6 @@ func (batch Batch) ForTool(name string) (Batch, error) {
 	return view, nil
 }
 
-type Analyzer interface {
+type BatchAnalyzer interface {
 	AnalyzeScripts(context.Context, Batch) ([]*finding.Finding, error)
 }

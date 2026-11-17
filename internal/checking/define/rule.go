@@ -129,57 +129,50 @@ func sentence(text string) string {
 	return text + "."
 }
 
-// NewVisitor constructs the traversal for a rule that executes through Checks
-// or Walker. It does not run Prepare or consult Enabled.
+// Visits reports whether the rule executes as a workflow traversal, through
+// Checks or Walker.
+func (r *Rule) Visits() bool { return r.Checks != nil || r.Walker != nil }
+
+// NewVisitor constructs the traversal of a rule that [Rule.Visits]. It does
+// not run Prepare or consult Enabled, and returns nil for any other rule.
 func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
-	return r.Registration(rule.Declaration{}).Build(in)
-}
-
-// Registration pairs a rule declaration with its constructor and execution conditions.
-type Registration struct {
-	rule.Declaration
-	// Prepare distinguishes usable inputs, unavailable knowledge and operation
-	// failures before construction. Nil means no preparation is needed.
-	Prepare func(RuleInputs) (InputPreparation, error)
-	Build   func(RuleInputs) workflowvisit.Rule
-	Script  checkinputs.Checker
-	Enabled func(RuleInputs) bool
-}
-
-// Registration binds the rule's execution to its configuration metadata.
-// A declaration-only rule yields a registration with no Build or Script.
-func (r *Rule) Registration(metadata rule.Declaration) Registration {
-	registration := Registration{Declaration: metadata, Prepare: r.Prepare, Enabled: r.Enabled}
 	switch {
 	case r.Checks != nil:
-		registration.Build = func(c RuleInputs) workflowvisit.Rule {
-			return NewChecksVisitor(c.Rules, r.Name, r.Checks(c))
-		}
+		return NewChecksVisitor(in.Rules, r.Name, r.Checks(in))
 	case r.Walker != nil:
-		registration.Build = func(c RuleInputs) workflowvisit.Rule {
-			return r.Walker(c, r.Base())
-		}
-	case r.Script != nil:
-		registration.Script = scriptChecker{declaration: r.ResolvedDeclaration(), check: r.Script}
+		return r.Walker(in, r.Base())
+	default:
+		return nil
 	}
-	return registration
 }
 
-// scriptChecker exposes a rule's script analysis through the analyzer contract.
-type scriptChecker struct {
+// ScriptAnalyzer returns the document analyzer of a rule that sets Script.
+// It reports false for any other rule.
+func (r *Rule) ScriptAnalyzer() (checkinputs.Analyzer, bool) {
+	if r.Script == nil {
+		return nil, false
+	}
+	return scriptAnalyzer{declaration: r.ResolvedDeclaration(), analyze: r.Script}, true
+}
+
+// scriptAnalyzer runs a rule's Script as a document analyzer and attaches the
+// rule's name to findings without one. Rule cannot implement the analyzer
+// contract itself: its declaration's Descriptor field would collide with the
+// contract's Descriptor method.
+type scriptAnalyzer struct {
 	declaration rule.Declaration
-	check       ScriptCheck
+	analyze     ScriptCheck
 }
 
-func (c scriptChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Declaration: c.declaration.Clone()}
+func (a scriptAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Declaration: a.declaration.Clone()}
 }
 
-func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	diagnostics, err := c.check(ctx, input)
+func (a scriptAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	diagnostics, err := a.analyze(ctx, input)
 	for i := range diagnostics {
 		if diagnostics[i].Rule == "" {
-			diagnostics[i].Rule = c.declaration.Name
+			diagnostics[i].Rule = a.declaration.Name
 		}
 	}
 	return diagnostics, err

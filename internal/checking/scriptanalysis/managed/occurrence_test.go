@@ -25,7 +25,7 @@ import (
 
 type occurrenceGuest struct{ documentGuest }
 
-func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *occurrenceGuest) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	return nil, nil
 }
@@ -36,7 +36,7 @@ func (*occurrenceObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (observer *occurrenceObserver) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	observer.input = input
 	return nil, nil
 }
@@ -80,7 +80,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 		}
 	}
 	guest, observer := &occurrenceGuest{}, &occurrenceObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, checkrequest.Request{Kind: checkrequest.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func (observer *actionInputObserver) Analyze(_ context.Context, batch scriptanal
 func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 	t.Parallel()
 	guest, observer := &occurrenceGuest{}, &actionInputObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,11 +199,11 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	guest, observer := &occurrenceGuest{}, &occurrenceObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

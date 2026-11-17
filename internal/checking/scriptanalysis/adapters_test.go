@@ -35,7 +35,7 @@ func (a sourceFactAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a sourceFactAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -98,12 +98,12 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 					actionPath = ""
 				}
 				content := snapshot.Content()
-				for name, adapter := range map[string]func(*testing.T) scriptanalysis.Analyzer{
-					"fact": func(t *testing.T) scriptanalysis.Analyzer {
+				for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
+					"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 						t.Helper()
 						return scriptanalysis.FactAnalyzer{Analyzer: sourceFactAnalyzer{t: t, path: factPath}}
 					},
-					"native": func(t *testing.T) scriptanalysis.Analyzer {
+					"native": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 						t.Helper()
 						return contract.Tool{Runner: sourceTool{t: t, path: path, actionPath: actionPath, content: content}}
 					},
@@ -159,7 +159,7 @@ func (a partialFactAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "test"}
 }
 
-func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a partialFactAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -202,12 +202,12 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	owner := &finding.Owner{Job: "test", Step: &position}
 	origin := &finding.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
-	for name, adapter := range map[string]func(*testing.T) scriptanalysis.Analyzer{
-		"fact": func(t *testing.T) scriptanalysis.Analyzer {
+	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
+		"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return scriptanalysis.FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}}
 		},
-		"tool": func(t *testing.T) scriptanalysis.Analyzer {
+		"tool": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return contract.Tool{Runner: partialTool{t: t, failure: failure}}
 		},
@@ -215,7 +215,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			adapter := adapter(t)
-			findings, err := (scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{adapter}}).Run(t.Context(), batch)
+			findings, err := (scriptanalysis.Service{Analyzers: []scriptanalysis.BatchAnalyzer{adapter}}).Run(t.Context(), batch)
 			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source.Content != nil {
 				t.Fatalf("partial finding lost its independent owner or source: %+v %v", findings, err)
 			}
@@ -225,12 +225,12 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 
 func TestUnpreparedBatchCannotExecute(t *testing.T) {
 	t.Parallel()
-	for name, adapter := range map[string]func(*testing.T) scriptanalysis.Analyzer{
-		"fact": func(t *testing.T) scriptanalysis.Analyzer {
+	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
+		"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return scriptanalysis.FactAnalyzer{Analyzer: partialFactAnalyzer{t: t}}
 		},
-		"tool": func(t *testing.T) scriptanalysis.Analyzer {
+		"tool": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return contract.Tool{Runner: partialTool{t: t}}
 		},
@@ -241,7 +241,7 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 			if _, err := adapter.AnalyzeScripts(t.Context(), scriptanalysis.Batch{}); !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
 				t.Fatalf("adapter accepted unprepared batch: %v", err)
 			}
-			if _, err := (scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{adapter}}).Run(t.Context(), scriptanalysis.Batch{}); !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
+			if _, err := (scriptanalysis.Service{Analyzers: []scriptanalysis.BatchAnalyzer{adapter}}).Run(t.Context(), scriptanalysis.Batch{}); !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
 				t.Fatalf("scheduler accepted unprepared batch: %v", err)
 			}
 		})

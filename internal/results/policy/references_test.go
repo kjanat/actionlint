@@ -25,8 +25,8 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	if !present {
 		t.Fatal("owned job unavailable")
 	}
-	origin := slices.Collect(job.Steps())[1].Origin("test")
-	if !origin.HasPosition {
+	origin := slices.Collect(job.Steps())[1].IgnoreOrigin("test")
+	if origin.StepPosition == nil {
 		t.Fatal("owned suppression position unavailable")
 	}
 	refs := facts.Index("ci.yml", content, workflow, false)
@@ -49,7 +49,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 			t.Parallel()
 			item := &finding.Finding{
 				Start: *first.Pos, Owner: tc.owner,
-				IgnoreOrigin: &finding.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
+				IgnoreOrigin: new(*origin), Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
 			InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
 			if item.Reference == nil || *item.Reference != tc.want {

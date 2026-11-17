@@ -9,7 +9,7 @@ import (
 )
 
 // Service owns scheduling and joining every script analyzer in a prepared batch.
-type Service struct{ Analyzers []Analyzer }
+type Service struct{ Analyzers []BatchAnalyzer }
 
 func (s Service) Run(ctx context.Context, batch Batch) ([]*finding.Finding, error) {
 	if !batch.Valid() {

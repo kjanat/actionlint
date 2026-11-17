@@ -1,9 +1,4 @@
-// Package checkoptions connects checking options to GitHub. The command line,
-// the language server and the GitHub Action all call ConnectGitHub, so the
-// three entry points read the GitHub service, configure action metadata,
-// start the remote dependency resolver and download configuration the same
-// way.
-package checkoptions
+package assembly
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -14,9 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-// Resolver names an executable that resolves remote dependencies over the
-// resolver protocol. The zero value configures no resolver.
-type Resolver struct {
+// ResolverCommand names an executable that resolves remote dependencies over
+// the resolver protocol. The zero value configures no resolver.
+type ResolverCommand struct {
 	Command   string
 	Arguments []string
 }
@@ -30,7 +25,7 @@ type GitHubAccess struct {
 	Acquisition pluginacquisition.Options
 	// Offline reads action metadata from the cache only and starts no resolver.
 	Offline  bool
-	Resolver Resolver
+	Resolver ResolverCommand
 }
 
 // MetadataError reports that the action metadata provider could not be
@@ -41,11 +36,16 @@ func (e *MetadataError) Error() string { return e.Err.Error() }
 
 func (e *MetadataError) Unwrap() error { return e.Err }
 
-// ConnectGitHub returns options with the GitHub service, the action metadata
-// provider, the resolver and the configuration connections that access
-// selects. Every other field of options is returned unchanged. A failure to
-// configure action metadata is a *MetadataError; an invalid
-// GITHUB_SERVER_URL is returned as services reports it.
+// ConnectGitHub connects checking options to GitHub. The command line, the
+// language server and the GitHub Action all call it, so the three entry points
+// read the GitHub service, configure action metadata, start the remote
+// dependency resolver and download configuration the same way.
+//
+// It returns options with the GitHub service, the action metadata provider,
+// the resolver and the configuration connections that access selects. Every
+// other field of options is returned unchanged. A failure to configure action
+// metadata is a *MetadataError; an invalid GITHUB_SERVER_URL is returned as
+// services reports it.
 func ConnectGitHub(options checking.Options, access GitHubAccess) (checking.Options, error) {
 	mode := github.Online
 	if access.Offline {

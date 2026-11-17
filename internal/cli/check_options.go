@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -28,14 +28,14 @@ func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginac
 		LogWriter:            log,
 		Tools:                registry.Registrations(c.Tools),
 	}
-	options, err := checkoptions.ConnectGitHub(options, checkoptions.GitHubAccess{
+	options, err := assembly.ConnectGitHub(options, assembly.GitHubAccess{
 		Getenv:      os.Getenv,
 		Acquisition: acquisition,
 		Offline:     c.Offline,
-		Resolver:    checkoptions.Resolver{Command: c.ResolverCommand, Arguments: c.ResolverArguments},
+		Resolver:    assembly.ResolverCommand{Command: c.ResolverCommand, Arguments: c.ResolverArguments},
 	})
 	if err != nil {
-		if _, ok := errors.AsType[*checkoptions.MetadataError](err); ok {
+		if _, ok := errors.AsType[*assembly.MetadataError](err); ok {
 			return options, arguments.UsageError{Cause: err}
 		}
 		return options, err
