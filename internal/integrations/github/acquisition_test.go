@@ -129,10 +129,10 @@ func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
 			}
 			request := ref(t, "example/action@"+sha)
 			bucket := client.bucket(request, sha)
-			if err := os.MkdirAll(bucket, 0700); err != nil {
+			if err := os.MkdirAll(bucket, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(record), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(record), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			for range 2 {

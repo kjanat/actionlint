@@ -49,7 +49,7 @@ export default defineProcessProvider({
 });
 `, module)
 	for name, content := range map[string]string{"package.json": `{"name":"actionlint-author-example","version":"1.0.0","type":"module"}`, "actionlint.plugin.ts": definition} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

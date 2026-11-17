@@ -62,7 +62,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 	parent := t.TempDir()
 	t.Chdir(parent)
 	root := filepath.Join(parent, "child")
-	if err := os.MkdirAll(filepath.Join(root, ".git"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	writeFixture(t, root, ".github/actionlint.yaml", "files: {includes: ['.github/workflows/**']}\n")
@@ -115,7 +115,7 @@ func TestCallerRelativeOverlaySelection(t *testing.T) {
 func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	base := writeFixture(t, root, "base.yml", "files: {includes: []}\n")
@@ -207,7 +207,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 func TestRelativeWorkingDirectoryStdinPaths(t *testing.T) {
 	parent := t.TempDir()
 	t.Chdir(parent)
-	if err := os.Mkdir("repo", 0700); err != nil {
+	if err := os.Mkdir("repo", 0o700); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"", "ci.yml"} {

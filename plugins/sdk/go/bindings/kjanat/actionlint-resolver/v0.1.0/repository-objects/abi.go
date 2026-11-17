@@ -21,7 +21,7 @@ func lower_OptionU64(v cm.Option[uint64]) (f0 uint32, f1 uint64) {
 		v1 := uint64(*some)
 		f1 = uint64(v1)
 	}
-	return
+	return f0, f1
 }
 
 // OptionStringShape is used for storage in variant or result types.

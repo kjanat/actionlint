@@ -128,7 +128,7 @@ func TestHyperlinksInRedirectedHelp(t *testing.T) {
 func TestPrettyHyperlinks(t *testing.T) {
 	t.Chdir(t.TempDir())
 	const manifest = "name: example\ndescription: example\nruns: {using: node20, main: index.js}\n"
-	if err := os.WriteFile("index.js", nil, 0600); err != nil {
+	if err := os.WriteFile("index.js", nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const target = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/"
@@ -184,7 +184,7 @@ func TestPrettyHyperlinks(t *testing.T) {
 func TestPrettyHyperlinksInOutputFile(t *testing.T) {
 	t.Chdir(t.TempDir())
 	const manifest = "name: example\ndescription: example\nruns: {using: node20, main: index.js}\n"
-	if err := os.WriteFile("index.js", nil, 0600); err != nil {
+	if err := os.WriteFile("index.js", nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("NO_HYPERLINKS", "")

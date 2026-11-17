@@ -356,7 +356,7 @@ func TestPluginManifestRejectsDirectoryReplacement(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	directory := filepath.Join(root, "config")
-	if err := os.Mkdir(directory, 0700); err != nil {
+	if err := os.Mkdir(directory, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(directory, "actionlint.yml")

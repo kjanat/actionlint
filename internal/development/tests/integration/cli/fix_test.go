@@ -25,7 +25,7 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "workflow.yml")
 	content := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo $HOME\npermissions: {}\n"
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	args := []string{"fix", "--no-config", "--no-tool=ruff", "--tool=shellcheck=" + shellcheck, "--include-suggested", path}

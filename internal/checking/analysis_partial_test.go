@@ -52,7 +52,7 @@ func TestAnalysisPartialFindings(t *testing.T) {
 	}
 	root := t.TempDir()
 	configPath := filepath.Join(root, "config.yml")
-	if err := os.WriteFile(configPath, []byte("{}\n"), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	failing := `on: push
@@ -68,7 +68,7 @@ permissions: {}
 `
 	successful := strings.Replace(badWorkflow, "permissions: {}\n", "        shell: pwsh\npermissions: {}\n", 1)
 	for name, content := range map[string]string{"failing.yml": failing, "successful.yml": successful} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

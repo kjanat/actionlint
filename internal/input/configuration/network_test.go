@@ -56,7 +56,7 @@ func TestMetadataMirrorConfigurationExtends(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	base := filepath.Join(root, "base.toml")
-	if err := os.WriteFile(base, []byte("[network.metadata-mirrors]\nservices = ['jsdelivr']\nallow-unknown-repositories = true\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("[network.metadata-mirrors]\nservices = ['jsdelivr']\nallow-unknown-repositories = true\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
@@ -70,7 +70,7 @@ func TestMetadataMirrorConfigurationExtends(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(root, tc.name+".toml")
-			if err := os.WriteFile(path, []byte("extends = ['base.toml']\n"+tc.override), 0600); err != nil {
+			if err := os.WriteFile(path, []byte("extends = ['base.toml']\n"+tc.override), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			cfg, err := checking.ConfigurationRules().LoadConfig(path)

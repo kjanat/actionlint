@@ -23,7 +23,7 @@ func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	physical := filepath.Join(root, "real")
-	if err := os.Mkdir(physical, 0700); err != nil {
+	if err := os.Mkdir(physical, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	alias := filepath.Join(root, "alias")

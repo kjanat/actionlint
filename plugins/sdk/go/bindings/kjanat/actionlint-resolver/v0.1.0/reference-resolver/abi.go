@@ -16,15 +16,15 @@ type ResolutionShape struct {
 
 func lift_OptionU64(f0 uint32, f1 uint64) (v cm.Option[uint64]) {
 	if f0 == 0 {
-		return
+		return v
 	}
 	return cm.Option[uint64](cm.Some[uint64](uint64(uint64(f1))))
 }
 
-func lift_Request(f0 *uint8, f1 uint32, f2 *uint8, f3 uint32, f4 uint32, f5 uint32, f6 uint64) (v Request) {
+func lift_Request(f0 *uint8, f1 uint32, f2 *uint8, f3, f4, f5 uint32, f6 uint64) (v Request) {
 	v.Repository = cm.LiftString[string](f0, f1)
 	v.Reference = cm.LiftString[string](f2, f3)
 	v.Kind = Kind(f4)
 	v.ExpectedRepositoryID = lift_OptionU64(f5, f6)
-	return
+	return v
 }
