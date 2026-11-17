@@ -10,11 +10,11 @@ import (
 	"github.com/tidwall/jsonc"
 )
 
-func parseJSON(path string, data []byte) (Document, error) {
-	result := newDocument(path)
+func parseJSON(path string, data []byte) (*parsedSource, error) {
+	result := newParsedSource(path)
 	clean := jsonc.ToJSON(data)
 	if len(bytes.TrimSpace(clean)) == 0 {
-		result.Value = map[string]any{}
+		result.value = map[string]any{}
 		return result, nil
 	}
 	decoder := json.NewDecoder(bytes.NewReader(clean))
@@ -23,10 +23,10 @@ func parseJSON(path string, data []byte) (Document, error) {
 		if syntax, ok := errors.AsType[*json.SyntaxError](err); ok {
 			offset = syntax.Offset - 1
 		}
-		at := location(path, data, int(offset))
-		return fmt.Errorf("%s:%d:%d: %w", path, at.Line, at.Column, err)
+		at := offsetPosition(data, int(offset))
+		return fmt.Errorf("%s:%d:%d: %w", path, at.line, at.column, err)
 	}
-	if err := decoder.Decode(&result.Value); err != nil {
+	if err := decoder.Decode(&result.value); err != nil {
 		return result, contextualize(err, decoder.InputOffset())
 	}
 	var extra json.RawMessage
@@ -55,7 +55,7 @@ func parseJSON(path string, data []byte) (Document, error) {
 		if err != nil {
 			return err
 		}
-		result.ValueLocations[pointer] = location(path, data, at)
+		result.values[pointer] = offsetPosition(data, at)
 		delimiter, container := token.(json.Delim)
 		if !container {
 			return nil
@@ -74,12 +74,12 @@ func parseJSON(path string, data []byte) (Document, error) {
 					return errors.New("expected object key")
 				}
 				if seen[key] {
-					at := location(path, data, at)
-					return fmt.Errorf("%s:%d:%d: duplicate key %q", path, at.Line, at.Column, key)
+					at := offsetPosition(data, at)
+					return fmt.Errorf("%s:%d:%d: duplicate key %q", path, at.line, at.column, key)
 				}
 				seen[key] = true
 				child := Path(pointer, key)
-				result.Locations[child] = location(path, data, at)
+				result.keys[child] = offsetPosition(data, at)
 				if err := index(child); err != nil {
 					return err
 				}
@@ -87,7 +87,7 @@ func parseJSON(path string, data []byte) (Document, error) {
 		case '[':
 			for i := 0; tokens.More(); i++ {
 				child := Index(pointer, i)
-				result.Locations[child] = location(path, data, start())
+				result.keys[child] = offsetPosition(data, start())
 				if err := index(child); err != nil {
 					return err
 				}

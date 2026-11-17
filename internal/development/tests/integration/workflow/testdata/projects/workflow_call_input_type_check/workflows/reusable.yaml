@@ -7,8 +7,6 @@ on:
         type: boolean
       num_input:
         type: number
-      broken_input:
-        description: type is missing
 
 jobs:
   test:

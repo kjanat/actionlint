@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
@@ -16,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -74,6 +75,7 @@ type analysisSession struct {
 	reader          *files.Reader
 	captures        *capture.Store
 	snapshots       *parsing.SourceSnapshots
+	actionDocuments *actionDocuments
 	gitModes        *gitModes
 	ignorePats      configuration.IgnorePatterns
 	ignoreSelectors resultpolicy.IgnoreSelectors
@@ -321,7 +323,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.SetRunners(runners)
-	context := ruleexec.Inputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context := define.Inputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	context.Lifecycle = actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}
 	context.Debug = s.debugWriter()
@@ -365,9 +367,10 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	requires := selection.RequiredFacts(registrations)
 	options := composites.Options{
 		Bindings: settings.bindings[sourcePath], BindSource: settings.bindInvocation,
-		SourceSnapshots: s.snapshots,
-		Captures:        s.captures,
-		RemoteActions:   remoteActions,
+		SourceSnapshots:        s.snapshots,
+		Captures:               s.captures,
+		RemoteActions:          remoteActions,
+		OnRemoteActionDocument: s.actionDocuments.parsed,
 		PrepareSource: func(_ parsing.SourceSnapshot, references []string) error {
 			var lookups errgroup.Group
 			lookups.SetLimit(concurrentMetadataLookups)

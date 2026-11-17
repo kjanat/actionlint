@@ -8,6 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -51,7 +52,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 func TestForeignInlineSuppressionSource(t *testing.T) {
 	t.Parallel()
 	source := []byte("name: demo # actionlint:ignore shellcheck -- reviewed\n")
-	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: source}
+	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: results.DiagnosticSource{Content: source}}
 	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [unused-suppression], correctness: {shellcheck: on}}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +66,7 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	if err != nil || len(got) != 0 {
 		t.Fatalf("foreign suppression: %+v %v", got, err)
 	}
-	if finding.Source == nil {
+	if finding.Source.Content == nil {
 		t.Fatal("modified original finding")
 	}
 }

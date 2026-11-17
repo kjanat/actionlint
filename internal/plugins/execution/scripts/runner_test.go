@@ -298,16 +298,16 @@ func TestReportedSourceFindings(t *testing.T) {
 	}
 	read, missing := findings[0], findings[1]
 	if read.Message != "tool: X2086:info:1:6: quote it" || read.Start != (sourcepos.Position{Line: 1, Column: 6}) || read.End != (sourcepos.Position{Line: 1, Column: 8}) ||
-		!read.RawScript || string(read.Content) != "echo $x\n" || !strings.HasSuffix(read.Path, "lib.sh") || !filepath.IsAbs(read.Path) {
+		!read.Source.RawScript || string(read.Source.Content) != "echo $x\n" || !strings.HasSuffix(read.Path, "lib.sh") || !filepath.IsAbs(read.Path) {
 		t.Errorf("reported finding: %+v", read)
 	}
 	for _, f := range findings {
-		if !f.UnavailableSource.Present() || f.UnavailableSource.Provider() != "tool" || f.Suppression == nil || f.Suppression.First != script.Key.Line {
+		if !f.Source.Unavailable.Present() || f.Source.Unavailable.Provider() != "tool" || f.Suppression == nil || f.Suppression.First != script.Key.Line {
 			t.Errorf("reported finding provenance: %+v", f)
 		}
 	}
-	if read.UnavailableSource.Reason() != "not-captured" || missing.UnavailableSource.Reason() != "read-failed" || len(missing.Content) != 0 || missing.End != (sourcepos.Position{}) {
-		t.Errorf("unavailable reasons: %q %q %+v", read.UnavailableSource.Reason(), missing.UnavailableSource.Reason(), missing)
+	if read.Source.Unavailable.Reason() != "not-captured" || missing.Source.Unavailable.Reason() != "read-failed" || len(missing.Source.Content) != 0 || missing.End != (sourcepos.Position{}) {
+		t.Errorf("unavailable reasons: %q %q %+v", read.Source.Unavailable.Reason(), missing.Source.Unavailable.Reason(), missing)
 	}
 	if !slices.ContainsFunc(recorded, func(path string) bool { return strings.HasSuffix(path, "lib.sh") }) {
 		t.Errorf("reported source not recorded: %q", recorded)
@@ -347,7 +347,7 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `template effect "opaque-name" for reported source`) {
 		t.Errorf("reported source with a template effect accepted: %v", err)
 	}
-	if len(findings) != 2 || findings[0].Code != "X1" || findings[1].Code != "X2" || !findings[1].RawScript {
+	if len(findings) != 2 || findings[0].Code != "X1" || findings[1].Code != "X2" || !findings[1].Source.RawScript {
 		t.Fatalf("findings: %+v", findings)
 	}
 }
@@ -419,7 +419,7 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 		}
 		close(release)
 	}()
-	scripts := []tools.Script{{Text: "first", Execution: tools.Execution{Shell: "bash"}, Key: &workflowlang.Pos{Line: 1, Col: 1}}, {Text: "second", Execution: tools.Execution{Shell: "bash"}, Key: &workflowlang.Pos{Line: 2, Col: 1}}}
+	scripts := []tools.Script{{Text: "first", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 1, Column: 1}}, {Text: "second", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 2, Column: 1}}}
 	begin := time.Now()
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: scripts})
 	if err != nil {
@@ -485,13 +485,13 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	if len(requests) != 1 || requests[0].Directory != directory || !slices.Equal(requests[0].Excluded, []string{"X9"}) {
 		t.Fatalf("engine requests %+v", requests)
 	}
-	if len(findings) != 2 || len(findings[0].Fixes) != 1 || !findings[1].RawScript || !strings.HasSuffix(findings[1].Path, "lib.sh") {
+	if len(findings) != 2 || len(findings[0].Fixes) != 1 || !findings[1].Source.RawScript || !strings.HasSuffix(findings[1].Path, "lib.sh") {
 		t.Fatalf("findings %+v", findings)
 	}
 	// The display copy is the bytes the engine read, and the scope recorded
 	// the read for watchers.
-	if string(engineRead) != "echo $x\n" || string(findings[1].Content) != string(engineRead) {
-		t.Fatalf("engine read %q, finding shows %q", engineRead, findings[1].Content)
+	if string(engineRead) != "echo $x\n" || string(findings[1].Source.Content) != string(engineRead) {
+		t.Fatalf("engine read %q, finding shows %q", engineRead, findings[1].Source.Content)
 	}
 	if !slices.Contains(recorded, filepath.Join(directory, "lib.sh")) {
 		t.Fatalf("recorded %q", recorded)
@@ -551,7 +551,7 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	script.Scope = &tools.Scope{Workspace: workspace, Reader: files.New(t.Context(), nil, nil)}
 	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(workspace, "lib.sh")); err == nil {
 		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
-		if err != nil || len(findings) != 1 || len(findings[0].Content) != 0 || findings[0].UnavailableSource.Reason() != "read-failed" {
+		if err != nil || len(findings) != 1 || len(findings[0].Source.Content) != 0 || findings[0].Source.Unavailable.Reason() != "read-failed" {
 			t.Fatalf("symlinked source: findings %+v err %v", findings, err)
 		}
 	}
@@ -562,7 +562,7 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	if err != nil || len(requests) != 1 || requests[0].Directory != "" || requests[0].DirectoryFS != nil {
 		t.Fatalf("missing directory: requests %+v err %v", requests, err)
 	}
-	if len(findings) != 1 || len(findings[0].Content) != 0 || findings[0].UnavailableSource.Reason() != "read-failed" {
+	if len(findings) != 1 || len(findings[0].Source.Content) != 0 || findings[0].Source.Unavailable.Reason() != "read-failed" {
 		t.Fatalf("source without a grant: findings %+v", findings)
 	}
 }

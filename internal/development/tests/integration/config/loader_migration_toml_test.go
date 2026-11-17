@@ -73,7 +73,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value)
+	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	if err := binding.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := binding.Decode(after.Value, &actual); err != nil {
+	if err := binding.Decode(after.Value(), &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)
@@ -138,7 +138,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(root.Value, nil)
+			resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(root.Value(), nil)
 			if err != nil {
 				t.Fatalf("%v\n%s", err, migration.Content)
 			}
@@ -226,7 +226,7 @@ value = "kept"
 	if err != nil {
 		t.Fatal(err)
 	}
-	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value)
+	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ value = "kept"
 	if err := binding.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := binding.Decode(after.Value, &actual); err != nil {
+	if err := binding.Decode(after.Value(), &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)
@@ -256,7 +256,7 @@ value = "kept"
 	if !bytes.Equal(encodedExpected, encodedActual) {
 		t.Fatalf("migration changed decoded legacy settings:\nexpected: %#v\nactual: %#v", tomlExpected, actual)
 	}
-	resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(after.Value, nil)
+	resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(after.Value(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

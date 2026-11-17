@@ -27,7 +27,7 @@ type Job struct {
 func Check(job Job) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(name Name, message string) {
-		findings = append(findings, results.Diagnostic{Rule: "id", Start: name.Start, Message: message})
+		findings = append(findings, results.Diagnostic{Start: name.Start, Message: message})
 	}
 	convention := func(name Name, kind string) {
 		if name.Value != "" && !name.Dynamic && !Valid(name.Value) {

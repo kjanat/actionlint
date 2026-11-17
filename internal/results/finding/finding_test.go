@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -17,7 +16,7 @@ func TestErrorErrorAt(t *testing.T) {
 	t.Parallel()
 	m := "message"
 	k := "kind"
-	err := At(&workflowlang.Pos{Line: 1, Col: 2}, k, m)
+	err := At(&sourcepos.Position{Line: 1, Column: 2}, k, m)
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -39,7 +38,7 @@ func TestErrorErrorfAt(t *testing.T) {
 	t.Parallel()
 	m := "this is message"
 	k := "kind"
-	err := Errorf(&workflowlang.Pos{Line: 1, Col: 2}, k, "%s is %s", "this", "message")
+	err := Errorf(&sourcepos.Position{Line: 1, Column: 2}, k, "%s is %s", "this", "message")
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}

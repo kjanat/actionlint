@@ -94,12 +94,12 @@ func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	if err != nil {
 		return Result{}, err
 	}
-	return decodeTransformOutput(output)
+	return decodeJQResult(output)
 }
 
-// decodeTransformOutput validates transform output against the result schema
+// decodeJQResult validates transform output against the result schema
 // before decoding it, so a malformed program fails instead of dropping data.
-func decodeTransformOutput(data []byte) (Result, error) {
+func decodeJQResult(data []byte) (Result, error) {
 	schema, err := resultSchema()
 	if err != nil {
 		return Result{}, fmt.Errorf("transform result schema: %w", err)

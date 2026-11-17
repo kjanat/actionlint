@@ -12,7 +12,7 @@ import (
 
 func TestMissingPermissions(t *testing.T) {
 	t.Parallel()
-	if security.MissingPermissionsDeclaration().DefaultLevel != "error" || !security.MissingPermissionsDeclaration().Recommended {
+	if security.MissingPermissionsRule.Declaration().DefaultLevel != "error" || !security.MissingPermissionsRule.Declaration().Recommended {
 		t.Fatal("missing permissions must be an error by default")
 	}
 	const local = "    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
@@ -52,8 +52,8 @@ func TestMissingPermissions(t *testing.T) {
 			}
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
 			var lines []int
-			for _, finding := range security.MissingPermissionsCheck(nil).Workflow(view) {
-				if finding.Rule != "missing-permissions" || finding.Severity != "" || finding.Start.Column != 3 {
+			for _, finding := range security.MissingPermissionsChecks(nil).Workflow(view) {
+				if finding.Severity != "" || finding.Start.Column != 3 {
 					t.Fatalf("unexpected diagnostic: %+v", finding)
 				}
 				lines = append(lines, finding.Start.Line)

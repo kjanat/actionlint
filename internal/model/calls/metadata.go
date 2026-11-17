@@ -2,6 +2,7 @@
 package calls
 
 import (
+	"errors"
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -10,14 +11,95 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func expectedMapping(where string, n *codec.Node) error {
-	return fmt.Errorf(
-		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
-		where,
-		workflowparser.NodeKindName(n.Kind),
-		n.Line,
-		n.Column,
-	)
+// ParseMetadata reads a reusable workflow's on.workflow_call declarations and
+// recovered job facts. The workflow parser is the only reader of the
+// declarations. ParseMetadata fails when the source is not YAML GitHub admits,
+// when no workflow_call event triggers the workflow, or when the parser reports
+// a finding inside on.workflow_call: GitHub refuses to call such a workflow.
+// Findings elsewhere in the workflow belong to the callee's own diagnostics.
+func ParseMetadata(src []byte) (*Metadata, error) {
+	doc, err := codec.Parse(src)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkMetadataAliases(doc); err != nil {
+		return nil, err
+	}
+	if doc.Kind == 0 {
+		return nil, errors.New("\"on:\" is not found")
+	}
+	if err := workflowparser.AdmitYAMLAliases(doc); err != nil {
+		return nil, err
+	}
+	workflow, findings, workflowCallFindings := workflowparser.ParseReusableWorkflow(src)
+	if workflow == nil {
+		if len(findings) == 0 {
+			return nil, errors.New("workflow could not be parsed")
+		}
+		return nil, findingError(findings[0])
+	}
+	if workflow.OnPos == nil {
+		return nil, errors.New("\"on:\" is not found")
+	}
+	event, ok := workflowlang.FindWorkflowCallEvent(workflow)
+	if !ok {
+		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", workflow.OnPos.Line, workflow.OnPos.Column)
+	}
+	if len(workflowCallFindings) > 0 {
+		return nil, findingError(workflowCallFindings[0])
+	}
+	return MetadataFromWorkflowCallEvent(event, workflow), nil
+}
+
+// hasDefault reports whether input supplies a default value. A YAML null
+// default supplies none, so a required input stays required.
+func hasDefault(input *workflowlang.WorkflowCallEventInput) bool {
+	return input.Default != nil && input.Default.SourceScalar.Tag != workflowlang.YamlTagNull
+}
+
+func findingError(finding *workflowparser.SyntaxError) error {
+	return fmt.Errorf("line:%d, column:%d: %s", finding.Line, finding.Column, finding.Message)
+}
+
+func checkMetadataAliases(doc *codec.Node) error {
+	var aliasErr error
+	workflowparser.ValidateYAMLAliases(doc, func(n *codec.Node, kind workflowparser.YamlAliasDiagnostic, message string) {
+		if kind != workflowparser.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
+			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
+		}
+	})
+	return aliasErr
+}
+
+// MetadataFromWorkflowCallEvent converts parsed workflow_call declarations and
+// the job facts of workflow. An omitted section stays nil; an empty one is an
+// empty map. A nil workflow records no job facts.
+func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workflow *workflowlang.Workflow) *Metadata {
+	metadata := &Metadata{}
+	if event.Inputs != nil {
+		metadata.Inputs = make(Inputs, len(event.Inputs))
+		for _, input := range event.Inputs {
+			metadata.Inputs[input.ID] = Input{
+				Name:     input.Name.Value,
+				Required: input.IsRequired() && !hasDefault(input),
+				Type:     input.Type,
+			}
+		}
+	}
+	if event.Outputs != nil {
+		metadata.Outputs = make(Outputs, len(event.Outputs))
+		for id, output := range event.Outputs {
+			metadata.Outputs[id] = Output{Name: output.Name.Value}
+		}
+	}
+	if event.Secrets != nil {
+		metadata.Secrets = make(Secrets, len(event.Secrets))
+		for id, secret := range event.Secrets {
+			metadata.Secrets[id] = Secret{Name: secret.Name.Value, Required: secret.Required != nil && secret.Required.Value}
+		}
+	}
+	metadata.JobPermissions, metadata.JobCacheAccess = JobPermissionsAndCacheAccess(workflow)
+	return metadata
 }
 
 // Input describes an input declared by a local reusable workflow.
@@ -42,7 +124,7 @@ type Secret struct {
 	Name string
 	// Required indicates whether the secret is required by its reusable workflow. When this value
 	// is true, workflow calls must set this secret unless they inherit secrets.
-	Required bool `yaml:"required"`
+	Required bool
 }
 
 // Secrets maps lowercase secret names to reusable workflow secret metadata.
@@ -62,15 +144,15 @@ type Outputs map[string]Output
 // Metadata describes reusable-workflow inputs, outputs, secrets and job access.
 // Clone detaches its maps and slices when a consumer needs its own copy.
 type Metadata struct {
-	Inputs  Inputs  `yaml:"inputs"`
-	Outputs Outputs `yaml:"outputs"`
-	Secrets Secrets `yaml:"secrets"`
+	Inputs  Inputs
+	Outputs Outputs
+	Secrets Secrets
 	// JobPermissions maps a job ID of the reusable workflow to the permission scopes that job requires.
 	// A job which declares no "permissions:" of its own and inherits none from the workflow has no entry,
 	// and neither has a job whose declaration requires nothing.
-	JobPermissions map[string]PermissionScopeLevels `yaml:"-"`
+	JobPermissions map[string]PermissionScopeLevels
 	// JobCacheAccess records effective declarations and local workflow calls by job ID.
-	JobCacheAccess map[string]CacheAccess `yaml:"-"`
+	JobCacheAccess map[string]CacheAccess
 }
 
 // CacheModeDeclaration is a job's effective cache-mode declaration. The zero
@@ -139,4 +221,39 @@ func collectCacheOperations(operations []string, steps []*workflowlang.Step) []s
 		}
 	}
 	return operations
+}
+
+// JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.
+// Jobs without either have no entry. A map without entries is nil.
+func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
+	if workflow == nil {
+		return nil, nil
+	}
+	var permissionsByJob map[string]PermissionScopeLevels
+	var cacheByJob map[string]CacheAccess
+	permissions := ResolvePermissions(workflow.Permissions)
+	for _, job := range workflow.Jobs {
+		uses := ""
+		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
+			uses = job.WorkflowCall.Uses.Value
+		}
+		if access, ok := jobCacheAccess(workflowlang.EffectiveCacheMode(workflow.CacheMode, job.CacheMode), uses, job.Steps); ok {
+			if cacheByJob == nil {
+				cacheByJob = map[string]CacheAccess{}
+			}
+			cacheByJob[job.ID.Value] = access
+		}
+		resolved := permissions
+		if job.Permissions != nil {
+			resolved = ResolvePermissions(job.Permissions)
+		}
+		if resolved.Kind != PermissionsDeclared || len(resolved.Levels) == 0 {
+			continue
+		}
+		if permissionsByJob == nil {
+			permissionsByJob = map[string]PermissionScopeLevels{}
+		}
+		permissionsByJob[job.ID.Value] = resolved.Levels
+	}
+	return permissionsByJob, cacheByJob
 }

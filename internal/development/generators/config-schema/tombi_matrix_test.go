@@ -117,14 +117,14 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 				t.Fatalf("parse fixture: %v", err)
 			}
 			rules := checking.ConfigurationRules()
-			result, modelErr := rules.ResolveValue(doc.Value, nil, "example", "local-tool", "file-tool")
+			result, modelErr := rules.ResolveValue(doc.Value(), nil, "example", "local-tool", "file-tool")
 			if modelErr == nil && tc.ResolveRules {
 				_, modelErr = rules.ResolveRules(configuration.Presets{}, result.Config)
 			}
 			if (modelErr == nil) != tc.Model {
 				t.Errorf("model acceptance: want %t, error %v (%s)", tc.Model, modelErr, tc.Reason)
 			}
-			j, err := json.Marshal(doc.Value)
+			j, err := json.Marshal(doc.Value())
 			if err != nil {
 				t.Fatal(err)
 			}

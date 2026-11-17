@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
@@ -25,7 +26,7 @@ import (
 type typedExpr struct {
 	ty         exprtypes.Type
 	semantics  exprlang.ExpressionCheckResult
-	pos        workflowlang.Pos
+	pos        source.Position
 	refinement expressionRefinement
 }
 
@@ -52,7 +53,7 @@ type Checker struct {
 	workflow          workflowdecl.Workflow
 	eventTy           *exprtypes.ObjectType
 	expressionSource  *workflowlang.ScriptSource
-	scriptSources     map[workflowlang.Pos]*workflowlang.ScriptSource
+	scriptSources     map[source.Position]*workflowlang.ScriptSource
 	expressionOffset  int
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
@@ -106,7 +107,7 @@ func (rule *Checker) Configure(options Options) { rule.options = options }
 type report struct {
 	rule, code, message string
 	severity            string
-	start, end          workflowlang.Pos
+	start, end          source.Position
 	// hasEnd records whether the expression mapped an inclusive end position.
 	hasEnd bool
 	fixes  []results.Fix
@@ -121,7 +122,7 @@ func (r report) finding() *findingmodel.Finding {
 	}
 	if r.hasEnd {
 		end := r.end
-		finding.EndPosition = &end
+		finding.EndAt(&end)
 	}
 	return finding
 }
@@ -147,11 +148,11 @@ func (rule *Checker) FindingsSince(mark int) []*findingmodel.Finding {
 	return findings
 }
 
-func (rule *Checker) Error(pos *workflowlang.Pos, message string) {
+func (rule *Checker) Error(pos *source.Position, message string) {
 	rule.errs = append(rule.errs, report{rule: "expression", message: message, start: *pos})
 }
 
-func (rule *Checker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
+func (rule *Checker) Errorf(pos *source.Position, format string, args ...any) {
 	rule.Error(pos, fmt.Sprintf(format, args...))
 }
 

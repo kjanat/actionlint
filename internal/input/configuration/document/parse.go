@@ -9,22 +9,55 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-func Parse(path string, data []byte) (Document, error) {
+// syntax is the grammar of a configuration file, selected by its extension.
+type syntax uint8
+
+const (
+	// yamlSyntax is selected for .yaml, .yml and any unrecognized extension.
+	yamlSyntax syntax = iota
+	// jsonSyntax is selected for .json and .jsonc; both accept comments and trailing commas.
+	jsonSyntax
+	// tomlSyntax is selected for .toml.
+	tomlSyntax
+)
+
+// syntaxOf selects the grammar of path from its extension, ignoring a URL query and letter case.
+func syntaxOf(path string) syntax {
 	switch strings.ToLower(filepath.Ext(strings.SplitN(path, "?", 2)[0])) {
 	case ".toml":
-		return parseTOML(path, data)
+		return tomlSyntax
 	case ".json", ".jsonc":
-		return parseJSON(path, data)
+		return jsonSyntax
 	default:
-		return parseYAML(path, data)
+		return yamlSyntax
 	}
 }
 
+// Parse reads one configuration document in the syntax selected by path.
+// Every value is located in path.
+func Parse(path string, data []byte) (*Node, error) {
+	var parsed *parsedSource
+	var err error
+	switch syntaxOf(path) {
+	case tomlSyntax:
+		parsed, err = parseTOML(path, data)
+	case jsonSyntax:
+		parsed, err = parseJSON(path, data)
+	default:
+		parsed, err = parseYAML(path, data)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return parsed.node(), nil
+}
+
+// Marshal encodes value in the syntax selected by path without comments.
 func Marshal(path string, value any) ([]byte, error) {
-	switch strings.ToLower(filepath.Ext(strings.SplitN(path, "?", 2)[0])) {
-	case ".json", ".jsonc":
+	switch syntaxOf(path) {
+	case jsonSyntax:
 		return json.MarshalIndent(value, "", "  ")
-	case ".toml":
+	case tomlSyntax:
 		v, err := marshalValue(value, false)
 		if err != nil {
 			return nil, err

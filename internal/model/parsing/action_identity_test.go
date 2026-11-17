@@ -26,7 +26,7 @@ func TestCompositeAliasReferencesFollowStepOwners(t *testing.T) {
 	if first.Address != "runs.steps[0]" || second.Address != "runs.steps[1]" {
 		t.Fatalf("incorrect owning addresses: %q, %q", first.Address, second.Address)
 	}
-	if steps[0].Pos.Line != steps[1].Pos.Line || steps[0].Pos.Col != steps[1].Pos.Col {
+	if steps[0].Pos.Line != steps[1].Pos.Line || steps[0].Pos.Column != steps[1].Pos.Column {
 		t.Fatal("fixture must exercise distinct owners at shared source coordinates")
 	}
 	if first.Document != second.Document || first.Revision != second.Revision {

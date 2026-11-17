@@ -15,7 +15,7 @@ import (
 
 type configurationRunner func(tools.Batch)
 
-func (run configurationRunner) Analyze(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (run configurationRunner) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	run(batch)
 	return nil, nil
 }

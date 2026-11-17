@@ -7,10 +7,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
+// permissionsRule replaced three retired rules and policy.require-permissions.
+// Their settings need option conversions that an alias cannot express, so
+// migration names the rule here.
+const permissionsRule = "missing-permissions"
+
 func migratedPermissionsName(name string) string {
 	switch name {
 	case "require-permissions", "explicit-permissions", "missing-workflow-permissions":
-		return "missing-permissions"
+		return permissionsRule
 	default:
 		return name
 	}
@@ -63,13 +68,13 @@ func (ruleSet RuleSet) migratePermissionsRule(root any) (any, bool, error) {
 		if err != nil {
 			return err
 		}
-		if previous := field(group, "missing-permissions"); previous != nil {
+		if previous := field(group, permissionsRule); previous != nil {
 			setting, err = mergeMigration(previous, setting, "lint.rules.security.missing-permissions", name)
 			if err != nil {
 				return fmt.Errorf("cannot combine permission requirements automatically; select missing-permissions and require-at explicitly: %w", err)
 			}
 		}
-		setField(group, "missing-permissions", setting)
+		setField(group, permissionsRule, setting)
 		setField(rules, "security", group)
 		return nil
 	}

@@ -19,7 +19,7 @@ func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
 		t.Fatal(err)
 	}
 	var decoded configuration.Config
-	raw := checking.ConfigurationRules().DecodeValue(parsed.Value, &decoded)
+	raw := checking.ConfigurationRules().DecodeValue(parsed.Value(), &decoded)
 	if raw == nil {
 		t.Fatal("invalid boolean accepted by decoder")
 	}

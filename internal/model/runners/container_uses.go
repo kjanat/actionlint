@@ -41,10 +41,10 @@ func (target ContainerTarget) MayRun(conditions ...string) bool {
 	return true
 }
 
-func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *workflowlang.Pos) ContainerUse {
+func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *sourcepos.Position) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
 	if pos != nil {
-		use.Position = sourcepos.Position{Line: pos.Line, Column: pos.Col}
+		use.Position = *pos
 	}
 	return use
 }
@@ -106,7 +106,7 @@ func DockerActionUses(step workflowdecl.Step, targets []ContainerTarget, guards 
 	var uses []ContainerUse
 	for _, target := range targets {
 		if target.MayRun(guards...) && target.MayRun(step.If.Text()) {
-			var pos *workflowlang.Pos
+			var pos *sourcepos.Position
 			if action.Uses != nil {
 				pos = action.Uses.Pos
 			}

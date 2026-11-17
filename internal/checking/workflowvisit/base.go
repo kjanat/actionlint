@@ -1,8 +1,8 @@
 package workflowvisit
 
 import (
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -20,8 +20,13 @@ func NewBase(name, desc string) Base {
 }
 
 // Report records findings produced outside the positional helpers and takes
-// ownership of them.
+// ownership of them. A finding that names no rule is attributed to this one.
 func (r *Base) Report(findings ...*findingmodel.Finding) {
+	for _, finding := range findings {
+		if finding != nil && finding.Rule == "" {
+			finding.Rule = r.name
+		}
+	}
 	r.findings.Report(findings...)
 }
 
@@ -41,25 +46,19 @@ func (r *Base) VisitWorkflowPre(node declaration.Workflow) error { return nil }
 func (r *Base) VisitWorkflowPost(node declaration.Workflow) error { return nil }
 
 // Error records a finding at pos. Errs returns the recorded findings.
-func (r *Base) Error(pos *workflowlang.Pos, msg string) {
+func (r *Base) Error(pos *source.Position, msg string) {
 	r.findings.Report(findingmodel.At(pos, r.name, msg))
 }
 
 // Errorf formats and records a finding at pos. Errs returns the recorded findings.
-func (r *Base) Errorf(pos *workflowlang.Pos, format string, args ...any) {
+func (r *Base) Errorf(pos *source.Position, format string, args ...any) {
 	r.findings.Report(findingmodel.Errorf(pos, r.name, format, args...))
 }
 
 // ErrorfRange reports an error with an exclusive source-range end.
-func (r *Base) ErrorfRange(start, end *workflowlang.Pos, format string, args ...any) {
+func (r *Base) ErrorfRange(start, end *source.Position, format string, args ...any) {
 	err := findingmodel.Errorf(start, r.name, format, args...)
-	if end != nil {
-		copied := *end
-		err.EndPosition = &copied
-	}
-	if end != nil && end.Line == start.Line && end.Col > start.Col {
-		err.EndColumn = end.Col - 1
-	}
+	err.EndAt(end)
 	r.findings.Report(err)
 }
 

@@ -48,7 +48,7 @@ func WithScriptInputs(registration tools.Registration, descriptor checkinputs.Sc
 
 type inputRouting struct{ native, input tools.Runner }
 
-func (r inputRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r inputRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	native, nativeErr := r.native.Analyze(ctx, batch)
 	input, inputErr := r.input.Analyze(ctx, batch)
 	return slices.Concat(native, input), errors.Join(nativeErr, inputErr)
@@ -56,14 +56,16 @@ func (r inputRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.F
 
 type routingEmpty struct{}
 
-func (routingEmpty) Analyze(context.Context, tools.Batch) ([]tools.Finding, error) { return nil, nil }
+func (routingEmpty) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
+	return nil, nil
+}
 
 type selectedRuns struct {
 	runner tools.Runner
 	shells map[string]struct{}
 }
 
-func (r selectedRuns) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r selectedRuns) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	selected, indices := selectScripts(batch, func(script tools.Script) bool {
 		if script.Input != nil {
 			return false
@@ -87,7 +89,7 @@ func selectScripts(batch tools.Batch, accept func(tools.Script) bool) (tools.Bat
 	return selected, indices
 }
 
-func restoreIndices(findings []tools.Finding, indices []int) []tools.Finding {
+func restoreIndices(findings []tools.ToolFinding, indices []int) []tools.ToolFinding {
 	for i := range findings {
 		if findings[i].Script >= 0 && findings[i].Script < len(indices) {
 			findings[i].Script = indices[findings[i].Script]
@@ -150,8 +152,8 @@ type configuredRouting struct {
 	load         func(tools.Context) (checkinputs.ScriptBackend, error)
 }
 
-func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
-	var out []tools.Finding
+func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
+	var out []tools.ToolFinding
 	var failures error
 	groups := map[*configuration.Config]bool{}
 	var order []*configuration.Config

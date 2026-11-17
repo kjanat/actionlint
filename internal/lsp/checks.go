@@ -11,12 +11,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 // LanguageServer shares application selection, configuration and plugin loading
 // with ordinary checks. Unsaved open buffers overlay dependency reads.
-func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options checking.Options, plugins plugininstall.Sources) (err error) {
+func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options checking.Options, plugins pluginselection.Sources) (err error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return err

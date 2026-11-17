@@ -58,7 +58,7 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	transform, err := preparation.NewSourceTransform(&manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond"}`}, nil)
+	transform, err := preparation.NewSourcePlanner(&manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond"}`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

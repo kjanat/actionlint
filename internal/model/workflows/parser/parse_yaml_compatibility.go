@@ -58,7 +58,7 @@ func (p *Parser) compactFlowNull(key, value *codec.Node) bool {
 	for r := source.ScalarEnd.Line - 1; r <= row; r++ {
 		start, end := 0, len(p.sourceLines[r])
 		if r == source.ScalarEnd.Line-1 {
-			start, ok = p.scalarDocument.ByteOffset(r, source.ScalarEnd.Col)
+			start, ok = p.scalarDocument.ByteOffset(r, source.ScalarEnd.Column)
 			if !ok {
 				return false
 			}

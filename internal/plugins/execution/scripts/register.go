@@ -112,7 +112,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 	if _, err := integrationconfig.New(m, p.Programs); err != nil {
 		return tools.Registration{}, fmt.Errorf("tool provider %s configuration: %w", name, err)
 	}
-	if _, err := preparation.NewSourceTransform(m.PreparationTransform, p.Programs); err != nil {
+	if _, err := preparation.NewSourcePlanner(m.PreparationTransform, p.Programs); err != nil {
 		return tools.Registration{}, fmt.Errorf("tool provider %s preparation: %w", name, err)
 	}
 	if _, err := shellCatalogue(m.Rule, m.Selectors.Shells); err != nil {
@@ -389,7 +389,7 @@ func templateContract(engine checkinputs.ScriptBackend) string {
 // built is skipped.
 type transportRouting struct{ transports *transports }
 
-func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	t := r.transports
 	var failures error
 	failed := map[*configuration.Config]bool{}
@@ -436,7 +436,7 @@ func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]too
 			indices[key] = append(indices[key], i)
 		}
 	}
-	out := make([]tools.Finding, 0, len(batch.Scripts))
+	out := make([]tools.ToolFinding, 0, len(batch.Scripts))
 	for _, key := range order {
 		findings, err := t.built[key].Analyze(ctx, *groups[key])
 		out = append(out, restoreIndices(findings, indices[key])...)

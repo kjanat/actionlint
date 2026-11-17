@@ -89,10 +89,10 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			if failed {
 				content = []byte{}
 			}
-			finding := &findingmodel.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 1}, Source: content, RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", reportedPath, failed)}
+			finding := &findingmodel.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 1}, Source: results.DiagnosticSource{Content: content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", reportedPath, failed)}}
 			session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
 			accepted, err := session.admitReportedSources([]*findingmodel.Finding{finding}, "ci.yml", entryPath, composites.Result{}, nil)
-			if err != nil || len(accepted) != 1 || finding.UnavailableSource.Document() != previous.Revision().Document() {
+			if err != nil || len(accepted) != 1 || finding.Source.Unavailable.Document() != previous.Revision().Document() {
 				t.Fatalf("reported alias admission failed: %v %v", accepted, err)
 			}
 			if err := store.Close(t.Context()); err != nil {
@@ -133,8 +133,8 @@ func TestReportedSourceAdmissionRejectsUnmarkedForeignSourcesExactly(t *testing.
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
 	retained := &findingmodel.Finding{Message: "entry observation"}
 	findings := []*findingmodel.Finding{
-		{Path: filepath.Join(root, "foreign.yml"), Source: []byte("foreign yaml")},
-		{Path: filepath.Join(root, "foreign.sh"), Source: []byte("foreign script"), RawScriptSource: true},
+		{Path: filepath.Join(root, "foreign.yml"), Source: results.DiagnosticSource{Content: []byte("foreign yaml")}},
+		{Path: filepath.Join(root, "foreign.sh"), Source: results.DiagnosticSource{Content: []byte("foreign script"), RawScript: true}},
 		retained,
 	}
 	accepted, err := session.admitReportedSources(findings, "ci.yml", filepath.Join(root, "ci.yml"), composites.Result{}, nil)
@@ -157,7 +157,7 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	unavailable := &findingmodel.Finding{Path: dependencyPath, Source: []byte("unverified"), RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", dependencyPath, false)}
+	unavailable := &findingmodel.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: []byte("unverified"), RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", dependencyPath, false)}}
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
 	accepted, err := session.admitReportedSources([]*findingmodel.Finding{unavailable}, "ci.yml", entryPath, composites.Result{}, nil)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 		t.Fatal(err)
 	}
 	retained := &findingmodel.Finding{Message: "entry observation"}
-	accepted = append(accepted, &findingmodel.Finding{Path: dependencyPath, Source: dependency.Bytes(), Message: "reference-less dependency"}, retained)
+	accepted = append(accepted, &findingmodel.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}, Message: "reference-less dependency"}, retained)
 	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 	err = result.revalidateCaptures(store, rows, root, nil)
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
@@ -200,7 +200,7 @@ func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
 	sourceRejected(rejected, dependencyPath, dependency)
 	retained := &findingmodel.Finding{Message: "entry observation"}
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-	accepted, err := session.admitReportedSources([]*findingmodel.Finding{{Path: dependencyPath, Source: dependency.Bytes()}, retained}, "ci.yml", filepath.Join(root, "ci.yml"), composites.Result{}, rejected)
+	accepted, err := session.admitReportedSources([]*findingmodel.Finding{{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}}, retained}, "ci.yml", filepath.Join(root, "ci.yml"), composites.Result{}, rejected)
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || len(accepted) != 1 || accepted[0] != retained {
 		t.Fatalf("failed dependency admitted findings: %v %v", accepted, err)

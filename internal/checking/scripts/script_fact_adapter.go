@@ -11,7 +11,6 @@ import (
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -106,11 +105,8 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			if unit.Scope.Bindings != nil {
 				finding.Binding = unit.Scope.Bindings.Rule(finding.Rule).ID()
 			}
-			if d.End == (sourcepos.Position{}) {
-				finding.EndPosition = nil
-			}
 			if d.Path == unit.Path {
-				finding.Source = unit.Content
+				finding.Source.Content = unit.Content
 			}
 			finding.IgnoreOrigin, finding.Owner = unit.Origin, unit.Owner
 			findings = append(findings, finding)

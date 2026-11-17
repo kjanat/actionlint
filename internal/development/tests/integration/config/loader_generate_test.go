@@ -67,7 +67,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				value := node.Value
+				value := node.Value()
 				encoded, err := json.Marshal(value)
 				if err != nil {
 					t.Fatal(err)

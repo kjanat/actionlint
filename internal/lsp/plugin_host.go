@@ -9,7 +9,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
@@ -25,18 +27,18 @@ type editorPluginHost struct {
 	options checking.Options
 	plugins *pluginexec.Loaded
 	engines *editorEngines
-	sources plugininstall.Sources
+	sources pluginselection.Sources
 }
 
-func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition plugininstall.Acquisition) (*editorPluginHost, error) {
-	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
+func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition pluginacquisition.Settings) (*editorPluginHost, error) {
+	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
 	}
 	return newEditorSources(ctx, options, sources)
 }
 
-func newEditorSources(ctx context.Context, options checking.Options, sources plugininstall.Sources) (*editorPluginHost, error) {
+func newEditorSources(ctx context.Context, options checking.Options, sources pluginselection.Sources) (*editorPluginHost, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -68,14 +70,14 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 	return &editorPluginHost{options: options, plugins: plugins, engines: engines, sources: sources}, nil
 }
 
-func checkEditorPluginStatuses(ctx context.Context, sources plugininstall.Sources, log io.Writer) error {
+func checkEditorPluginStatuses(ctx context.Context, sources pluginselection.Sources, log io.Writer) error {
 	if sources.Releases == nil {
 		return nil
 	}
 	if log == nil {
 		log = io.Discard
 	}
-	if err := sources.Releases.CheckStatuses(ctx, plugininstall.StatusOptions{Warning: func(message string) {
+	if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) {
 		_, _ = fmt.Fprintln(log, "warning:", message)
 	}, Acquisition: sources.Acquisition}); err != nil {
 		return &pluginexec.LoadError{Err: err}
@@ -99,7 +101,7 @@ type editorEngines struct {
 	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
 	log         io.Writer
 	debug       bool
-	acquisition plugininstall.Acquisition
+	acquisition pluginacquisition.Settings
 }
 
 func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {

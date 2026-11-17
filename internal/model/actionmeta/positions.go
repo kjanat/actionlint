@@ -5,6 +5,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -24,7 +25,7 @@ type parsedSource struct {
 	text    string
 	mu      sync.Mutex
 	indexed bool
-	scalars map[workflowlang.Pos]*codec.Node
+	scalars map[source.Position]*codec.Node
 	parser  *workflowparser.Parser
 }
 
@@ -55,7 +56,7 @@ func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
 	if !s.indexed {
 		s.index()
 	}
-	key := workflowlang.Pos{Line: value.Line, Col: value.Column}
+	key := source.Position{Line: value.Line, Column: value.Column}
 	scalar := s.scalars[key]
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
@@ -67,7 +68,7 @@ func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
 // callers may edit after Parse.
 func (s *parsedSource) index() {
 	s.indexed = true
-	s.scalars = make(map[workflowlang.Pos]*codec.Node)
+	s.scalars = make(map[source.Position]*codec.Node)
 	root, err := codec.Parse([]byte(s.text))
 	if err != nil {
 		return
@@ -80,7 +81,7 @@ func (s *parsedSource) index() {
 			return
 		}
 		if node.Kind == codec.ScalarNode {
-			key := workflowlang.Pos{Line: node.Line, Col: node.Column}
+			key := source.Position{Line: node.Line, Column: node.Column}
 			if _, exists := s.scalars[key]; !exists {
 				s.scalars[key] = node
 			}
@@ -95,8 +96,8 @@ func (s *parsedSource) index() {
 
 // ExpressionPosition maps a decoded expression offset to its YAML source position.
 // If the offset cannot be mapped, it returns the start of the value.
-func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *workflowlang.Pos {
-	fallback := &workflowlang.Pos{Line: value.Line, Col: value.Column}
+func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *source.Position {
+	fallback := &source.Position{Line: value.Line, Column: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}

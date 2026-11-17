@@ -20,7 +20,6 @@ import (
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type pluginSourceMount struct {
@@ -316,8 +315,8 @@ func (f *pluginSourceFiles) close() error {
 	return failure
 }
 
-func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script tools.Script, index int) (tools.Finding, error) {
-	result := tools.Finding{Diagnostic: finding, Script: index, Content: script.Content}
+func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script tools.Script, index int) (tools.ToolFinding, error) {
+	result := tools.ToolFinding{Diagnostic: finding, Script: index, Source: results.DiagnosticSource{Content: script.Content}}
 	if finding.Path == script.Path {
 		return result, nil
 	}
@@ -332,20 +331,20 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 		}
 		relative, content, ok := mount.files.Content(relative)
 		if !ok {
-			return tools.Finding{}, fmt.Errorf("tool reported unread source %q", finding.Path)
+			return tools.ToolFinding{}, fmt.Errorf("tool reported unread source %q", finding.Path)
 		}
 		result.Path = filepath.Join(mount.host, filepath.FromSlash(relative))
 		result.Reference, result.Fixes = nil, nil
-		result.Content, result.RawScript = content, true
-		result.UnavailableSource = findingmodel.ReportedSourceUnavailable(name, result.Path, false)
+		result.Source.Content, result.Source.RawScript = content, true
+		result.Source.Unavailable = results.ReportedSourceUnavailable(name, result.Path, false)
 		last := script.Value.Line
 		for _, span := range script.Source.LineSpans() {
 			last = max(last, span.YamlLine)
 		}
-		result.Suppression = &tools.Suppression{Path: script.Path, First: script.Key.Line, Last: last}
+		result.Suppression = &results.SuppressionOrigin{Path: script.Path, First: script.Key.Line, Last: last}
 		return result, nil
 	}
-	return tools.Finding{}, fmt.Errorf("tool reported source outside its grants: %q", finding.Path)
+	return tools.ToolFinding{}, fmt.Errorf("tool reported source outside its grants: %q", finding.Path)
 }
 
 // sourceName joins a relative path to directory without cleaning it, as a

@@ -10,13 +10,13 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
-	loaded, err := pluginexec.Load(ctx, plugininstall.Sources{Paths: []string{filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm")}}, checking.BuiltinRuleNames(), io.Discard, false)
+	loaded, err := pluginexec.Load(ctx, pluginselection.Sources{Paths: []string{filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm")}}, checking.BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		cancel()
 		t.Fatal(err)

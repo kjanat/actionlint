@@ -83,7 +83,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 	for i, original := range result.Diagnostics {
 		d := original
 		originalPath := address(d.Path)
-		if i >= len(result.Sources) || result.Sources[i].Unavailable {
+		if i >= len(result.Sources) || result.Sources[i].Unavailable.Present() {
 			missing[originalPath] = struct{}{}
 			continue
 		}

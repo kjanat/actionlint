@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -86,9 +87,9 @@ jobs:
 					}
 					// Metadata keeps only the mode; the parsed declaration keeps its source.
 					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
-					want := workflowlang.Pos{Line: line, Col: 17}
+					want := sourcepos.Position{Line: line, Column: 17}
 					if line == 2 || aliased {
-						want = workflowlang.Pos{Line: 2, Col: 13}
+						want = sourcepos.Position{Line: 2, Column: 13}
 					}
 					if mode == nil || mode.Kind != kind || *mode.Pos != want {
 						t.Fatalf("%s: expected %s at %v, got %#v", id, kind, want, mode)

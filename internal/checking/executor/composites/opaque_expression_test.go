@@ -23,7 +23,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 					}
 					content += "    - uses: actions/github-script@v7\n      with:\n        script: ${{ " + sink.expression + " }}\n"
 					fixture := newInvocationFixture(t, t.Context(), "on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": content}, nil)
-					fixture.options.Rules = []workflowvisit.Rule{expressions.NewExpressionRule(t.Context(), fixture.options.Actions, nil, nil, nil)}
+					fixture.options.Rules = []workflowvisit.Rule{expressions.NewExpressionRule(t.Context(), expressions.Rule.Base(), fixture.options.Actions, nil, nil, nil)}
 					var result Result
 					var err error
 					if standalone {
@@ -47,7 +47,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 							continue
 						}
 						matched++
-						if finding.Path == "" || !bytes.Equal(finding.Source, []byte(content)) || finding.Reference == nil || finding.Reference.Document == fixture.root.Reference().Document || finding.Start.Line < 1 || finding.Start.Column < 1 {
+						if finding.Path == "" || !bytes.Equal(finding.Source.Content, []byte(content)) || finding.Reference == nil || finding.Reference.Document == fixture.root.Reference().Document || finding.Start.Line < 1 || finding.Start.Column < 1 {
 							t.Fatalf("opaque input lost its declaring source: %+v", finding)
 						}
 					}

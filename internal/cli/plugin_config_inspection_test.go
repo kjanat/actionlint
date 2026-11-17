@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
@@ -33,7 +33,7 @@ func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, command := range []string{"validate", "show"} {
-				pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
+				pluginCommandTest(t, pluginacquisition.Settings{}, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
 			}
 		})
 	}
@@ -45,7 +45,7 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", wasm)
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")

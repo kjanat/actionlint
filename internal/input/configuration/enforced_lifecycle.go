@@ -44,36 +44,35 @@ func (p *EnforcedLifecyclePolicies) Files() []string {
 func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, error)) (*EnforcedLifecyclePolicies, error) {
 	result := &EnforcedLifecyclePolicies{}
 	for _, path := range paths {
-		loaded, err := loadConfigTree(path, read, func(_ string, doc document.Document) (document.Document, error) {
-			object, ok := doc.Value.(map[string]any)
+		loaded, err := LoadSources(path, nil, read, func(_ string, source *document.Node) (*document.Node, error) {
+			object, ok := source.Value().(map[string]any)
 			if !ok {
-				return doc, errors.New("enforced lifecycle policy must be an object")
+				return source, errors.New("enforced lifecycle policy must be an object")
 			}
 			object = maps.Clone(object)
 			if value, exists := object["$schema"]; exists {
 				if _, ok := value.(string); !ok {
-					return doc, errors.New("$schema must be a string")
+					return source, errors.New("$schema must be a string")
 				}
 				delete(object, "$schema")
 			}
-			doc.Value = object
 			var file enforcedLifecycleFile
-			if err := binding.Decode(doc.Value, &file); err != nil {
-				return doc, sourceError(err, documentInputs(doc))
+			if err := binding.Decode(object, &file); err != nil {
+				return source, sourceError(err, source.Origins())
 			}
-			return doc, nil
+			return document.Capture(object, source.Origins()), nil
 		})
 		if err != nil {
 			return nil, err
 		}
 		var file enforcedLifecycleFile
-		if err := binding.Decode(loaded.Value, &file); err != nil {
+		if err := binding.Decode(loaded.Root.Value(), &file); err != nil {
 			return nil, fmt.Errorf("enforced lifecycle policy %q: %w", path, err)
 		}
 		if len(file.Lint.Lifecycle.Policies) == 0 {
 			return nil, fmt.Errorf("enforced lifecycle policy %q contains no policies", path)
 		}
-		policies, err := file.Lint.Lifecycle.compile(path, loaded.Origins, "/lint/lifecycle/policies")
+		policies, err := file.Lint.Lifecycle.compile(path, loaded.Root.Origins(), "/lint/lifecycle/policies")
 		if err != nil {
 			return nil, fmt.Errorf("enforced lifecycle policy %q: %w", path, err)
 		}

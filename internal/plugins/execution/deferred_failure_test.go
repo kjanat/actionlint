@@ -9,15 +9,16 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func deferredUnavailableFixture(t *testing.T) (*deferredScriptEngine, *fixtureregistry.PluginRegistry) {
 	t.Helper()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}

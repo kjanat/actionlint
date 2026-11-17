@@ -5,10 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -17,7 +19,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -43,12 +44,12 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
-	check := conventions.MissingActionMetadataCheck(nil)
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{check.Declaration})
+	check := conventions.MissingActionMetadataChecks(nil)
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.Declaration()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata := declarationchecks.New(rules, check)
+	metadata := define.NewChecksVisitor(rules, conventions.MissingActionMetadataRule.Name, check)
 	f.options.Rules = []workflowvisit.Rule{&cancelBeforeStep{Base: workflowvisit.NewBase("cancel", ""), cancel: cancel}, metadata}
 	_, err = Workflow(f.options, f.root)
 	if !errors.Is(err, context.Canceled) || len(metadata.Errs()) != 0 {
@@ -70,7 +71,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			f.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
 			f.options.Join = func() error {
 				joined = true
-				pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "reported finding")
+				pass.Error(&source.Position{Line: 1, Column: 1}, "reported finding")
 				return joinFailure
 			}
 			result, err := analyze(f.options, func(c *compositeAnalyzer) error {
@@ -172,7 +173,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 				Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
 				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
 					joined = true
-					pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "joined finding")
+					pass.Error(&source.Position{Line: 1, Column: 1}, "joined finding")
 					return nil
 				},
 			}

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	actionfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/actions"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -30,8 +31,8 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 					return nil, failure
 				}, nil)
 				cache := actionfixture.NewCache(t, t.TempDir(), nil, reader)
-				rule := NewRuleAction(t.Context(), cache, nil)
-				err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}))
+				rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
+				err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &source.Position{Line: 1, Column: 1}}}}))
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 					t.Fatalf("interruption became a lint finding: error=%v findings=%+v", err, rule.Errs())
 				}
@@ -103,7 +104,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rule := NewRuleAction(t.Context(), nil, nil)
+	rule := NewRuleAction(t.Context(), ActionRule.Base(), nil, nil)
 	if err := rule.CheckStandaloneMetadata(metadata, parsing.SourceSnapshot{}, actionmeta.ReferencedFiles{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
@@ -128,10 +129,10 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(t.Context(), actionfixture.NewCache(t, root, &cacheLog), nil)
+	rule := NewRuleAction(t.Context(), ActionRule.Base(), actionfixture.NewCache(t, root, &cacheLog), nil)
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
-		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &source.Position{Line: i, Column: 1}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -150,9 +151,9 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	// without a shell is positioned in the metadata and carries an ignore origin.
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := actionfixture.NewCache(t, root, nil)
-	rule := NewRuleAction(t.Context(), cache, nil)
+	rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
 	for i := 1; i <= 3; i++ {
-		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}
+		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &source.Position{Line: i, Column: 1}}}
 		if err := rule.checkLocalAction("./inner", "./inner", action); err != nil {
 			t.Fatal(err)
 		}

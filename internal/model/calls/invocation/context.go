@@ -13,13 +13,9 @@ var (
 	ErrForeignContext = errors.New("invocation: context is not owned by this graph")
 )
 
-// Position uses one-based Unicode character coordinates copied together from YAML.
-// Missing source positions use (0,0); partially specified positions are invalid.
-type Position struct{ Line, Column int }
-
 // Facts are resolved once per call, including platform-dependent effects.
 type Facts struct {
-	Step                                                 Position
+	Step                                                 source.Position
 	Uses                                                 string
 	HasUses                                              bool
 	Condition                                            Condition

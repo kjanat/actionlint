@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -26,7 +28,7 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
-func CreateRules(ruleSet configuration.RuleSet, inputs ruleexec.Inputs, action bool) (Selection, error) {
+func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action bool) (Selection, error) {
 	inputs.Rules = ruleSet
 	var selected Selection
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
@@ -44,9 +46,9 @@ func CreateRules(ruleSet configuration.RuleSet, inputs ruleexec.Inputs, action b
 				return selected, fmt.Errorf("prepare %s inputs: %w", descriptor.Name, err)
 			}
 			switch outcome := outcome.(type) {
-			case ruleexec.PreparedInputs:
+			case define.PreparedInputs:
 				prepared = outcome.Inputs
-			case ruleexec.UnavailableInputs:
+			case define.UnavailableInputs:
 				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: descriptor.Name, Reason: outcome.Reason})
 				continue
 			default:

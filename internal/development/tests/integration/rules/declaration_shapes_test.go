@@ -13,16 +13,24 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func shapeFindings(t *testing.T, src string) []reporting.Finding {
+func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
 	ast, _ := workflowparser.Parse([]byte(src))
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	out := suspicious.EmptyTriggers(w)
+	// The checks run here without the traversal adapter, which would name
+	// each finding after its rule.
+	named := func(name string, findings []reporting.StepFinding) []reporting.StepFinding {
+		for i := range findings {
+			findings[i].Rule = name
+		}
+		return findings
+	}
+	out := named(suspicious.EmptyTriggersRule.Name, suspicious.EmptyTriggers(w))
 	for _, job := range w.Jobs() {
-		out = append(out, correctness.EmptyJob(job)...)
-		out = append(out, correctness.NumericValues(job)...)
+		out = append(out, named(correctness.EmptyJobRule.Name, correctness.EmptyJob(job))...)
+		out = append(out, named(correctness.NumericValuesRule.Name, correctness.NumericValues(job))...)
 		for step := range job.Steps() {
-			out = append(out, suspicious.EmptyRun(step)...)
+			out = append(out, named(suspicious.EmptyRunRule.Name, suspicious.EmptyRun(step))...)
 		}
 	}
 	return out

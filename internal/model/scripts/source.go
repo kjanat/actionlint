@@ -27,7 +27,7 @@ func FromInput(input *workflowlang.Input) Declaration {
 func fromSource(text *workflowlang.String, source *workflowlang.ScriptSource) Declaration {
 	declaration := Declaration{Text: text.Text()}
 	if position, present := text.Position(); present {
-		declaration.Start = workflowfacts.Position(&position)
+		declaration.Start = sourcepos.ZeroIfNil(&position)
 	}
 	for _, span := range source.LineSpans() {
 		declaration.Spans = append(declaration.Spans, Span{

@@ -1,8 +1,8 @@
 package workflow
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -15,7 +15,7 @@ func SemanticValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = *node.Pos
 	}
 	if node.SourceScalar.Evaluated {
 		origin.FromExpression = true
@@ -40,7 +40,7 @@ func MappingScalar(text string, source SourceScalar, origin value.Origin) value.
 		origin.FromExpression = true
 		return value.Template(text, origin)
 	}
-	if source.HasSource && source.Kind == SourceScalarScalar {
+	if source.HasSource && source.Kind == codec.ScalarNode {
 		return value.YAMLScalar(source.Value, source.Tag, origin)
 	}
 	return value.YAMLScalar(text, YamlTagStr, origin)
@@ -52,7 +52,7 @@ func semanticMappingValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = *node.Pos
 	}
 	return MappingScalar(node.Value, node.SourceScalar, origin)
 }

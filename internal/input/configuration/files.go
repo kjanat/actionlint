@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
@@ -47,7 +48,7 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited, bindRules bool, capture func(any), additional ...string) (any, []configreport.Warning, error) {
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]document.Location, inherited, bindRules bool, capture func(any), additional ...string) (any, []configreport.Warning, error) {
 	resolved, err := ruleSet.resolveValue(value, inputs, bindRules, additional...)
 	if err != nil {
 		return nil, nil, err
@@ -249,7 +250,7 @@ func (e *SourceError) Error() string {
 	return fmt.Sprintf("line %d, column %d: %v", e.Line, e.Column, e.Cause)
 }
 func (e *SourceError) Unwrap() error { return e.Cause }
-func sourceError(err error, inputs map[string]Input) error {
+func sourceError(err error, inputs map[string]document.Location) error {
 	if err == nil {
 		return nil
 	}

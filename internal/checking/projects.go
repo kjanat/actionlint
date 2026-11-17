@@ -8,8 +8,9 @@ import (
 	"time"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -17,7 +18,7 @@ import (
 // CheckProjects discovers inputs once, then loads each repository's plugins in
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
-func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection plugininstall.Selection) (*Result, error) {
+func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -50,6 +51,13 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		}
 	}
 	check := func(input inputmodel.Request) (*Result, error) {
+		selection, options := selection, options
+		// Plugin selection reads configuration from disk. The session shares
+		// those files only when it would read the same bytes.
+		if options.ReadFile == nil && len(options.SourceOverlays) == 0 {
+			files := document.NewFiles()
+			selection.ConfigSources, options.configSources = files, files
+		}
 		sources, err := selection.Resolve(ctx, options.WorkingDir, input)
 		if err != nil {
 			return nil, err

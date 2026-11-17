@@ -24,7 +24,7 @@ func TestDependencySettingsInheritanceAndOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := rules.ReadContext(t.Context(), filepath.Join(root, "actionlint.toml"), nil)
+	loaded, err := rules.ReadContext(t.Context(), filepath.Join(root, "actionlint.toml"), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

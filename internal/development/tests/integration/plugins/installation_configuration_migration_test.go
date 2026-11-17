@@ -14,7 +14,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
@@ -30,7 +32,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
+	plan, err := configmigration.Prepare(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +68,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	}
 	registry.SetOffline(true)
 	before := len(registry.Requests())
-	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}); err != nil {
+	if err := configmigration.MigrateFile(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != before {
@@ -85,7 +87,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	plan, err := configmigration.Prepare(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +131,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	if err := os.Symlink(shared, filepath.Join(root, ".github")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	actual, err := os.ReadFile(path)
@@ -143,7 +145,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	if err := os.WriteFile(path, invalid, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil {
 		t.Fatal("automatic migration skipped reading the linked config")
 	}
 	actual, err = os.ReadFile(path)
@@ -191,7 +193,7 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 				inputName = filepath.Join(root, inputName)
 			}
 			input := inputmodel.Request{Kind: inputmodel.Stdin, Name: inputName}
-			err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+			err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 			if tc.wantError {
 				if err == nil {
 					t.Fatal("invalid named stdin path was accepted")
@@ -267,7 +269,7 @@ func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
 			if err := os.WriteFile(path, original, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+			plan, err := configmigration.Prepare(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -299,7 +301,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 			if err := os.WriteFile(path, original, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+			plan, err := configmigration.Prepare(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}

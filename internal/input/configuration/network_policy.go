@@ -15,7 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -58,7 +57,7 @@ type mirrorRestriction struct {
 // NetworkPolicy combines all loaded policy files. Its restrictions cannot be replaced by a project.
 type NetworkPolicy struct {
 	defaults       NetworkConfig
-	defaultOrigins map[string]Input
+	defaultOrigins map[string]document.Location
 	restrictions   []mirrorRestriction
 	files          []string
 }
@@ -109,48 +108,45 @@ func networkPolicyFiles() []string {
 }
 
 func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*NetworkPolicy, error) {
-	p := &NetworkPolicy{defaultOrigins: map[string]Input{}}
-	var defaults *tree.Node
+	p := &NetworkPolicy{defaultOrigins: map[string]document.Location{}}
+	var defaults *document.Node
 	for _, path := range paths {
-		loaded, err := tree.Load(path, read, func(origin string, doc document.Document) (document.Document, error) {
-			object, ok := doc.Value.(map[string]any)
+		loaded, err := document.Load(path, nil, read, func(origin string, source *document.Node) (*document.Node, error) {
+			object, ok := source.Value().(map[string]any)
 			if !ok {
-				return doc, errors.New("network policy must be an object")
+				return source, errors.New("network policy must be an object")
 			}
 			object = maps.Clone(object)
 			if value, exists := object["$schema"]; exists {
 				if _, ok := value.(string); !ok {
-					return doc, errors.New("$schema must be a string")
+					return source, errors.New("$schema must be a string")
 				}
 			}
 			delete(object, "$schema")
-			doc.Value = object
 			var file NetworkPolicyFile
-			if err := binding.Decode(doc.Value, &file); err != nil {
-				return doc, sourceError(err, documentInputs(doc))
+			if err := binding.Decode(object, &file); err != nil {
+				return source, sourceError(err, source.Origins())
 			}
 			restriction := file.Restrictions.Network.MetadataMirrors
 			for i, service := range restriction.ExcludeServices {
 				if service != "jsdelivr" {
-					return doc, fmt.Errorf("restrictions.network.metadata-mirrors.exclude-services[%d]: unknown mirror %q", i, service)
+					return source, fmt.Errorf("restrictions.network.metadata-mirrors.exclude-services[%d]: unknown mirror %q", i, service)
 				}
 			}
 			for i, pattern := range restriction.ExcludeRepositories {
 				parts := strings.Split(pattern, "/")
 				if len(parts) != 3 || slices.Contains(parts, "") || !doublestar.ValidatePattern(pattern) {
-					return doc, fmt.Errorf("restrictions.network.metadata-mirrors.exclude-repositories[%d]: expected a host/owner/repository glob, got %q", i, pattern)
+					return source, fmt.Errorf("restrictions.network.metadata-mirrors.exclude-repositories[%d]: expected a host/owner/repository glob, got %q", i, pattern)
 				}
 			}
 			p.restrictions = append(p.restrictions, mirrorRestriction{restriction, origin})
-			return doc, nil
-		})
+			return document.Capture(object, source.Origins()), nil
+		}, nil)
 		if err != nil {
 			return nil, err
 		}
-		root, _ := loaded.Value.(map[string]any)
-		if value, present := root["defaults"]; present {
-			_ = value
-			defaults = tree.Overlay(defaults, loaded.Node.Child("defaults"), nil)
+		if declared := loaded.Root.Child("defaults"); declared != nil {
+			defaults = document.Merge(defaults, declared, nil)
 			p.defaultOrigins = defaults.Origins()
 		}
 		p.files = append(p.files, loaded.Files...)
@@ -185,7 +181,7 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (Resolve
 	if resolved.Origins == nil {
 		resolved.Origins = map[string]configreport.Origin{}
 	}
-	setOrigin := func(key string, input Input) {
+	setOrigin := func(key string, input document.Location) {
 		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Line, Column: input.Column}
 	}
 	for key, absent := range map[string]bool{"services": requested.Services == nil, "allow-unknown-repositories": requested.AllowUnknownRepositories == nil} {
@@ -195,10 +191,10 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (Resolve
 	}
 	for _, restriction := range p.restrictions {
 		if len(restriction.settings.ExcludeServices) != 0 {
-			setOrigin("services", Input{File: restriction.source})
+			setOrigin("services", document.Location{File: restriction.source})
 		}
 		if restriction.settings.RequirePublic {
-			setOrigin("allow-unknown-repositories", Input{File: restriction.source})
+			setOrigin("allow-unknown-repositories", document.Location{File: restriction.source})
 		}
 	}
 	return resolved, nil

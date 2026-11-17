@@ -11,8 +11,8 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Finding associates a diagnostic with its owning step.
-type Finding struct {
+// StepFinding associates a diagnostic with its owning step.
+type StepFinding struct {
 	findingmodel.Finding
 	Step declaration.Step
 }
@@ -20,50 +20,34 @@ type Finding struct {
 // Collector attaches a rule name and step to each reported message.
 type Collector struct {
 	Rule     string
-	Findings []Finding
+	Findings []StepFinding
 	Step     declaration.Step
 }
 
-func (c *Collector) Error(p *workflow.Pos, text string) {
-	c.Findings = append(c.Findings, Finding{Rule: c.Rule, Message: text, Start: Position(p), Step: c.Step})
+func (c *Collector) Error(p *sourcepos.Position, text string) {
+	c.Findings = append(c.Findings, StepFinding{Rule: c.Rule, Message: text, Start: sourcepos.ZeroIfNil(p), Step: c.Step})
 }
 
-func (c *Collector) Errorf(p *workflow.Pos, format string, args ...any) {
+func (c *Collector) Errorf(p *sourcepos.Position, format string, args ...any) {
 	c.Error(p, fmt.Sprintf(format, args...))
 }
 
-// Position converts a workflow position to a diagnostic position. Nil means no position.
-func Position(p *workflow.Pos) sourcepos.Position {
-	if p == nil {
-		return sourcepos.Position{}
-	}
-	return sourcepos.Position{Line: p.Line, Column: p.Col}
-}
-
-// OptionalPosition returns nil when a declaration has no source position.
-func OptionalPosition(pos workflow.Pos, present bool) *workflow.Pos {
-	if !present {
-		return nil
-	}
-	return &pos
-}
-
 // Warning constructs a warning at the supplied source position.
-func Warning(rule, code string, p *workflow.Pos, format string, args ...any) Finding {
-	return Finding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: Position(p)}
+func Warning(rule, code string, p *sourcepos.Position, format string, args ...any) StepFinding {
+	return StepFinding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: sourcepos.ZeroIfNil(p)}
 }
 
 // FromDiagnostics associates diagnostics with a check before step ownership is assigned.
-func FromDiagnostics(ds []results.Diagnostic) []Finding {
-	out := make([]Finding, len(ds))
+func FromDiagnostics(ds []results.Diagnostic) []StepFinding {
+	out := make([]StepFinding, len(ds))
 	for i, d := range ds {
-		out[i] = Finding{Diagnostic: d}
+		out[i] = StepFinding{Diagnostic: d}
 	}
 	return out
 }
 
 // SourcePosition returns a declaration's position, or nil when it has none.
-func SourcePosition(s *workflow.String) *workflow.Pos {
+func SourcePosition(s *workflow.String) *sourcepos.Position {
 	if s == nil {
 		return nil
 	}

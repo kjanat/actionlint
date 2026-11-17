@@ -1,10 +1,8 @@
 package configuration
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -34,11 +32,16 @@ type Migration struct {
 // MigrateDocument converts legacy syntax without reading or writing files.
 // Explicit migrated policy levels now survive presets and --strict.
 func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registrations ...rule.Descriptor) (Migration, error) {
-	parsed, err := document.Parse(path, content)
+	editor, err := document.NewEditor(path, content)
 	if err != nil {
 		return Migration{}, err
 	}
-	root := parsed.Value
+	return ruleSet.migrateFile(editor, registrations)
+}
+
+// migrateFile converts the legacy syntax of one parsed file.
+func (ruleSet RuleSet) migrateFile(editor *document.Editor, registrations []rule.Descriptor) (Migration, error) {
+	root := editor.Root().Value()
 	for _, warning := range configWarnings(root, nil) {
 		if strings.Contains(warning.Message, `"self-hosted-runner.`) || strings.Contains(warning.Message, `"paths[`) {
 			return Migration{}, fmt.Errorf("cannot migrate without dropping an unknown setting: %s", warning.Message)
@@ -53,69 +56,59 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 		return Migration{}, err
 	}
 	changed = changed || categoriesChanged
-	result := Migration{Content: bytes.Clone(content), Changed: changed}
+	result := Migration{Content: editor.Original(), Changed: changed}
 	if !changed {
 		return result, nil
 	}
 	if field(root, "policy") != nil {
 		result.Notes = append(result.Notes, "Migrated policy levels are explicit: presets and --strict no longer override explicit disables.")
 	}
-	if legacyExpressionControls(root) {
-		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
-	}
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".toml":
-		result.Content, err = migrateTOML(content, next)
-	case ".json", ".jsonc":
-		result.Content, err = document.Marshal(path, next)
-	default:
-		relocated := ruleSet.migrationInputs(root, documentInputs(parsed))
-		locations := map[string]document.Location{}
-		for pointer, origin := range relocated {
-			line, column := origin.KeyLine, origin.KeyColumn
-			if line == 0 {
-				line, column = origin.Line, origin.Column
-			}
-			locations[pointer] = document.Location{File: origin.File, Line: line, Column: column}
+	for _, descriptor := range ruleSet.Rules() {
+		if descriptor.MigrationNote != "" && legacyRuleControls(root, descriptor) {
+			result.Notes = append(result.Notes, descriptor.MigrationNote)
 		}
-		result.Content, err = document.RewriteYAML(content, next, locations)
 	}
+	if !editor.WritesNull() && hasUnknownRepositoryFacts(next) {
+		return Migration{}, errors.New("TOML cannot preserve unknown values or null resets; convert the selected config to YAML or JSON first")
+	}
+	relocated := ruleSet.migrationInputs(root, editor.Root().Origins())
+	result.Content, err = editor.Rewrite(next, migratedMembers, relocated)
 	if err != nil {
 		return Migration{}, err
-	}
-
-	if !bytes.HasSuffix(result.Content, []byte("\n")) {
-		result.Content = append(result.Content, '\n')
-	}
-	if !strings.EqualFold(filepath.Ext(path), ".toml") && bytes.Contains(content, []byte("\r\n")) {
-		result.Content = bytes.ReplaceAll(result.Content, []byte("\n"), []byte("\r\n"))
 	}
 	return result, nil
 }
 
-// The valid v2 expression selector cannot distinguish old broad intent from a
-// deliberate field-value selection. Warn during legacy conversion; do not alias it.
-func legacyExpressionControls(root any) bool {
+// migratedMembers are the top-level settings that migration may rewrite:
+// lint, repository and overrides receive moved settings, and the legacy
+// settings are removed.
+var migratedMembers = append([]string{"lint", "repository", "overrides"}, legacyKeys...)
+
+// legacyRuleControls reports whether root selects the rule by its name in its
+// category, a disable entry or an ignore. A rule whose name kept a narrower
+// meaning cannot tell old broad intent from a deliberate selection, so
+// migration explains the change instead of aliasing the name.
+func legacyRuleControls(root any, descriptor Rule) bool {
 	rules := field(field(root, "lint"), "rules")
-	if field(field(rules, "correctness"), "expression") != nil {
+	if field(field(rules, descriptor.Category), descriptor.Name) != nil {
 		return true
 	}
 	if disabled := field(rules, "disable"); disabled != nil {
 		for _, item := range elements(disabled) {
-			if text(item) == "expression" {
+			if text(item) == descriptor.Name {
 				return true
 			}
 		}
 	}
 	if ignores := field(root, "ignores"); ignores != nil {
 		for _, item := range elements(ignores) {
-			if selected := field(item, "rule"); selected != nil && text(selected) == "expression" {
+			if selected := field(item, "rule"); selected != nil && text(selected) == descriptor.Name {
 				return true
 			}
 		}
 	}
 	if overrides := field(root, "overrides"); overrides != nil {
-		return slices.ContainsFunc(elements(overrides), legacyExpressionControls)
+		return slices.ContainsFunc(elements(overrides), func(override any) bool { return legacyRuleControls(override, descriptor) })
 	}
 	return false
 }
@@ -275,9 +268,12 @@ func migratedPolicySettings(value any) any {
 		return value
 	}
 	policies := mapping()
-	for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "missing-permissions"} {
+	for name := range policySettings {
 		setField(policies, name, value)
 	}
+	// policy.require-permissions has no projection; null also resets the rule
+	// that replaced it.
+	setField(policies, permissionsRule, value)
 	return policies
 }
 

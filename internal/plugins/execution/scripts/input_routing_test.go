@@ -11,13 +11,12 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
-type routingRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
+type routingRunner func(context.Context, tools.Batch) ([]tools.ToolFinding, error)
 
-func (r routingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r routingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	return r(ctx, batch)
 }
 
@@ -35,7 +34,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			return c.Config.Tools["ruff"].Enabled == nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
-			return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+			return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 				if len(batch.Scripts) != 0 {
 					t.Fatal("input-only descriptor reached native runner with unsupported run")
 				}
@@ -63,7 +62,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Input: &site, Text: "disabled", Config: disabled},
 		{Text: "unrelated run", Config: enabled},
-		{Input: &site, Text: "enabled", Config: enabled, Key: &workflowlang.Pos{Line: 9, Col: 5}},
+		{Input: &site, Text: "enabled", Config: enabled, Key: &sourcepos.Position{Line: 9, Column: 5}},
 	}})
 	if err != nil || calls != 1 || len(findings) != 1 || findings[0].Script != 2 {
 		t.Fatalf("eligibility changed input routing/indices: calls=%d findings=%+v err=%v", calls, findings, err)
@@ -93,8 +92,8 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 			}}, nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
-			return routingRunner(func(context.Context, tools.Batch) ([]tools.Finding, error) {
-				return []tools.Finding{{Message: "native"}}, nil
+			return routingRunner(func(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
+				return []tools.ToolFinding{{Message: "native"}}, nil
 			}), nil
 		},
 	}
@@ -116,7 +115,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &sourcepos.Position{Line: 11, Column: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
 	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (sourcepos.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
@@ -129,12 +128,12 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ScriptInputs: []checkinputs.ScriptInput{site}}
 	nativeCalls, inputCalls := 0, 0
 	registration := tools.Registration{Descriptor: descriptor.Rule, RequiresExecution: true, Build: func(tools.Context) (tools.Runner, error) {
-		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			nativeCalls++
 			if len(batch.Scripts) != 1 || batch.Scripts[0].Input != nil {
 				t.Fatal("native batch/index context changed")
 			}
-			return []tools.Finding{{Rule: "tool", Message: "native", Script: 0}}, nativeFailure
+			return []tools.ToolFinding{{Rule: "tool", Message: "native", Script: 0}}, nativeFailure
 		}), nil
 	}}
 	engine := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
@@ -159,7 +158,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Text: "run", Execution: tools.Execution{Shell: "bash"}},
-		{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}},
+		{Input: &site, Text: "input", Key: &sourcepos.Position{Line: 11, Column: 7}},
 	}})
 	if !errors.Is(err, nativeFailure) || !errors.Is(err, inputFailure) || nativeCalls != 1 || inputCalls != 1 || len(findings) != 2 {
 		t.Fatalf("partial outcomes lost or routes duplicated: native=%d input=%d findings=%+v err=%v", nativeCalls, inputCalls, findings, err)
@@ -238,7 +237,7 @@ func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "source", Key: &workflowlang.Pos{Line: 1, Col: 1}}}})
+		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "source", Key: &sourcepos.Position{Line: 1, Column: 1}}}})
 		if (err == nil) != (effect == checkinputs.TemplateEffectNone) || (len(findings) == 1) != (effect == checkinputs.TemplateEffectNone) {
 			t.Fatalf("effect %q: findings=%+v err=%v", effect, findings, err)
 		}
@@ -258,11 +257,11 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 	t.Parallel()
 	engine := describedRoutingBackend{descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool"}}
 	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
-		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			if len(batch.Scripts) != 1 || batch.Scripts[0].Text != "native" {
 				t.Fatalf("legacy metadata discarded native route: %+v", batch.Scripts)
 			}
-			return []tools.Finding{{Rule: "tool", Message: "native"}}, nil
+			return []tools.ToolFinding{{Rule: "tool", Message: "native"}}, nil
 		}), nil
 	}}
 	registration = WithConfiguredEngine(registration, func(tools.Context) (checkinputs.ScriptBackend, error) { return engine, nil })
@@ -289,7 +288,7 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 		return nil, nil
 	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "custom-rule"}, ScriptInputs: []checkinputs.ScriptInput{site}}}
 	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
-		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			nativeCalls++
 			if len(batch.Scopes) != 3 || len(batch.Scripts) != 0 {
 				t.Fatalf("scope validation changed: %+v", batch)
@@ -319,7 +318,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 		return nil, nil
 	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"python"}}}
 	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
-		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			calls++
 			if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
 				t.Fatalf("explicit Python shell lost without execution facts: %+v", batch.Scripts)
@@ -354,7 +353,7 @@ func TestConfigureBindsLoaderOnce(t *testing.T) {
 			return nil, nil
 		}), nil
 	}, Build: func(tools.Context) (tools.Runner, error) {
-		return routingRunner(func(context.Context, tools.Batch) ([]tools.Finding, error) { nativeCalls++; return nil, nil }), nil
+		return routingRunner(func(context.Context, tools.Batch) ([]tools.ToolFinding, error) { nativeCalls++; return nil, nil }), nil
 	}}
 	registration = Configure(Configure(registration))
 	runner, err := registration.Build(tools.Context{})

@@ -26,27 +26,15 @@ func validateSuppressionRuleName(reserved rule.Names, name string) error {
 
 type extensionRoleSet struct {
 	analyzer bool
-	runner   string
-	// script is the exported script-engine interface, empty without the role.
-	script            string
+	// runner is the negotiated runner-provider version, nil without the role.
+	runner runnerProtocol
+	// script is the negotiated script-engine version, nil without the role.
+	script            scriptEngineProtocol
 	toolIntegration   bool
 	referenceResolver bool
-	// templateEffects is the exported template-effects interface, empty
+	// templateEffects is the negotiated template-effects version, nil
 	// without the role.
-	templateEffects string
-}
-
-// scriptEngineInterfaces are the script-engine versions this host accepts.
-var scriptEngineInterfaces = []string{ScriptEngineInterface, ScriptEngine03Interface}
-
-var runnerInterfaces = []string{RunnerInterface, Runner03Interface}
-
-// templateEffectsPairs maps each template-effects version this host accepts
-// to the script-engine version it pairs with: the one whose request and
-// diagnostic its check uses.
-var templateEffectsPairs = map[string]string{
-	TemplateEffectsInterface:   ScriptEngineInterface,
-	TemplateEffects03Interface: ScriptEngine03Interface,
+	templateEffects *templateEffectsProtocol
 }
 
 // extensionRoles negotiates the roles a component exports. A component
@@ -63,19 +51,19 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	templatePrefix, _, _ := strings.Cut(TemplateEffectsInterface, "@")
 	for _, export := range exports {
 		if strings.HasPrefix(export.Name, runnerPrefix+"@") {
-			if err := negotiateVersion(export, runnerInterfaces, &roles.runner, "runner-provider"); err != nil {
+			if err := negotiateVersion(export, runnerProtocols, &roles.runner, "runner-provider"); err != nil {
 				return roles, err
 			}
 			continue
 		}
 		if strings.HasPrefix(export.Name, scriptPrefix+"@") {
-			if err := negotiateVersion(export, scriptEngineInterfaces, &roles.script, "script-engine"); err != nil {
+			if err := negotiateVersion(export, scriptEngineProtocols, &roles.script, "script-engine"); err != nil {
 				return roles, err
 			}
 			continue
 		}
 		if strings.HasPrefix(export.Name, templatePrefix+"@") {
-			if err := negotiateVersion(export, []string{TemplateEffectsInterface, TemplateEffects03Interface}, &roles.templateEffects, "template-effects"); err != nil {
+			if err := negotiateVersion(export, templateEffectsProtocols, &roles.templateEffects, "template-effects"); err != nil {
 				return roles, err
 			}
 			continue
@@ -94,14 +82,17 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 			*candidate.role = true
 		}
 	}
-	if !roles.analyzer && roles.runner == "" && roles.script == "" && !roles.referenceResolver {
-		return roles, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(scriptEngineInterfaces, " or "), ReferenceResolverInterface)
+	if !roles.analyzer && roles.runner == nil && roles.script == nil && !roles.referenceResolver {
+		return roles, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, errors.New("tool integration requires analyzer interface")
 	}
-	if roles.templateEffects != "" && roles.script != templateEffectsPairs[roles.templateEffects] {
-		return roles, fmt.Errorf("%s requires %s", roles.templateEffects, templateEffectsPairs[roles.templateEffects])
+	if roles.templateEffects != nil && (roles.script == nil || roles.script.templateEffects() != roles.templateEffects) {
+		paired := slices.IndexFunc(scriptEngineProtocols, func(script scriptEngineProtocol) bool {
+			return script.templateEffects() == roles.templateEffects
+		})
+		return roles, fmt.Errorf("%s requires %s", roles.templateEffects.interfaceName(), scriptEngineProtocols[paired].interfaceName())
 	}
 	return roles, nil
 }
@@ -109,17 +100,19 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 // negotiateVersion records export as the component's version of a
 // versioned role, stored in role. It fails for a version outside accepted,
 // a non-instance export, or a second version of the role.
-func negotiateVersion(export wacogo.ExportDesc, accepted []string, role *string, kind string) error {
-	if !slices.Contains(accepted, export.Name) {
-		return fmt.Errorf("plugin exports %s; this host supports %s", export.Name, strings.Join(accepted, " and "))
+func negotiateVersion[V versionedRole](export wacogo.ExportDesc, accepted []V, role *V, kind string) error {
+	index := slices.IndexFunc(accepted, func(version V) bool { return version.interfaceName() == export.Name })
+	if index < 0 {
+		return fmt.Errorf("plugin exports %s; this host supports %s", export.Name, strings.Join(interfaceNames(accepted), " and "))
 	}
 	if export.Kind != wacogo.SortInstance {
 		return fmt.Errorf("plugin export %s must be an interface instance", export.Name)
 	}
-	if *role != "" {
-		return fmt.Errorf("plugin exports %s and %s; export one %s version", *role, export.Name, kind)
+	var none V
+	if *role != none {
+		return fmt.Errorf("plugin exports %s and %s; export one %s version", (*role).interfaceName(), export.Name, kind)
 	}
-	*role = export.Name
+	*role = accepted[index]
 	return nil
 }
 

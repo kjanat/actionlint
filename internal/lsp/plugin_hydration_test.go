@@ -9,19 +9,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	module, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +37,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	sources, err := (plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

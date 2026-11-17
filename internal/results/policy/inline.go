@@ -46,7 +46,7 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 	}
 	used := make(map[selector]bool)
 	for _, finding := range findings {
-		first, last, applies := finding.Start.Line, finding.Start.Line, finding.Source == nil
+		first, last, applies := finding.Start.Line, finding.Start.Line, finding.Source.Content == nil
 		targetPath := scope
 		if origin := finding.SuppressionOrigin; origin != nil {
 			first, last, applies = origin.First, origin.Last, origin.Path == scope
@@ -70,9 +70,9 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 			slices.ContainsFunc(allowedRules, func(name string) bool {
 				return processor.RuleSet.ResolveAlias(name) == processor.RuleSet.ResolveAlias(finding.Rule)
 			}) && policy.ReportFor(finding.Rule) == configuration.SuppressionsAllowed {
-			finding.SuppressionTarget = &findingmodel.SuppressionOrigin{Path: targetPath, First: first, Last: last}
+			finding.Source.Suppression = &results.SuppressionOrigin{Path: targetPath, First: first, Last: last}
 		} else {
-			finding.SuppressionTarget = nil
+			finding.Source.Suppression = nil
 		}
 		if applies && evaluation.Suppresses(finding.Rule, first, last) {
 			continue
@@ -104,17 +104,17 @@ func (processor Processor) filterForeignInline(path string, source []byte, findi
 	for i, finding := range findings {
 		scoped := *finding
 		if scoped.SuppressionOrigin == nil {
-			scoped.Source = nil
+			scoped.Source.Content = nil
 		}
 		local[i] = &scoped
 	}
 	local = processor.filterInlineSuppressionsAt(source, local, policy, path, audit, additional...)
 	for _, finding := range local {
 		if finding.SuppressionOrigin == nil {
-			finding.Source = source
+			finding.Source.Content = source
 		}
-		if finding.SuppressionTarget != nil && finding.SuppressionTarget.Path == "" {
-			finding.SuppressionTarget.Path = path
+		if finding.Source.Suppression != nil && finding.Source.Suppression.Path == "" {
+			finding.Source.Suppression.Path = path
 		}
 		if finding.Path == "" {
 			finding.Path = path

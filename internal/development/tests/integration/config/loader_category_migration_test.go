@@ -174,7 +174,7 @@ func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := parsed.Value.(map[string]any)
+	root := parsed.Value().(map[string]any)
 	lint := root["lint"].(map[string]any)
 	rules := lint["rules"].(map[string]any)
 	group, ok := rules["correctness"].(map[string]any)

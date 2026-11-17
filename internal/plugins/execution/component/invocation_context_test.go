@@ -143,7 +143,7 @@ func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []i
 		return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 	}
 	for index := range count {
-		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: invocation.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
+		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: sourcepos.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +266,7 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 		at := func(node string) sourcepos.Reference {
 			return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 		}
-		facts := invocation.Facts{Step: invocation.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
+		facts := invocation.Facts{Step: sourcepos.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
 		ticket, err := builder.Begin(builder.RootContext(), at("call"), facts)
 		if err != nil {
 			t.Fatal(err)

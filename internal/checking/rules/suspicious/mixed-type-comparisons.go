@@ -1,8 +1,15 @@
 package suspicious
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// MixedTypeComparisonsDeclaration describes the mixed-type-comparisons rule.
-func MixedTypeComparisonsDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "mixed-type-comparisons", Description: "Flag condition comparisons that implicitly convert scalar types", Category: "suspicious", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Flag condition comparisons that implicitly convert scalar types.", Help: "Compare values of matching types or convert them explicitly before comparison.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-comparisons"}
+// MixedTypeComparisonsRule is the single definition of the mixed-type-comparisons rule.
+var MixedTypeComparisonsRule = &define.Rule{
+	Name:        "mixed-type-comparisons",
+	Description: "Flag condition comparisons that implicitly convert scalar types",
+	Category:    "suspicious",
+	Subcategory: "expressions",
+	Help:        "Compare values of matching types or convert them explicitly before comparison.",
+	DeclaredBy:  "expression",
 }

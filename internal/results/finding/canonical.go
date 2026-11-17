@@ -12,22 +12,20 @@ import (
 func (e *Finding) Canonical(source []byte) results.Diagnostic {
 	source = e.sourceFor(source)
 	end := e.End
+	unavailable := e.Source.Unavailable.Present()
+	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.Source.RawScript)
 	if end == (sourcepos.Position{}) {
 		end = sourcepos.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
-		if e.UnavailableSource.Present() {
+		switch {
+		case unavailable:
 			end = e.Start
+		case snippet != "":
+			end.Column = sourcepos.InclusiveEnd(snippet, e.Start.Column, 0) + 1
 		}
-	}
-	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
-	if !e.UnavailableSource.Present() && e.End == (sourcepos.Position{}) && snippet != "" {
-		end.Column = sourcepos.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
-	}
-	if e.EndPosition != nil {
-		end = sourcepos.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}
 	}
 	d := e.Diagnostic.Clone()
 	switch {
-	case e.UnavailableSource.Present():
+	case unavailable:
 		d.Reference, d.Fixes = nil, nil
 	case len(d.Fixes) == 0:
 		d.Fixes = nil

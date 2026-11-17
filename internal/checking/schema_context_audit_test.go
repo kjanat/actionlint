@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
@@ -189,7 +191,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 	rules := ConfigurationRules()
 	for _, descriptor := range ruleexec.Registrations(rules) {
 		if descriptor.Name == "expression" {
-			return workflow, descriptor.Build(ruleexec.Inputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
+			return workflow, descriptor.Build(define.Inputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
 		}
 	}
 	t.Fatal("expression rule is not registered")

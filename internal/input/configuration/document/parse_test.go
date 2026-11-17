@@ -15,9 +15,9 @@ func TestFormats(t *testing.T) {
 		name, src  string
 		key, value Location
 	}{
-		{"config.yaml", "repository:\n  runners: [gpu]\n", Location{"config.yaml", 2, 3}, Location{"config.yaml", 2, 12}},
-		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", Location{"config.jsonc", 3, 17}, Location{"config.jsonc", 3, 28}},
-		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", Location{"config.toml", 2, 1}, Location{"config.toml", 2, 11}},
+		{"config.yaml", "repository:\n  runners: [gpu]\n", Location{File: "config.yaml", Line: 2, Column: 3}, Location{File: "config.yaml", Line: 2, Column: 12}},
+		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", Location{File: "config.jsonc", Line: 3, Column: 17}, Location{File: "config.jsonc", Line: 3, Column: 28}},
+		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", Location{File: "config.toml", Line: 2, Column: 1}, Location{File: "config.toml", Line: 2, Column: 11}},
 	}
 	want := map[string]any{"repository": map[string]any{"runners": []any{"gpu"}}}
 	for _, tc := range tests {
@@ -27,17 +27,29 @@ func TestFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(d.Value, want) {
-				t.Fatalf("value %#v", d.Value)
+			if !reflect.DeepEqual(d.Value(), want) {
+				t.Fatalf("value %#v", d.Value())
 			}
-			if got := d.Locations["/repository/runners"]; got != tc.key {
+			if got := keyAt(d, "/repository/runners"); got != tc.key {
 				t.Errorf("key %+v", got)
 			}
-			if got := d.ValueLocations["/repository/runners"]; got != tc.value {
+			if got := valueAt(d, "/repository/runners"); got != tc.value {
 				t.Errorf("value location %+v", got)
 			}
 		})
 	}
+}
+
+// keyAt returns the position of the key or list item at pointer as a Location's Line and Column.
+func keyAt(n *Node, pointer string) Location {
+	at := n.Origins()[pointer]
+	return Location{File: at.File, Line: at.KeyLine, Column: at.KeyColumn}
+}
+
+// valueAt returns the position of the value at pointer without its key position.
+func valueAt(n *Node, pointer string) Location {
+	at := n.Origins()[pointer]
+	return Location{File: at.File, Line: at.Line, Column: at.Column}
 }
 
 func TestDuplicateKeys(t *testing.T) {
@@ -58,7 +70,7 @@ func TestTOMLArrayTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := d.Locations["/items/1/name"]; got.Line != 4 {
+	if got := keyAt(d, "/items/1/name"); got.Line != 4 {
 		t.Fatalf("location %+v", got)
 	}
 }
@@ -75,8 +87,8 @@ func TestNumberAndMarshal(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(d.Value, v) {
-			t.Fatalf("%s: %#v", name, d.Value)
+		if !reflect.DeepEqual(d.Value(), v) {
+			t.Fatalf("%s: %#v", name, d.Value())
 		}
 	}
 }
@@ -96,7 +108,7 @@ func TestTOMLNestedPositions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for path, line := range map[string]int{"/groups/0/members/0/name": 4, "/groups/1/members/0/name": 8, "/groups/1/members/0/settings/enabled": 9} {
-		if got := d.Locations[path]; got.Line != line {
+		if got := keyAt(d, path); got.Line != line {
 			t.Errorf("%s: %+v", path, got)
 		}
 	}
@@ -109,7 +121,7 @@ func TestYAMLMergeLocations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := d.Locations["/item/value"]; got.Line != 4 {
+	if got := keyAt(d, "/item/value"); got.Line != 4 {
 		t.Fatalf("location %+v", got)
 	}
 }
@@ -121,7 +133,7 @@ func TestNumbersAndDates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := d.Value.(map[string]any)[tc.key]; fmt.Sprint(got) != tc.want {
+		if got := d.Value().(map[string]any)[tc.key]; fmt.Sprint(got) != tc.want {
 			t.Errorf("%s: %v", tc.file, got)
 		}
 	}
@@ -133,9 +145,9 @@ func TestNumbersAndDates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		v, ok := d.Value.(map[string]any)["n"].(float64)
+		v, ok := d.Value().(map[string]any)["n"].(float64)
 		if !ok || !math.IsInf(v, 1) {
-			t.Fatalf("%s: %#v", tc.file, d.Value)
+			t.Fatalf("%s: %#v", tc.file, d.Value())
 		}
 	}
 }
@@ -148,11 +160,11 @@ func TestNestedTOMLLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for p, col := range map[string]int{"/values": 10, "/values/0": 11, "/values/1": 16, "/values/1/1": 20, "/values/1/1/nested": 31} {
-		if loc := d.ValueLocations[p]; loc.Column != col {
+		if loc := d.Origins()[p]; loc.Column != col {
 			t.Errorf("%s = %+v, want column %d", p, loc, col)
 		}
 	}
-	if loc := d.ValueLocations["/items/0"]; loc.Line != 2 || loc.Column != 1 {
+	if loc := d.Origins()["/items/0"]; loc.Line != 2 || loc.Column != 1 {
 		t.Errorf("array table = %+v", loc)
 	}
 }
@@ -176,8 +188,8 @@ func TestYAMLLargeIntegerRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(d.Value, v) {
-		t.Fatalf("%s: %#v", data, d.Value)
+	if !reflect.DeepEqual(d.Value(), v) {
+		t.Fatalf("%s: %#v", data, d.Value())
 	}
 }
 
@@ -188,8 +200,8 @@ func TestYAMLDecimalLeadingZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"first": json.Number("17"), "second": json.Number("15"), "third": json.Number("18")}
-	if !reflect.DeepEqual(d.Value, want) {
-		t.Fatalf("got %#v, want %#v", d.Value, want)
+	if !reflect.DeepEqual(d.Value(), want) {
+		t.Fatalf("got %#v, want %#v", d.Value(), want)
 	}
 }
 
@@ -201,8 +213,8 @@ func TestRewriteYAMLPreservesMovedComments(t *testing.T) {
 		t.Fatal(err)
 	}
 	value := map[string]any{"new": json.Number("1"), "other": "keep"}
-	locations := map[string]Location{"/new": parsed.ValueLocations["/old"], "/other": parsed.ValueLocations["/other"]}
-	result, err := RewriteYAML(original, value, locations)
+	locations := map[string]Location{"/new": parsed.Origins()["/old"], "/other": parsed.Origins()["/other"]}
+	result, err := rewriteYAML(original, value, locations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,8 +227,8 @@ func TestRewriteYAMLPreservesMovedComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(reparsed.Value, value) {
-		t.Fatalf("values %#v", reparsed.Value)
+	if !reflect.DeepEqual(reparsed.Value(), value) {
+		t.Fatalf("values %#v", reparsed.Value())
 	}
 }
 
@@ -227,7 +239,7 @@ func TestRewriteYAMLRetainsAliasComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := RewriteYAML(original, parsed.Value, parsed.ValueLocations)
+	result, err := rewriteYAML(original, parsed.Value(), parsed.Origins())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +252,7 @@ func TestRewriteYAMLRetainsAliasComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(again.Value, parsed.Value) {
-		t.Fatalf("values changed: %#v", again.Value)
+	if !reflect.DeepEqual(again.Value(), parsed.Value()) {
+		t.Fatalf("values changed: %#v", again.Value())
 	}
 }

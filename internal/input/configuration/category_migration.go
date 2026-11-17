@@ -23,6 +23,7 @@ func (ruleSet RuleSet) migrateRuleAliases(root any) (any, bool, error) {
 	changed := false
 	lint := cloneMapping(field(root, "lint"))
 	rules := cloneMapping(field(lint, "rules"))
+	suppressions, suppressionsDeclared := ruleSet.suppressionsRule()
 	for category, original := range members(rules) {
 		if original == nil {
 			original = explicitNull{}
@@ -42,7 +43,7 @@ func (ruleSet RuleSet) migrateRuleAliases(root any) (any, bool, error) {
 				setting = explicitNull{}
 			}
 			canonical := ruleSet.ResolveAlias(migratedPermissionsName(name))
-			if canonical == "forbidden-suppression" {
+			if suppressionsDeclared && canonical == suppressions.Name {
 				if options := field(setting, "options"); isMapping(options) {
 					if list := field(options, "rules"); list != nil {
 						updated, renamed := ruleSet.renameSelectorList(list)

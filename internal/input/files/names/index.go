@@ -18,7 +18,7 @@ import (
 
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
-	load   func(string) (name string, known bool, err error)
+	load   func(string) (namemodel.Declared, error)
 	reader *files.Reader
 	// paths includes in-memory source files which may not exist on disk yet.
 	paths []string
@@ -28,7 +28,7 @@ type Index struct {
 
 // NewIndex inventories workflow names under each root through reader, adding
 // the source paths, which may exist only in memory. load reads one workflow's name.
-func NewIndex(paths []string, reader *files.Reader, load func(string) (name string, known bool, err error)) *Index {
+func NewIndex(paths []string, reader *files.Reader, load func(string) (namemodel.Declared, error)) *Index {
 	return &Index{load: load, reader: reader, paths: slices.Clone(paths)}
 }
 
@@ -190,6 +190,7 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 	if !exists {
 		load = sync.OnceValues(func() (namemodel.Inventory, error) {
 			var values []string
+			var literals []namemodel.NamedWorkflow
 			complete := true
 			dir := filepath.Join(root, ".github", "workflows")
 			entries, err := i.reader.ReadDir(dir)
@@ -210,19 +211,23 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 			}
 			candidates = append(candidates, i.paths...)
 			for _, path := range workflowPaths(dir, candidates, runtime.GOOS == "windows") {
-				name, known, err := i.load(path)
+				declared, err := i.load(path)
 				if err != nil {
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-						return namemodel.NewInventory(values, false), err
+						return namemodel.NewInventory(values, false).WithLiteralNames(literals), err
 					}
 					complete = false
 					continue
 				}
-				if !known {
+				if !declared.Known() {
 					complete = false
 					continue
 				}
-				if name == "" {
+				if literal, ok := declared.Literal(); ok {
+					literals = append(literals, namemodel.NamedWorkflow{Path: path, Name: literal})
+				}
+				name, explicit := declared.Explicit()
+				if !explicit {
 					filename := filepath.Base(path)
 					for _, disk := range diskPaths[filenameKey(path)] {
 						if SamePath(disk, path) {
@@ -234,7 +239,7 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 				}
 				values = append(values, name)
 			}
-			return namemodel.NewInventory(values, complete), nil
+			return namemodel.NewInventory(values, complete).WithLiteralNames(literals), nil
 		})
 		i.cache[key] = load
 	}

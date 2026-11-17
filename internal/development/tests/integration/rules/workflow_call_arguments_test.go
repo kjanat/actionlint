@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -180,21 +181,21 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			c := &workflowlang.WorkflowCall{
-				Uses:           &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{}},
+				Uses:           &workflowlang.String{Value: tc.uses, Pos: &source.Position{}},
 				Inputs:         map[string]*workflowlang.WorkflowCallInput{},
 				Secrets:        map[string]*workflowlang.WorkflowCallSecret{},
 				InheritSecrets: tc.inheritSecrets,
 			}
 			for _, i := range tc.inputs {
 				c.Inputs[strings.ToLower(i)] = &workflowlang.WorkflowCallInput{
-					Name:  &workflowlang.String{Value: i, Pos: &workflowlang.Pos{}},
-					Value: &workflowlang.String{Value: "", Pos: &workflowlang.Pos{}},
+					Name:  &workflowlang.String{Value: i, Pos: &source.Position{}},
+					Value: &workflowlang.String{Value: "", Pos: &source.Position{}},
 				}
 			}
 			for _, s := range tc.secrets {
 				c.Secrets[strings.ToLower(s)] = &workflowlang.WorkflowCallSecret{
-					Name:  &workflowlang.String{Value: s, Pos: &workflowlang.Pos{}},
-					Value: &workflowlang.String{Value: "", Pos: &workflowlang.Pos{}},
+					Name:  &workflowlang.String{Value: s, Pos: &source.Position{}},
+					Value: &workflowlang.String{Value: "", Pos: &source.Position{}},
 				}
 			}
 

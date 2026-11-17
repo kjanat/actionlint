@@ -109,7 +109,7 @@ permissions: {}
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != wantRule || !strings.Contains(result.Diagnostics[0].Message, wantMessage) {
 				t.Fatalf("empty pattern: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
-			if result.Diagnostics[0].Start.Line != pos.Line || result.Diagnostics[0].Start.Column != pos.Col {
+			if result.Diagnostics[0].Start.Line != pos.Line || result.Diagnostics[0].Start.Column != pos.Column {
 				t.Fatalf("empty pattern position: got %+v, want %+v", result.Diagnostics[0].Start, pos)
 			}
 		})

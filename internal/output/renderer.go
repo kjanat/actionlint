@@ -109,7 +109,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 			continue
 		}
 		if r.oneline {
-			finding.Source = nil
+			finding.Source.Content = nil
 			finding.canonicalSnippet = ""
 		}
 		finding.prettyPrint(out, r.color)

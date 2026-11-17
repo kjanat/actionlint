@@ -36,22 +36,22 @@ func TestCheck(t *testing.T) {
 	}{
 		{"valid graph", []Job{job(1, "build"), job(2, "test", "build"), job(3, "deploy", "Build", "test")}, nil},
 		{"missing dependency", []Job{job(1, "test", "build")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: at(1), Message: `job "test" needs job "build" which does not exist in this workflow`},
+			{Start: at(1), Message: `job "test" needs job "build" which does not exist in this workflow`},
 		}},
 		{"duplicate need", []Job{job(1, "build"), job(2, "test", "build", "BUILD")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: sourcepos.Position{Line: 2, Column: 21}, Message: `job ID "BUILD" duplicates in "needs" section. note that job ID is case insensitive`},
+			{Start: sourcepos.Position{Line: 2, Column: 21}, Message: `job ID "BUILD" duplicates in "needs" section. note that job ID is case insensitive`},
 		}},
 		{"duplicate job", []Job{job(1, "build"), job(2, "BUILD")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: at(2), Message: `job ID "BUILD" duplicates. previously defined at line:1,col:3. note that job ID is case insensitive`},
+			{Start: at(2), Message: `job ID "BUILD" duplicates. previously defined at line:1,col:3. note that job ID is case insensitive`},
 		}},
 		{"self cycle", []Job{job(1, "build", "build")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "build" -> "build"`},
+			{Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "build" -> "build"`},
 		}},
 		{"cycle starts at earliest job", []Job{job(1, "c", "b"), job(2, "a", "c"), job(3, "b", "a")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "c" -> "b" -> "a" -> "c"`},
+			{Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "c" -> "b" -> "a" -> "c"`},
 		}},
 		{"missing dependency suppresses cycle detection", []Job{job(1, "a", "b"), job(2, "b", "a", "missing")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: at(2), Message: `job "b" needs job "missing" which does not exist in this workflow`},
+			{Start: at(2), Message: `job "b" needs job "missing" which does not exist in this workflow`},
 		}},
 		{"empty ids are skipped", []Job{job(1, ""), job(2, "build", "")}, nil},
 	} {

@@ -11,7 +11,7 @@ import (
 // InferReferences enriches completed findings from source indexes supplied by the caller.
 func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.SourceIndex, entryAliases ...string) {
 	for _, finding := range all {
-		if finding.UnavailableSource.Present() {
+		if finding.Source.Unavailable.Present() {
 			finding.Reference, finding.Fixes = nil, nil
 			continue
 		}
@@ -31,12 +31,12 @@ func InferReferences(all []*findingmodel.Finding, path string, references map[st
 			ref = at
 		}
 		owner := finding.Owner
-		if owner != nil && !finding.RawScriptSource {
+		if owner != nil && !finding.Source.RawScript {
 			if job, exists := refs.Jobs[strings.ToLower(owner.Job)]; exists {
 				ref = job
 			}
 			if owner.Step != nil {
-				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Col}]; exists {
+				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Column}]; exists {
 					ref = step
 				}
 			}

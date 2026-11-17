@@ -10,7 +10,7 @@ func decodeSelectionConfig(source []byte, dst any) error {
 	if err != nil {
 		return err
 	}
-	return binding.Decode(parsed.Value, dst)
+	return binding.Decode(parsed.Value(), dst)
 }
 
 func encodeSelectionConfig(value any) ([]byte, error) {

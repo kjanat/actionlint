@@ -65,35 +65,7 @@ func (c *ASTComparisonCache) WriteWorkflowCallEventFromWorkflow(wpath string, ev
 		return
 	}
 
-	m := &calls.Metadata{
-		Inputs:  calls.Inputs{},
-		Outputs: calls.Outputs{},
-		Secrets: calls.Secrets{},
-	}
-
-	for _, i := range event.Inputs {
-		m.Inputs[i.ID] = calls.Input{
-			Type:     i.Type,
-			Required: i.Required != nil && i.Required.Value && i.Default == nil,
-			Name:     i.Name.Value,
-		}
-	}
-
-	for n, o := range event.Outputs {
-		m.Outputs[n] = calls.Output{
-			Name: o.Name.Value,
-		}
-	}
-
-	for n, s := range event.Secrets {
-		r := s.Required != nil && s.Required.Value
-		m.Secrets[n] = calls.Secret{
-			Required: r,
-			Name:     s.Name.Value,
-		}
-	}
-
-	m.JobPermissions, m.JobCacheAccess = calls.JobPermissionsAndCacheAccess(w)
+	m := calls.MetadataFromWorkflowCallEvent(event, w)
 
 	c.mu.Lock()
 	if _, exists := c.cache[spec]; !exists {

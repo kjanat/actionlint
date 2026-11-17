@@ -77,7 +77,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Scope: scope, Execution: request.Execution,
 			Environment:  slices.Clone(request.Environment),
 			Interpreters: request.Interpreters,
-			Origin:       origin, Owner: &findingmodel.Owner{Job: job, Step: positionPointer(decl.Position())},
+			Origin:       origin, Owner: &findingmodel.Owner{Job: job, Step: source.NilUnlessPresent(decl.Position())},
 			Path: scope.Deployment.SourcePath(),
 		}
 		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)
@@ -165,12 +165,4 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 func hasPosition(s *workflowlang.String) bool {
 	_, present := s.Position()
 	return present
-}
-
-// positionPointer detaches an optional value position for legacy finding adapters.
-func positionPointer(position workflowlang.Pos, present bool) *workflowlang.Pos {
-	if !present {
-		return nil
-	}
-	return &position
 }

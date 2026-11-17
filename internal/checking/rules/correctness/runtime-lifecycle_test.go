@@ -22,7 +22,7 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check := RuntimeLifecycleCheck(actionmeta.LifecycleContext{AsOf: date, Service: service})
+	check := RuntimeLifecycleChecks(actionmeta.LifecycleContext{AsOf: date, Service: service})
 	for _, tc := range []struct {
 		uses, version string
 		count         int
@@ -85,7 +85,7 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 	if !ok {
 		t.Fatal("missing job")
 	}
-	check := RuntimeLifecycleCheck(actionmeta.LifecycleContext{AsOf: date})
+	check := RuntimeLifecycleChecks(actionmeta.LifecycleContext{AsOf: date})
 	for step := range job.Steps() {
 		findings := check.Step(step)
 		if len(findings) != 1 || findings[0].LifecycleEvidence == nil || findings[0].LifecycleEvidence.Name != "node16" || !findings[0].LifecycleEvidence.Current {
@@ -116,7 +116,7 @@ func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		check := RuntimeLifecycleCheck(actionmeta.LifecycleContext{AsOf: date})
+		check := RuntimeLifecycleChecks(actionmeta.LifecycleContext{AsOf: date})
 		count := 0
 		for step := range job.Steps() {
 			for _, f := range check.Step(step) {

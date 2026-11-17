@@ -11,12 +11,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
+
+func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
+	return pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+}
 
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +46,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,8 +59,8 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	pin.Registry = "https://CATALOGUE.example/"
-	project.Releases = plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
-	if err := plugininstall.Sync(t.Context(), project.Releases, fixtureAcquisition(registry)); err != nil {
+	project.Releases = pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{pin}}
+	if err := pluginregistry.Sync(t.Context(), project.Releases, fixtureAcquisition(registry)); err != nil {
 		t.Fatal(err)
 	}
 	ref, err := pluginreference.New(pin.Name, pin.Version, pin.Registry)
@@ -74,7 +80,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 
 func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	t.Parallel()
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, repositoryfixture.Directory(t), "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +99,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +114,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	old := pin
 	old.Name = "github.com/publisher/previous"
 	old.URL = strings.Replace(pin.URL, "/plugin/", "/previous/", 1)
-	project.Releases = plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{old}}
+	project.Releases = pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{old}}
 	ref, err := pluginreference.New(pin.Name, pin.Selector, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +132,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.Publish(t, "v1.0.0")
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 	root := repositoryfixture.Directory(t)
 	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
@@ -171,7 +177,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := project.SelectedPlugins(t.Context())
+	selected, err := project.SelectedPlugins(t.Context(), project.Manifest.References)
 	if err != nil || len(selected.Plugins) != 1 || !selected.Plugins[0].SameRelease(original) {
 		t.Fatalf("failed update damaged previous selection: %+v %v", selected, err)
 	}
@@ -182,7 +188,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
-	selected, err = project.SelectedPlugins(t.Context())
+	selected, err = project.SelectedPlugins(t.Context(), project.Manifest.References)
 	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0].Version != "v2.0.0" || selected.Plugins[0].Asset != "plugin.component.wasm" {
 		t.Fatalf("explicit update did not select component: %+v %v", selected, err)
 	}

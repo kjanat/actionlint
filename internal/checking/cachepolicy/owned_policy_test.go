@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -13,7 +14,7 @@ import (
 
 func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	t.Parallel()
-	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}
+	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &source.Position{Line: 2, Column: 13}}
 	hook := &workflowlang.String{Value: "pull_request_target"}
 	job := &workflowlang.Job{}
 	model := &workflowlang.Workflow{

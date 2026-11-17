@@ -28,7 +28,7 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 	if err := renderer.SetWidth(40); err != nil {
 		t.Fatal(err)
 	}
-	result := Result{Findings: []Finding{FindingOf(diagnostic, nil)}}
+	result := Result{Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
 	var plain, linked strings.Builder
 	if err := renderer.Render(&plain, result); err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 func TestPrettyExplainsNonBlockingDependency(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
-	finding := FindingOf(results.Diagnostic{Rule: "script-interpolation", Message: "Use an environment variable.", Path: "https://example.test/action.yml", NonBlocking: true}, nil)
+	finding := RenderedFindingOf(results.Diagnostic{Rule: "script-interpolation", Message: "Use an environment variable.", Path: "https://example.test/action.yml", NonBlocking: true}, nil)
 	if err := finding.printPretty(&out, 120, false, false, "lint.rules.correctness.script-interpolation"); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
 	const address = "https://github.com/pypa/gh-action-pypi-publish/blob/7245906fb61fa33a13554f9d5fb856fe61758086/action.yml"
 	for _, hyperlinks := range []bool{false, true} {
 		var out strings.Builder
-		f := FindingOf(results.Diagnostic{
+		f := RenderedFindingOf(results.Diagnostic{
 			Path: address, Start: sourcepos.Position{Line: 168, Column: 11},
 			Message: "See " + address + ".", DocumentationURL: address,
 			Related: []results.Related{{Path: address, Start: sourcepos.Position{Line: 10, Column: 2}}},
@@ -97,12 +97,14 @@ func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
 		}
 		if hyperlinks {
 			links := regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\`).FindAllStringSubmatch(out.String(), -1)
-			if len(links) != 4 {
-				t.Fatalf("got %d OSC 8 links, want four:\n%q", len(links), out.String())
+			// Message, location, documentation, related location.
+			want := []string{address, address + "#L168", address, address + "#L10"}
+			if len(links) != len(want) {
+				t.Fatalf("got %d OSC 8 links, want %d:\n%q", len(links), len(want), out.String())
 			}
-			for _, match := range links {
-				if match[1] != address {
-					t.Errorf("invalid OSC 8 destination: got %q, want %q", match[1], address)
+			for i, match := range links {
+				if match[1] != want[i] {
+					t.Errorf("OSC 8 destination %d: got %q, want %q", i, match[1], want[i])
 				}
 			}
 		} else if strings.Contains(out.String(), "\x1b") {
@@ -111,11 +113,49 @@ func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
 	}
 }
 
+func TestPrettyRemoteLocationLinksToLine(t *testing.T) {
+	t.Parallel()
+	const address = "https://github.com/actions/checkout/blob/0123456789abcdef0123456789abcdef01234567/action.yml"
+	for _, tc := range []struct {
+		name     string
+		path     string
+		position sourcepos.Position
+		want     string
+	}{
+		{
+			name: "line", path: address, position: sourcepos.Position{Line: 42, Column: 7},
+			want: "  --> \x1b]8;;" + address + "#L42\x1b\\" + address + "\x1b]8;;\x1b\\ (line 42, column 7)\n",
+		},
+		{
+			name: "existing fragment", path: address + "#readme", position: sourcepos.Position{Line: 3, Column: 1},
+			want: "  --> \x1b]8;;" + address + "#L3\x1b\\" + address + "#readme\x1b]8;;\x1b\\ (line 3, column 1)\n",
+		},
+		{
+			name: "no line", path: address, position: sourcepos.Position{},
+			want: "  --> \x1b]8;;" + address + "\x1b\\" + address + "\x1b]8;;\x1b\\ (line 0, column 0)\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var linked, plain strings.Builder
+			writePrettyLocation(&linked, "  --> ", tc.path, tc.position, 20, true)
+			if linked.String() != tc.want {
+				t.Fatalf("got  %q\nwant %q", linked.String(), tc.want)
+			}
+			writePrettyLocation(&plain, "  --> ", tc.path, tc.position, 20, false)
+			visible := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`).ReplaceAllString(linked.String(), "")
+			if visible != plain.String() {
+				t.Fatalf("link changed visible text: got %q, want %q", visible, plain.String())
+			}
+		})
+	}
+}
+
 func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 	t.Parallel()
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
 	var out strings.Builder
-	f := FindingOf(results.Diagnostic{Message: message}, nil)
+	f := RenderedFindingOf(results.Diagnostic{Message: message}, nil)
 	if err := f.printPretty(&out, 40, true, false, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -142,14 +182,14 @@ func TestPrettyDiagnostic(t *testing.T) {
 		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: sourcepos.Position{Line: 4, Column: 2}}},
 	}
 	var out strings.Builder
-	if err := r.Render(&out, Result{Findings: []Finding{FindingOf(d, []byte("  bad"))}}); err != nil {
+	if err := r.Render(&out, Result{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}); err != nil {
 		t.Fatal(err)
 	}
 	want := "warning[expression-reference]\n  unknown variable\n  --> ci.yml:1:3\n  |\n1 |   bad\n  |   ^^^\n  = help: Use a declared value.\n  = related: declaration\n    --> other.yml:4:2\n\n"
 	if out.String() != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", &out, want)
 	}
-	if err := r.Render(failingRenderWriter{}, Result{Findings: []Finding{FindingOf(d, nil)}}); err == nil {
+	if err := r.Render(failingRenderWriter{}, Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err == nil {
 		t.Fatal("lost write failure")
 	}
 }
@@ -172,7 +212,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 			d.Help = "Quote this variable."
 		}
 		var out strings.Builder
-		result := Result{Findings: []Finding{FindingOf(d, nil)}, Diagnostics: []results.Diagnostic{d}}
+		result := Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}, Diagnostics: []results.Diagnostic{d}}
 		if err := r.Render(&out, result); err != nil {
 			t.Fatal(err)
 		}
@@ -218,7 +258,7 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			diagnostic := results.Diagnostic{Rule: tc.finding, Code: "specific-code", Message: "message"}
-			result := Result{Rules: tc.result, Findings: []Finding{FindingOf(diagnostic, nil)}}
+			result := Result{Rules: tc.result, Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
 			var out strings.Builder
 			if err := renderer.Render(&out, result); err != nil {
 				t.Fatal(err)
@@ -257,14 +297,14 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		{"abc", 4, 4, "abc", 3, 1},
 		{"abc", 8, 8, "abc", -1, 1},
 	} {
-		f := FindingOf(results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: tc.column}, End: sourcepos.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
+		f := RenderedFindingOf(results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: tc.column}, End: sourcepos.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
 		line, start, length := f.prettySource(tc.line, 30)
 		if line != tc.want || start != tc.start || length != tc.length {
 			t.Errorf("%q: got %q %d %d, want %q %d %d", tc.line, line, start, length, tc.want, tc.start, tc.length)
 		}
 	}
 	var out strings.Builder
-	f := FindingOf(results.Diagnostic{
+	f := RenderedFindingOf(results.Diagnostic{
 		Rule: "long-rule", Message: strings.Repeat("界", 100) + "\nnext paragraph",
 		Path: strings.Repeat("path/", 30), Help: "escape\x1b[31m must not execute",
 	}, nil)
@@ -290,7 +330,7 @@ func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	}
 	renderer.SetColor(true)
 	var out strings.Builder
-	if err := renderer.Render(&out, Result{Findings: []Finding{FindingOf(d, nil)}}); err != nil {
+	if err := renderer.Render(&out, Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "\x1b[1;33mwarning\x1b[22;0m\n") {
@@ -321,7 +361,7 @@ func TestRendererColorMode(t *testing.T) {
 					t.Fatal(err)
 				}
 				renderer.SetColor(colored)
-				result := Result{Findings: []Finding{FindingOf(d, []byte("  bad"))}}
+				result := Result{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}
 				var want, got strings.Builder
 				if err := plain.Render(&want, result); err != nil {
 					t.Fatal(err)

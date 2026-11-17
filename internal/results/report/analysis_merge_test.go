@@ -11,8 +11,8 @@ import (
 func TestMergePreservesCompletionAndDiagnosticSources(t *testing.T) {
 	t.Parallel()
 	parts := []Analysis{
-		{FileCount: 1, IncompleteChecks: []IncompleteCheck{{Rule: "first"}}, Diagnostics: []results.Diagnostic{{Message: "first"}}, Sources: []DiagnosticSource{{Content: []byte("first source")}}, Inputs: []string{"first"}, Rules: []rule.Descriptor{{Name: "rule"}}},
-		{FileCount: 2, IncompleteChecks: []IncompleteCheck{{Rule: "second"}}, Diagnostics: []results.Diagnostic{{Message: "second"}}, Sources: []DiagnosticSource{{Content: []byte("second source")}}, Inputs: []string{"second"}, Rules: []rule.Descriptor{{Name: "rule"}}},
+		{FileCount: 1, IncompleteChecks: []IncompleteCheck{{Rule: "first"}}, Diagnostics: []results.Diagnostic{{Message: "first"}}, Sources: []results.DiagnosticSource{{Content: []byte("first source")}}, Inputs: []string{"first"}, Rules: []rule.Descriptor{{Name: "rule"}}},
+		{FileCount: 2, IncompleteChecks: []IncompleteCheck{{Rule: "second"}}, Diagnostics: []results.Diagnostic{{Message: "second"}}, Sources: []results.DiagnosticSource{{Content: []byte("second source")}}, Inputs: []string{"second"}, Rules: []rule.Descriptor{{Name: "rule"}}},
 	}
 	got, err := Merge(parts...)
 	if err != nil {

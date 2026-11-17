@@ -16,7 +16,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 type countedPluginBackend struct{ calls atomic.Int32 }
@@ -41,7 +41,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			selected := plugininstall.Sources{Paths: []string{path}}
+			selected := pluginselection.Sources{Paths: []string{path}}
 			if tc.managed {
 				data, err := os.ReadFile("../plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
 				if err != nil {
@@ -179,7 +179,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 					return engine, nil
 				}}
-				sources := plugininstall.Sources{Paths: []string{plugin}}
+				sources := pluginselection.Sources{Paths: []string{plugin}}
 				input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
 				var result *checking.Result
 				var err error

@@ -13,6 +13,8 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 // testReference builds a declaration through pluginreference.New and fails the test
@@ -32,8 +34,8 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 		testReference(t, "check", "latest", pluginreference.DefaultRegistry),
 		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),
 	}
-	project := &plugininstall.Project{Releases: plugininstall.ResolvedPlugins{
-		Plugins: []plugininstall.Pin{
+	project := &plugininstall.Project{Releases: pluginregistry.ResolvedPlugins{
+		Plugins: []pluginregistry.Pin{
 			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginreference.DefaultRegistry},
 			{Name: "github.com/second/plugin", Alias: "check", Registry: fixtureregistry.FixtureRegistryURL},
 		},
@@ -69,7 +71,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", wasm)
 	registry.Add(t, "v1.1.0", wasm)

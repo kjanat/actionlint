@@ -226,6 +226,12 @@
           "deprecationMessage": "Deprecated alias. Use forbidden-suppression instead."
         },
         {
+          "description": "Report workflows whose name another workflow in the repository also uses",
+          "markdownDescription": "Report workflows whose name another workflow in the repository also uses",
+          "type": "string",
+          "const": "duplicate-workflow-name"
+        },
+        {
           "description": "Report jobs without steps",
           "markdownDescription": "Report jobs without steps",
           "type": "string",
@@ -567,6 +573,7 @@
         "credentials",
         "deprecated-commands",
         "disallow-suppressions",
+        "duplicate-workflow-name",
         "empty-job",
         "empty-run",
         "empty-triggers",
@@ -1587,6 +1594,7 @@
                                 "if-cond",
                                 "numeric-values",
                                 "empty-triggers",
+                                "duplicate-workflow-name",
                                 "empty-job",
                                 "empty-run",
                                 "unpinned-reference",
@@ -2042,6 +2050,7 @@
                                 "errexit-status",
                                 "workflow-command-syntax",
                                 "empty-triggers",
+                                "duplicate-workflow-name",
                                 "empty-run",
                                 "unpinned-reference",
                                 "require-commit-hash",
@@ -2379,6 +2388,7 @@
                                 "if-cond",
                                 "numeric-values",
                                 "empty-triggers",
+                                "duplicate-workflow-name",
                                 "empty-job",
                                 "empty-run",
                                 "job-timeout",
@@ -2428,6 +2438,16 @@
                               "title": "collection-comparison",
                               "description": "Detect equality checks between object or array instances",
                               "markdownDescription": "Detect equality checks between object or array instances",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "duplicate-workflow-name": {
+                              "title": "duplicate-workflow-name",
+                              "description": "Report workflows whose name another workflow in the repository also uses",
+                              "markdownDescription": "Report workflows whose name another workflow in the repository also uses",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -3538,6 +3558,7 @@
                                           "if-cond",
                                           "numeric-values",
                                           "empty-triggers",
+                                          "duplicate-workflow-name",
                                           "empty-job",
                                           "empty-run",
                                           "unpinned-reference",
@@ -3993,6 +4014,7 @@
                                           "errexit-status",
                                           "workflow-command-syntax",
                                           "empty-triggers",
+                                          "duplicate-workflow-name",
                                           "empty-run",
                                           "unpinned-reference",
                                           "require-commit-hash",
@@ -4330,6 +4352,7 @@
                                           "if-cond",
                                           "numeric-values",
                                           "empty-triggers",
+                                          "duplicate-workflow-name",
                                           "empty-job",
                                           "empty-run",
                                           "job-timeout",
@@ -4379,6 +4402,16 @@
                                         "title": "collection-comparison",
                                         "description": "Detect equality checks between object or array instances",
                                         "markdownDescription": "Detect equality checks between object or array instances",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "duplicate-workflow-name": {
+                                        "title": "duplicate-workflow-name",
+                                        "description": "Report workflows whose name another workflow in the repository also uses",
+                                        "markdownDescription": "Report workflows whose name another workflow in the repository also uses",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"

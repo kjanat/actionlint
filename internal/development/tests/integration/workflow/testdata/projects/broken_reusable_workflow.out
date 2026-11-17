@@ -1,4 +1,5 @@
-/workflows/test\.yaml:5:11: error while parsing reusable workflow "\./reusable/broken\.yaml": yaml: .+ \[workflow-call\]/
-workflows/test.yaml:7:11: error while parsing reusable workflow "./reusable/no_hook.yaml": "workflow_call" event trigger is not found in "on:" at line:1, column:5 [workflow-call]
+workflows/test.yaml:5:11: error while parsing reusable workflow "./reusable/broken.yaml": line:3, column:14: "outputs" section is scalar node but mapping node is expected [workflow-call]
+workflows/test.yaml:7:11: error while parsing reusable workflow "./reusable/no_hook.yaml": "workflow_call" event trigger is not found in "on:" at line:1, column:1 [workflow-call]
 workflows/test.yaml:9:11: error while parsing reusable workflow "./reusable/no_on.yaml": "on:" is not found [workflow-call]
-/workflows/test\.yaml:15:11: error while parsing reusable workflow "\./reusable/broken_secrets\.yaml": yaml: .+ \[workflow-call\]/
+workflows/test.yaml:11:11: error while parsing reusable workflow "./reusable/broken_input.yaml": line:4, column:7: "type" is missing at "empty_input" input of workflow_call event [workflow-call]
+workflows/test.yaml:15:11: error while parsing reusable workflow "./reusable/broken_secrets.yaml": line:3, column:14: "secrets" section is scalar node but mapping node is expected [workflow-call]

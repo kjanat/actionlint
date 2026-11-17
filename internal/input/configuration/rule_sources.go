@@ -4,15 +4,21 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
+// ruleSources keeps the extends and lint settings of every loaded file, the
+// encoded base configuration and the command-line overlays, so lint settings
+// can be merged again once plugin rules are registered. Rule settings are
+// normalized per file before merging, and a plugin rule's category is unknown
+// until its plugin loads, so the merged tree alone cannot be rebound. root
+// names the selected file; files holds each file's rule settings by
+// normalized address, for document.Load to merge without reading.
 type ruleSources struct {
-	root      string
-	documents map[string]any
-	base      any
-	overlays  []any
+	root     string
+	files    *document.Files
+	base     any
+	overlays []any
 }
 
 func (s *ruleSources) withOverlay(value any) *ruleSources {
@@ -21,12 +27,13 @@ func (s *ruleSources) withOverlay(value any) *ruleSources {
 	return &next
 }
 
-func (ruleSet RuleSet) normalizeRuleDocument(value any) (any, error) {
+// normalizeRuleLint gives the lint settings in value one merge key per rule.
+// Other fields, including extends, are kept.
+func (ruleSet RuleSet) normalizeRuleLint(value any) (any, error) {
 	if !isMapping(value) {
 		return value, nil
 	}
 	next := cloneMapping(value)
-	removeField(next, "extends")
 	if lint := field(value, "lint"); lint != nil {
 		lint, err := ruleSet.normalizeRuleLocations(lint)
 		if err != nil {
@@ -37,69 +44,58 @@ func (ruleSet RuleSet) normalizeRuleDocument(value any) (any, error) {
 	return next, nil
 }
 
+// normalizeRuleDocument normalizes the lint settings of a document that has
+// no inheritance to follow.
+func (ruleSet RuleSet) normalizeRuleDocument(value any) (any, error) {
+	next, err := ruleSet.normalizeRuleLint(value)
+	if err != nil || !isMapping(next) {
+		return next, err
+	}
+	removeField(next, "extends")
+	return next, nil
+}
+
+// capturedRuleConfig decodes the lint settings again with ruleSet, which
+// includes the rules of loaded plugins. It merges the captured files with
+// document.Load, the loader that merged them first. A decoded result holds no
+// rule sources, so binding it again returns it unchanged.
 func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 	if config == nil || config.Lint.Rules.sources == nil {
 		return config, nil
 	}
 	sources := config.Lint.Rules.sources
-	merged := configtree.Capture(sources.base, nil)
-	cache := map[string]*configtree.Node{}
-	var load func(string) (*configtree.Node, error)
-	load = func(path string) (*configtree.Node, error) {
-		if value, found := cache[path]; found {
-			return value, nil
-		}
-		value, found := sources.documents[path]
-		if !found {
-			return nil, fmt.Errorf("captured configuration source %q is missing", path)
-		}
-		var parents []string
-		if extends := field(value, "extends"); extends != nil {
-			if err := decodeValue(extends, &parents); err != nil {
-				return nil, err
-			}
-		}
-		var base *configtree.Node
-		for _, parent := range parents {
-			path, err := source.ResolveAddress(path, parent)
-			if err != nil {
-				return nil, err
-			}
-			inherited, err := load(path)
-			if err != nil {
-				return nil, err
-			}
-			base = configtree.Overlay(base, inherited, MergePlan())
-		}
-		normalized, err := ruleSet.normalizeRuleDocument(value)
-		if err != nil {
-			return nil, err
-		}
-		result := configtree.Overlay(base, configtree.Capture(normalized, nil), MergePlan())
-		cache[path] = result
-		return result, nil
-	}
+	var merged *document.Node
 	if sources.root != "" {
-		var err error
-		merged, err = load(sources.root)
+		// Report normalization failures as the settings decoder does, without
+		// the source-loading context that Load adds.
+		var normalizeErr error
+		loaded, err := document.Load(sources.root, sources.files, func(path string) ([]byte, error) {
+			return nil, fmt.Errorf("captured configuration source %q is missing", path)
+		}, func(_ string, source *document.Node) (*document.Node, error) {
+			normalized, err := ruleSet.normalizeRuleLint(source.Value())
+			normalizeErr = err
+			return document.Capture(normalized, nil), err
+		}, MergePlan())
+		if normalizeErr != nil {
+			return nil, normalizeErr
+		}
 		if err != nil {
 			return nil, err
 		}
+		merged = loaded.Root
 	} else {
-		var err error
-		normalized, normalizeErr := ruleSet.normalizeRuleDocument(merged.Value())
-		err = normalizeErr
-		merged = configtree.Capture(normalized, nil)
+		normalized, err := ruleSet.normalizeRuleDocument(sources.base)
 		if err != nil {
 			return nil, err
 		}
+		merged = document.Capture(normalized, nil)
 	}
 	for _, overlay := range sources.overlays {
 		normalized, err := ruleSet.normalizeRuleDocument(overlay)
 		if err != nil {
 			return nil, err
 		}
-		merged = configtree.Overlay(merged, configtree.Capture(normalized, nil), MergePlan())
+		merged = document.Merge(merged, document.Capture(normalized, nil), MergePlan())
 	}
 	if merged.Value() == nil {
 		return config, nil

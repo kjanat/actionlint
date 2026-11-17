@@ -63,7 +63,7 @@ func TestForeignSelectsTheFindingsOwnSource(t *testing.T) {
 		{"no own source", nil, workflow, false, "workflow"},
 		{"no snapshot", []byte("script"), nil, false, ""},
 	} {
-		f := &Finding{Source: tc.own}
+		f := &Finding{Source: results.DiagnosticSource{Content: tc.own}}
 		if got := f.Foreign(tc.snap); got != tc.foreign {
 			t.Errorf("%s: Foreign = %v, want %v", tc.name, got, tc.foreign)
 		}

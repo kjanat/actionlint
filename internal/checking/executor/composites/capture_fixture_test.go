@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.Workflow {
@@ -53,7 +52,7 @@ func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflow
 	return step.Reference()
 }
 
-func stepPosition(tb testing.TB, step workflowdecl.Step) workflowlang.Pos {
+func stepPosition(tb testing.TB, step workflowdecl.Step) source.Position {
 	tb.Helper()
 	position, present := step.Position()
 	if !present {

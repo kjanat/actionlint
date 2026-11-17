@@ -24,7 +24,7 @@ func MergeWarnings(groups ...[]configreport.Warning) []configreport.Warning {
 	return result
 }
 
-func configWarnings(root any, inputs map[string]Input) []configreport.Warning {
+func configWarnings(root any, inputs map[string]document.Location) []configreport.Warning {
 	var warnings []configreport.Warning
 	var check func(any, string, string, []string)
 	check = func(value any, prefix, path string, allowed []string) {

@@ -13,7 +13,8 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -31,7 +32,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	}
 	registry.SetAliases("no-sudo")
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	}
 
 	registry.ResetRequests()
-	selection := plugininstall.WithTools(plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
+	selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +70,7 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 	t.Parallel()
 	_, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
 		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"),
-	}, plugininstall.Sources{NamedTools: []string{"missing"}})
+	}, pluginselection.Sources{NamedTools: []string{"missing"}})
 	unknown, ok := errors.AsType[*checking.UnknownToolError](err)
 	if !ok || !slices.Equal(unknown.IDs(), []string{"missing"}) {
 		t.Fatalf("unknown tool id accepted: %v", err)
@@ -89,7 +90,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	}
 	registry.SetAliases("sudo-check")
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +107,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	for _, id := range []string{fixtureregistry.FixturePluginName, "sudo-check"} {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
-			selection := plugininstall.WithTools(plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
+			selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
 			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 			if err != nil {
 				t.Fatal(err)

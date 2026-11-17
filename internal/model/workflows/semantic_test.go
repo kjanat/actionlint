@@ -3,16 +3,18 @@ package declaration
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 	t.Parallel()
-	name := &workflowlang.String{Value: "before", Pos: &workflowlang.Pos{Line: 2, Col: 4}}
-	condition := &workflowlang.String{Value: "${{ true }}", Pos: &workflowlang.Pos{Line: 3, Col: 7}}
+	name := &workflowlang.String{Value: "before", Pos: &source.Position{Line: 2, Column: 4}}
+	condition := &workflowlang.String{Value: "${{ true }}", Pos: &source.Position{Line: 3, Column: 7}}
 	job := &workflowlang.Job{
 		Name:   name,
 		If:     condition,
@@ -237,7 +239,7 @@ jobs:
 		t.Fatal("environment variable view missing")
 	}
 	got := view.Value.SourceScalar
-	if !got.HasSource || got.Kind != workflowlang.SourceScalarScalar || got.Tag != workflowlang.YamlTagNull || got.Value != "null" {
+	if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" {
 		t.Fatalf("published source scalar = %#v; want original YAML null", got)
 	}
 	manual := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
@@ -247,7 +249,7 @@ jobs:
 	if !ok {
 		t.Fatal("manual job view missing")
 	}
-	if got := manualJob.Name.SourceScalar; got.HasSource || got.Kind != workflowlang.SourceScalarUnknown {
+	if got := manualJob.Name.SourceScalar; got.HasSource || got.Kind != 0 {
 		t.Fatalf("manual string has source provenance: %#v", got)
 	}
 }

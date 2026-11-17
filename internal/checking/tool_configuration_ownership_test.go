@@ -18,7 +18,7 @@ import (
 
 type configurationNoopRunner struct{}
 
-func (configurationNoopRunner) Analyze(context.Context, tools.Batch) ([]tools.Finding, error) {
+func (configurationNoopRunner) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
 	return nil, nil
 }
 

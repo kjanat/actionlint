@@ -90,13 +90,13 @@ func publishBatches(t *testing.T, batches []policy.Batch) policy.Publication {
 	for i := range batches {
 		sourceConfigs := map[string]*configuration.Config{}
 		for _, item := range batches[i].Findings {
-			if item.Path == "" || item.Source == nil || item.UnavailableSource.Present() {
+			if item.Path == "" || item.Source.Content == nil || item.Source.Unavailable.Present() {
 				continue
 			}
 			if batches[i].Sources == nil {
 				batches[i].Sources = map[string][]byte{}
 			}
-			batches[i].Sources[item.Path] = item.Source
+			batches[i].Sources[item.Path] = item.Source.Content
 			sourceConfigs[item.Path] = nil
 		}
 		batches[i] = preparePublicationBatchAt(t, batches[i], nil, sourceConfigs, captureRoot)

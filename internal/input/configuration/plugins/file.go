@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
@@ -40,9 +39,12 @@ type File struct {
 	References []pluginreference.Reference
 	Declared   bool
 	Exists     bool
+	// original is the content that Save edits. parsed is that content as the
+	// loader parsed it, or nil after SetContent replaces the content.
 	original   []byte
+	parsed     *document.Editor
 	snapshots  map[string][]byte
-	node       any
+	merged     any
 	readSource func(context.Context, string) ([]byte, error)
 }
 
@@ -51,11 +53,13 @@ type File struct {
 func Open(ctx context.Context, rules configuration.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
 	return Read(ctx, rules, path, func(ctx context.Context, path string) ([]byte, error) {
 		return readPluginManifest(ctx, path, connections)
-	}, CompleteConfiguration)
+	}, CompleteConfiguration, nil)
 }
 
-// Read loads plugin declarations with the supplied source reader and normalization mode.
-func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode) (*File, error) {
+// Read loads plugin declarations with the supplied source reader and
+// normalization mode. Inherited sources held by files are used without reading
+// them again, and files keeps the sources read here; files may be nil.
+func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode, files *document.Files) (*File, error) {
 	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
@@ -80,56 +84,74 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	}
 	manifest.original, manifest.Exists = data, true
 	manifest.snapshots[absolute] = bytes.Clone(data)
-	loaded, err := tree.LoadWithMerge(absolute, func(name string) ([]byte, error) {
+	loaded, err := configuration.LoadSources(absolute, files, func(name string) ([]byte, error) {
 		if name == absolute {
 			return bytes.Clone(data), nil
 		}
-		if !configsource.IsRemoteAddress(name) {
-			name, err = filepath.Abs(name)
-			if err != nil {
-				return nil, err
-			}
+		name, err := pluginSourcePath(name)
+		if err != nil {
+			return nil, err
 		}
-		content, err := manifest.read(ctx, name)
-		if err == nil {
-			manifest.snapshots[name] = bytes.Clone(content)
+		return manifest.read(ctx, name)
+	}, func(origin string, source *document.Node) (*document.Node, error) {
+		value := source.Value()
+		if err := ValidateRoot(value); err != nil {
+			return nil, err
 		}
-		return content, err
-	}, func(origin string, doc document.Document) (document.Document, error) {
-		if err := ValidateRoot(doc.Value); err != nil {
-			return doc, err
-		}
-		if err := configuration.ValidateSourcePaths(origin, doc.Value); err != nil {
-			return doc, err
+		if err := configuration.ValidateSourcePaths(origin, value); err != nil {
+			return nil, err
 		}
 		var err error
 		if mode == PluginDeclarationsOnly {
-			doc.Value, err = pluginDependencyNode(doc.Value)
+			value, err = pluginDependencyNode(value)
 			if err == nil {
-				doc.Value, err = rules.NormalizeForMerge(doc.Value)
+				value, err = rules.NormalizeForMerge(value)
 			}
 		} else {
-			doc.Value, err = rules.NormalizeForMerge(doc.Value)
+			value, err = rules.NormalizeForMerge(value)
 		}
-		return doc, err
-	}, configuration.MergePlan())
+		if err != nil {
+			return nil, err
+		}
+		return document.Capture(value, source.Origins()), nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	manifest.original = manifest.snapshots[absolute]
-	manifest.node = loaded.Value
-	manifest.References, manifest.Declared, err = References(loaded.Value)
+	for name, content := range loaded.Contents {
+		if name == absolute {
+			continue
+		}
+		name, err := pluginSourcePath(name)
+		if err != nil {
+			return nil, err
+		}
+		manifest.snapshots[name] = bytes.Clone(content)
+	}
+	manifest.original, manifest.parsed = manifest.snapshots[absolute], loaded.Selected
+	merged := loaded.Root.Value()
+	manifest.merged = merged
+	manifest.References, manifest.Declared, err = References(merged)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
 	if mode == PluginDeclarationsOnly && manifest.Declared {
-		root, ok := loaded.Value.(map[string]any)
+		root, ok := merged.(map[string]any)
 		if !ok {
 			return nil, errors.New("config must be a mapping")
 		}
-		manifest.node = selectFields(root, "plugins", "extends")
+		manifest.merged = selectFields(root, "plugins", "extends")
 	}
 	return manifest, nil
+}
+
+// pluginSourcePath returns the absolute filename of a local inherited source.
+// HTTPS addresses are returned unchanged.
+func pluginSourcePath(name string) (string, error) {
+	if configsource.IsRemoteAddress(name) {
+		return name, nil
+	}
+	return filepath.Abs(name)
 }
 
 // The tree loader expands aliases before this projection, so plugin references
@@ -350,7 +372,14 @@ func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err 
 	if configsource.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}
-	data, err := EditManifest(m.Path, m.original, refs)
+	editor := m.parsed
+	if editor == nil {
+		editor, err = document.NewEditor(m.Path, m.original)
+		if err != nil {
+			return err
+		}
+	}
+	data, err := editPlugins(editor, refs)
 	if err != nil {
 		return err
 	}
@@ -409,14 +438,14 @@ func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err 
 	if err := os.Rename(temp.Name(), m.Path); err != nil {
 		return err
 	}
-	m.original = data
+	m.original, m.parsed = data, nil
 	m.snapshots[m.Path] = data
 	m.References, m.Declared, m.Exists = slices.Clone(refs), true, true
 	return nil
 }
 
 // MergedDocument returns the loaded configuration after inheritance has been merged.
-func (m *File) MergedDocument() any { return m.node }
+func (m *File) MergedDocument() any { return m.merged }
 
 // SourceContents returns copies of the source bytes used to build the merged document.
 func (m *File) SourceContents() map[string][]byte {
@@ -428,4 +457,4 @@ func (m *File) SourceContents() map[string][]byte {
 }
 
 // SetContent selects the content that Save edits. Source-change checks still use the captured files.
-func (m *File) SetContent(content []byte) { m.original = bytes.Clone(content) }
+func (m *File) SetContent(content []byte) { m.original, m.parsed = bytes.Clone(content), nil }

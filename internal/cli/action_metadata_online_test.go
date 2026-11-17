@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -27,7 +27,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	requests := []string{}
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "fixture-secret", &requests)}}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "fixture-secret", &requests)}}
 	for _, mode := range []string{"default", "online", "offline"} {
 		before := len(requests)
 		var out, log bytes.Buffer
@@ -143,7 +143,7 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	var requests []string
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output=json", "--summary=false", "--network-stats", "-"})

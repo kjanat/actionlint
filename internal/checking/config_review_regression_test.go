@@ -14,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -142,10 +141,10 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-			finding := findingmodel.At(&workflowlang.Pos{Line: 1, Col: 1}, rule.Name(), "dependency finding")
-			finding.Path, finding.Source = path, dependencySource.Bytes()
+			finding := findingmodel.At(&source.Position{Line: 1, Column: 1}, rule.Name(), "dependency finding")
+			finding.Path, finding.Source.Content = path, dependencySource.Bytes()
 			finding.Reference = &reference
-			finding.RawScriptSource = coordinates == source.RawLF
+			finding.Source.RawScript = coordinates == source.RawLF
 			rule.Report(finding)
 			return []workflowvisit.Rule{&rule}
 		},

@@ -17,7 +17,7 @@ func TestNativeCodePresentation(t *testing.T) {
 	} {
 		t.Run(tc.code, func(t *testing.T) {
 			t.Parallel()
-			finding := FindingOf(results.Diagnostic{Rule: "shellcheck", Code: tc.code, Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 3}, Message: "Quote this value"}, nil)
+			finding := RenderedFindingOf(results.Diagnostic{Rule: "shellcheck", Code: tc.code, Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 3}, Message: "Quote this value"}, nil)
 			var output bytes.Buffer
 			finding.PrettyPrint(&output)
 			if got, want := output.String(), "workflow.yml:2:3: "+tc.prefix+"Quote this value [shellcheck]\n"; got != want {

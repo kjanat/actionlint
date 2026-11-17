@@ -11,7 +11,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -74,8 +73,8 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 					t.Errorf("physical YAML source line missing from snippet: %q", finding.Snippet)
 				}
 				var rendered bytes.Buffer
-				failure := &findingmodel.Finding{Start: sourcepos.Position{Line: finding.Start.Line, Column: finding.Start.Column}, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				render.FindingOf(failure.Diagnostic, []byte(src)).PrettyPrint(&rendered)
+				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
+				render.RenderedFindingOf(failure.Diagnostic, []byte(src)).PrettyPrint(&rendered)
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}

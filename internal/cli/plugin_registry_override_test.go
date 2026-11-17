@@ -11,13 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
@@ -35,7 +36,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
-	var selected plugininstall.ResolvedPlugins
+	var selected pluginregistry.ResolvedPlugins
 	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
 		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
 	}
@@ -104,7 +105,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 
 func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	t.Chdir(t.TempDir())
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
 		for _, args := range [][]string{{"plugin", "search"}, {"plugin", "versions", "publisher/plugin"}} {

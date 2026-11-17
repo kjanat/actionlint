@@ -44,7 +44,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 				line := lineIndex + 1
 				for column := 1; column <= utf8.RuneCountInString(text)+1; column++ {
 					for _, exclusive := range []bool{false, true} {
-						var want *workflowlang.Pos
+						var want *sourcepos.Position
 						var wantOK bool
 						if exclusive {
 							want, wantOK = exec.Source.EndPos(line, column)
@@ -55,7 +55,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 						if ok != wantOK {
 							t.Fatalf("line %d column %d exclusive=%v: mapped=%v, parser mapped=%v", line, column, exclusive, ok, wantOK)
 						}
-						if ok && (got.Line != want.Line || got.Column != want.Col) {
+						if ok && (got.Line != want.Line || got.Column != want.Column) {
 							t.Fatalf("line %d column %d exclusive=%v: %+v, parser %+v", line, column, exclusive, got, want)
 						}
 					}

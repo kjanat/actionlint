@@ -202,13 +202,14 @@ func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspec
 	if definition, valid := inspection.Definition(); valid {
 		return Result{manifest: manifest, definition: allowReviewedAdditionalInputs(manifest, definition), availability: actions.AvailableMetadata(manifest)}
 	}
-	var problems []actions.ManifestProblem
+	var problems []actionmeta.MetadataProblem
 	manifestPath := manifest.Filename()
 	if manifest.Identity().Directory() != "" {
 		manifestPath = manifest.Identity().Directory() + "/" + manifestPath
 	}
-	for _, d := range inspection.Problems() {
-		problems = append(problems, actions.ManifestProblem{Code: string(d.Code), Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
+	for _, problem := range inspection.Problems() {
+		problem.Path = manifestPath
+		problems = append(problems, problem)
 	}
 	return Result{manifest: manifest, availability: actions.InvalidMetadata(manifest, problems)}
 }

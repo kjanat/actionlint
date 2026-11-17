@@ -8,10 +8,10 @@ import (
 )
 
 // migrationInputs associates moved settings with their original source text.
-func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[string]Input {
+func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]document.Location) map[string]document.Location {
 	next := maps.Clone(inputs)
 	if next == nil {
-		next = map[string]Input{}
+		next = map[string]document.Location{}
 	}
 	move := func(from, to string) {
 		for path, origin := range inputs {
@@ -43,7 +43,7 @@ func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[s
 			if isMapping(selected) {
 				move(from, to+"/options")
 			}
-			if id == "missing-permissions" {
+			if id == permissionsRule {
 				move(from+"/scope", to+"/options/require-at")
 			}
 		}
@@ -56,26 +56,16 @@ func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[s
 				from := document.Path(document.Path(at("lint")+"/rules", category), name)
 				to := document.Path(document.Path(at("lint")+"/rules", category), id)
 				move(from, to)
-				if declaration, found := ruleSet.FindRule(id); found && declaration.Category != category {
+				declaration, found := ruleSet.FindRule(id)
+				if found && declaration.Category != category {
 					to = document.Path(document.Path(at("lint")+"/rules", declaration.Category), id)
 					move(from, to)
 				}
-				if id == "missing-permissions" && name != id {
+				if id == permissionsRule && name != id {
 					move(from+"/options/scope", to+"/options/require-at")
 				}
-				for old, target := range map[string]string{"runner-label": "runners", "workflow-call": "default-workflow-permissions"} {
-					if id == old {
-						key := "labels"
-						if old == "workflow-call" {
-							key = "default-permissions"
-						}
-						move(from+"/options/"+key, document.Path(at("repository"), target))
-					}
-				}
-				if id == "expression-reference" {
-					for _, key := range []string{"variables", "secrets"} {
-						move(from+"/options/"+key, document.Path(at("repository"), key))
-					}
+				for _, option := range declaration.MovedOptions {
+					move(from+"/options/"+option.Option, document.Path(at("repository"), option.Repository))
 				}
 				if !isMapping(selected) {
 					move(from, to+"/level")

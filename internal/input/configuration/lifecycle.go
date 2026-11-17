@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
@@ -54,7 +55,7 @@ func (c LifecycleConfig) Compile(origin string) ([]lifecycle.Policy, error) {
 	return c.compile(origin, nil, "")
 }
 
-func (c LifecycleConfig) compile(origin string, inputs map[string]Input, prefix string) ([]lifecycle.Policy, error) {
+func (c LifecycleConfig) compile(origin string, inputs map[string]document.Location, prefix string) ([]lifecycle.Policy, error) {
 	out := make([]lifecycle.Policy, 0, len(c.Policies))
 	ids := map[string]bool{}
 	for i, p := range c.Policies {

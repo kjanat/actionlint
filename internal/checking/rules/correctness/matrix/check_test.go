@@ -156,7 +156,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 			t.Fatal("missing filter expression source")
 		}
 		findings := Check(matrixmodel.Resolve(workflow.Jobs["test"].Strategy), false)
-		if len(findings) != 1 || findings[0].Start.Line != source.Pos.Line || findings[0].Start.Column != source.Pos.Col {
+		if len(findings) != 1 || findings[0].Start.Line != source.Pos.Line || findings[0].Start.Column != source.Pos.Column {
 			t.Fatalf("expression object fabricated key position: %v", findings)
 		}
 	}

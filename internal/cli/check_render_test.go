@@ -41,7 +41,7 @@ func TestRenderColor(t *testing.T) {
 func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 	t.Parallel()
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	finding := render.FindingOf(results.Diagnostic{
+	finding := render.RenderedFindingOf(results.Diagnostic{
 		Rule: "expression-reference", Message: "unknown variable", Path: "ci.yml",
 		Start: sourcepos.Position{Line: 1, Column: 3}, End: sourcepos.Position{Line: 1, Column: 6},
 	}, []byte("  bad"))
@@ -62,7 +62,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 				default:
 				}
 				var out strings.Builder
-				if err := renderer.Render(&out, render.Result{Findings: []render.Finding{finding}}); err != nil {
+				if err := renderer.Render(&out, render.Result{Findings: []render.RenderedFinding{finding}}); err != nil {
 					failures <- err
 					return
 				}

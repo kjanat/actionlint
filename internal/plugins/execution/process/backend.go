@@ -51,16 +51,16 @@ type Options struct {
 // diagnostics in contract coordinates. It implements analyzer.ScriptBackend,
 // analyzer.ScriptConfigValidator and analyzer.ScriptTemplateValidator.
 type Backend struct {
-	name         string
-	spec         manifests.ProcessSpec
-	capabilities manifests.Capabilities
-	command      *process.Command
-	options      Options
-	decoder      Decoder
-	transform    *configTransform
-	schemas      []*configschema.Schema
-	version      *regexp.Regexp
-	env          []string
+	name          string
+	spec          manifests.ProcessSpec
+	capabilities  manifests.Capabilities
+	command       *process.Command
+	options       Options
+	decoder       Decoder
+	configProgram *processConfigProgram
+	schemas       []*configschema.Schema
+	version       *regexp.Regexp
+	env           []string
 	// launcher holds the command's launcher arguments and the launcher
 	// options that start the tool; user holds the tool's own user arguments.
 	launcher, user []string
@@ -106,7 +106,7 @@ func NewBackend(manifest manifests.Manifest, command *process.Command, options O
 		if err != nil {
 			return nil, fmt.Errorf("configuration %w", err)
 		}
-		b.transform = &configTransform{program: compiled}
+		b.configProgram = &processConfigProgram{program: compiled}
 	}
 	schemas := []json.RawMessage{spec.ConfigSchema}
 	if manifest.ConfigurationTransform == nil && manifest.PreparationTransform == nil && len(manifest.ConfigurationPaths) == 0 {
@@ -373,8 +373,8 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 		return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 	}
 	engine := engineConfig{value: config}
-	if b.transform != nil {
-		if engine, err = b.transform.apply(ctx, config, values); err != nil {
+	if b.configProgram != nil {
+		if engine, err = b.configProgram.apply(ctx, config, values); err != nil {
 			return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 		}
 	}

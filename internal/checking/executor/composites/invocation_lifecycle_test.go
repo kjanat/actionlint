@@ -14,8 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type invocationLifecycleProbe struct {
@@ -34,10 +32,10 @@ func (p *invocationLifecycleProbe) emit(phase string, ref source.Reference) {
 	call := p.frames[len(p.frames)-1]
 	*p.events = append(*p.events, p.Name()+":"+phase+":"+call.Path)
 	before := len(p.Errs())
-	p.Error(&workflowlang.Pos{Line: 1, Col: 1}, phase)
+	p.Error(&source.Position{Line: 1, Column: 1}, phase)
 	p.t.Cleanup(func() {
 		finding := p.Errs()[before]
-		if finding.Path != call.Path || !bytes.Equal(finding.Source, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {
+		if finding.Path != call.Path || !bytes.Equal(finding.Source.Content, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {
 			p.t.Errorf("%s finding lost invocation source: %+v", phase, finding)
 		}
 	})

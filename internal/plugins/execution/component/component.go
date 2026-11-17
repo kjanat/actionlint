@@ -39,13 +39,13 @@ type Plugin struct {
 	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
-	// runnerInterface is the negotiated runner-provider version.
-	runnerInterface string
-	// scriptInterface is the negotiated script-engine version.
-	scriptInterface string
-	// templateInterface is the negotiated template-effects version, empty
-	// without the role. Its check replaces the script engine's.
-	templateInterface string
+	// runner is the negotiated runner-provider version, nil without the
+	// role. Runner calls go through it.
+	runner runnerProtocol
+	// script is the negotiated script-engine version, nil without the role.
+	// Script calls go through it; with the template-effects role, its
+	// paired template-effects version's check replaces the engine's.
+	script scriptEngineProtocol
 
 	digest string
 	path   string

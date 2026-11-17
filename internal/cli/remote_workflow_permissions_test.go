@@ -12,7 +12,7 @@ import (
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -34,7 +34,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		body := "on: workflow_call\npermissions: {contents: write}\njobs: {publish: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	// GitHub rejects a reusable workflow requesting more token permissions than
 	// its caller grants. https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
 	source := "on: push\npermissions: {}\njobs:\n  allowed:\n    permissions: {contents: write}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  denied:\n    permissions: {contents: read}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  inherited:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n"
@@ -93,7 +93,7 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/kjanat/actionlint/"+revision+"/.github/workflows/nix.yml" {
 			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
@@ -147,7 +147,7 @@ jobs:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			sha := strings.Repeat("a", 40)
-			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
 					t.Fatalf("unexpected HTTP request %s", r.URL)
 				}

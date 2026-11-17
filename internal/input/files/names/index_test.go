@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
@@ -82,12 +84,12 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 		}
 	}
 	loads := 0
-	index := NewIndex([]string{overlay, missing}, files.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
+	index := NewIndex([]string{overlay, missing}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
 		loads++
 		if path != overlay && path != missing {
 			t.Errorf("did not retain overlay spelling: %q", path)
 		}
-		return "", true, nil
+		return namemodel.Declare(nil), nil
 	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete() || names.Len() != 2 || !names.Contains(".github/workflows/build.yml") || !names.Contains(".github/workflows/new.yml") || loads != 2 {
@@ -117,12 +119,12 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		overlay = disk
 	}
 	loads := 0
-	index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
+	index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
 		loads++
 		if path != overlay {
 			t.Errorf("loaded %q instead of original overlay %q", path, overlay)
 		}
-		return "", true, nil
+		return namemodel.Declare(nil), nil
 	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete() || names.Len() != 1 || !names.Contains(".github/workflows/build.yml") || loads != 1 {
@@ -132,6 +134,33 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		if _, err := index.ForRoot(strings.ToUpper(root)); err != nil || loads != 1 {
 			t.Fatalf("case-alias root missed inventory cache: loads=%d err=%v", loads, err)
 		}
+	}
+}
+
+func TestIndexRecordsPlainTextNamesWithPaths(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	dir := filepath.Join(root, ".github", "workflows")
+	declared := map[string]namemodel.Declared{
+		filepath.Join(dir, "plain.yml"):      namemodel.Declare(&workflowlang.String{Value: "CI"}),
+		filepath.Join(dir, "expression.yml"): namemodel.Declare(&workflowlang.String{Value: "${{ 'CI' }}"}),
+		filepath.Join(dir, "unnamed.yml"):    namemodel.Declare(nil),
+		filepath.Join(dir, "unknown.yml"):    namemodel.Unknown(),
+	}
+	var paths []string
+	for path := range declared {
+		paths = append(paths, path)
+	}
+	index := NewIndex(paths, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
+		return declared[path], nil
+	})
+	got, err := index.ForRoot(root)
+	if err != nil || got.Complete() || !got.Contains("CI") || !got.Contains(".github/workflows/unnamed.yml") {
+		t.Fatalf("inventory=%+v err=%v", got, err)
+	}
+	want := []namemodel.NamedWorkflow{{Path: filepath.Join(dir, "plain.yml"), Name: "CI"}}
+	if sharing := got.SharingName("ci"); !slices.Equal(sharing, want) {
+		t.Fatalf("plain-text names = %v, want %v", sharing, want)
 	}
 }
 
@@ -244,13 +273,13 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 	}
 	for _, name := range []string{"New name", ""} {
 		loads := 0
-		index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
+		index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
 			loads++
 			if path != overlay {
 				t.Errorf("loaded stale disk spelling %q", path)
-				return "", false, nil
+				return namemodel.Unknown(), nil
 			}
-			return name, true, nil
+			return namemodel.Declare(&workflowlang.String{Value: name}), nil
 		})
 		got, err := index.ForRoot(root)
 		if err != nil || !got.Complete() || loads != 1 || got.Len() != 1 {

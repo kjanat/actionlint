@@ -14,13 +14,14 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
-func provisioningRequest(env func(string) string, acquisition plugininstall.Acquisition) (*lintRequest, error) {
+func provisioningRequest(env func(string) string, acquisition pluginacquisition.Settings) (*lintRequest, error) {
 	in, err := parseInputs(environmentArgs(env))
 	if err != nil {
 		return nil, err
@@ -33,10 +34,10 @@ func provisioningRequest(env func(string) string, acquisition plugininstall.Acqu
 	return a.prepareRequest(in, workspace)
 }
 
-func (req *lintRequest) pluginSelection() plugininstall.Selection {
+func (req *lintRequest) pluginSelection() pluginselection.Selection {
 	defaults := req.requestedTools()
 	defaults = slices.DeleteFunc(defaults, func(id string) bool { return req.processes[id] != nil })
-	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
+	return pluginselection.WithTools(pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() inputmodel.Request {
@@ -47,7 +48,7 @@ func (req *lintRequest) pluginInput() inputmodel.Request {
 }
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
-func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition plugininstall.Acquisition) int {
+func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition pluginacquisition.Settings) int {
 	ctx := context.Background()
 	req, err := provisioningRequest(env, acquisition)
 	if err == nil && req.configFile != "" {
@@ -56,7 +57,7 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 		}
 	}
 	if err == nil {
-		var plan plugininstall.CachePlan
+		var plan pluginselection.CachePlan
 		plan, err = req.pluginPlan(ctx)
 		if err == nil {
 			err = json.NewEncoder(stdout).Encode(plan)
@@ -75,7 +76,7 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 	return commandstatus.ExitFailure
 }
 
-func (req *lintRequest) pluginPlan(ctx context.Context) (plugininstall.CachePlan, error) {
+func (req *lintRequest) pluginPlan(ctx context.Context) (pluginselection.CachePlan, error) {
 	inputs := []inputmodel.Request{req.pluginInput()}
 	if len(req.files) != 0 {
 		paths := slices.Clone(req.files)
@@ -86,14 +87,14 @@ func (req *lintRequest) pluginPlan(ctx context.Context) (plugininstall.CachePlan
 		}
 		found, err := workspace.FindFiles(ctx, paths, false)
 		if err != nil {
-			return plugininstall.CachePlan{}, err
+			return pluginselection.CachePlan{}, err
 		}
 		inputs = nil
 		for _, batch := range workspace.PartitionFiles(found) {
 			inputs = append(inputs, inputmodel.FromFiles(batch))
 		}
 	}
-	var combined plugininstall.CachePlan
+	var combined pluginselection.CachePlan
 	if len(inputs) == 0 {
 		inputs = []inputmodel.Request{{Kind: inputmodel.Stdin}}
 	}
@@ -101,11 +102,11 @@ func (req *lintRequest) pluginPlan(ctx context.Context) (plugininstall.CachePlan
 		selection := req.pluginSelection()
 		selected, err := selection.SelectForCache(ctx, req.workingDir, input)
 		if err != nil {
-			return plugininstall.CachePlan{}, err
+			return pluginselection.CachePlan{}, err
 		}
 		plan, err := selected.CachePlan(ctx)
 		if err != nil {
-			return plugininstall.CachePlan{}, err
+			return pluginselection.CachePlan{}, err
 		}
 		combined.Directory = plan.Directory
 		combined.Artifacts = append(combined.Artifacts, plan.Artifacts...)

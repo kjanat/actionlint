@@ -1,0 +1,11 @@
+on:
+  workflow_call:
+    inputs:
+      broken_input:
+        description: type is missing
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'bye'

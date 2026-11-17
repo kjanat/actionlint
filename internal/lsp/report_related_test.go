@@ -36,7 +36,7 @@ func TestEditorRelatedRequiresCapturedRevisionModelAndRange(t *testing.T) {
 			case "zero end":
 				related.End = sourcepos.Position{}
 			}
-			result := &report.Analysis{Diagnostics: []results.Diagnostic{{Path: "workflow.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: main.Revision.Document(), Revision: main.Revision.Digest()}, Related: []results.Related{related}}}, Sources: []report.DiagnosticSource{{Content: main.Content}}, CapturedSources: map[string]report.CapturedSource{path: main, relatedPath: target}}
+			result := &report.Analysis{Diagnostics: []results.Diagnostic{{Path: "workflow.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: main.Revision.Document(), Revision: main.Revision.Digest()}, Related: []results.Related{related}}}, Sources: []results.DiagnosticSource{{Content: main.Content}}, CapturedSources: map[string]report.CapturedSource{path: main, relatedPath: target}}
 			analysis, err := lsp.FromReport(result, root, map[string]lsp.Document{path: {Text: string(main.Content)}})
 			if len(analysis.Diagnostics) != 1 {
 				t.Fatalf("related rejection lost primary diagnostic: %+v %v", analysis, err)

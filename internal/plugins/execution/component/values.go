@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
@@ -35,10 +37,12 @@ func validInputKindDiscriminant(discriminant uint32) bool {
 	return uint64(discriminant) < uint64(len(inputKinds))
 }
 
-var keyStateDiscriminants = func() map[workflowfacts.KeyState]uint32 {
-	values := make(map[workflowfacts.KeyState]uint32, len(canonical_key_state))
-	for i, name := range canonical_key_state {
-		values[workflowfacts.KeyState(name)] = uint32(i)
+var keyStateDiscriminants = func() map[mapping.KeyState]uint32 {
+	values := make(map[mapping.KeyState]uint32, len(canonical_key_state))
+	for _, state := range []mapping.KeyState{mapping.UnknownKey, mapping.KnownKey, mapping.InvalidKey} {
+		if i := slices.Index(canonical_key_state, state.String()); i >= 0 {
+			values[state] = uint32(i)
+		}
 	}
 	return values
 }()

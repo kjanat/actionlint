@@ -26,16 +26,20 @@ type FileMigration struct {
 	connections acquisitionhttp.Connections
 }
 
+// fileSnapshot is the content of one migration input when the migration was
+// prepared. Apply compares each snapshot with the current input.
 type fileSnapshot interface {
 	bytes() []byte
 	configSnapshot()
 }
 
+// localConfigSnapshot is a local input and the file its path resolved to.
 type localConfigSnapshot struct {
 	content []byte
 	target  string
 }
 
+// remoteConfigSnapshot is an HTTPS input.
 type remoteConfigSnapshot struct{ content []byte }
 
 func (s localConfigSnapshot) bytes() []byte  { return s.content }
@@ -87,26 +91,17 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		}
 		return content, err
 	}
-	normalize := func(origin string, parsed document.Document) (document.Document, error) {
-		node := parsed.Value
-		if err := ValidateSourcePaths(origin, node); err != nil {
-			return document.Document{}, err
-		}
-		resolved, err := ruleSet.resolveValue(node, documentInputs(parsed), false)
-		parsed.Value = resolved.Value
-		return parsed, err
-	}
-	before, err := loadConfigTree(absolute, read, normalize)
+	before, err := LoadSources(absolute, nil, read, ruleSet.resolveMigrationSource)
 	if err != nil {
 		return nil, err
 	}
-	migration, err := ruleSet.MigrateDocument(absolute, snapshots[absolute].bytes(), registrations...)
+	migration, err := ruleSet.migrateFile(before.Selected, registrations)
 	if err != nil {
 		return nil, err
 	}
 	// Validate in the same graph, including plugin rule settings without loading
 	// any guest. Dependency identity is unchanged by config syntax migration.
-	after, err := loadConfigTree(absolute, func(path string) ([]byte, error) {
+	after, err := LoadSources(absolute, nil, func(path string) ([]byte, error) {
 		if path == absolute {
 			return migration.Content, nil
 		}
@@ -115,7 +110,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
 		return content.bytes(), nil
-	}, normalize)
+	}, ruleSet.resolveMigrationSource)
 	if err != nil {
 		return nil, err
 	}
@@ -132,11 +127,11 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		}
 		return ruleSet.EffectiveValues(resolved.Config)
 	}
-	beforeValues, err := effective(before.Value)
+	beforeValues, err := effective(before.Root.Value())
 	if err != nil {
 		return nil, err
 	}
-	afterValues, err := effective(after.Value)
+	afterValues, err := effective(after.Root.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +141,27 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	return &FileMigration{Path: absolute, Migration: migration, snapshots: snapshots, mode: info.Mode().Perm(), ruleSet: ruleSet, connections: connections}, nil
 }
 
+// resolveMigrationSource validates one source of a migration graph and
+// returns its settings in current syntax, located where they were parsed.
+// Plugin rule names stay unbound because no plugin is loaded.
+func (ruleSet RuleSet) resolveMigrationSource(origin string, source *document.Node) (*document.Node, error) {
+	value := source.Value()
+	if err := ValidateSourcePaths(origin, value); err != nil {
+		return nil, err
+	}
+	resolved, err := ruleSet.resolveValue(value, source.Origins(), false)
+	if err != nil {
+		return nil, err
+	}
+	return document.Capture(resolved.Value, source.Origins()), nil
+}
+
 // SetContent validates an enriched candidate, such as default plugin insertion,
 // against the original dependency graph without executing plugins.
 func (m *FileMigration) SetContent(content []byte) error {
 	ruleSet := m.ruleSet
 
-	if _, err := loadConfigTree(m.Path, func(path string) ([]byte, error) {
+	if _, err := LoadSources(m.Path, nil, func(path string) ([]byte, error) {
 		if path == m.Path {
 			return content, nil
 		}
@@ -160,15 +170,7 @@ func (m *FileMigration) SetContent(content []byte) error {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
 		return original.bytes(), nil
-	}, func(origin string, parsed document.Document) (document.Document, error) {
-		node := parsed.Value
-		if err := ValidateSourcePaths(origin, node); err != nil {
-			return document.Document{}, err
-		}
-		resolved, err := ruleSet.resolveValue(node, documentInputs(parsed), false)
-		parsed.Value = resolved.Value
-		return parsed, err
-	}); err != nil {
+	}, ruleSet.resolveMigrationSource); err != nil {
 		return err
 	}
 	m.Content = bytes.Clone(content)

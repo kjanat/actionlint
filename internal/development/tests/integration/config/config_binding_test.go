@@ -10,7 +10,7 @@ func decodeConfigYAML(data []byte, target any) error {
 	if err != nil {
 		return err
 	}
-	return binding.Decode(parsed.Value, target)
+	return binding.Decode(parsed.Value(), target)
 }
 
 func encodeConfigYAML(value any) ([]byte, error) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
@@ -259,16 +260,16 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 			what: "required or optional",
 			inputs: map[string]*workflowlang.WorkflowCallEventInput{
 				"unspecified":  {},
-				"not_required": {Required: &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}}},
-				"required":     {Required: &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}}},
+				"not_required": {Required: &workflowlang.Bool{Value: false, Pos: &source.Position{}}},
+				"required":     {Required: &workflowlang.Bool{Value: true, Pos: &source.Position{}}},
 				"required_but_default": {
-					Required: &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
-					Default:  &workflowlang.String{Pos: &workflowlang.Pos{}},
+					Required: &workflowlang.Bool{Value: true, Pos: &source.Position{}},
+					Default:  &workflowlang.String{Pos: &source.Position{}},
 				},
 				"expression": {
 					Required: &workflowlang.Bool{
-						Expression: &workflowlang.String{Pos: &workflowlang.Pos{}},
-						Pos:        &workflowlang.Pos{},
+						Expression: &workflowlang.String{Pos: &source.Position{}},
+						Pos:        &source.Position{},
 					},
 				},
 			},
@@ -313,7 +314,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 			c := newCapturedWorkflowCache(t, proj, cwd, nil)
 			e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
 			for n, i := range tc.inputs {
-				i.Name = &workflowlang.String{Value: n, Pos: &workflowlang.Pos{}}
+				i.Name = &workflowlang.String{Value: n, Pos: &source.Position{}}
 				i.ID = strings.ToLower(n)
 				e.Inputs = append(e.Inputs, i)
 			}
@@ -355,7 +356,7 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 			e := &workflowlang.WorkflowCallEvent{Outputs: map[string]*workflowlang.WorkflowCallEventOutput{}}
 			for _, o := range outputs {
 				e.Outputs[strings.ToLower(o)] = &workflowlang.WorkflowCallEventOutput{
-					Name: &workflowlang.String{Value: o, Pos: &workflowlang.Pos{}},
+					Name: &workflowlang.String{Value: o, Pos: &source.Position{}},
 				}
 			}
 
@@ -389,17 +390,17 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 	tests := []map[string]*workflowlang.Bool{
 		{},
 		{"a": nil},
-		{"a": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}}},
-		{"a": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}}},
-		{"a": &workflowlang.Bool{Expression: &workflowlang.String{Pos: &workflowlang.Pos{}}, Pos: &workflowlang.Pos{}}},
+		{"a": &workflowlang.Bool{Value: false, Pos: &source.Position{}}},
+		{"a": &workflowlang.Bool{Value: true, Pos: &source.Position{}}},
+		{"a": &workflowlang.Bool{Expression: &workflowlang.String{Pos: &source.Position{}}, Pos: &source.Position{}}},
 		{
-			"a": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}},
-			"b": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
+			"a": &workflowlang.Bool{Value: false, Pos: &source.Position{}},
+			"b": &workflowlang.Bool{Value: true, Pos: &source.Position{}},
 			"c": nil,
 		},
 		{
-			"A": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}},
-			"B": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
+			"A": &workflowlang.Bool{Value: false, Pos: &source.Position{}},
+			"B": &workflowlang.Bool{Value: true, Pos: &source.Position{}},
 			"C": nil,
 		},
 	}
@@ -412,7 +413,7 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 			e := &workflowlang.WorkflowCallEvent{Secrets: map[string]*workflowlang.WorkflowCallEventSecret{}}
 			for n, r := range secrets {
 				e.Secrets[strings.ToLower(n)] = &workflowlang.WorkflowCallEventSecret{
-					Name:     &workflowlang.String{Value: n, Pos: &workflowlang.Pos{}},
+					Name:     &workflowlang.String{Value: n, Pos: &source.Position{}},
 					Required: r,
 				}
 			}

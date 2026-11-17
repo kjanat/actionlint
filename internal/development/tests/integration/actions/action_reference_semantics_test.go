@@ -6,8 +6,8 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -43,7 +43,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
+			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			var diagnostics []diagmodel.Diagnostic
 			for _, finding := range findings {
 				diagnostics = append(diagnostics, finding.Diagnostic)

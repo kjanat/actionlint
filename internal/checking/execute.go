@@ -16,7 +16,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
@@ -376,6 +376,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 
 	documents := &actionDocuments{byPath: map[string]documentmodel.Action{}}
+	session.actionDocuments = documents
 	proc := request.Processes
 	actions := workspaceactions.NewFactory(session.debugWriter())
 	cwd := request.WorkingDir
@@ -411,22 +412,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
-	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (string, bool, error) {
+	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
 		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
 		if err != nil {
-			return "", false, err
+			return namemodel.Unknown(), err
 		}
 		workflow, errs := workflowparser.Parse(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
-			return "", false, nil
+			return namemodel.Unknown(), nil
 		}
-		if workflow.Name == nil {
-			return "", true, nil
-		}
-		if literal := exprsyntax.LiteralExpressionValue(workflow.Name.Value); literal != nil {
-			return *literal, true, nil
-		}
-		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+		return namemodel.Declare(workflow.Name), nil
 	})
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
@@ -597,7 +592,10 @@ type actionDocuments struct {
 	mu       sync.Mutex
 	byPath   map[string]documentmodel.Action
 	requests map[string]struct{}
-	err      error
+	// remote holds the remote action manifests composition parsed, by
+	// captured document identity, so complete need not parse them again.
+	remote map[string]parsing.Document
+	err    error
 }
 
 type actionDocument struct {
@@ -614,7 +612,27 @@ func (d *actionDocuments) request(address string) {
 	d.requests[address] = struct{}{}
 }
 
-// complete uses only sealed, consumed manifest bytes; it never resumes analysis.
+// parsed records a remote action manifest composition parsed from captured.
+// It is safe to call on a nil receiver, which records nothing.
+func (d *actionDocuments) parsed(captured capture.CapturedDocument, document parsing.Document) {
+	if d == nil {
+		return
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	identity := captured.Revision().Document()
+	if _, exists := d.remote[identity]; exists {
+		return
+	}
+	if d.remote == nil {
+		d.remote = make(map[string]parsing.Document)
+	}
+	d.remote[identity] = document
+}
+
+// complete outlines consumed manifests from sealed bytes; it never resumes
+// analysis. It reuses the document composition parsed for a remote manifest
+// and parses only a manifest analysis captured but never parsed.
 func (d *actionDocuments) complete(captures *capture.Store, consumed []string) error {
 	if _, err := captures.Sources(); err != nil {
 		return err
@@ -633,13 +651,17 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 		identity := snapshot.Revision().Document()
 		d.mu.Lock()
 		_, exists := d.byPath[identity]
+		document, parsed := d.remote[identity]
 		d.mu.Unlock()
 		if exists {
 			continue
 		}
-		document := parsing.Action(address, snapshot.Bytes())
-		outline := documentmodel.FromAction(address, document.Metadata, document.ParseError)
-		d.add(identity, outline)
+		if !parsed {
+			// Analysis stopped after capturing this manifest but before
+			// parsing it, so its sealed bytes are parsed here once.
+			document = parsing.Action(address, snapshot.Bytes())
+		}
+		d.add(identity, documentmodel.FromAction(address, document.Metadata, document.ParseError))
 	}
 	return nil
 }
@@ -745,7 +767,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 		}
 		accepted := file.errors[:0]
 		for _, finding := range file.errors {
-			if marker := finding.UnavailableSource; marker.Present() {
+			if marker := finding.Source.Unavailable; marker.Present() {
 				row := admitted[marker.Document()]
 				if marker.Document() == "" || row.State == capture.Conflicted {
 					withheld++
@@ -798,8 +820,8 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 					}
 					continue
 				}
-			} else if finding.Source != nil || finding.RawScriptSource {
-				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source) != nil {
+			} else if finding.Source.Content != nil || finding.Source.RawScript {
+				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source.Content) != nil {
 					withheld++
 					continue
 				}

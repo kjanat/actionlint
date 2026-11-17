@@ -3,6 +3,7 @@ package expressions
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"github.com/google/go-cmp/cmp"
 
@@ -107,7 +108,7 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			have := rule.checkRawYAMLString(ownedRawStringFixture(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &workflowlang.Pos{}}))
+			have := rule.checkRawYAMLString(ownedRawStringFixture(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &source.Position{}}))
 			if diff := cmp.Diff(tc.want, have); diff != "" {
 				t.Fatalf(`wanted %s but got %s
 diff:

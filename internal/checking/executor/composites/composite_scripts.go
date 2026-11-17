@@ -310,7 +310,7 @@ func invocationOutput(bindings *binding.Scope, rule workflowvisit.Rule, snapshot
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.
-		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source == nil) {
+		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {
 			finding.Binding = bindings.Rule(finding.Rule).ID()
 		}
 		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
@@ -318,7 +318,7 @@ func invocationOutput(bindings *binding.Scope, rule workflowvisit.Rule, snapshot
 		}
 		if finding.Path == "" {
 			finding.Path = path
-			finding.Source = snapshot.Content()
+			finding.Source.Content = snapshot.Content()
 			if finding.Reference == nil {
 				finding.Reference = new(reference)
 			}

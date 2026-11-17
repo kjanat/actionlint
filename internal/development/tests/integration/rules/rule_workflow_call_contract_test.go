@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -54,7 +55,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 				WorkflowCall: &workflowlang.WorkflowCall{
 					Uses: &workflowlang.String{
 						Value: tc.uses,
-						Pos:   &workflowlang.Pos{},
+						Pos:   &source.Position{},
 					},
 				},
 			}
@@ -80,7 +81,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	w := &workflowlang.Workflow{
 		On: []workflowlang.Event{
 			&workflowlang.WorkflowCallEvent{
-				Pos: &workflowlang.Pos{},
+				Pos: &source.Position{},
 			},
 		},
 	}
@@ -89,7 +90,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 		WorkflowCall: &workflowlang.WorkflowCall{
 			Uses: &workflowlang.String{
 				Value: "o/r/w.yaml@r",
-				Pos:   &workflowlang.Pos{},
+				Pos:   &source.Position{},
 			},
 		},
 	}

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
@@ -19,7 +20,7 @@ import (
 // implements. Bundled providers and providers registered by plugins share it.
 type ToolsConfig map[string]ToolConfig
 
-func (tools ToolsConfig) setInputOrigins(inputs map[string]Input, prefix string) {
+func (tools ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
 	for name, tool := range tools {
 		if tool.Config != nil {
 			tool.Config.fromInput = inputs[prefix+"/"+configPointerPart(name)+"/config"].Name != ""

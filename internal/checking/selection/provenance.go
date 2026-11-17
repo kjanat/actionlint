@@ -17,7 +17,7 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 	}
 	before := rule.FindingCount()
 	defer rule.AnnotateSince(before, func(finding *findingmodel.Finding) {
-		if finding.Owner == nil && finding.Source == nil {
+		if finding.Owner == nil && finding.Source.Content == nil {
 			finding.Owner = &findingmodel.Owner{Job: origin.Job, Step: origin.StepPosition}
 		}
 	})
@@ -34,12 +34,12 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 	start := rule.FindingCount()
 	err := visit()
 	rule.AnnotateSince(start, func(finding *findingmodel.Finding) {
-		if !hasIgnores && (finding.MetadataIdentity == nil || finding.Source == nil) {
+		if !hasIgnores && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {
 			return
 		}
-		if finding.Source == nil && finding.IgnoreOrigin == nil {
+		if finding.Source.Content == nil && finding.IgnoreOrigin == nil {
 			finding.IgnoreOrigin = origin
-		} else if finding.Source != nil && finding.IgnoreOrigin != nil {
+		} else if finding.Source.Content != nil && finding.IgnoreOrigin != nil {
 			// Each invocation owns its origin; shared metadata never stores caller state.
 			inner := *finding.IgnoreOrigin
 			inner.Job = origin.Job

@@ -33,6 +33,7 @@ List of checks:
 - [Action runtime lifecycle](#detect-outdated-popular-actions)
 - [Shell name validation at `shell:`](#check-shell-names)
 - [Job ID and step ID uniqueness](#check-job-step-ids)
+- [Workflow name uniqueness](#check-duplicate-workflow-names)
 - [Hardcoded credentials](#check-hardcoded-credentials)
 - [Environment variable names](#check-env-var-names)
 - [Cache access](#cache-mode)
@@ -2205,6 +2206,50 @@ test.yaml:12:3: key "TEST" is duplicated in "jobs" section. previously defined a
 [Playground](https://kjanat.github.io/actionlint/#eNq0zqEOwjAQxnG/p/jcVF/gNBM4ktUvlF3SktJrdj1BCO9OOjAkWNQn/j/xSSFU0zhcJSgNQGNtfYHNirreLVhp5vK5tz1p46pvBbguCXyJgjFyzjJ+CpBW2vGS1l863Pnbzn46LcfDAPhp9v/5UXm7JdUkRQmP52sA8+RJgg==)
 
 Job IDs must be unique in a workflow, and step IDs must be unique within each job. actionlint compares IDs without regard to case and reports duplicates.
+
+<a id="check-duplicate-workflow-names"></a>
+
+## Workflow name uniqueness
+
+Example input:
+
+```yaml
+# .github/workflows/release-go.yml
+# WARNING: .github/workflows/publish-crates.yml also starts with this name
+name: Publish packages
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+permissions: {}
+```
+
+Output:
+
+<!-- Skip update output -->
+
+```console
+.github/workflows/release-go.yml:3:7: workflow name "Publish packages" is also used by .github/workflows/publish-crates.yml; the Actions tab cannot tell these workflows apart [duplicate-workflow-name]
+  |
+3 | name: Publish packages
+  |       ^~~~~~~
+```
+
+<!-- Skip playground link -->
+
+This example requires another workflow named `Publish packages` in the same
+repository's `.github/workflows` directory. The `duplicate-workflow-name` rule
+compares the top-level `name:` of each workflow file directly under that
+directory, ignoring case. GitHub accepts duplicate names, but the Actions tab then
+lists several workflows under the same name, and a `workflow_run` filter naming
+one of them matches the others spelled the same way.
+
+The rule reports each workflow that shares its name, and lists the other files.
+Workflows without a `name:` are listed by their path and are not reported. Names
+that contain `${{ }}` are not compared. When actionlint can read only some of the
+repository's workflows, such as in an editor, it compares the workflows it can read.
 
 <a id="check-hardcoded-credentials"></a>
 

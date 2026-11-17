@@ -8,11 +8,10 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // retain makes the only visibility and duplicate decision across evaluated batches.
-func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.Diagnostic, sources []report.DiagnosticSource) {
+func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.Diagnostic, sources []diagmodel.DiagnosticSource) {
 	type location struct {
 		project, path, rule string
 		start               sourcepos.Position
@@ -24,7 +23,7 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
 		if _, required := authority[retained[index]]; required {
-			retained[index].SuppressionTarget = nil
+			retained[index].Source.Suppression = nil
 			sources[index].Suppression = nil
 		}
 	}
@@ -88,14 +87,14 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			}
 			diagnostic := finding.Canonical(file.Policy.Content)
 			identityPath := file.InputPath
-			if finding.Source != nil {
+			if finding.Source.Content != nil {
 				identityPath = diagnostic.Path
 			}
 			content := file.Policy.Content
 			if finding.Foreign(file.Policy.Content) {
-				content = copies.of(finding.Source)
+				content = copies.of(finding.Source.Content)
 			}
-			file.Processor.completeDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
+			file.Processor.completeDiagnostic(&diagnostic, content, identityPath, finding.Source.Unavailable.Present())
 			var metadataKey metadataLocation
 			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
 			if identity := finding.MetadataIdentity; isMetadata {
@@ -136,15 +135,16 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			retained = append(retained, finding)
 			retainedBatch = append(retainedBatch, i)
 			diagnostics = append(diagnostics, diagnostic)
-			var target *report.SuppressionTarget
-			if suppression := finding.SuppressionTarget; suppression != nil && !required {
-				path := suppression.Path
-				if path == "" {
-					path = file.InputPath
+			published := finding.Source
+			published.Content, published.Suppression = content, nil
+			if suppression := finding.Source.Suppression; suppression != nil && !required {
+				target := *suppression
+				if target.Path == "" {
+					target.Path = file.InputPath
 				}
-				target = &report.SuppressionTarget{Path: path, First: suppression.First, Last: suppression.Last}
+				published.Suppression = &target
 			}
-			sources = append(sources, report.DiagnosticSource{Content: content, RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present(), Suppression: target})
+			sources = append(sources, published)
 			unique = append(unique, finding)
 		}
 		clear(file.Findings[len(unique):])

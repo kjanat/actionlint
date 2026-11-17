@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
@@ -420,35 +419,27 @@ func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
 type ResolvedConfig struct {
 	Provenance Provenance
 	Value      any
-	Inputs     map[string]Input
+	Inputs     map[string]document.Location
 	Config     *Config
 	Values     map[string]any
 	Origins    map[string]configreport.Origin
 	Warnings   []configreport.Warning
 }
 
+// ResolveDocument parses one YAML or JSON document and resolves it without inheritance.
 func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (ResolvedConfig, error) {
-	doc, err := document.Parse("", b)
+	root, err := document.Parse("", b)
 	if err != nil {
 		return ResolvedConfig{}, decodeError{cause: err}
 	}
-	return ruleSet.ResolveValue(doc.Value, documentInputs(doc), additional...)
+	return ruleSet.ResolveValue(root.Value(), root.Origins(), additional...)
 }
 
-func documentInputs(doc document.Document) map[string]Input {
-	inputs := map[string]Input{}
-	for path, location := range doc.ValueLocations {
-		key := doc.Locations[path]
-		inputs[path] = Input{File: location.File, Line: location.Line, Column: location.Column, KeyLine: key.Line, KeyColumn: key.Column}
-	}
-	return inputs
-}
-
-func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]Input, additional ...string) (ResolvedConfig, error) {
+func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]document.Location, additional ...string) (ResolvedConfig, error) {
 	return ruleSet.resolveValue(root, inputs, true, additional...)
 }
 
-func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules bool, additional ...string) (ResolvedConfig, error) {
+func (ruleSet RuleSet) resolveValue(root any, inputs map[string]document.Location, bindRules bool, additional ...string) (ResolvedConfig, error) {
 	inputs = ruleSet.migrationInputs(root, inputs)
 	root = ruleSet.normalizeToolSwitch(root)
 	legacyWarnings := configWarnings(root, inputs)
@@ -490,8 +481,8 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	c.Tools.setInputOrigins(inputs, "/tools")
 	for i := range c.Overrides {
 		if c.Overrides[i].partial != nil {
-			origins := configtree.Prefix(inputs, fmt.Sprintf("/overrides/%d", i))
-			c.Overrides[i].partial = configtree.Capture(c.Overrides[i].partial.Value(), origins)
+			origins := document.Prefix(inputs, fmt.Sprintf("/overrides/%d", i))
+			c.Overrides[i].partial = document.Capture(c.Overrides[i].partial.Value(), origins)
 		}
 		if tools := c.Overrides[i].Tools; tools != nil {
 			tools.setInputOrigins(inputs, fmt.Sprintf("/overrides/%d/tools", i))
@@ -510,7 +501,7 @@ func (ruleSet RuleSet) Load(path string, additional ...string) (*Config, error) 
 // LoadContext reads settings with cancellable local or HTTPS inheritance.
 // ReadContext also retains source provenance for analysis and path interpolation.
 func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
-	source, err := ruleSet.ReadContext(ctx, path, nil, additional...)
+	source, err := ruleSet.ReadContext(ctx, path, nil, nil, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -518,50 +509,43 @@ func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional 
 }
 
 func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
-	return ruleSet.ReadContext(context.Background(), path, readFile, additional...)
+	return ruleSet.ReadContext(context.Background(), path, readFile, nil, additional...)
 }
 
 // ReadContext preserves a supplied source reader for local and HTTPS inputs.
 // Without one, the host reader acquires local files and explicit HTTPS sources.
-func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, true, additional...)
+// Sources held by files, such as those plugin selection loaded for the same
+// run, are used without reading them again; files may be nil.
+func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, additional ...string) (*LoadedFile, error) {
+	return ruleSet.readContext(ctx, path, readFile, files, true, additional...)
 }
 
 // ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
 func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, false)
+	return ruleSet.readContext(ctx, path, readFile, nil, false)
 }
 
-func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*LoadedFile, error) {
+func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
-	documents := map[string]any{}
-	loaded, err := loadConfigTree(path, reader.ReadConfig, func(origin string, doc document.Document) (document.Document, error) {
-		inputs := ruleSet.migrationInputs(doc.Value, documentInputs(doc))
-		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, doc.Value, inputs, absPath(path) != origin, bindRules, func(value any) {
-			documents[origin] = captureRuleDocument(value)
+	rules := document.NewFiles()
+	loaded, err := LoadSources(path, files, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {
+		value := source.Value()
+		inputs := ruleSet.migrationInputs(value, source.Origins())
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, func(value any) {
+			rules.Add(origin, document.Capture(captureRuleDocument(value), nil))
 		}, additional...)
 		warningsByFile[origin] = warnings
 		if err != nil {
-			return doc, err
+			return source, err
 		}
 		var settings Config
 		if err := ruleSet.decodeValue(normalized, &settings, bindRules); err != nil {
-			return doc, err
+			return source, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings, inputs)...)
-		doc.Value = normalized
-		for pointer, input := range inputs {
-			location := document.Location{File: input.File, Line: input.Line, Column: input.Column}
-			if _, ok := doc.Locations[pointer]; !ok {
-				doc.Locations[pointer] = document.Location{File: input.File, Line: input.KeyLine, Column: input.KeyColumn}
-			}
-			if _, ok := doc.ValueLocations[pointer]; !ok {
-				doc.ValueLocations[pointer] = location
-			}
-		}
-		return doc, nil
+		return relocateSource(normalized, source, inputs), nil
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*os.PathError](err); ok {
@@ -569,13 +553,13 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 		}
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved, err := ruleSet.resolveValue(loaded.Value, loaded.Origins, bindRules, additional...)
+	resolved, err := ruleSet.resolveValue(loaded.Root.Value(), loaded.Root.Origins(), bindRules, additional...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
-	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], documents: documents}
+	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
@@ -595,14 +579,15 @@ var RepositoryConfigNames = func() []string {
 // LoadRepository reads the first existing file named in RepositoryConfigNames
 // from the repository's .github directory.
 func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
-	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, additional...)
+	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, nil, additional...)
 }
 
 // LoadRepositoryContext discovers configuration with cancellable inheritance.
-func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
+// Sources held by files are used without reading them again; files may be nil.
+func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), files *document.Files, additional ...string) (*LoadedFile, string, error) {
 	for _, f := range RepositoryConfigNames {
 		p := filepath.Join(root, ".github", f)
-		c, err := ruleSet.ReadContext(ctx, p, readFile, additional...)
+		c, err := ruleSet.ReadContext(ctx, p, readFile, files, additional...)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue

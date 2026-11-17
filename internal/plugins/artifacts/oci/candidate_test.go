@@ -15,12 +15,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 type ociCandidateFixture struct {
 	registry *ocitest.Registry
-	client   *plugininstall.Client
+	client   *pluginregistry.Client
 	dir      string
 	record   candidateRecord
 	root     ocitest.Descriptor
@@ -103,7 +104,7 @@ func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
-	client, err := plugininstall.New(u.String(), plugininstall.Acquisition{UserCacheDir: cache})
+	client, err := pluginregistry.New(u.String(), pluginacquisition.Settings{UserCacheDir: cache})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +136,7 @@ func (f ociCandidateFixture) writeRecord(t *testing.T) {
 	}
 }
 
-func (f ociCandidateFixture) resolve(t *testing.T) plugininstall.Pin {
+func (f ociCandidateFixture) resolve(t *testing.T) pluginregistry.Pin {
 	t.Helper()
 	pin, err := f.client.Resolve(t.Context(), "github.com/publisher/plugin/check", "v1.0.0")
 	if err != nil {
@@ -144,9 +145,9 @@ func (f ociCandidateFixture) resolve(t *testing.T) plugininstall.Pin {
 	return pin
 }
 
-func (f ociCandidateFixture) syncCandidate(t *testing.T, pin plugininstall.Pin, options artifacts.Options) error {
+func (f ociCandidateFixture) syncCandidate(t *testing.T, pin pluginregistry.Pin, options artifacts.Options) error {
 	t.Helper()
-	return (plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}).Sync(t.Context(), options, f.client.StatusOptions)
+	return (pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{pin}}).Sync(t.Context(), options, f.client.StatusOptions)
 }
 
 func (f ociCandidateFixture) cachedOptions() artifacts.Options {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -58,8 +59,8 @@ jobs:
 					t.Fatalf("missing script input sources: %+v", inputs)
 				}
 				want := []workflowlang.ScalarComment{
-					{Text: "# alias leading", Pos: workflowlang.Pos{Line: anchorLine + 1, Col: len(indent) + 1}},
-					{Text: "# alias trailing", Pos: workflowlang.Pos{Line: anchorLine + 2, Col: len(indent) + 17}, Trailing: true},
+					{Text: "# alias leading", Pos: source.Position{Line: anchorLine + 1, Column: len(indent) + 1}},
+					{Text: "# alias trailing", Pos: source.Position{Line: anchorLine + 2, Column: len(indent) + 17}, Trailing: true},
 				}
 				if !slices.Equal(alias.Source.Comments, want) {
 					t.Fatalf("alias comments=%+v, want %+v", alias.Source.Comments, want)
@@ -72,7 +73,7 @@ jobs:
 				}
 				for _, input := range []*workflowlang.Input{anchor, alias, plain} {
 					pos, mapped := input.Source.Position(1, 1)
-					if input.Value.Value != "echo café" || !mapped || *pos != (workflowlang.Pos{Line: anchorLine, Col: len(indent) + 18}) || !slices.Equal(input.Source.Spans, anchor.Source.Spans) {
+					if input.Value.Value != "echo café" || !mapped || *pos != (source.Position{Line: anchorLine, Column: len(indent) + 18}) || !slices.Equal(input.Source.Spans, anchor.Source.Spans) {
 						t.Fatalf("anchored text/spans changed: value=%+v source=%+v position=%+v", input.Value, input.Source, pos)
 					}
 				}

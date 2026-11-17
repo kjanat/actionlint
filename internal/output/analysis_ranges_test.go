@@ -28,7 +28,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 			t.Parallel()
 			source := []byte("abcde\nfghij\n")
 			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
-			result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
+			result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []diagmodel.DiagnosticSource{{Content: source}}}
 
 			legacy, err := New("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false, testVersion, nil)
 			if err != nil {
@@ -86,7 +86,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 	t.Parallel()
 	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
-	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []report.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: true}}}
+	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []diagmodel.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: diagmodel.ReportedSourceUnavailable("tool", "reported.sh", false)}}}
 	result := FromAnalysis(analysis)
 	fields := result.Findings[0].TemplateFields()
 	if fields.EndColumn != diagnostic.Start.Column || fields.Snippet != "echo long_unverified_token\n     ^" {
@@ -119,7 +119,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	t.Parallel()
 	source := []byte("on: push\n")
 	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
-	result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
+	result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []diagmodel.DiagnosticSource{{Content: source}}}
 
 	textRenderer, err := New(FormatText, "", true, testVersion, nil)
 	if err != nil {
@@ -161,7 +161,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, source := range [][]byte{nil, []byte("on: push\n")} {
-				result.Findings[0].Source = source
+				result.Findings[0].Source.Content = source
 				var out bytes.Buffer
 				if err := renderer.Render(&out, result); err != nil {
 					t.Fatal(err)

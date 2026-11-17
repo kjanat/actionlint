@@ -49,7 +49,7 @@ func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
 	if !slices.Contains(result.Inputs, alias) || slices.Contains(result.Inputs, physical) {
 		t.Fatalf("native display reread replaced reported alias with physical path: %v", result.Inputs)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !render.FromAnalysis(*result).Findings[0].Unavailable {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !render.FromAnalysis(*result).Findings[0].Source.Unavailable.Present() {
 		t.Fatalf("native unavailable report did not reach rendering: %+v", result)
 	}
 }

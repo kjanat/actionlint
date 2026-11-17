@@ -10,7 +10,6 @@ import (
 	inputsource "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 var scalarDecoderInvariantCorpus = []string{
@@ -131,15 +130,15 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 	if source.Value != node.Value {
 		t.Fatalf("decoded value %q differs from YAML parser value %q", source.Value, node.Value)
 	}
-	for _, pos := range []workflowlang.Pos{source.ContentStart, source.ScalarEnd} {
+	for _, pos := range []inputsource.Position{source.ContentStart, source.ScalarEnd} {
 		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := inputsource.ByteOffsetAtColumn(lines[pos.Line-1], pos.Col); !ok {
+		if _, ok := inputsource.ByteOffsetAtColumn(lines[pos.Line-1], pos.Column); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
-	if source.ScalarEnd.Line < source.ContentStart.Line || source.ScalarEnd.Line == source.ContentStart.Line && source.ScalarEnd.Col < source.ContentStart.Col {
+	if source.ScalarEnd.Line < source.ContentStart.Line || source.ScalarEnd.Line == source.ContentStart.Line && source.ScalarEnd.Column < source.ContentStart.Column {
 		t.Fatalf("scalar ends before content starts: %+v -> %+v", source.ContentStart, source.ScalarEnd)
 	}
 	covered := make([]bool, len(source.Value))

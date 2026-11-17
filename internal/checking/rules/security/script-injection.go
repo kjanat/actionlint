@@ -1,10 +1,21 @@
 package security
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+)
 
-// ScriptInjectionDeclaration describes the script-injection rule.
-func ScriptInjectionDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "script-injection", Description: "Detect untrusted values and secrets interpolated into scripts", Category: "security", Subcategory: "scripts", Maturity: "stable", Provider: "actionlint", Explanation: "Detect untrusted values and secrets interpolated into scripts.", Help: "Pass untrusted values through environment variables or action inputs. For secrets, prefer the tool's native environment variable or stdin over command arguments. GitHub secrets are automatically masked; register generated or fetched secrets with add-mask before use. Masking protects logs, not process arguments.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection", Recommended: true, Examples: []rule.Example{
+// ScriptInjectionRule is the single definition of the script-injection rule.
+var ScriptInjectionRule = &define.Rule{
+	Name:        "script-injection",
+	Description: "Detect untrusted values and secrets interpolated into scripts",
+	Category:    "security",
+	Subcategory: "scripts",
+	Help:        "Pass untrusted values through environment variables or action inputs. For secrets, prefer the tool's native environment variable or stdin over command arguments. GitHub secrets are automatically masked; register generated or fetched secrets with add-mask before use. Masking protects logs, not process arguments.",
+	Recommended: true,
+	Examples: []rule.Example{
 		rule.LabeledWorkflowExample("Prefer the tool's native environment variable: GitHub CLI reads GH_TOKEN directly, keeping the secret out of script text and command arguments. GitHub secrets are automatically masked in logs; register generated or fetched secrets with add-mask before use. Masking does not protect process arguments.",
 			"wrong: secret in script text", "correct: secret in environment variable",
 			"    steps:\n      - run: GH_TOKEN=\"${{ secrets.TOKEN }}\" gh api user\n",
@@ -13,5 +24,14 @@ func ScriptInjectionDeclaration() rule.Declaration {
 			"wrong: password in command arguments", "correct: password through stdin",
 			"    steps:\n      - env:\n          REGISTRY_USER: ${{ vars.REGISTRY_USER }}\n        run: docker login --username \"$REGISTRY_USER\" --password \"${{ secrets.REGISTRY_PASSWORD }}\"\n",
 			"    steps:\n      - shell: bash\n        env:\n          REGISTRY_USER: ${{ vars.REGISTRY_USER }}\n          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}\n        run: printf '%s' \"${REGISTRY_PASSWORD}\" | docker login --username \"${REGISTRY_USER}\" --password-stdin\n"),
-	}, SupportsActions: true}
+	},
+	SupportsActions: true,
+	DeclaredBy:      "expression",
+}
+
+// ScriptInjection reports untrusted values and secrets inserted into script text.
+// Semantic errors exclude invalid secret selectors without hiding findings in other branches.
+func ScriptInjection(expr exprsyntax.Node, semanticErrors []*exprlang.Error) []*exprlang.Error {
+	findings := checkUntrustedInputs(expr)
+	return append(findings, checkSecretInterpolations(expr, semanticErrors)...)
 }
