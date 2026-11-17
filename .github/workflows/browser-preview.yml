@@ -1,0 +1,46 @@
+name: Browser package preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "libraries/browser-lsp/**"
+      - "cmd/actionlint-lsp-wasm/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/browser-preview.yml"
+  pull_request:
+    paths:
+      - "libraries/browser-lsp/**"
+      - "cmd/actionlint-lsp-wasm/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/browser-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == 'kjanat/actionlint'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MISE_ENABLE_TOOLS: go,bun
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          version: 2026.11.4
+          monorepo: false
+      - run: bun install --frozen-lockfile
+      - name: Build the browser language server and Wasm runtime
+        working-directory: libraries/browser-lsp
+        run: bun run build
+      - name: Publish the browser package preview
+        run: bunx pkg-pr-new publish --bun --packageManager=bun --previewVersion ./libraries/browser-lsp
