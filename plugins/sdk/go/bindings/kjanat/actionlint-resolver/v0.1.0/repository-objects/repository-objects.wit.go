@@ -102,7 +102,7 @@ func Open(repository string, expectedID cm.Option[uint64]) (result cm.Result[Rep
 	repository0, repository1 := cm.LowerString(repository)
 	expectedId0, expectedId1 := lower_OptionU64(expectedID)
 	wasmimport_Open((*uint8)(repository0), uint32(repository1), uint32(expectedId0), uint64(expectedId1), &result)
-	return
+	return result
 }
 
 // GetRef represents the imported function "get-ref".
@@ -115,7 +115,7 @@ func Open(repository string, expectedID cm.Option[uint64]) (result cm.Result[Rep
 func GetRef(name string) (result cm.Result[OptionStringShape, cm.Option[string], string]) {
 	name0, name1 := cm.LowerString(name)
 	wasmimport_GetRef((*uint8)(name0), uint32(name1), &result)
-	return
+	return result
 }
 
 // GetObject represents the imported function "get-object".
@@ -128,7 +128,7 @@ func GetRef(name string) (result cm.Result[OptionStringShape, cm.Option[string],
 func GetObject(id string) (result cm.Result[OptionObjectShape, cm.Option[Object], string]) {
 	id0, id1 := cm.LowerString(id)
 	wasmimport_GetObject((*uint8)(id0), uint32(id1), &result)
-	return
+	return result
 }
 
 // Finish represents the imported function "finish".
@@ -140,5 +140,5 @@ func GetObject(id string) (result cm.Result[OptionObjectShape, cm.Option[Object]
 //go:nosplit
 func Finish() (result cm.Result[string, struct{}, string]) {
 	wasmimport_Finish(&result)
-	return
+	return result
 }

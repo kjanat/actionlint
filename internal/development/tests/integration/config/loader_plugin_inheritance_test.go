@@ -18,10 +18,10 @@ func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
 	directory := t.TempDir()
 	base := filepath.Join(directory, "base.yaml")
 	path := filepath.Join(directory, "actionlint.yaml")
-	if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nplugins: []\nlint:\n  rules:\n    correctness:\n      expression-reference:\n        level: on\n        options: {variables: [LEAF]}\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nplugins: []\nlint:\n  rules:\n    correctness:\n      expression-reference:\n        level: on\n        options: {variables: [LEAF]}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	rules := checking.ConfigurationRules()

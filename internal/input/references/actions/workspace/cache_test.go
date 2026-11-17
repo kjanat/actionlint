@@ -285,7 +285,7 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 func TestLocalActionsMissingMetadata(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, "empty"), 0750); err != nil {
+	if err := os.Mkdir(filepath.Join(root, "empty"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	for _, spec := range []string{"./missing", "./empty", "./ }", "$/missing"} {

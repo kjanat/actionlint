@@ -42,10 +42,10 @@ func candidateCatalogue(t *testing.T) (string, string, string, *fixtureregistry.
 	}
 	for name, data := range files {
 		file := filepath.Join(root, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(file, data, 0600); err != nil {
+		if err := os.WriteFile(file, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -67,10 +67,10 @@ func candidateProjectAt(t *testing.T, directory string) {
 	t.Helper()
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Setenv("ACTIONLINT_CONFIG", "")
-	if err := os.Mkdir(filepath.Join(directory, ".git"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(directory, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(directory, "workflow.yml"), []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "workflow.yml"), []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -185,7 +185,7 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(recordPath, data, 0600); err != nil {
+	if err := os.WriteFile(recordPath, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
@@ -248,7 +248,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	if bytes.Equal(data, changed) {
 		t.Fatal("candidate rebuild did not change bytes")
 	}
-	if err := os.WriteFile(file, changed, 0600); err != nil {
+	if err := os.WriteFile(file, changed, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	next := fmt.Sprintf("%x", sha256.Sum256(changed))
@@ -258,7 +258,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	record = bytes.ReplaceAll(record, []byte(digest), []byte(next))
-	if err := os.WriteFile(recordPath, record, 0600); err != nil {
+	if err := os.WriteFile(recordPath, record, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
@@ -302,7 +302,7 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 		t.Fatal("candidate rebuild did not change bytes")
 	}
 	secondDigest := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
-	if err := os.WriteFile(artifactPath, rebuilt, 0600); err != nil {
+	if err := os.WriteFile(artifactPath, rebuilt, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	recordPath := filepath.Join(root, "plugins", "no-sudo", "versions", "v1.json")
@@ -310,7 +310,7 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(firstDigest), []byte(secondDigest)), 0600); err != nil {
+	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(firstDigest), []byte(secondDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(secondProject)
@@ -360,7 +360,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	if bytes.Equal(previous, rebuilt) {
 		t.Fatal("rebuild did not change the candidate")
 	}
-	if err := os.WriteFile(file, rebuilt, 0600); err != nil {
+	if err := os.WriteFile(file, rebuilt, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	recordPath := filepath.Join(root, "plugins", "no-sudo", "versions", "v1.json")
@@ -369,7 +369,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	wrongDigest := strings.Repeat("b", 64)
-	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(wrongDigest)), 0600); err != nil {
+	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(wrongDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := pluginCommandTest(t, acquisition, 3, "plugin", "update", "publisher/plugin")
@@ -390,7 +390,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	}
 	pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	next := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
-	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(next)), 0600); err != nil {
+	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(next)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "update", "publisher/plugin")
@@ -451,7 +451,7 @@ func TestCandidateCLIRejectsInvalidInputs(t *testing.T) {
 			if bytes.Equal(data, changed) {
 				t.Fatal("mutation did not change fixture")
 			}
-			if err := os.WriteFile(file, changed, 0600); err != nil {
+			if err := os.WriteFile(file, changed, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			t.Chdir(candidateProject(t))

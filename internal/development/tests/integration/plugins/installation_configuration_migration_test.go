@@ -23,11 +23,11 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	acquisition := registryAcquisition(registry)
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	original := []byte("# source comment\nconfig-variables: []\n")
-	if err := os.WriteFile(path, original, 0600); err != nil {
+	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
@@ -79,10 +79,10 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, "actionlint.yaml")
 	base := filepath.Join(root, "base.yaml")
-	if err := os.WriteFile(base, []byte("plugins: [publisher/base]\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("plugins: [publisher/base]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
@@ -98,7 +98,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("migration wrote lock for inherited declaration: %v", err)
 	}
-	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	manifest, err := configplugins.Open(t.Context(), checking.ConfigurationRules(), path, acquisitionhttp.Connections{})
@@ -115,15 +115,15 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	workspace := t.TempDir()
 	root := filepath.Join(workspace, "repo")
 	shared := filepath.Join(workspace, "shared")
-	if err := os.MkdirAll(filepath.Join(root, ".git"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(shared, 0700); err != nil {
+	if err := os.Mkdir(shared, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(shared, "actionlint.yaml")
 	original := []byte("config-variables: []\n")
-	if err := os.WriteFile(path, original, 0600); err != nil {
+	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(shared, filepath.Join(root, ".github")); err != nil {
@@ -140,7 +140,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 		t.Fatalf("automatic migration wrote lock outside repository: %v", err)
 	}
 	invalid := []byte("config-variables: [\n")
-	if err := os.WriteFile(path, invalid, 0600); err != nil {
+	if err := os.WriteFile(path, invalid, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil {
@@ -173,16 +173,16 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			configDir := filepath.Join(root, ".github")
-			if err := os.Mkdir(configDir, 0700); err != nil {
+			if err := os.Mkdir(configDir, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			configPath := filepath.Join(configDir, "actionlint.yaml")
 			original := []byte("config-variables: []\n")
-			if err := os.WriteFile(configPath, original, 0600); err != nil {
+			if err := os.WriteFile(configPath, original, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if tc.exists {
-				if err := os.WriteFile(filepath.Join(root, tc.inputName), []byte("on: push\n"), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(root, tc.inputName), []byte("on: push\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -264,7 +264,7 @@ func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, "actionlint.yaml")
 			original := []byte("plugins: []\nconfig-variables: []\n")
-			if err := os.WriteFile(path, original, 0600); err != nil {
+			if err := os.WriteFile(path, original, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
@@ -293,10 +293,10 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 			path := filepath.Join(root, "actionlint.yaml")
 			base := filepath.Join(root, "base.yaml")
 			original := []byte("extends: [base.yaml]\nconfig-variables: []\n")
-			if err := os.WriteFile(base, []byte("plugins: []\n"), 0600); err != nil {
+			if err := os.WriteFile(base, []byte("plugins: []\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, original, 0600); err != nil {
+			if err := os.WriteFile(path, original, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
@@ -308,7 +308,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 				edited = base
 			}
 			userEdit := []byte("plugins: []\nconfig-variables: [USER_EDIT]\n")
-			if err := os.WriteFile(edited, userEdit, 0600); err != nil {
+			if err := os.WriteFile(edited, userEdit, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {

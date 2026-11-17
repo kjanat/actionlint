@@ -190,7 +190,7 @@ type Environment struct {
 func ForScript(occurrence string) (result cm.Result[cm.List[Environment], cm.List[Environment], string]) {
 	occurrence0, occurrence1 := cm.LowerString(occurrence)
 	wasmimport_ForScript((*uint8)(occurrence0), uint32(occurrence1), &result)
-	return
+	return result
 }
 
 // Current represents the imported function "current".
@@ -204,5 +204,5 @@ func ForScript(occurrence string) (result cm.Result[cm.List[Environment], cm.Lis
 //go:nosplit
 func Current() (result cm.Result[cm.List[Environment], cm.List[Environment], string]) {
 	wasmimport_Current(&result)
-	return
+	return result
 }

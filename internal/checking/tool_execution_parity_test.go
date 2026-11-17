@@ -83,7 +83,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
 			}
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)

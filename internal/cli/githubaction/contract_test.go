@@ -120,11 +120,11 @@ permissions: {}
 				workspace = alias
 			}
 			t.Chdir(workspace)
-			if err := os.WriteFile("ci.yml", []byte(tc.source), 0600); err != nil {
+			if err := os.WriteFile("ci.yml", []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			configPath := filepath.Join(workspace, "actionlint.yaml")
-			if err := os.WriteFile(configPath, []byte("repository: {runners: []}\n"), 0600); err != nil {
+			if err := os.WriteFile(configPath, []byte("repository: {runners: []}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			var stdout, stderr bytes.Buffer

@@ -34,7 +34,7 @@ func TestFixGitHubContextEnvironment(t *testing.T) {
 					"${{ runner.temp }}", "${RUNNER_TEMP}",
 					"${{ github.head_ref }}", "${GITHUB_HEAD_REF}",
 				).Replace(before)
-				if err := os.WriteFile(path, []byte(before), 0600); err != nil {
+				if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				args := []string{"fix", "--norc", "--include-suggested", path}
@@ -60,7 +60,7 @@ func TestFixEnvironmentAvailabilityPerFinding(t *testing.T) {
 	t.Parallel()
 	const content = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo \"${{ github.workspace }}\"\n          echo '${{ github.workspace }}'\npermissions: {}\n"
 	path := filepath.Join(t.TempDir(), "workflow.yml")
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, include := range []bool{false, true} {

@@ -38,7 +38,7 @@ func (ruleSet RuleSet) Generate(ctx context.Context, root string, skipConfig boo
 		}
 	}
 	path := filepath.Join(directory, "actionlint.yaml")
-	if err := os.MkdirAll(directory, 0755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return "", fmt.Errorf("could not create config directory %q: %w", directory, err)
 	}
 	if err := ruleSet.WriteDefaultFile(path, version); err != nil {
@@ -55,7 +55,7 @@ func (ruleSet RuleSet) WriteDefaultFile(path, version string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)
 	}
 	return nil

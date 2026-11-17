@@ -124,7 +124,7 @@ func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.P
 	return true
 }
 
-func (rule *validator) invalidActionFormat(pos *workflowlang.Pos, spec string, why string) {
+func (rule *validator) invalidActionFormat(pos *workflowlang.Pos, spec, why string) {
 	rule.Errorf(pos, actionmeta.CodeInvalidReference, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
 }
 

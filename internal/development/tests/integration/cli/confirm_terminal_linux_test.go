@@ -41,10 +41,10 @@ func TestReportOverwriteConfirmation(t *testing.T) {
 				dir := t.TempDir()
 				workflow := filepath.Join(dir, "input.yml")
 				report := filepath.Join(dir, "report.json")
-				if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
+				if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(report, []byte("previous report"), 0600); err != nil {
+				if err := os.WriteFile(report, []byte("previous report"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				terminal, finish := commandTestTerminal(t)

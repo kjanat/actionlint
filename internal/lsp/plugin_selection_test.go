@@ -72,7 +72,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(other, ".github")
-	if err := os.Mkdir(path, 0700); err != nil {
+	if err := os.Mkdir(path, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	foreign := filepath.Join(other, "workflow.yml")
@@ -91,7 +91,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 		t.Fatalf("plugin-free repositories rejected: %v", err)
 	}
 	configPath := filepath.Join(root, "config.yaml")
-	if err := os.WriteFile(configPath, []byte("{}"), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, s := range []plugininstall.Selection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: configPath}} {
