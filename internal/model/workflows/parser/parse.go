@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -360,28 +359,10 @@ func (p *Parser) parseInt(n *codec.Node) *definition.Int {
 // parseYAMLInteger follows the runner's decimal, hexadecimal and octal grammar.
 // Radix-prefixed integers use the runner's signed 32-bit representation.
 func parseYAMLInteger(value string) (int, error) {
-	base := 0
-	if strings.HasPrefix(value, "0x") {
-		base = 16
-	} else if strings.HasPrefix(value, "0o") {
-		base = 8
+	if strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0o") {
+		return codec.CoreSchemaRadixInt(value)
 	}
-	if base == 0 {
-		return strconv.Atoi(value)
-	}
-	if !codec.IsCoreSchemaInt(value) {
-		return 0, errors.New("invalid YAML integer")
-	}
-	n, err := strconv.ParseUint(value[2:], base, 32)
-	if err != nil {
-		return 0, err
-	}
-	// Decode the runner's two's-complement representation without narrowing
-	// an unsigned value into a signed type. Both branches fit a 32-bit int.
-	if n <= math.MaxInt32 {
-		return int(n), nil
-	}
-	return -1 - int(math.MaxUint32-n), nil
+	return strconv.Atoi(value)
 }
 
 func (p *Parser) parseFloat(n *codec.Node) *definition.Float {

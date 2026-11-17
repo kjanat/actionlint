@@ -205,20 +205,20 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scripte
 		Script: index,
 		Source: results.DiagnosticSource{Content: file.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed)},
 	}
-	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
+	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, r.severity(d.Severity), d.URL
 	finding.Message = r.message(d, d.Location.Line, d.Location.Column)
 	finding.Start = sourcetext.Position{Line: d.Location.Line, Column: d.Location.Column}
 	if d.EndLocation.Line >= d.Location.Line && d.EndLocation.Column > 0 {
 		finding.End = sourcetext.Position{Line: d.EndLocation.Line, Column: d.EndLocation.Column}
 	}
 	if key := script.Key(); key != nil {
-		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}
+		origin := &results.SuppressionOrigin{Path: script.Path, Lines: sourcetext.LineRange{First: key.Line, Last: key.Line}}
 		if value := script.Value(); value != nil {
-			origin.Last = max(origin.Last, value.Line)
+			origin.Lines.Last = max(origin.Lines.Last, value.Line)
 		}
 		if source := script.Source(); source != nil {
 			for _, span := range source.Spans {
-				origin.Last = max(origin.Last, span.Document.Line)
+				origin.Lines.Last = max(origin.Lines.Last, span.Document.Line)
 			}
 		}
 		finding.Suppression = origin

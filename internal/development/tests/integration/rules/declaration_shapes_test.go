@@ -67,7 +67,7 @@ func TestShapeChecks(t *testing.T) {
 				if finding.Rule == "empty-job" {
 					severity = "error"
 				}
-				if finding.Severity != severity {
+				if string(finding.Severity) != severity {
 					t.Errorf("%s severity = %q, want %q", finding.Rule, finding.Severity, severity)
 				}
 				got = append(got, finding.Rule+"/"+finding.Code)

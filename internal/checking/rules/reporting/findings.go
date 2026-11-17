@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -34,7 +35,7 @@ func (c *Collector) Errorf(p *sourcetext.Position, format string, args ...any) {
 
 // Warning constructs a warning at the supplied source position.
 func Warning(rule, code string, p *sourcetext.Position, format string, args ...any) StepFinding {
-	return StepFinding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: sourcetext.ZeroIfNil(p)}
+	return StepFinding{Rule: rule, Code: code, Severity: severity.Warning, Message: fmt.Sprintf(format, args...), Start: sourcetext.ZeroIfNil(p)}
 }
 
 // FromDiagnostics associates diagnostics with a check before step ownership is assigned.

@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -54,18 +55,19 @@ func ContainerRunnerFindings(uses []runners.ContainerUse) []reporting.StepFindin
 		case runners.DockerAction:
 			description = fmt.Sprintf("Docker action %q", use.Name)
 		}
-		var message, severity string
+		var message string
+		var level severity.Severity
 		switch use.Target.Limitation {
 		case runners.ContainerRequiresLinux:
 			message = fmt.Sprintf("%s requires a Linux runner with Docker. Runner selection %q resolves to a non-Linux runner", description, use.Target.Runner)
-			severity = "error"
+			level = severity.Error
 		case runners.ContainerMissingDaemon:
 			message = fmt.Sprintf("%s requires a Docker daemon. Runner selection %q has Docker client tools but cannot run containers locally. Configure a compatible remote daemon or select a Docker-capable Linux runner", description, use.Target.Runner)
-			severity = "warning"
+			level = severity.Warning
 		case runners.ContainerUnknown:
 			continue
 		}
-		findings = append(findings, reporting.StepFinding{Message: message, Severity: severity, Start: use.Position})
+		findings = append(findings, reporting.StepFinding{Message: message, Severity: level, Start: use.Position})
 	}
 	return findings
 }

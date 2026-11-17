@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
@@ -30,7 +31,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 	}
 	workflow := filepath.Join(root, "workflow.yml")
 	documents := map[string]Document{
-		workflow: {URI: FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\npermissions: {}\n"},
+		workflow: {URI: sourcetext.FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\npermissions: {}\n"},
 	}
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	result, err := analyzeDocuments(t.Context(), options, documents)
@@ -44,7 +45,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 		t.Fatalf("dependency snapshot lost: %+v", result.Sources)
 	}
 	// Opening an unsaved, fixed action must override the disk dependency.
-	documents[actionPath] = Document{URI: FileURI(actionPath), Version: 2, Text: "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo fixed\n      shell: bash\n"}
+	documents[actionPath] = Document{URI: sourcetext.FileURI(actionPath), Version: 2, Text: "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo fixed\n      shell: bash\n"}
 	result, err = analyzeDocuments(t.Context(), options, documents)
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("open buffer did not override disk: %+v, %v", result.Diagnostics, err)
@@ -71,8 +72,8 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 	unsaved := "\ufeffname: unsaved\ndescription: captured\n# 😀 open dependency\nruns:\n  using: composite\n  steps:\n    - run: echo \"😀::set-output name=result::unsaved\"\n      shell: bash\n"
 	workflow := filepath.Join(root, "workflow.yml")
 	documents := map[string]Document{
-		workflow:                             {URI: FileURI(workflow), Version: 3, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\npermissions: {}\n"},
-		filepath.Join("local", "action.yml"): {URI: FileURI(actionPath), Version: 9, Text: unsaved},
+		workflow:                             {URI: sourcetext.FileURI(workflow), Version: 3, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\npermissions: {}\n"},
+		filepath.Join("local", "action.yml"): {URI: sourcetext.FileURI(actionPath), Version: 9, Text: unsaved},
 	}
 	var actionReads atomic.Int32
 	result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
@@ -88,7 +89,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 		t.Fatalf("excluded open dependency was not analyzed through its caller: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != sourcetext.ContentDigest([]byte(unsaved)) {
+	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != sha256hex.Digest([]byte(unsaved)) {
 		t.Fatalf("dependency diagnostic used different bytes or coordinates: %+v", finding)
 	}
 	if result.Sources[actionPath].Text != unsaved || actionReads.Load() != 0 {

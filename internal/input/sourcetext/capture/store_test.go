@@ -16,6 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func newStore(t *testing.T, overlays []Overlay, reader Reader) *Store {
@@ -234,7 +235,7 @@ func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
 	if err := store.Verify(first, expected); err != nil {
 		t.Fatal(err)
 	}
-	if first.Revision().Digest() != sourcetext.ContentDigest(expected) {
+	if first.Revision().Digest() != sha256hex.Digest(expected) {
 		t.Fatal("digest normalized physical bytes")
 	}
 }
@@ -321,7 +322,7 @@ func TestStdinAndInvalidUTF8(t *testing.T) {
 	if snapshot.Revision().Document() != "<stdin>" || !snapshot.Revision().Valid() || snapshot.CoordinatesAvailable() || snapshot.Coordinates() != sourcetext.RawLF {
 		t.Fatalf("invalid UTF-8 capture = %#v", snapshot)
 	}
-	if snapshot.Revision().Digest() != sourcetext.ContentDigest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
+	if snapshot.Revision().Digest() != sha256hex.Digest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
 		t.Fatal("invalid UTF-8 bytes lost")
 	}
 	if document, err := store.Canonical(t.Context(), "<stdin>"); err != nil || document != "<stdin>" {

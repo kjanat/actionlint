@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 type cachedRef struct {
@@ -24,7 +25,7 @@ type cachedRef struct {
 }
 
 func (g *GitHub) namedCachePath(ref actions.Reference) string {
-	return filepath.Join(g.cacheDir, "refs", digest(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+ref.Ref()+"\x00"+ref.Directory())+".json")
+	return filepath.Join(g.cacheDir, "refs", sha256hex.Digest([]byte(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+ref.Ref()+"\x00"+ref.Directory()))+".json")
 }
 
 func (g *GitHub) storeNamed(ctx context.Context, file repositoryFile) (err error) {

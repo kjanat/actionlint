@@ -26,6 +26,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"golang.org/x/sync/errgroup"
@@ -72,7 +73,7 @@ type findingCapabilities struct {
 	messageTemplate string
 	// severities maps engine severities to host severities; an unmapped
 	// severity becomes a warning. Empty passes severities through.
-	severities map[string]toolmanifest.Severity
+	severities map[string]severity.Severity
 }
 
 func registerEngine(descriptor scriptengine.Descriptor, backend scriptengine.Backend, options engineOptions) (contract.Registration, error) {
@@ -379,7 +380,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d scriptengin
 		case preparation.LineScript:
 			row = start.Line
 		case preparation.LineStartup:
-			if r.severity(d.Severity) != toolmanifest.SeverityError {
+			if r.severity(d.Severity) != severity.Error {
 				r.debug("%s: dropped %s on the generated startup line: %s", r.descriptor.Name, d.Code, d.Message)
 				return nil, nil
 			}
@@ -405,7 +406,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d scriptengin
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := contract.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
+	finding := contract.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: r.severity(d.Severity), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source(), c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)
@@ -434,10 +435,10 @@ func (r runner) message(d scriptengine.Diagnostic, row, column int) string {
 
 // severity maps an engine severity to a host severity through the
 // manifest's table, logging a severity the table does not list.
-func (r runner) severity(severity string) toolmanifest.Severity {
-	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(severity)
+func (r runner) severity(tool string) severity.Severity {
+	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(tool)
 	if !listed {
-		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, severity, mapped)
+		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, tool, mapped)
 	}
 	return mapped
 }

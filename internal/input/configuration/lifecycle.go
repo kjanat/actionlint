@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 type LifecycleConfig struct {
@@ -27,8 +28,8 @@ type LifecycleMatch struct {
 	Services []services.ServiceKind `yaml:"services,omitempty" jsonschema:"description=Services matched by this policy. Omit to match all services."`
 }
 type LifecycleNotification struct {
-	Starts   LifecycleStart     `yaml:"starts" jsonschema:"required,description=Date at which this notification begins."`
-	Severity lifecycle.Severity `yaml:"severity" jsonschema:"required,enum=info,enum=warning,enum=error,description=Severity of this notification stage."`
+	Starts   LifecycleStart    `yaml:"starts" jsonschema:"required,description=Date at which this notification begins."`
+	Severity severity.Severity `yaml:"severity" jsonschema:"required,enum=info,enum=warning,enum=error,description=Severity of this notification stage."`
 }
 type LifecycleStart struct {
 	Before string `yaml:"before,omitempty" jsonschema:"pattern=^[0-9]+d$,description=Calendar days before the effective date."`

@@ -8,6 +8,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 type Status string
@@ -34,11 +36,11 @@ type Token struct {
 }
 
 type Issue struct {
-	Code     string `json:"code"`
-	Message  string `json:"message"`
-	Severity string `json:"severity"`
-	Start    int    `json:"start"`
-	End      int    `json:"end"`
+	Code     string            `json:"code"`
+	Message  string            `json:"message"`
+	Severity severity.Severity `json:"severity"`
+	Start    int               `json:"start"`
+	End      int               `json:"end"`
 }
 
 type OptionSetting struct {
@@ -307,7 +309,7 @@ func (r *Registry) analyze(result Invocation, id string, args []Token, chain []s
 	input := "file"
 	fail := func(token Token, code, message string) {
 		result.Status = Invalid
-		result.Issues = append(result.Issues, Issue{Code: code, Message: message, Severity: "error", Start: token.Start, End: token.End})
+		result.Issues = append(result.Issues, Issue{Code: code, Message: message, Severity: severity.Error, Start: token.Start, End: token.End})
 	}
 	for i := 0; i < len(args); i++ {
 		token := args[i]
@@ -407,7 +409,7 @@ func (r *Registry) analyze(result Invocation, id string, args []Token, chain []s
 				result.Settings = append(result.Settings, OptionSetting{Group: option.Group, Name: value, Enabled: enabled})
 			}
 			if option.Warning != "" {
-				result.Issues = append(result.Issues, Issue{Code: "interpreter-option", Message: option.Warning, Severity: "warning", Start: token.Start, End: token.End})
+				result.Issues = append(result.Issues, Issue{Code: "interpreter-option", Message: option.Warning, Severity: severity.Warning, Start: token.Start, End: token.End})
 			}
 		}
 	}

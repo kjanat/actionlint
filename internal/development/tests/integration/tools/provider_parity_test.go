@@ -195,8 +195,7 @@ func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics 
 	for i, finding := range snapshot.Findings {
 		for _, manifest := range manifests {
 			if manifest.Rule.Name == finding.Rule {
-				severity, _ := manifest.Capabilities.HostSeverity(finding.Severity)
-				snapshot.Findings[i].Severity = string(severity)
+				snapshot.Findings[i].Severity, _ = manifest.Capabilities.HostSeverity(string(finding.Severity))
 			}
 		}
 	}
@@ -248,7 +247,7 @@ func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *pa
 			report.Unavailable = &parityUnavailable{Reason: finding.Source.Unavailable.Reason(), Address: finding.Source.Unavailable.Address()}
 		}
 		if finding.Suppression != nil {
-			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.First, Last: finding.Suppression.Last}
+			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.Lines.First, Last: finding.Suppression.Lines.Last}
 		}
 		out.Reported = append(out.Reported, report)
 	}

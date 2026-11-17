@@ -1,10 +1,11 @@
 package output
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -15,6 +16,50 @@ var (
 	githubCommandProperty = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
 )
 
+// GitHubCommandProperty is one name=value property of a workflow command.
+type GitHubCommandProperty struct{ Name, Value string }
+
+// FormatGitHubCommand formats one workflow command line, such as
+// "::error file=a.yml,line=1,title=t::message\n". It escapes property values
+// and the message the way @actions/core does, so neither can end the command
+// early or start another one.
+func FormatGitHubCommand(command string, properties []GitHubCommandProperty, message string) string {
+	var line strings.Builder
+	line.WriteString("::")
+	line.WriteString(command)
+	for i, property := range properties {
+		if i == 0 {
+			line.WriteByte(' ')
+		} else {
+			line.WriteByte(',')
+		}
+		line.WriteString(property.Name)
+		line.WriteByte('=')
+		line.WriteString(githubCommandProperty.Replace(property.Value))
+	}
+	line.WriteString("::")
+	line.WriteString(githubCommandData.Replace(message))
+	line.WriteByte('\n')
+	return line.String()
+}
+
+// EscapeGitHubCommandData escapes text written to a stream the runner scans
+// for workflow commands, so the text stays on one line.
+func EscapeGitHubCommandData(text string) string { return githubCommandData.Replace(text) }
+
+// GitHubAnnotationCommand returns the workflow command that annotates a
+// finding of the given severity: notice, warning or error.
+func GitHubAnnotationCommand(level severity.Severity) string {
+	switch level.Effective() {
+	case severity.Warning:
+		return "warning"
+	case severity.Info:
+		return "notice"
+	case severity.Error:
+	}
+	return "error"
+}
+
 // WriteGitHub writes one workflow command annotation per diagnostic.
 func WriteGitHub(out io.Writer, diagnostics []results.Diagnostic) error {
 	for _, diagnostic := range diagnostics {
@@ -22,22 +67,23 @@ func WriteGitHub(out io.Writer, diagnostics []results.Diagnostic) error {
 		if endLine > diagnostic.Start.Line && diagnostic.End.Column == 1 {
 			endLine--
 		}
-		position := fmt.Sprintf("line=%d,endLine=%d", diagnostic.Start.Line, endLine)
-		if diagnostic.Start.Line == diagnostic.End.Line {
-			position += fmt.Sprintf(",col=%d,endColumn=%d", diagnostic.Start.Column, max(diagnostic.Start.Column, diagnostic.End.Column-1))
+		properties := []GitHubCommandProperty{
+			{"file", diagnostic.Path},
+			{"line", strconv.Itoa(diagnostic.Start.Line)},
+			{"endLine", strconv.Itoa(endLine)},
 		}
-		level := "error"
-		switch diagnostic.Severity {
-		case "warning":
-			level = "warning"
-		case "info", "note":
-			level = "notice"
+		if diagnostic.Start.Line == diagnostic.End.Line {
+			properties = append(properties,
+				GitHubCommandProperty{"col", strconv.Itoa(diagnostic.Start.Column)},
+				GitHubCommandProperty{"endColumn", strconv.Itoa(max(diagnostic.Start.Column, diagnostic.End.Column-1))},
+			)
 		}
 		title := diagnostic.Code
 		if title == "" {
 			title = diagnostic.Rule
 		}
-		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, githubCommandProperty.Replace(diagnostic.Path), position, githubCommandProperty.Replace(title), githubCommandData.Replace(diagnostic.Message)); err != nil {
+		properties = append(properties, GitHubCommandProperty{"title", title})
+		if _, err := io.WriteString(out, FormatGitHubCommand(GitHubAnnotationCommand(diagnostic.Severity), properties, diagnostic.Message)); err != nil {
 			return err
 		}
 	}

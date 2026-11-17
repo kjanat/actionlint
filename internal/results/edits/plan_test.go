@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -20,13 +21,13 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 		name, revision string
 		edits          func(path string) []results.Edit
 	}{
-		{"empty alternative", sourcetext.ContentDigest(content), func(string) []results.Edit { return nil }},
+		{"empty alternative", sha256hex.Digest(content), func(string) []results.Edit { return nil }},
 		{"missing revision", "", func(path string) []results.Edit { return []results.Edit{base(path)} }},
 		{"stale revision", "bad", func(path string) []results.Edit { return []results.Edit{base(path)} }},
-		{"overlap", sourcetext.ContentDigest(content), func(path string) []results.Edit {
+		{"overlap", sha256hex.Digest(content), func(path string) []results.Edit {
 			return []results.Edit{base(path), {Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}}}
 		}},
-		{"outside", sourcetext.ContentDigest(content), func(path string) []results.Edit {
+		{"outside", sha256hex.Digest(content), func(path string) []results.Edit {
 			return []results.Edit{{Path: path, Start: sourcetext.Position{Line: 9, Column: 1}, End: sourcetext.Position{Line: 9, Column: 2}}}
 		}},
 	} {
@@ -60,7 +61,7 @@ func TestRemoteFixesDoNotPreventLocalEdits(t *testing.T) {
 	remoteEdit := localEdit
 	remoteEdit.Path, remoteEdit.Replacement = remote, "remote"
 	fix := func(edits ...results.Edit) results.Fix {
-		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: sourcetext.ContentDigest(content), remote: sourcetext.ContentDigest(content)}, Edits: edits}
+		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: sha256hex.Digest(content), remote: sha256hex.Digest(content)}, Edits: edits}
 	}
 	findings := []results.Diagnostic{
 		{Fixes: []results.Fix{fix(remoteEdit)}},

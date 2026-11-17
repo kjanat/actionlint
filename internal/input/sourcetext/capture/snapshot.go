@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 type captured struct {
@@ -53,7 +54,7 @@ func (s CapturedDocument) Aliases() []string { return slices.Clone(s.aliases) }
 
 func capture(document string, model sourcetext.Coordinates, content []byte) (*captured, error) {
 	content = bytes.Clone(content)
-	revision, err := sourcetext.NewRevision(document, sourcetext.ContentDigest(content))
+	revision, err := sourcetext.NewRevision(document, sha256hex.Digest(content))
 	if err != nil {
 		return nil, err
 	}

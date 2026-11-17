@@ -5,6 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -24,8 +25,8 @@ func TestPublicationPreservesRequiredLifecycleProvenance(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			key := finding.MetadataKey{Path: "action.yml", Message: "runtime is deprecated"}
-			optional := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "action.yml", Message: key.Message, Severity: tc.optionalSeverity, MetadataIdentity: &finding.MetadataIdentity{Key: key, Declaration: tc.declaration}}
-			required := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: tc.requiredSeverity, LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
+			optional := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "action.yml", Message: key.Message, Severity: severity.Severity(tc.optionalSeverity), MetadataIdentity: &finding.MetadataIdentity{Key: key, Declaration: tc.declaration}}
+			required := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: severity.Severity(tc.requiredSeverity), LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
 			files := []policy.Batch{{InputPath: "action.yml", Findings: []*finding.Finding{optional}}, {InputPath: "workflow.yml", Findings: []*finding.Finding{required}}}
 			files[0] = prepareRetentionBatch(t, files[0], tc.optionalSeverity, "")
 			files[1] = prepareRetentionBatch(t, files[1], tc.requiredSeverity, "trusted.yml")
@@ -41,7 +42,7 @@ func TestPublicationPreservesRequiredLifecycleProvenance(t *testing.T) {
 			for _, d := range diagnostics {
 				if d.Lifecycle != nil {
 					for _, p := range d.Lifecycle.Policies {
-						if p.ID == "required" && p.Enforced && d.Severity == tc.requiredSeverity && !d.NonBlocking {
+						if p.ID == "required" && p.Enforced && string(d.Severity) == tc.requiredSeverity && !d.NonBlocking {
 							found = true
 						}
 					}
@@ -83,17 +84,17 @@ func TestPublicationKeepsDistinctRequiredPolicyOrigins(t *testing.T) {
 	}
 }
 
-func prepareRetentionBatch(t *testing.T, batch policy.Batch, severity, origin string) policy.Batch {
+func prepareRetentionBatch(t *testing.T, batch policy.Batch, notified, origin string) policy.Batch {
 	t.Helper()
-	level := severity
-	if severity == "warning" {
+	level := notified
+	if notified == "warning" {
 		level = "warn"
 	}
 	cfg := lifecycleRulesConfig(t, "lint: {rules: {correctness: {action: "+level+"}}}")
 	batch.Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
 	batch.Policy = preparePolicy(batch.Processor.RuleSet, cfg, policy.Policy{Path: batch.InputPath}, nil, batch.Findings)
 	if origin != "" {
-		required, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: lifecycle.Severity(severity)}}, origin)
+		required, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: severity.Severity(notified)}}, origin)
 		if err != nil {
 			t.Fatal(err)
 		}

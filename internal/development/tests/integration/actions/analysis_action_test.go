@@ -279,7 +279,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 				if severity == "warn" {
 					severity = "warning"
 				}
-				if diagnostic.Rule != "shellcheck" || diagnostic.Severity != severity || filepath.ToSlash(diagnostic.Path) != "inner/action.yml" {
+				if diagnostic.Rule != "shellcheck" || string(diagnostic.Severity) != severity || filepath.ToSlash(diagnostic.Path) != "inner/action.yml" {
 					t.Errorf("want %s ShellCheck finding at inner/action.yml, got %+v", severity, diagnostic)
 				}
 			}

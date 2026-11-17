@@ -24,6 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -267,7 +268,7 @@ permissions: {}
 				t.Fatalf("document plugin lost attached YAML comments: %+v", comments)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sourcetext.ContentDigest([]byte(workflow)) {
+			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sha256hex.Digest([]byte(workflow)) {
 				t.Fatalf("mapping/fix changed: %+v", finding)
 			}
 			if finding.Reference == nil || finding.Reference.Document == "" || finding.Reference.Node == "" || finding.Reference.Address == "$" {

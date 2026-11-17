@@ -67,7 +67,7 @@ func TestScriptRuntimeRuleSelection(t *testing.T) {
 					}
 					return
 				}
-				if len(found) != 1 || found[0].Rule != rule.name || found[0].Severity != tc.severity || found[0].Start.Line != 9 || len(found[0].Fixes) != 0 {
+				if len(found) != 1 || found[0].Rule != rule.name || string(found[0].Severity) != tc.severity || found[0].Start.Line != 9 || len(found[0].Fixes) != 0 {
 					t.Fatalf("expected one %s with no automatic edits: %+v (all: %+v)", tc.severity, found, all)
 				}
 				if found[0].Start.Column != rule.column || found[0].End.Column != rule.endColumn {

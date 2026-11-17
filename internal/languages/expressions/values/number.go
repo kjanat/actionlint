@@ -33,14 +33,9 @@ func ToNumber(value any) float64 {
 			if number, err := strconv.ParseFloat(value, 64); err == nil || math.IsInf(number, 0) {
 				return number
 			}
-		} else if (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0o")) && codec.IsCoreSchemaInt(value) {
+		} else if number, err := codec.CoreSchemaRadixInt(value); err == nil {
 			// ExpressionUtility.ParseNumber uses signed 32-bit hexadecimal/octal conversion.
-			if number, err := strconv.ParseUint(value, 0, 32); err == nil {
-				if number > math.MaxInt32 {
-					return float64(number) - (1 << 32)
-				}
-				return float64(number)
-			}
+			return float64(number)
 		}
 	}
 	return math.NaN()

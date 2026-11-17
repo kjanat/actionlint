@@ -36,7 +36,7 @@ func metadataFindingKey(meta *actionmeta.Metadata, document string, item *findin
 	).Replace(item.Message)
 	key := finding.MetadataKey{Path: document, Message: message}
 	if item.Source.Content != nil {
-		key.Line, key.Column = item.Start.Line, item.Start.Column
+		key.Start = item.Start
 	}
 	return key
 }

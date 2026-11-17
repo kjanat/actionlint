@@ -1,6 +1,7 @@
 package finding
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -96,5 +97,5 @@ func Compare(lhs, rhs *Finding) int {
 	if lhs.End.Column != rhs.End.Column {
 		return lhs.End.Column - rhs.End.Column
 	}
-	return strings.Compare(lhs.Severity, rhs.Severity)
+	return cmp.Compare(lhs.Severity, rhs.Severity)
 }

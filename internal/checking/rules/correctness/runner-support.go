@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -35,7 +36,7 @@ func RunnerSupportChecks(runners *runners.Knowledge) define.Checks {
 			for _, problem := range problems {
 				position := supportPosition(job, problem.Selector)
 				message := supportMessage(problem)
-				finding := reporting.StepFinding{Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
+				finding := reporting.StepFinding{Code: string(problem.State), Severity: severity.Warning, Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
 				if problem.Evidence != nil && !problem.Evidence.Current {
 					finding.Code = string(problem.Evidence.Kind)
 				}

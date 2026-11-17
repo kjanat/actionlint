@@ -45,7 +45,7 @@ func TestInvalidOutputFileSelectionAndSuppression(t *testing.T) {
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Severity != tc.severity || findings[0].Start.Line != 8 || findings[0].Start.Column != 23 || findings[0].End.Line != 8 || findings[0].End.Column != 41 {
+			if len(findings) != 1 || string(findings[0].Severity) != tc.severity || findings[0].Start.Line != 8 || findings[0].Start.Column != 23 || findings[0].End.Line != 8 || findings[0].End.Column != 41 {
 				t.Fatalf("expected one %s on the destination word at 8:23-41: %+v", tc.severity, findings)
 			}
 			if !strings.Contains(findings[0].Message, `line "{"`) || len(findings[0].Fixes) != 0 {

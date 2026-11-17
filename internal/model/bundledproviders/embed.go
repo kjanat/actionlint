@@ -9,13 +9,13 @@
 package bundledproviders
 
 import (
-	"crypto/sha256"
 	"embed"
-	"encoding/hex"
 	"io/fs"
 	"path"
 	"strings"
 	"sync"
+
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 //go:embed */manifest.json */*.jq
@@ -71,8 +71,7 @@ var programs = sync.OnceValue(func() map[string][]byte {
 			if err != nil {
 				continue
 			}
-			sum := sha256.Sum256(data)
-			index["sha256:"+hex.EncodeToString(sum[:])] = data
+			index["sha256:"+sha256hex.Digest(data)] = data
 		}
 	}
 	return index

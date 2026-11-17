@@ -1,6 +1,9 @@
 package lsp
 
-import "actionlint.kjanat.dev/v2/internal/results"
+import (
+	"actionlint.kjanat.dev/v2/internal/model/severity"
+	"actionlint.kjanat.dev/v2/internal/results"
+)
 
 func diagnosticItems(doc Document, findings []results.Diagnostic, documents map[string]Document) []any {
 	items := make([]any, 0, len(findings))
@@ -9,12 +12,14 @@ func diagnosticItems(doc Document, findings []results.Diagnostic, documents map[
 		if err != nil {
 			continue
 		}
-		severity := 1
-		switch d.Severity {
-		case "warning", "warn":
-			severity = 2
-		case "info":
-			severity = 3
+		// LSP DiagnosticSeverity: 1 error, 2 warning, 3 information.
+		level := 1
+		switch d.Severity.Effective() {
+		case severity.Warning:
+			level = 2
+		case severity.Info:
+			level = 3
+		case severity.Error:
 		}
 		msg := d.Message
 		if d.Help != "" {
@@ -24,7 +29,7 @@ func diagnosticItems(doc Document, findings []results.Diagnostic, documents map[
 		if d.Code != "" {
 			code += "/" + d.Code
 		}
-		item := map[string]any{"range": rangeValue, "severity": severity, "code": code, "source": "actionlint", "message": msg}
+		item := map[string]any{"range": rangeValue, "severity": level, "code": code, "source": "actionlint", "message": msg}
 		if d.DocumentationURL != "" {
 			item["codeDescription"] = map[string]string{"href": d.DocumentationURL}
 		}

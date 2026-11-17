@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -46,14 +45,14 @@ func (a *action) run() int {
 	if err != nil {
 		code = exitcode.ExitFailure
 		if _, ok := errors.AsType[*inputError](err); ok {
-			_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
+			_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("error", []output.GitHubCommandProperty{{Name: "title", Value: "Invalid action input"}}, err.Error()))
 			code = exitcode.ExitInvalidCommandOption
 		} else {
-			_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
+			_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("error", []output.GitHubCommandProperty{{Name: "title", Value: "actionlint action failed"}}, err.Error()))
 		}
 	}
 	if persistErr := a.persistResult(code, err); persistErr != nil {
-		_, _ = fmt.Fprintf(a.stdout, "::error title=Could not save actionlint results::%s\n", commandEscape(persistErr.Error()))
+		_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("error", []output.GitHubCommandProperty{{Name: "title", Value: "Could not save actionlint results"}}, persistErr.Error()))
 		return exitcode.ExitFailure
 	}
 	return code

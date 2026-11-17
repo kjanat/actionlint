@@ -64,7 +64,7 @@ func TestVendorLockInSelection(t *testing.T) {
 				}
 				if finding.Rule == "vendor-lock-in" {
 					count++
-					if finding.Severity != tc.severity || finding.Start.Line != 4 {
+					if string(finding.Severity) != tc.severity || finding.Start.Line != 4 {
 						t.Fatalf("wrong level or location: %+v", finding)
 					}
 				}

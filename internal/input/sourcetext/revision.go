@@ -1,10 +1,11 @@
 package sourcetext
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Revision identifies the exact bytes captured for a canonical document.
@@ -20,10 +21,7 @@ func NewRevision(document, digest string) (Revision, error) {
 	if document == "" || strings.ContainsRune(document, 0) {
 		return Revision{}, errors.New("source revision requires a document identity")
 	}
-	if len(digest) != 64 || digest != strings.ToLower(digest) {
-		return Revision{}, errors.New("source revision requires a lowercase SHA-256 digest")
-	}
-	if _, err := hex.DecodeString(digest); err != nil {
+	if !sha256hex.IsDigest(digest) {
 		return Revision{}, errors.New("source revision requires a lowercase SHA-256 digest")
 	}
 	return Revision{document: document, digest: digest}, nil

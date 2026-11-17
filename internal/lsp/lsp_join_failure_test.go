@@ -62,7 +62,7 @@ func TestEditorFailedCaptureJoinReturnsWithoutPublishingSources(t *testing.T) {
 	}
 	publication, logs := firstEditorPublication(t, func(context.Context, map[string]Document) (Analysis, error) {
 		return Analysis{}, errors.Join(initErr, joinErr)
-	}, FileURI(path), "open buffer metadata")
+	}, sourcetext.FileURI(path), "open buffer metadata")
 	if len(publication.Params.Diagnostics) != 0 || len(logs) != 1 || !strings.Contains(logs[0], "initialization") || !strings.Contains(logs[0], "join failed") {
 		t.Fatalf("failed capture leaked coordinates or hid its join failure: publication=%+v logs=%v", publication, logs)
 	}

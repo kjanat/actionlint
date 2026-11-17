@@ -64,7 +64,7 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 					if !strings.Contains(diagnostic.Path, "example/shared/blob/") {
 						t.Fatalf("wrong source: %+v", diagnostic)
 					}
-					severities = append(severities, diagnostic.Severity)
+					severities = append(severities, string(diagnostic.Severity))
 				}
 				if diagnostic.Rule == "unused-suppression" {
 					t.Fatalf("suppression used by another occurrence was removed: %+v", diagnostic)

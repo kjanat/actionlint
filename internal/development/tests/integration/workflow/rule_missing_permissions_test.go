@@ -36,7 +36,7 @@ func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Rule != "missing-permissions" || findings[0].Severity != tc.severity || findings[0].Start.Line != 3 {
+			if len(findings) != 1 || findings[0].Rule != "missing-permissions" || string(findings[0].Severity) != tc.severity || findings[0].Start.Line != 3 {
 				t.Fatalf("expected one %s at job declaration: %+v", tc.severity, findings)
 			}
 		})

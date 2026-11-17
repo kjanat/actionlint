@@ -18,6 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
@@ -130,7 +131,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	}
 	send(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
 	read()
-	uri, err := json.Marshal(FileURI(filepath.Join(root, ".github", "workflows", "ci.yml")))
+	uri, err := json.Marshal(sourcetext.FileURI(filepath.Join(root, ".github", "workflows", "ci.yml")))
 	if err != nil {
 		t.Fatal(err)
 	}

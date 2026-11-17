@@ -5,6 +5,8 @@ import (
 	"context"
 	"io"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/lsp/completion"
 )
 
 func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
@@ -17,12 +19,12 @@ func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
 	go func() {
 		done <- Serve(t.Context(), input, output,
 			func(context.Context, map[string]Document) (Analysis, error) { return Analysis{}, nil },
-			func(_ context.Context, doc Document, offset int) []Completion {
+			func(_ context.Context, doc Document, offset int) []completion.Item {
 				// The emoji occupies four UTF-8 bytes and two UTF-16 units.
 				if doc.Version != 2 || doc.Text != "😀titel" || offset != 6 {
 					return nil
 				}
-				return []Completion{{Label: "title", Detail: "string", Start: 4, End: 9}}
+				return []completion.Item{{Label: "title", Detail: "string", Start: 4, End: 9}}
 			})
 	}()
 	reader := bufio.NewReader(receive)

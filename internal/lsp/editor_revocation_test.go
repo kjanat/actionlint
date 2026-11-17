@@ -12,6 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -51,7 +52,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	path := filepath.Join(root, "workflow.yml")
 	documents := map[string]Document{
 		path: {
-			URI: FileURI(path), Version: 1,
+			URI: sourcetext.FileURI(path), Version: 1,
 			Text: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo first\npermissions: {}\n",
 		},
 	}

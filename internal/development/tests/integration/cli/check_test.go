@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 )
@@ -211,7 +212,7 @@ func TestCommandNativeJSON(t *testing.T) {
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]
-				if actual.Reference == nil || actual.Reference.Revision != sourcetext.ContentDigest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
+				if actual.Reference == nil || actual.Reference.Revision != sha256hex.Digest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
 					t.Fatalf("missing diagnostic context: %+v", actual)
 				}
 				expected[i].Reference = actual.Reference

@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -34,7 +35,7 @@ func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry
 		t.Fatal(err)
 	}
 	p.Name = strings.ToLower(id)
-	p.Manifest = "plugins/" + hash("package-v2\n"+m.Plugin.Issuer+"\n"+m.Plugin.RepositoryID+"\n"+id) + "/index.json"
+	p.Manifest = "plugins/" + sha256hex.Digest([]byte("package-v2\n"+m.Plugin.Issuer+"\n"+m.Plugin.RepositoryID+"\n"+id)) + "/index.json"
 	m.Plugin.SchemaVersion = 2
 	r.IdentityVersion = 2
 	asset := strings.TrimPrefix(id, fixtureregistry.FixturePluginName+"/") + ".wasm"

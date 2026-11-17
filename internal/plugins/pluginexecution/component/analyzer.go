@@ -55,6 +55,10 @@ func (p *Plugin) AnalyzeDocument(ctx context.Context, input checkinputs.Analyzer
 		return nil, err
 	}
 	diagnostics, err := liftAnalysisForInput(value, &input)
+	// A tool integration's runner maps severities through its manifest table.
+	if p.toolIntegration == nil {
+		hostSeverities(diagnostics)
+	}
 	valid := diagnostics[:0]
 	for _, finding := range diagnostics {
 		if finding.Rule != "" && finding.Rule != p.analyzerDescriptor.Name {

@@ -2,7 +2,6 @@ package configsource
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func configCachePath(ctx context.Context, name string) string {
@@ -18,7 +18,7 @@ func configCachePath(ctx context.Context, name string) string {
 	if directory == "" {
 		return ""
 	}
-	return filepath.Join(directory, "configs", fmt.Sprintf("%x", sha256.Sum256([]byte(name))))
+	return filepath.Join(directory, "configs", sha256hex.Digest([]byte(name)))
 }
 
 func readCachedConfig(ctx context.Context, name string) ([]byte, error) {

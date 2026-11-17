@@ -89,7 +89,7 @@ func TestContainerRunnerSelection(t *testing.T) {
 					continue
 				}
 				count++
-				if finding.Severity != tc.severity || finding.Start.Line != 6 || finding.End.Column <= finding.Start.Column {
+				if string(finding.Severity) != tc.severity || finding.Start.Line != 6 || finding.End.Column <= finding.Start.Column {
 					t.Fatalf("wrong severity or range: %+v", finding)
 				}
 			}

@@ -218,12 +218,12 @@ func (d *DocumentAnalyzer) finding(input checkinputs.AnalyzerInput, entry script
 			return results.Diagnostic{}, err
 		}
 	}
-	severity, _ := d.backend.capabilities.HostSeverity(entry.Severity)
+	level, _ := d.backend.capabilities.HostSeverity(entry.Severity)
 	message := entry.Message
 	if template := d.backend.capabilities.MessageTemplate; template != "" {
 		message = strings.NewReplacer("{code}", entry.Code, "{severity}", entry.Severity, "{row}", strconv.Itoa(start.Line), "{column}", strconv.Itoa(start.Column), "{message}", entry.Message).Replace(template)
 	}
-	finding := results.Diagnostic{Rule: d.descriptor.Name, Code: entry.Code, Severity: string(severity), Message: message, Path: input.Path, Start: start, End: end, DocumentationURL: entry.URL}
+	finding := results.Diagnostic{Rule: d.descriptor.Name, Code: entry.Code, Severity: level, Message: message, Path: input.Path, Start: start, End: end, DocumentationURL: entry.URL}
 	for _, fix := range entry.Fixes {
 		mapped := results.Fix{Applicability: fix.Applicability, Description: fix.Description, Revisions: map[string]string{input.Path: input.Revision.Digest()}}
 		for _, replacement := range fix.Replacements {

@@ -2,14 +2,13 @@ package toolmanifest
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Programs resolves a transform digest "sha256:<hex>" to its program.
@@ -67,8 +66,7 @@ func ReadLocal(reader *files.Reader, path string) (Manifest, Programs, error) {
 		if err != nil {
 			return Manifest{}, nil, err
 		}
-		sum := sha256.Sum256(program)
-		programs["sha256:"+hex.EncodeToString(sum[:])] = program
+		programs["sha256:"+sha256hex.Digest(program)] = program
 	}
 	var missing []string
 	for _, digest := range wanted {

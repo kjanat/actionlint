@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -56,7 +57,7 @@ func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options 
 	}
 	uriFromPath := options.URIFromPath
 	if uriFromPath == nil {
-		uriFromPath = FileURI
+		uriFromPath = sourcetext.FileURI
 	}
 	ctx, cancel := context.WithCancel(ctx)
 

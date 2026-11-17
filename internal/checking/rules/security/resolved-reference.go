@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -40,7 +41,7 @@ func (*ResolvedReferenceCheck) AnalyzeDocument(ctx context.Context, input checki
 		if id, known := result.RepositoryID.Value(); known {
 			message = fmt.Sprintf("%s resolves to commit %s (repository ID %d, observed %s)", dep.Uses, result.Commit, id, result.ObservedAt)
 		}
-		d := results.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: "info", Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: message}
+		d := results.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: severity.Info, Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: message}
 		if dep.End != dep.Start {
 			d.Fixes = []results.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: results.FixSuggested, Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
 		}

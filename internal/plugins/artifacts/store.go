@@ -3,8 +3,6 @@ package artifacts
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // ErrCorrupt reports a stored blob whose bytes no longer match its digest,
@@ -41,7 +40,7 @@ func (s Store) Read(ctx context.Context, digest string, limit int64) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-	if sum := sha256.Sum256(data); hex.EncodeToString(sum[:]) != digest {
+	if sha256hex.Digest(data) != digest {
 		return nil, fmt.Errorf("artifact %s: %w", digest, ErrCorrupt)
 	}
 	return data, nil
@@ -54,7 +53,7 @@ func (s Store) Publish(ctx context.Context, digest string, data []byte) error {
 	if err := pluginreference.CheckDigest(digest); err != nil {
 		return err
 	}
-	if sum := sha256.Sum256(data); hex.EncodeToString(sum[:]) != digest {
+	if sha256hex.Digest(data) != digest {
 		return fmt.Errorf("artifact %s: %w", digest, errDigestMismatch)
 	}
 	if s.Dir == "" {

@@ -34,7 +34,7 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 					source := strings.ReplaceAll("run: | # "+declaration+" -- reviewed -- input\n  echo first\n  echo second\n"+next+"\n", "\n", ending)
 					directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 					want := []Directive{{
-						Position: sourcetext.Position{Line: 1, Column: 8}, First: 1, Last: 3,
+						Position: sourcetext.Position{Line: 1, Column: 8}, Lines: sourcetext.LineRange{First: 1, Last: 3},
 						Rules: []string{"expression", "shellcheck"}, Reason: "reviewed -- input",
 					}}
 					if len(findings) != 0 {
@@ -45,7 +45,7 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 					}
 					result, _ := Evaluate(directives, nil, rule.Names{})
 					for _, rule := range []string{"expression", "shellcheck"} {
-						if !result.Suppresses(rule, 2, 2) || result.Suppresses(rule, 4, 4) {
+						if !result.Suppresses(rule, sourcetext.LineRange{First: 2, Last: 2}) || result.Suppresses(rule, sourcetext.LineRange{First: 4, Last: 4}) {
 							t.Fatalf("wrong declaration extent for %s", rule)
 						}
 					}
@@ -63,7 +63,7 @@ func TestInlineSuppressionNextLineSpellings(t *testing.T) {
 				t.Parallel()
 				source := "# " + command + " " + selectors + "\nrun: |\n  echo ok\nnext: value\n"
 				directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
-				want := []Directive{{Position: sourcetext.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
+				want := []Directive{{Position: sourcetext.Position{Line: 1, Column: 1}, Lines: sourcetext.LineRange{First: 2, Last: 3}, Rules: []string{"expression", "shellcheck"}}}
 				if len(findings) != 0 {
 					t.Fatalf("unexpected grammar diagnostics: %+v", findings)
 				}
@@ -129,7 +129,7 @@ func TestPlainIgnoreNextLineRecovery(t *testing.T) {
 				t.Fatalf("plain next-line directive: %+v, %+v", directives, findings)
 			}
 			result, _ := Evaluate(directives, nil, rule.Names{})
-			if !result.Suppresses("expression", 2, 3) || result.Suppresses("expression", 4, 4) {
+			if !result.Suppresses("expression", sourcetext.LineRange{First: 2, Last: 3}) || result.Suppresses("expression", sourcetext.LineRange{First: 4, Last: 4}) {
 				t.Fatalf("wrong declaration extent: %+v", directives)
 			}
 		}
@@ -188,7 +188,7 @@ run-name: |
 		t.Fatal(err)
 	}
 	want := Directive{
-		Position: sourcetext.Position{Line: 2, Column: 7}, First: 2, Last: 2,
+		Position: sourcetext.Position{Line: 2, Column: 7}, Lines: sourcetext.LineRange{First: 2, Last: 2},
 		Rules: []string{"cache-operation"}, Reason: "reviewed -- intentionally unused",
 	}
 	if diff := cmp.Diff(want, directive, cmp.AllowUnexported(Directive{})); diff != "" {

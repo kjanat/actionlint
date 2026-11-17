@@ -130,7 +130,7 @@ runs:
 				}
 				for _, diagnostic := range result.Diagnostics {
 					key := report{diagnostic.Path, diagnostic.Rule}
-					if severity, exists := want[key]; !exists || diagnostic.Severity != severity {
+					if severity, exists := want[key]; !exists || string(diagnostic.Severity) != severity {
 						t.Fatalf("want %v for %s, got %+v", want, tc.rule, diagnostic)
 					}
 					delete(want, key)

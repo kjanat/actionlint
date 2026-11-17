@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -50,7 +51,7 @@ func TestEditorRemoteConfigUsesSessionConnections(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			documents := map[string]Document{path: {URI: FileURI(path), Version: 1, Text: "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"}}
+			documents := map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 1, Text: "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"}}
 			result, err := session.analyze(t.Context(), documents)
 			if err != nil {
 				t.Fatal(err)

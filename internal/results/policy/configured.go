@@ -34,7 +34,7 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 		}
 		line, column, applies := finding.Start.Line, finding.Start.Column, finding.Source.Content == nil || foreign
 		if origin := finding.SuppressionOrigin; origin != nil {
-			line, applies = origin.First, origin.Path == path || !foreign && origin.Path == ""
+			line, applies = origin.Lines.First, origin.Path == path || !foreign && origin.Path == ""
 			column = 0
 		}
 		ignored := false

@@ -1,9 +1,9 @@
 package toolmanifest
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
+
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // ResolveTransform returns a transform's text, verifying a digest-named program
@@ -22,8 +22,7 @@ func ResolveTransform(transform *Transform, programs func(string) ([]byte, bool)
 	if !ok {
 		return "", fmt.Errorf("transform program %s is not available", transform.Digest)
 	}
-	sum := sha256.Sum256(source)
-	if "sha256:"+hex.EncodeToString(sum[:]) != transform.Digest {
+	if "sha256:"+sha256hex.Digest(source) != transform.Digest {
 		return "", fmt.Errorf("transform program does not match digest %s", transform.Digest)
 	}
 	return string(source), nil

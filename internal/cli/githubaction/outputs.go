@@ -3,6 +3,7 @@ package githubaction
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 type namedOutput struct {
@@ -150,7 +152,7 @@ func (a *action) emit(rendered string, code int, format outputFormat) {
 		return
 	}
 	if code == exitcode.ExitInvalidCommandOption || code == exitcode.ExitFailure {
-		_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint failed::%s\n", commandEscape(rendered))
+		_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("error", []output.GitHubCommandProperty{{Name: "title", Value: "actionlint failed"}}, rendered))
 		return
 	}
 	if format == formatGitHub {

@@ -25,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
@@ -94,7 +95,7 @@ func (rule *Checker) exprError(err *typecheck.Error, base sourcetext.Position) {
 	rule.exprFinding(err, base, "")
 }
 
-func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, severity string) {
+func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, level severity.Severity) {
 	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
@@ -102,7 +103,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position,
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: documentPosition(base, err.Position)}
+	r := report{rule: kind, code: err.Code, severity: level, message: err.Message, start: documentPosition(base, err.Position)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
@@ -201,7 +202,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.
 		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
 	for _, finding := range correctness.PermissiveJSONCalls(expr) {
-		rule.exprFinding(finding, base, "info")
+		rule.exprFinding(finding, base, severity.Info)
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *typecheck.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed
@@ -304,7 +305,11 @@ func (rule *Checker) checkSemantics(src string, base sourcetext.Position, checkU
 }
 
 // documentPosition places at, a one-based position within an expression, in
-// the document where the expression starts at base.
+// the document where the expression starts at base. Only the first line of
+// the expression starts at base.Column; later lines start at column 1.
 func documentPosition(base, at sourcetext.Position) sourcetext.Position {
-	return sourcetext.Position{Line: base.Line + at.Line - 1, Column: base.Column + at.Column - 1}
+	if at.Line > 1 {
+		return sourcetext.Position{Line: base.Line + at.Line - 1, Column: at.Column}
+	}
+	return sourcetext.Position{Line: base.Line, Column: base.Column + at.Column - 1}
 }

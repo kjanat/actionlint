@@ -4,8 +4,6 @@
 package pluginregistry
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
@@ -311,11 +309,6 @@ func (p Pin) verifyMetadata(data []byte) error {
 		return errors.New("plugin contract disagrees with registry pin")
 	}
 	return nil
-}
-
-func hash(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
 }
 
 func publisherIssuer(provider string) string {

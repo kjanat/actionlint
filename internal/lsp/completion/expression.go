@@ -12,7 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
-// Item describes a property replacement in expression source byte offsets.
+// Item describes a property replacement. Start and End are byte offsets in
+// the source text the completion was requested for.
 type Item struct {
 	Label      string
 	Detail     string

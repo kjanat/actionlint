@@ -30,9 +30,8 @@ func ParseRepositoryURL(spec string) (RepositoryURL, bool) {
 		return r, true
 	}
 	shorthand := strings.TrimPrefix(u.Path, "/")
-	location, ref, present := strings.Cut(shorthand, "@")
-	owner, repo, _, problem := SplitAction(shorthand)
-	if !present || ref == "" || owner == "" || repo == "" || problem != "" || strings.Count(shorthand, "@") != 1 || path.Clean(location) != location || strings.ContainsAny(shorthand, "\\ \t\r\n") {
+	location, _, _ := strings.Cut(shorthand, "@")
+	if _, problem := ParseRepositoryAction(shorthand); problem != "" || path.Clean(location) != location || strings.ContainsAny(shorthand, "\\ \t\r\n") {
 		return r, true
 	}
 	r.shorthand = shorthand

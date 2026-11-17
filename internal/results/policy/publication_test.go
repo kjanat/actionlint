@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -72,7 +73,7 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 func TestPublicationFailureInvalidatesUnusedSuppressionProof(t *testing.T) {
 	t.Parallel()
 	content := []byte("# actionlint-ignore-next-line expression-reference -- intentional\nrun: echo ok\n")
-	ref := sourcetext.Reference{Document: "shared-action", Revision: sourcetext.ContentDigest(content)}
+	ref := sourcetext.Reference{Document: "shared-action", Revision: sha256hex.Digest(content)}
 	references := map[string]facts.SourceIndex{"action.yml": {Document: ref}}
 	rules := checking.ConfigurationRules()
 	p := preparePolicy(rules, nil, policy.Policy{Path: "action.yml", ConfigPath: "action.yml", Content: content}, nil, nil)

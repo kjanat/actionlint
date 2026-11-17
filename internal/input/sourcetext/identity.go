@@ -1,16 +1,11 @@
 package sourcetext
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"path/filepath"
 	"strconv"
-)
 
-func ContentDigest(content []byte) string {
-	sum := sha256.Sum256(content)
-	return hex.EncodeToString(sum[:])
-}
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+)
 
 func DocumentID(path string) string {
 	if path == "<stdin>" || RemoteAddress(path) {
@@ -31,16 +26,16 @@ type ReferenceIndex struct {
 }
 
 func NewReferenceIndex(path string, content []byte) *ReferenceIndex {
-	return &ReferenceIndex{DocumentID(path), ContentDigest(content), map[string]int{}}
+	return &ReferenceIndex{DocumentID(path), sha256hex.Digest(content), map[string]int{}}
 }
 
 func (i *ReferenceIndex) Ref(owner, key, content, address string) Reference {
 	identity := owner + "\x00" + key
 	if key == "" {
-		identity = owner + "\x00anonymous\x00" + ContentDigest([]byte(content))
+		identity = owner + "\x00anonymous\x00" + sha256hex.Digest([]byte(content))
 	}
 	occurrence := i.occurrences[identity]
 	i.occurrences[identity]++
-	node := ContentDigest([]byte(i.document + "\x00" + identity + "\x00" + strconv.Itoa(occurrence)))
+	node := sha256hex.Digest([]byte(i.document + "\x00" + identity + "\x00" + strconv.Itoa(occurrence)))
 	return Reference{Document: i.document, Revision: i.revision, Node: node, Address: address}
 }

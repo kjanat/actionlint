@@ -62,7 +62,7 @@ func TestActionCoercionSelection(t *testing.T) {
 						continue
 					}
 					count++
-					if finding.Severity != tc.severity || finding.Start.Line != 6 || !strings.HasSuffix(filepath.ToSlash(finding.Path), "action.yml") || finding.End.Column <= finding.Start.Column {
+					if string(finding.Severity) != tc.severity || finding.Start.Line != 6 || !strings.HasSuffix(filepath.ToSlash(finding.Path), "action.yml") || finding.End.Column <= finding.Start.Column {
 						t.Fatalf("unexpected finding: %+v", finding)
 					}
 					line := strings.Split(source, "\n")[finding.Start.Line-1]

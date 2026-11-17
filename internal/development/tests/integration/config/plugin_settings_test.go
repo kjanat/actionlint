@@ -63,7 +63,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 			if len(result.Diagnostics) != test.calls {
 				t.Fatalf("findings: %+v", result.Diagnostics)
 			}
-			if test.calls != 0 && result.Diagnostics[0].Severity != test.severity {
+			if test.calls != 0 && string(result.Diagnostics[0].Severity) != test.severity {
 				t.Fatalf("severity=%q want %q", result.Diagnostics[0].Severity, test.severity)
 			}
 		})

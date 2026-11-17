@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -111,7 +112,7 @@ func statusDirectory(registry string, options StatusOptions) (string, error) {
 			return "", err
 		}
 	}
-	absolute, err := filepath.Abs(filepath.Join(base, hash(endpoint.String())))
+	absolute, err := filepath.Abs(filepath.Join(base, sha256hex.Digest([]byte(endpoint.String()))))
 	if err != nil {
 		return "", err
 	}

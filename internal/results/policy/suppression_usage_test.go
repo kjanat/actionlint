@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -40,7 +41,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	t.Parallel()
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
 	position := sourcetext.Position{Line: 1, Column: strings.Index(content, "#") + 1}
-	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sourcetext.ContentDigest([]byte(content))}
+	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sha256hex.Digest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	files := []evaluatedBatch{{Policy: Policy{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}

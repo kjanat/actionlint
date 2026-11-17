@@ -1,11 +1,10 @@
 package component
 
 import (
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -17,11 +16,10 @@ var builtinCommitishComponent []byte
 
 // BuiltinCommitishArtifact returns a fresh copy of the bundled reference resolver.
 func BuiltinCommitishArtifact() *artifacts.Artifact {
-	digest := sha256.Sum256(builtinCommitishComponent)
 	return &artifacts.Artifact{
 		Info: artifacts.ArtifactProvenance{
 			Source: "builtin:commitish", Kind: artifacts.Component,
-			SHA256: hex.EncodeToString(digest[:]), Size: len(builtinCommitishComponent), ModuleSize: len(builtinCommitishComponent),
+			SHA256: sha256hex.Digest(builtinCommitishComponent), Size: len(builtinCommitishComponent), ModuleSize: len(builtinCommitishComponent),
 		},
 		Bytes: slices.Clone(builtinCommitishComponent),
 	}

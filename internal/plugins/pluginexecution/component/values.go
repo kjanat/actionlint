@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -409,11 +410,19 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		d.Related = append(d.Related, location...)
 	}
 
-	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
+	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
 		if *target, err = liftString(record, name); err != nil {
 			return results.Diagnostic{}, err
 		}
 	}
+	level, err := liftString(record, "severity")
+	if err != nil {
+		return results.Diagnostic{}, err
+	}
+	// The text stays as the guest wrote it: a tool integration's manifest
+	// table may map an alias such as "note". hostSeverities normalizes it for
+	// other analyzers.
+	d.Severity = severity.Severity(level)
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err
 	}
@@ -430,6 +439,16 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		return d, results.NewRejectedRelatedError(withheld)
 	}
 	return d, nil
+}
+
+// hostSeverities replaces host severity spellings, such as "note", with the
+// severity they name. Other text is kept.
+func hostSeverities(diagnostics []results.Diagnostic) {
+	for i := range diagnostics {
+		if parsed, known := severity.Parse(string(diagnostics[i].Severity)); known {
+			diagnostics[i].Severity = parsed
+		}
+	}
 }
 
 func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {

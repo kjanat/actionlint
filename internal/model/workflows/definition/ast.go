@@ -889,27 +889,8 @@ func (s *RawYAMLString) ScalarValue() any {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !codec.IsCoreSchemaNumber(s.Value) {
-			break
-		}
-		switch strings.ToLower(s.Value) {
-		case ".inf", "+.inf":
-			return math.Inf(1)
-		case "-.inf":
-			return math.Inf(-1)
-		case ".nan":
-			return math.NaN()
-		}
-		if strings.HasPrefix(s.Value, "0x") || strings.HasPrefix(s.Value, "0o") {
-			// GitHub converts hexadecimal and octal scalars through a signed 32-bit integer.
-			if n, err := strconv.ParseUint(s.Value, 0, 32); err == nil {
-				if n > math.MaxInt32 {
-					return float64(n) - (1 << 32)
-				}
-				return float64(n)
-			}
-		} else if n, err := strconv.ParseFloat(s.Value, 64); err == nil {
-			return n
+		if number, ok := codec.CoreSchemaNumber(s.Value); ok {
+			return number
 		}
 	}
 	return s.Value
