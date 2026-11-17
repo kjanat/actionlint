@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "lib": [
+      "ES2024",
+      "ESNext.Disposable"
+    ],
+    "types": []
+  },
+  "include": [
+    "consumer.ts",
+    "identity.ts"
+  ]
+}

@@ -433,3 +433,7 @@ vars    = { fixture = "insecure-download" }
 ["release:version"]
 description = "Prepare VERSION and the changelog for a release, or check them with --check"
 run         = "node tools/release/prepare-version.mjs"
+
+["test:component-types"]
+description = "Check canonical WIT declarations with Jco and TypeScript consumers"
+run         = "npm --prefix plugins/protocol/typescript test"

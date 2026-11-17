@@ -1,0 +1,15 @@
+package test:contracts@1.0.0;
+
+interface documents {
+    resource document {
+        constructor(text: string);
+        read: func() -> string;
+    }
+    record failure { message: string }
+    open: func(name: string) -> result<own<document>, failure>;
+}
+
+world plugin {
+    import documents;
+    export documents;
+}
