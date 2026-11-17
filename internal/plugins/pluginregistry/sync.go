@@ -3,6 +3,7 @@ package pluginregistry
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -10,8 +11,8 @@ import (
 
 // Sync downloads selected plugins and the OCI layers required by this host.
 // Afterwards the plugins run offline from the artifact store.
-func Sync(ctx context.Context, selected ResolvedPlugins, acquisition pluginacquisition.Options) error {
-	options := acquisition.ArtifactOptions()
+func Sync(ctx context.Context, selected ResolvedPlugins, acquisition dependencycache.Acquisition) error {
+	options := pluginacquisition.ArtifactOptions(acquisition)
 	if err := selected.Sync(ctx, options, StatusOptions{Acquisition: acquisition}); err != nil {
 		return err
 	}

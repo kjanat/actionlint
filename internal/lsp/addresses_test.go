@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 func TestUNCFileURI(t *testing.T) {
@@ -24,8 +26,8 @@ func TestUNCFileURI(t *testing.T) {
 			if err != nil || got != tc.path {
 				t.Fatalf("filePath(%q)=%q, %v; want %q", tc.uri, got, err, tc.path)
 			}
-			if got := FileURI(tc.path); got != tc.uri {
-				t.Fatalf("FileURI(%q)=%q; want %q", tc.path, got, tc.uri)
+			if got := sourcetext.FileURI(tc.path); got != tc.uri {
+				t.Fatalf("sourcetext.FileURI(%q)=%q; want %q", tc.path, got, tc.uri)
 			}
 		})
 	}
@@ -34,7 +36,7 @@ func TestUNCFileURI(t *testing.T) {
 func TestFileURILocalPathsAndInvalidAuthorities(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
-	uri := FileURI(path)
+	uri := sourcetext.FileURI(path)
 	if got, err := filePath(uri); err != nil || got != path {
 		t.Fatalf("local path round trip=%q, %v; want %q", got, err, path)
 	}

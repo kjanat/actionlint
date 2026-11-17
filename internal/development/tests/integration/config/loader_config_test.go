@@ -404,7 +404,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(configuration.Policy{}, c.Policy); diff != "" {
+			if diff := cmp.Diff(configuration.PolicyConfig{}, c.Policy); diff != "" {
 				t.Fatal(diff)
 			}
 			if c.RequiresCommitHash() {

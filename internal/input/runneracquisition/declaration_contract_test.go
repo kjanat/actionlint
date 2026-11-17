@@ -90,14 +90,14 @@ func TestBuiltinLabelRejectionsRespectSnapshotEvidence(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		snapshot runnerapi.Snapshot
+		snapshot runnerapi.RunnerSnapshot
 		want     int
 	}{
 		{name: "no snapshot uses fresh built-in catalog", want: 2},
-		{name: "fresh complete", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, want: 2},
-		{name: "stale", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}},
-		{name: "incomplete", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh}},
-		{name: "metadata only", snapshot: runnerapi.Snapshot{Scope: "scope", ObtainedAt: "2026-10-27T00:00:00Z"}},
+		{name: "fresh complete", snapshot: runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, want: 2},
+		{name: "stale", snapshot: runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}},
+		{name: "incomplete", snapshot: runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Fresh}},
+		{name: "metadata only", snapshot: runnerapi.RunnerSnapshot{Scope: "scope", ObtainedAt: "2026-10-27T00:00:00Z"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 // LoadGitHubRateLimits obtains quota information once per credential scope before a
@@ -36,7 +36,7 @@ func (s *RequestTracker) LoadGitHubRateLimits(ctx context.Context, client *http.
 			}
 		default:
 			s.mu.Unlock()
-			return references.WaitOutsideLookupBudget(ctx, func() error {
+			return network.WaitOutsideLookupBudget(ctx, func() error {
 				select {
 				case <-prior.done:
 					return ctx.Err()

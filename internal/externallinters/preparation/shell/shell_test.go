@@ -2,6 +2,8 @@ package shell
 
 import (
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestShellStartup(t *testing.T) {
@@ -74,7 +76,7 @@ func TestHeaderSelection(t *testing.T) {
 		{"echo ok\n# shellcheck shell=bash\n", false},
 		{"# Example: shellcheck shell=bash\n", false},
 	} {
-		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}}, tc.script)
+		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}}, tc.script)
 		if err != nil {
 			t.Fatal(err)
 		}

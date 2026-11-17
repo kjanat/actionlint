@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
 // PartitionFiles groups discovered inputs by repository for configuration and plugin selection.

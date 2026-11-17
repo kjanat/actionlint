@@ -11,9 +11,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -27,7 +27,7 @@ func (*invocationAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *invocationAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	a := &invocationAnalyzer{}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: a}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}, SkipProjectConfig: true,
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if declared.Path != "" || declared.JobID != "build" || declared.Occurrence.Owner != input.CallGraph.RootID() || declared.Runtime == nil {
 		t.Fatalf("declared script=%+v", declared)
 	}
-	if declared.Runtime.Shell != "bash" || !declared.Runtime.ShellKnown || !declared.Runtime.ShellImplicit {
+	if declared.Runtime.Shell.Name != "bash" || !declared.Runtime.Shell.Known() || !declared.Runtime.Shell.Implicit {
 		t.Fatalf("declared runtime=%+v", declared.Runtime)
 	}
 	invoked := input.Invoked[0]
@@ -105,7 +105,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if invoked.Reference.Node == "" || invoked.Reference.Document == input.Reference.Document || call.Site().Document != input.Reference.Document || call.Site().Node == "" || invoked.Reference.Address != "runs.steps[0]" {
 		t.Fatalf("source and invocation identities were conflated: %+v %+v", invoked.Reference, call.Site())
 	}
-	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
+	if invoked.Runtime == nil || invoked.Runtime.Shell.Name != "bash" || invoked.Runtime.Shell.Implicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
 	}
 	if invoked.Start != (sourcetext.Position{Line: 6, Column: 12}) {
@@ -138,7 +138,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 		}
 	}
 	capture := &invocationAnalyzer{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
 	if err != nil {
 		t.Fatal(err)
 	}

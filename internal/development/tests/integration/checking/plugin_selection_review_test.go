@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -64,7 +64,7 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 					t.Fatalf("plugin-free linked config: %+v, %v", selected, err)
 				}
 			}
-			if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, ""); err == nil {
+			if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, root, ""); err == nil {
 				t.Fatal("mutation accepted linked configuration")
 			}
 			fixturefiles.WriteText(t, target, "plugins: [publisher/plugin]\n")

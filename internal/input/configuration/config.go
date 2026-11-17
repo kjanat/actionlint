@@ -17,6 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
@@ -95,10 +96,10 @@ func (p *PathConfig) DecodeConfig(value any) error {
 	return nil
 }
 
-// Policy configures checks for cache safety and repository conventions.
+// PolicyConfig configures checks for cache safety and repository conventions.
 // Cache checks default to enabled; repository conventions are opt-in.
 // Omission and null select the default.
-type Policy struct {
+type PolicyConfig struct {
 	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
@@ -354,7 +355,7 @@ type Config struct {
 	//
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
-	Policy Policy `yaml:"-"`
+	Policy PolicyConfig `yaml:"-"`
 }
 
 // PathConfigs returns settings matching a path relative to the project root.
@@ -556,13 +557,25 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
+	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files), digests: sourceDigests(loaded.Contents)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
 	}
 	return &LoadedFile{resolved, path}, nil
+}
+
+// sourceDigests hashes each source's content as it was loaded, keyed by
+// normalized address. Reports identify the configuration by these digests.
+func sourceDigests(contents map[string][]byte) map[string]string {
+	digests := make(map[string]string, len(contents))
+	for name, content := range contents {
+		if address, err := configsource.NormalizeAddress(name); err == nil {
+			digests[address] = sha256hex.Digest(content)
+		}
+	}
+	return digests
 }
 
 // RepositoryConfigNames lists the config file names read from .github, in precedence order.

@@ -5,14 +5,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
 // RecordResolverCall distinguishes host cache hits and opaque delegated lookups from
 // actual provider-reported attempts. Invalid auxiliary receipts are treated as
 // opaque rather than changing an otherwise valid dependency resolution.
-func RecordResolverCall(ctx context.Context, receipt *references.RequestReport, cached bool) {
+func RecordResolverCall(ctx context.Context, receipt *RequestReport, cached bool) {
 	session := RequestTrackerFromContext(ctx)
 	if session == nil {
 		return
@@ -41,7 +39,7 @@ func RecordResolverCall(ctx context.Context, receipt *references.RequestReport, 
 				valid = false
 				break
 			}
-			kind, auth := RequestKind(query.RequestKind), CredentialStatus(query.Credentials)
+			kind, auth := query.RequestKind, query.Credentials
 			switch kind {
 			case HTTP, REST, GraphQL, Git, OCI:
 			case Delegated:
@@ -82,4 +80,27 @@ func RecordResolverCall(ctx context.Context, receipt *references.RequestReport, 
 		stats.UnreportedResolverCalls++
 		session.groups[opaque] = stats
 	}
+}
+
+// RecordCacheLookup counts one lookup in a local cache of remote data. Purpose
+// is a fixed label such as repository-metadata, never a path or reference.
+func RecordCacheLookup(ctx context.Context, purpose string, hit bool) {
+	session := RequestTrackerFromContext(ctx)
+	if session == nil {
+		return
+	}
+	op, _ := ctx.Value(requestOptionsKey{}).(RequestOptions)
+	if op.Priority == "" {
+		op.Priority = Required
+	}
+	key := groupKey{"local", NoCredentials, Cache, purpose, op.Priority}
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	stats := session.groups[key]
+	if hit {
+		stats.CacheHits++
+	} else {
+		stats.CacheMisses++
+	}
+	session.groups[key] = stats
 }

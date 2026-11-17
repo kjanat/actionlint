@@ -8,8 +8,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
 )
 
 // editorPosition is a Language Server Protocol position: a zero-based line and

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
@@ -20,7 +20,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	if metadata.Provenance.parsed != nil {
 		t.Fatal("JSON metadata allocated source provenance")
 	}
-	value := &ExprString{Value: "example", Line: 2, Column: 3}
+	value := &ExprString{Value: "example", Position: sourcetext.Position{Line: 2, Column: 3}}
 	for range 2 {
 		if got := ExpressionPosition(&metadata, value, 2); *got != (sourcetext.Position{Line: 2, Column: 3}) || metadata.Provenance.parsed != nil {
 			t.Fatal("source-less position lookup allocated a cache or lost its fallback")
@@ -93,7 +93,7 @@ func TestMetadataPositionCache(t *testing.T) {
 	}
 	// Provenance owns its snapshot; edits to the record's fields cannot redirect it.
 	meta.Source, meta.Root = []byte("name: other\n"), nil
-	value := &ExprString{Value: "echo ${{ github_repository }}", Line: 6, Column: 12}
+	value := &ExprString{Value: "echo ${{ github_repository }}", Position: sourcetext.Position{Line: 6, Column: 12}}
 	if meta.Provenance.parsed == nil {
 		t.Fatal("parsed metadata has no provenance")
 	}

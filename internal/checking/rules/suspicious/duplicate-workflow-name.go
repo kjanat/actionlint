@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/nameindex"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )

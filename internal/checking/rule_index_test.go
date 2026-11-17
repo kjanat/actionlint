@@ -24,8 +24,8 @@ func TestProviderRulesComeFromManifests(t *testing.T) {
 		names = append(names, manifest.Rule.Name)
 		rules = append(rules, manifest.Rule)
 	}
-	if !reflect.DeepEqual(providerRules(), rules) {
-		t.Fatalf("catalog provider rules %+v, validated manifests %+v", providerRules(), rules)
+	if listed := ListRules()[len(builtins):]; !reflect.DeepEqual(listed, rules) {
+		t.Fatalf("catalog provider rules %+v, validated manifests %+v", listed, rules)
 	}
 	for _, manifest := range manifests {
 		name := manifest.Rule.Name

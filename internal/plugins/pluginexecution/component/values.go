@@ -7,10 +7,12 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -113,8 +115,8 @@ func lowerScript(script checkinputs.Script) *wacogo.ValRecord {
 	runtime := wacogo.ValOptionNone()
 	if script.Runtime != nil {
 		runtime = wacogo.ValOptionSome(wacogo.NewValRecord(
-			field("shell", wacogo.ValString(script.Runtime.Shell)), field("shell-known", wacogo.ValBool(script.Runtime.ShellKnown)),
-			field("shell-implicit", wacogo.ValBool(script.Runtime.ShellImplicit)), field("directory", wacogo.ValString(script.Runtime.Directory)),
+			field("shell", wacogo.ValString(script.Runtime.Shell.Name)), field("shell-known", wacogo.ValBool(script.Runtime.Shell.Known())),
+			field("shell-implicit", wacogo.ValBool(script.Runtime.Shell.Implicit)), field("directory", wacogo.ValString(script.Runtime.Directory)),
 			field("directory-known", wacogo.ValBool(script.Runtime.DirectoryKnown)),
 		))
 	}
@@ -356,11 +358,11 @@ func liftFixes(v wacogo.Val) ([]results.Fix, error) {
 			return nil, err
 		}
 		var fix results.Fix
-		applicability, err := liftString(record, "applicability")
+		applicabilityLabel, err := liftString(record, "applicability")
 		if err != nil {
 			return nil, err
 		}
-		if fix.Applicability, err = results.ParseApplicability(applicability); err != nil {
+		if fix.Applicability, err = applicability.Parse(applicabilityLabel); err != nil {
 			return nil, err
 		}
 		if fix.Revisions, err = liftRevisions(record.Field("revisions")); err != nil {
@@ -409,11 +411,17 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		d.Related = append(d.Related, location...)
 	}
 
-	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
+	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
 		if *target, err = liftString(record, name); err != nil {
 			return results.Diagnostic{}, err
 		}
 	}
+	level, err := liftString(record, "severity")
+	if err != nil {
+		return results.Diagnostic{}, err
+	}
+	// Preserve guest severity for manifest mapping; hostSeverities normalizes other analyzers.
+	d.Severity = severity.Severity(level)
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err
 	}
@@ -430,6 +438,16 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		return d, results.NewRejectedRelatedError(withheld)
 	}
 	return d, nil
+}
+
+// hostSeverities replaces host severity spellings, such as "note", with the
+// severity they name. Other text is kept.
+func hostSeverities(diagnostics []results.Diagnostic) {
+	for i := range diagnostics {
+		if parsed, known := severity.Parse(string(diagnostics[i].Severity)); known {
+			diagnostics[i].Severity = parsed
+		}
+	}
 }
 
 func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {

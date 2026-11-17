@@ -5,9 +5,9 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"

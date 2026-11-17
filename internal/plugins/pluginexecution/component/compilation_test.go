@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/experimental"
@@ -50,7 +51,7 @@ func newCompilationTest(t *testing.T) (*componentCompilation, *compilationCounti
 
 func compilationTestEngine(t *testing.T, compilation *componentCompilation, ctx context.Context) *wacogo.Engine {
 	t.Helper()
-	engine := compilation.newEngine(ctx, Limits{MemoryPages: DefaultMemoryPages})
+	engine := compilation.newEngine(ctx, guestlimits.Limits{MemoryPages: DefaultMemoryPages})
 	t.Cleanup(func() {
 		if err := engine.Close(context.WithoutCancel(ctx)); err != nil {
 			t.Error(err)

@@ -111,7 +111,7 @@ func TestRunnerSnapshotContent(t *testing.T) {
 				t.Fatal(err)
 			}
 			options, err := (checkInvocation{RunnerSnapshot: file}).runners()
-			want := runnerapi.Snapshot{Content: tc.want, Scope: "org/repo", ObtainedAt: "2026-10-23T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}
+			want := runnerapi.RunnerSnapshot{Content: tc.want, Scope: "org/repo", ObtainedAt: "2026-10-23T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}
 			if err != nil || options.Snapshot != want {
 				t.Fatalf("snapshot=%+v error=%v; want %+v", options.Snapshot, err, want)
 			}

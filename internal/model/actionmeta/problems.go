@@ -1,7 +1,7 @@
 package actionmeta
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // MetadataProblem describes invalid manifest structure or an expression issue.

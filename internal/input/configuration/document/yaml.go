@@ -11,7 +11,7 @@ import (
 
 	"github.com/kjanat/go-yaml/v4"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 func parseYAML(path string, data []byte) (*parsedSource, error) {

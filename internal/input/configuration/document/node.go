@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // Location records where a configuration value came from. File names the
-// source file; Name names a command-line input instead of a file. Value points
+// source file; Name names a command-line input. Value points
 // at the value and Key at its key or list item; a zero position is unknown.
 // Reset points at an inherited null that this value replaced.
 type Location struct {

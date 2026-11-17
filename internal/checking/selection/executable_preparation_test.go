@@ -10,9 +10,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -52,12 +52,11 @@ func TestExecutableIndexPreparation(t *testing.T) {
 					return snapshot
 				},
 			}
-			registrations := registration.Registrations(rules)
-			index := slices.IndexFunc(registrations, func(r define.Registration) bool { return r.Name == "executable-bit" })
-			if index < 0 || registrations[index].Prepare == nil {
+			native, found := registration.Find("executable-bit")
+			if !found || native.Prepare == nil {
 				t.Fatal("executable-bit has no preparation")
 			}
-			outcome, err := registrations[index].Prepare(input)
+			outcome, err := native.Prepare(input)
 			if tc.failure != nil && !tc.unavailable {
 				if !errors.Is(err, tc.failure) {
 					t.Fatalf("operation failure changed: %v", err)
@@ -87,7 +86,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 			if loads != 1 || !slices.Equal(recorded, []string{indexPath}) || prepared.RuleInputs.ExecutableIndex != snapshot || input.ExecutableIndex != nil {
 				t.Fatalf("preparation lost snapshot ownership: loads=%d recorded=%v", loads, recorded)
 			}
-			registrations[index].Build(prepared.RuleInputs)
+			native.NewVisitor(prepared.RuleInputs)
 			if loads != 1 {
 				t.Fatal("constructor loaded the index again")
 			}

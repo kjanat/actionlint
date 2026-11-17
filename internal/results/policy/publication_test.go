@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -19,7 +20,7 @@ func TestPublicationDeduplicatesInferredAliasOwnersWithinEntry(t *testing.T) {
 		{Rule: "expression-reference", Message: "same anchored expression", Start: sourcetext.Position{Line: 1, Column: 1}, InferredReference: true, Reference: &sourcetext.Reference{Document: "workflow", Revision: "revision", Node: "second invocation"}},
 	}
 	rules := checking.ConfigurationRules()
-	p := preparePolicy(rules, nil, policy.Policy{Path: "ci.yml", Content: []byte("value")}, nil, input)
+	p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "ci.yml", Content: []byte("value")}, nil, input)
 	result, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, Findings: input}}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +37,7 @@ func TestPublicationRejectsUnpreparedFindings(t *testing.T) {
 	t.Parallel()
 	input := []*finding.Finding{{Rule: "expression-reference", Message: "prepared"}}
 	rules := checking.ConfigurationRules()
-	p := preparePolicy(rules, nil, policy.Policy{Path: "valid.yml"}, nil, input)
+	p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "valid.yml"}, nil, input)
 	result, err := policy.Publish([]policy.Batch{
 		{InputPath: "ci.yml", Findings: []*finding.Finding{{Rule: "action", Message: "unprepared"}}},
 		{Processor: policy.Processor{RuleSet: rules}, Policy: p, Findings: input},
@@ -51,7 +52,7 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 	content := []byte("entry token\n")
 	input := []*finding.Finding{{Rule: "expression-reference", Message: "finding", Start: sourcetext.Position{Line: 1, Column: 1}}}
 	rules := checking.ConfigurationRules()
-	p := preparePolicy(rules, nil, policy.Policy{Path: "ci.yml", Content: content}, nil, input)
+	p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "ci.yml", Content: content}, nil, input)
 	result, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, Findings: input}}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -72,10 +73,10 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 func TestPublicationFailureInvalidatesUnusedSuppressionProof(t *testing.T) {
 	t.Parallel()
 	content := []byte("# actionlint-ignore-next-line expression-reference -- intentional\nrun: echo ok\n")
-	ref := sourcetext.Reference{Document: "shared-action", Revision: sourcetext.ContentDigest(content)}
+	ref := sourcetext.Reference{Document: "shared-action", Revision: sha256hex.Digest(content)}
 	references := map[string]facts.SourceIndex{"action.yml": {Document: ref}}
 	rules := checking.ConfigurationRules()
-	p := preparePolicy(rules, nil, policy.Policy{Path: "action.yml", ConfigPath: "action.yml", Content: content}, nil, nil)
+	p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "action.yml", ConfigPath: "action.yml", Content: content}, nil, nil)
 	result, err := policy.Publish([]policy.Batch{
 		{Processor: policy.Processor{RuleSet: rules}, Policy: p, References: references},
 		{InputPath: "failed.yml", References: references, Findings: []*finding.Finding{{Rule: "action", Message: "unprepared"}}},
@@ -93,7 +94,7 @@ func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.
 		input[i] = &finding.Finding{Path: "shared/action.yml", Source: results.DiagnosticSource{Content: content}, Rule: "expression-reference", Message: "finding", Start: sourcetext.Position{Line: i + 1, Column: 1}}
 	}
 	rules := checking.ConfigurationRules()
-	p := preparePolicy(rules, nil, policy.Policy{Path: "ci.yml", Content: []byte("entry\n")}, nil, input)
+	p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "ci.yml", Content: []byte("entry\n")}, nil, input)
 	result, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, Findings: input}}, nil)
 	if err != nil {
 		t.Fatal(err)

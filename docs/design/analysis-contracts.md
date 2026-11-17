@@ -6,7 +6,7 @@ The CLI and language server call the private checking code.
 
 ## Inputs and language behavior
 
-`internal/input/workspace` selects sources and configuration. `internal/input/sourcetext`
+`internal/input/workspace` selects sources and configuration. `internal/base/sourcetext`
 identifies the captured bytes and revision. A display path alone does not establish
 which source a finding or edit describes.
 
@@ -65,12 +65,12 @@ configuration once for an occurrence. Execution and publication use that prepare
 decision. Two calls to the same remote action can therefore retain different
 settings. The execution environment captures the assessment date once per check.
 
-## Shared checker inputs
+## Shared analyzer inputs
 
-`internal/model/checkinputs.Checker` has two operations: `Descriptor` declares the
-check and its required inputs; `CheckDocument` receives one captured source and
+`internal/model/checkinputs.Analyzer` has two operations: `Descriptor` declares the
+check and its required inputs; `AnalyzeDocument` receives one captured source and
 returns findings together with an optional error. Implementations finish child
-work before returning and honor cancellation. The host can call a checker
+work before returning and honor cancellation. The host can call an analyzer
 concurrently for different sources.
 
 Inputs can include extracted scripts, mappings, dependencies and an invocation
@@ -103,7 +103,8 @@ releases. `internal/plugins/installation` resolves and saves a project's plugin
 declarations. `internal/plugins/pluginselection` chooses the plugins an
 invocation runs. `internal/plugins/configmigration` upgrades legacy
 configuration and declares its default plugins. `internal/plugins/pluginacquisition`
-locates the plugin caches. None of these packages makes the host Go packages
+lays out the plugin caches inside the dependency cache that
+`internal/integrations/dependencycache` locates. None of these packages makes the host Go packages
 public.
 
 The SDKs and examples live under `plugins/sdk` and `plugins/examples`. Plugin

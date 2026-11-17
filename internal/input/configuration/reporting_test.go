@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
 func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
@@ -37,6 +39,36 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 	}
 	if _, err := rules.ReadContext(context.Background(), child, nil, nil); err == nil || !strings.Contains(err.Error(), "uninstalled-rule") {
 		t.Fatalf("full binding accepted missing plugin rule: %v", err)
+	}
+}
+
+// Digests describe the content the load read, whatever the files hold later.
+func TestProvenanceDigestsLoadedContent(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base.yaml")
+	child := filepath.Join(dir, "actionlint.yaml")
+	baseContent, childContent := "lint: {experimental: true}\n", "extends: [base.yaml]\n"
+	if err := os.WriteFile(base, []byte(baseContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(child, []byte(childContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rules, err := NewRuleSet(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := rules.ReadContext(context.Background(), child, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(child, []byte("lint: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{base: sha256hex.Digest([]byte(baseContent)), child: sha256hex.Digest([]byte(childContent))}
+	if got := loaded.Provenance.Digests(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("digests = %v, want %v", got, want)
 	}
 }
 

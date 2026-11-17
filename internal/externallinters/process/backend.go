@@ -16,9 +16,10 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine/enginediagnostics"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
@@ -48,8 +49,8 @@ type Options struct {
 // Backend runs one native process per check as a process manifest describes:
 // it substitutes argument placeholders, renders configuration, runs the
 // command with a scrubbed environment and decodes stdout into snippet
-// diagnostics in contract coordinates. It implements analyzer.ScriptBackend,
-// analyzer.ScriptConfigValidator and analyzer.ScriptTemplateValidator.
+// diagnostics in contract coordinates. It implements scriptengine.Backend,
+// scriptengine.ConfigValidator and scriptengine.TemplateValidator.
 type Backend struct {
 	name          string
 	spec          toolmanifest.ProcessSpec
@@ -190,13 +191,13 @@ func (b *Backend) Concurrent() bool {
 	return b.spec.Concurrency != toolmanifest.ConcurrencySerial
 }
 
-// Check implements analyzer.ScriptBackend.
-func (b *Backend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+// Check implements scriptengine.Backend.
+func (b *Backend) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	result, err := b.Run(ctx, request, nil)
 	return result.Diagnostics, err
 }
 
-// ValidateConfig implements analyzer.ScriptConfigValidator with the
+// ValidateConfig implements scriptengine.ConfigValidator with the
 // provider's configuration schema and the process transport's own.
 func (b *Backend) ValidateConfig(_ context.Context, config json.RawMessage) error {
 	if len(config) == 0 {
@@ -210,7 +211,7 @@ func (b *Backend) ValidateConfig(_ context.Context, config json.RawMessage) erro
 	return nil
 }
 
-// ValidateTemplates implements analyzer.ScriptTemplateValidator. Template
+// ValidateTemplates implements scriptengine.TemplateValidator. Template
 // effects are trusted only from the exact engine version the manifest's
 // table was reviewed against.
 func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
@@ -325,7 +326,7 @@ func (b *Backend) execution(args []string, stdin, directory string) hostprocess.
 // placeholders and transforms; "filename", "filename_abs" and "exit_code"
 // are the host's own. An optional provider whose version cannot be
 // established returns no result and no error.
-func (b *Backend) Run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string) (DecodedCheck, error) {
+func (b *Backend) Run(ctx context.Context, request scriptengine.Request, vars map[string]string) (DecodedCheck, error) {
 	result, err := b.run(ctx, request, vars, nil)
 	return result, owned(ctx, err)
 }
@@ -342,7 +343,7 @@ func owned(ctx context.Context, err error) error {
 	return errors.New(err.Error())
 }
 
-func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string, document *checkinputs.DocumentRequest) (result DecodedCheck, err error) {
+func (b *Backend) run(ctx context.Context, request scriptengine.Request, vars map[string]string, document *DocumentRequest) (result DecodedCheck, err error) {
 	if err := ctx.Err(); err != nil {
 		return DecodedCheck{}, err
 	}
@@ -350,7 +351,7 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 		return DecodedCheck{}, errors.New(b.commandProblem)
 	}
 	if available, err := b.available(ctx); err != nil || !available {
-		return DecodedCheck{}, err
+		return DecodedCheck{Skipped: true}, err
 	}
 	directory, err := b.directory(request.Directory)
 	if err != nil {
@@ -474,13 +475,13 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 
 // detached copies a decoded result into storage no decoder retains.
 func detached(result DecodedCheck) DecodedCheck {
-	diagnostics := make([]checkinputs.ScriptDiagnostic, len(result.Diagnostics))
+	diagnostics := make([]scriptengine.Diagnostic, len(result.Diagnostics))
 	for i, d := range result.Diagnostics {
-		fixes := make([]checkinputs.ScriptFix, len(d.Fixes))
+		fixes := make([]scriptengine.Fix, len(d.Fixes))
 		for j, fix := range d.Fixes {
-			fixes[j] = checkinputs.ScriptFix{Applicability: fix.Applicability, Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
+			fixes[j] = scriptengine.Fix{Applicability: fix.Applicability, Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
 		}
-		diagnostics[i] = checkinputs.ScriptDiagnostic{
+		diagnostics[i] = scriptengine.Diagnostic{
 			Filename: d.Filename, Code: d.Code, Name: d.Name, Message: d.Message, Severity: d.Severity,
 			Location: d.Location, EndLocation: d.EndLocation, URL: d.URL, TemplateEffect: d.TemplateEffect,
 			Source: d.Source, Fixes: fixes,
@@ -524,11 +525,11 @@ func (b *Backend) directory(requested string) (string, error) {
 
 // stdin is the snippet, or the JSON request carrying rendered configuration
 // when the configuration travels on stdin.
-func (b *Backend) stdin(request checkinputs.ScriptRequest, config any) (string, error) {
+func (b *Backend) stdin(request scriptengine.Request, config any) (string, error) {
 	if b.spec.Stdin != toolmanifest.StdinRequest {
 		return request.Source, nil
 	}
-	payload := checkinputs.ScriptRequest{Source: request.Source, Filename: request.Filename}
+	payload := scriptengine.Request{Source: request.Source, Filename: request.Filename}
 	payload.Environment = request.Environment
 	if b.spec.Config.Render == toolmanifest.RenderJSONStdin && config != nil {
 		encoded, err := json.Marshal(config)
@@ -553,30 +554,39 @@ func pairsOption(args []string) string {
 
 // review admits decoded diagnostics. A snippet diagnostic must name the
 // request's snippet, a reported one must come from a provider that declares
-// reported sources; snippet positions are converted to contract
-// coordinates and template effects come from the reviewed table.
-func (b *Backend) review(result *DecodedCheck, request checkinputs.ScriptRequest) error {
-	coordinates := newCoordinates(request.Source, b.spec.Output.Coordinates)
+// reported sources; enginediagnostics validates every range and converts
+// snippet positions to contract coordinates, and template effects come from
+// the reviewed table.
+func (b *Backend) review(result *DecodedCheck, request scriptengine.Request) error {
+	convention := enginediagnostics.ContractCoordinates
+	if b.spec.Output.Coordinates != nil {
+		convention = *b.spec.Output.Coordinates
+	}
+	snippet := enginediagnostics.NewSnippet(request.Source, convention)
 	for i := range result.Diagnostics {
 		d := &result.Diagnostics[i]
-		if d.Code == "" || d.Message == "" || d.Location.Row < 1 || d.Location.Column < 1 {
+		if d.Code == "" || d.Message == "" {
 			return fmt.Errorf("tools.%s: invalid diagnostic %+v", b.name, *d)
 		}
-		if d.Source != "" {
-			if !b.capabilities.ReportedSources {
-				return fmt.Errorf("tools.%s: tool reported a finding in %q but does not declare reported sources", b.name, d.Source)
+		if d.Source != "" && !b.capabilities.ReportedSources {
+			return fmt.Errorf("tools.%s: tool reported a finding in %q but does not declare reported sources", b.name, d.Source)
+		}
+		if d.Source == "" {
+			if d.Filename == "" {
+				d.Filename = request.Filename
 			}
+			if d.Filename != request.Filename {
+				return fmt.Errorf("tools.%s: tool output refers to unexpected file %q", b.name, d.Filename)
+			}
+		}
+		if err := snippet.Normalize(d); err != nil {
+			return fmt.Errorf("tools.%s: invalid diagnostic %+v: %w", b.name, *d, err)
+		}
+		if d.Source != "" {
 			continue
 		}
-		if d.Filename == "" {
-			d.Filename = request.Filename
-		}
-		if d.Filename != request.Filename {
-			return fmt.Errorf("tools.%s: tool output refers to unexpected file %q", b.name, d.Filename)
-		}
-		coordinates.diagnostic(d)
-		if b.capabilities.TemplateContract == checkinputs.TemplateEffectsContract && d.TemplateEffect == "" {
-			d.TemplateEffect = checkinputs.TemplateEffectNone
+		if b.capabilities.TemplateContract == scriptengine.TemplateEffectsContract && d.TemplateEffect == "" {
+			d.TemplateEffect = scriptengine.TemplateEffectNone
 			if effect, ok := b.spec.TemplateEffects[d.Code]; ok {
 				d.TemplateEffect = effect
 			}

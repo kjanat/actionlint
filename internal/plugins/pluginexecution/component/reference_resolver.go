@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
@@ -25,7 +24,7 @@ var (
 func (p *Plugin) HasReferenceResolver() bool { return p.referenceResolver }
 
 func (p *Plugin) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
-	defer accounting.RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true}, false)
+	defer accounting.RecordResolverCall(ctx, &accounting.RequestReport{AllRequestsReported: true}, false)
 	if !p.HasReferenceResolver() {
 		return references.ResolutionRecord{}, errors.New("component does not implement the reference-resolver role")
 	}
@@ -55,73 +54,7 @@ func (p *Plugin) Resolve(ctx context.Context, request references.Request) (refer
 
 // NewSession shares exact lookups within one analysis.
 func (p *Plugin) NewSession() references.Resolver {
-	return &referenceResolverSession{resolver: p}
-}
-
-type pendingReferenceResolution struct {
-	done      chan struct{}
-	result    references.ResolutionRecord
-	err       error
-	abandoned bool
-}
-
-type referenceResolverSession struct {
-	resolver references.Resolver
-	mu       sync.Mutex
-	cache    map[references.Request]references.ResolutionRecord
-	pending  map[references.Request]*pendingReferenceResolution
-}
-
-func (s *referenceResolverSession) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
-	for {
-		if err := ctx.Err(); err != nil {
-			return references.ResolutionRecord{}, err
-		}
-		s.mu.Lock()
-		if result, ok := s.cache[request]; ok {
-			s.mu.Unlock()
-			accounting.RecordResolverCall(ctx, nil, true)
-			return result, nil
-		}
-		pending, ok := s.pending[request]
-		if !ok {
-			break
-		}
-		s.mu.Unlock()
-		if err := references.WaitOutsideLookupBudget(ctx, func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-pending.done:
-				return ctx.Err()
-			}
-		}); err != nil {
-			return references.ResolutionRecord{}, err
-		}
-		if !pending.abandoned {
-			accounting.RecordResolverCall(ctx, nil, true)
-			return pending.result, pending.err
-		}
-	}
-	if s.pending == nil {
-		s.pending = make(map[references.Request]*pendingReferenceResolution)
-	}
-	pending := &pendingReferenceResolution{done: make(chan struct{})}
-	s.pending[request] = pending
-	s.mu.Unlock()
-	result, err := s.resolver.Resolve(ctx, request)
-	s.mu.Lock()
-	pending.result, pending.err, pending.abandoned = result, err, err != nil && ctx.Err() != nil
-	if err == nil {
-		if s.cache == nil {
-			s.cache = make(map[references.Request]references.ResolutionRecord)
-		}
-		s.cache[request] = pending.result
-	}
-	delete(s.pending, request)
-	close(pending.done)
-	s.mu.Unlock()
-	return result, err
+	return references.NewCachedResolver(p)
 }
 
 type repositoryCallKey struct{}

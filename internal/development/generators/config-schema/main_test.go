@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
@@ -314,7 +315,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 	read := func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}
-	installed, err := configschema.Document(read, []configschema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
+	installed, err := configschema.Document(read, []toolsettings.Provider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

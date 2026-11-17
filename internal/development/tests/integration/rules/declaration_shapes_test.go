@@ -17,8 +17,7 @@ func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
 	ast, _ := parser.ParseWorkflow([]byte(src))
 	w := workflows.Bind("test", src, ast, false, "").Workflow()
-	// The checks run here without the traversal adapter, which would name
-	// each finding after its rule.
+	// Direct check calls need the rule name attached to their findings.
 	named := func(name string, findings []reporting.StepFinding) []reporting.StepFinding {
 		for i := range findings {
 			findings[i].Rule = name
@@ -67,7 +66,7 @@ func TestShapeChecks(t *testing.T) {
 				if finding.Rule == "empty-job" {
 					severity = "error"
 				}
-				if finding.Severity != severity {
+				if string(finding.Severity) != severity {
 					t.Errorf("%s severity = %q, want %q", finding.Rule, finding.Severity, severity)
 				}
 				got = append(got, finding.Rule+"/"+finding.Code)

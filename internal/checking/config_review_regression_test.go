@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -113,7 +113,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 					if len(result.Diagnostics) != 0 {
 						t.Fatalf("disabled findings remain: %+v", result.Diagnostics)
 					}
-				} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Severity != tc.severity {
+				} else if len(result.Diagnostics) != 1 || string(result.Diagnostics[0].Severity) != tc.severity {
 					t.Fatalf("dependency severity=%+v", result.Diagnostics)
 				}
 			})
@@ -219,7 +219,7 @@ permissions: {}
 				if len(result.Diagnostics) != 0 {
 					t.Fatalf("disabled composite findings remain: %+v", result.Diagnostics)
 				}
-			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || result.Diagnostics[0].Severity != tc.severity || filepath.ToSlash(result.Diagnostics[0].Path) != "local/action.yml" {
+			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || string(result.Diagnostics[0].Severity) != tc.severity || filepath.ToSlash(result.Diagnostics[0].Path) != "local/action.yml" {
 				t.Fatalf("composite override not applied: %+v", result.Diagnostics)
 			}
 		})

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -40,12 +40,13 @@ func (index checkInvocationIndex) forSource(ref sourcetext.Reference) []report.C
 	return []report.CheckInvocation{{}}
 }
 
-// checkCompletion records incomplete source analyses independently of suppression
-// usage. Reports and suppression cleanup consume the same detached records.
+// checkCompletion records successful tool checks and incomplete source analyses.
+// Reports and suppression cleanup consume detached records after analysis joins.
 type checkCompletion struct {
 	mu          sync.Mutex
 	incomplete  map[checkOccurrence]bool
 	unavailable map[unavailableCheck]string
+	completed   map[string]map[checkRevision]bool
 }
 type (
 	checkRevision   struct{ document, revision string }
@@ -58,6 +59,28 @@ type (
 		rule       string
 	}
 )
+
+func (u *checkCompletion) markCompleted(ref sourcetext.Reference, rule string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.completed == nil {
+		u.completed = make(map[string]map[checkRevision]bool)
+	}
+	if u.completed[rule] == nil {
+		u.completed[rule] = make(map[checkRevision]bool)
+	}
+	u.completed[rule][checkRevision{ref.Document, ref.Revision}] = true
+}
+
+func (u *checkCompletion) completedRules() map[string]int {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	counts := make(map[string]int)
+	for rule, entries := range u.completed {
+		counts[rule] = len(entries)
+	}
+	return counts
+}
 
 func (u *checkCompletion) markIncomplete(ref sourcetext.Reference) {
 	u.markIncompleteInvocation(ref, report.CheckInvocation{})

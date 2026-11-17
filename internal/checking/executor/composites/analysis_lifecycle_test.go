@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -68,7 +68,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			script := &phaseScriptAnalyzer{t: t, visited: &visited}
 			joinFailure := errors.New("join failure")
 			f.options.Rules = []workflowvisit.Rule{pass}
-			f.options.Scripts = scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}
+			f.options.Scripts = scriptanalysis.Service{Analyzers: []scriptanalysis.BatchAnalyzer{script}}
 			f.options.Join = func() error {
 				joined = true
 				pass.Error(&sourcetext.Position{Line: 1, Column: 1}, "reported finding")
@@ -171,7 +171,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			options := Options{
 				Bindings: testBindings(nil),
 				Context:  t.Context(), Actions: localactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
-				CollectScripts: true, Scripts: scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}, Join: func() error {
+				CollectScripts: true, Scripts: scriptanalysis.Service{Analyzers: []scriptanalysis.BatchAnalyzer{script}}, Join: func() error {
 					joined = true
 					pass.Error(&sourcetext.Position{Line: 1, Column: 1}, "joined finding")
 					return nil

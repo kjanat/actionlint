@@ -30,7 +30,7 @@ func (*invocationCollector) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (c *invocationCollector) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	collector := &invocationCollector{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root,
-		Analyzers:  []checkinputs.Registration{{Checker: collector}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: collector}},
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ jobs:
 			collector := &invocationCollector{}
 			_, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
-				Analyzers:  []checkinputs.Registration{{Checker: collector}},
+				Analyzers:  []results.AnalyzerRegistration{{Analyzer: collector}},
 			}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)

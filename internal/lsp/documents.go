@@ -4,7 +4,8 @@ import (
 	"context"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -29,7 +30,7 @@ type Source struct {
 }
 
 func (s Source) valid() bool {
-	return s.Coordinates == sourcetext.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sourcetext.ContentDigest([]byte(s.Text))
+	return s.Coordinates == sourcetext.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sha256hex.Digest([]byte(s.Text))
 }
 
 type (

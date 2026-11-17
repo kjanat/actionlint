@@ -13,11 +13,13 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -138,7 +140,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 
 // json1Request is a check whose engine decodes a ShellCheck json1 fixture.
 // Its source is wide and long enough for the fixture's positions.
-func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte) {
+func json1Request(t *testing.T, name string) (scriptengine.Request, []byte) {
 	t.Helper()
 	stdout, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "bundledproviders", "shellcheck", "testdata", name, "stdout.json"))
 	if err != nil {
@@ -149,7 +151,7 @@ func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte)
 		t.Fatal(err)
 	}
 	source := strings.Repeat(strings.Repeat("x", 40)+"\n", 8)
-	return checkinputs.ScriptRequest{Source: source, Filename: "actionlint.sh", Config: config}, stdout
+	return scriptengine.Request{Source: source, Filename: "actionlint.sh", Config: config}, stdout
 }
 
 // TestScriptEngine03ProcessParity decodes the same ShellCheck stdout through
@@ -178,7 +180,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			processed, err := backend.Run(t.Context(), checkinputs.ScriptRequest{Source: request.Source, Filename: request.Filename, Directory: request.Directory}, nil)
+			processed, err := backend.Run(t.Context(), scriptengine.Request{Source: request.Source, Filename: request.Filename, Directory: request.Directory}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,14 +250,14 @@ func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "scripts", "lib.sh"), []byte("echo $value\nexit 0\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	request := checkinputs.ScriptRequest{Source: "echo ok\n", Filename: "actionlint.sh", Config: []byte(`{"read":"scripts/lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
+	request := scriptengine.Request{Source: "echo ok\n", Filename: "actionlint.sh", Config: []byte(`{"read":"scripts/lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
 	diagnostics, err := p.Check(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []checkinputs.ScriptDiagnostic{{
+	want := []scriptengine.Diagnostic{{
 		Filename: "scripts/lib.sh", Code: "READ001", Message: "echo $value", Severity: "info",
-		Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 12}, Source: "scripts/lib.sh",
+		Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 12}, Source: "scripts/lib.sh",
 	}}
 	if diff := cmp.Diff(want, diagnostics); diff != "" {
 		t.Fatalf("diagnostics (-want +got):\n%s", diff)
@@ -278,11 +280,11 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 	for _, tc := range []struct {
 		name, fixture, want string
 		directory           bool
-		descriptor          func(*checkinputs.ScriptEngineDescriptor)
+		descriptor          func(*scriptengine.Descriptor)
 	}{
-		{"fixes", "script", "does not declare them", false, func(d *checkinputs.ScriptEngineDescriptor) { d.Fixes = false }},
-		{"reported sources", "sourced", "does not declare reported sources", true, func(d *checkinputs.ScriptEngineDescriptor) { d.ReportedSources = false }},
-		{"source without a grant", "sourced", "without a granted directory", false, func(*checkinputs.ScriptEngineDescriptor) {}},
+		{"fixes", "script", "does not declare them", false, func(d *scriptengine.Descriptor) { d.Fixes = false }},
+		{"reported sources", "sourced", "does not declare reported sources", true, func(d *scriptengine.Descriptor) { d.ReportedSources = false }},
+		{"source without a grant", "sourced", "without a granted directory", false, func(*scriptengine.Descriptor) {}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -331,27 +333,27 @@ func TestTemplateEffects03Check(t *testing.T) {
 		t.Fatalf("negotiated %q and %q", p.script.interfaceName(), p.script.templateEffects().interfaceName())
 	}
 	d := p.ScriptDescriptor()
-	if d.TemplateContract != checkinputs.TemplateEffectsContract || !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
+	if d.TemplateContract != scriptengine.TemplateEffectsContract || !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
 		t.Fatalf("descriptor = %+v", d)
 	}
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "lib.sh"), []byte("echo lib\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	request := checkinputs.ScriptRequest{Source: "x\n", Filename: "actionlint.sh", Config: []byte(`{"read":"lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
+	request := scriptengine.Request{Source: "x\n", Filename: "actionlint.sh", Config: []byte(`{"read":"lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
 	diagnostics, err := p.Check(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []checkinputs.ScriptDiagnostic{
+	want := []scriptengine.Diagnostic{
 		{
-			Filename: "actionlint.sh", Code: "TPL001", Message: "first character", Severity: "style", TemplateEffect: checkinputs.TemplateEffectLineLength,
-			Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2},
-			Fixes: []checkinputs.ScriptFix{{Description: "replace it", Replacements: []checkinputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 2, Text: "y"}}}},
+			Filename: "actionlint.sh", Code: "TPL001", Message: "first character", Severity: "style", TemplateEffect: scriptengine.TemplateEffectLineLength,
+			Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 2},
+			Fixes: []scriptengine.Fix{{Description: "replace it", Replacements: []scriptengine.Replacement{{Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}, Text: "y"}}}},
 		},
 		{
-			Filename: "lib.sh", Code: "READ001", Message: "echo lib", Severity: "info", Source: "lib.sh", TemplateEffect: checkinputs.TemplateEffectNone,
-			Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 9},
+			Filename: "lib.sh", Code: "READ001", Message: "echo lib", Severity: "info", Source: "lib.sh", TemplateEffect: scriptengine.TemplateEffectNone,
+			Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 9},
 		},
 	}
 	if diff := cmp.Diff(want, diagnostics); diff != "" {

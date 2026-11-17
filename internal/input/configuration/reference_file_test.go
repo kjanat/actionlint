@@ -38,7 +38,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if _, known := c.Facts().DefaultWorkflowPermissions.Value(); known {
 		t.Fatal("default config fabricated repository permissions")
 	}
-	if diff := cmp.Diff(configuration.Policy{}, c.Policy); diff != "" {
+	if diff := cmp.Diff(configuration.PolicyConfig{}, c.Policy); diff != "" {
 		t.Fatal(diff)
 	}
 	b, err := os.ReadFile(f)

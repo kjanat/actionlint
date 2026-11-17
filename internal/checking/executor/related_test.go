@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -31,7 +31,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				input.Coordinates = "invalid"
 			}
 			locations := []results.Related{{Path: "ci.yml"}, {Path: "./ci.yml"}, {Path: "foreign.yml"}}
-			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+			registration := results.AnalyzerRegistration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				if supplied.Revision != input.Revision || supplied.Coordinates != input.Coordinates {
 					t.Fatal("request evidence projection changed")
 				}
@@ -39,7 +39,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				supplied.Coordinates = ""
 				return []results.Diagnostic{{Message: "primary", Related: locations}}, nil
 			}}}
-			findings, err := Run(t.Context(), input, []checkinputs.Registration{registration})
+			findings, err := Run(t.Context(), input, []results.AnalyzerRegistration{registration})
 			want := 3
 			if mixed == "valid" {
 				want = 2

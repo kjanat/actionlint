@@ -6,11 +6,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 )
 
 func TestTimeoutFailurePreservesCause(t *testing.T) {
 	t.Parallel()
-	p := &Plugin{path: "timeout.wasm", limits: Limits{Timeout: time.Second}}
+	p := &Plugin{path: "timeout.wasm", limits: guestlimits.Limits{Timeout: time.Second}}
 	cause := errors.New("guest interrupted")
 	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
 	t.Cleanup(cancel)

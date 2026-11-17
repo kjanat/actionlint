@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
@@ -43,7 +43,7 @@ func checkSecretInterpolations(expr syntax.Node, semanticErrors []*typecheck.Err
 		switch n := node.(type) {
 		case *syntax.LogicalOpNode:
 			if value, known := evaluate.ConditionConstantValue(n.Left); known {
-				if values.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
+				if exprvalues.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 					visit(n.Right)
 				}
 				return
@@ -59,7 +59,7 @@ func checkSecretInterpolations(expr syntax.Node, semanticErrors []*typecheck.Err
 			if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
 				for i := 0; i < len(n.Args)-1; i += 2 {
 					if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
-						if !values.ExpressionTruthy(value) {
+						if !exprvalues.ExpressionTruthy(value) {
 							continue
 						}
 						visit(n.Args[i+1])

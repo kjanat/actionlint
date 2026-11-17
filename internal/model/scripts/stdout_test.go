@@ -3,7 +3,6 @@ package scripts
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 )
 
@@ -65,11 +64,11 @@ func TestLiteralStdoutWorkflowCommands(t *testing.T) {
 			t.Parallel()
 			count := 0
 			seen := make(map[ScriptRange]bool)
-			invocation := interpreters.Builtin().Analyze(tc.language, false)
+			invocation := commands.BuiltinShells().Analyze(tc.language, false)
 			if tc.language == "python" || tc.language == "pwsh" || tc.language == "powershell" {
 				invocation = commands.Invocation{Status: commands.Valid, Language: tc.language, Input: "file"}
 			}
-			for _, path := range LiteralStdoutPaths(tc.text, invocation, interpreters.Builtin()) {
+			for _, path := range LiteralStdoutPaths(tc.text, invocation, commands.BuiltinShells()) {
 				var state commands.WorkflowCommandState
 				for _, output := range path {
 					if output.Start < 0 || output.End > len(tc.text) || output.Start >= output.End {
@@ -91,7 +90,7 @@ func TestLiteralStdoutWorkflowCommands(t *testing.T) {
 func TestLiteralStdoutJoinedSourceRange(t *testing.T) {
 	t.Parallel()
 	const text = `printf '::not'; echo 'ic::bad'`
-	registry := interpreters.Builtin()
+	registry := commands.BuiltinShells()
 	paths := LiteralStdoutPaths(text, registry.Analyze("bash", false), registry)
 	if len(paths) != 1 || len(paths[0]) != 1 {
 		t.Fatalf("unexpected stdout paths: %+v", paths)

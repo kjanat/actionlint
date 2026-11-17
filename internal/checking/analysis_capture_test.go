@@ -16,9 +16,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -136,7 +136,7 @@ func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: t.TempDir(),
 		Sources:    []workspace.InputFile{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
-		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Checks:     testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}})),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -196,7 +196,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
 		Sources:    []workspace.InputFile{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
-		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Checks:     testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}})),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -381,8 +381,6 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 	}
 }
 
-// Completion outlines a manifest composition already parsed from the
-// document it parsed, not from a second parse of the sealed bytes.
 func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	t.Parallel()
 	address := filepath.Join(t.TempDir(), "action.yml")
@@ -400,8 +398,7 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A stand-in for composition's parse: its outline differs from the
-	// captured bytes, so a second parse would be visible.
+	// The outline must retain "parsed", the name from composition's document.
 	documents.parsed(captured, parsing.Action(address, []byte("name: parsed\ndescription: outline\nruns: {using: composite, steps: []}\n")))
 	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)

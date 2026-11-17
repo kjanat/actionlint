@@ -3,12 +3,12 @@ package functions
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 )
 
-func evaluateJoin(context EvaluationContext) values.EvaluationResult {
+func evaluateJoin(context EvaluationContext) exprvalues.EvaluationResult {
 	first := context.Argument(0)
-	if first.State != values.EvaluationKnown {
+	if first.State != exprvalues.EvaluationKnown {
 		return first
 	}
 	items, array := first.Value.([]any)
@@ -16,7 +16,7 @@ func evaluateJoin(context EvaluationContext) values.EvaluationResult {
 		if _, object := first.Value.(map[string]any); object {
 			return knownValue("")
 		}
-		value, known := values.JoinString(first.Value)
+		value, known := exprvalues.JoinString(first.Value)
 		if !known {
 			return unknownValue()
 		}
@@ -25,7 +25,7 @@ func evaluateJoin(context EvaluationContext) values.EvaluationResult {
 	separator := ","
 	if context.ArgumentCount() == 2 && len(items) > 1 {
 		argument := context.Argument(1)
-		if argument.State != values.EvaluationKnown {
+		if argument.State != exprvalues.EvaluationKnown {
 			return argument
 		}
 		switch argument.Value.(type) {
@@ -33,7 +33,7 @@ func evaluateJoin(context EvaluationContext) values.EvaluationResult {
 			// Composite separators do not replace the default comma.
 		default:
 			var known bool
-			separator, known = values.JoinString(argument.Value)
+			separator, known = exprvalues.JoinString(argument.Value)
 			if !known {
 				return unknownValue()
 			}
@@ -41,7 +41,7 @@ func evaluateJoin(context EvaluationContext) values.EvaluationResult {
 	}
 	parts := make([]string, len(items))
 	for index, item := range items {
-		value, known := values.JoinString(item)
+		value, known := exprvalues.JoinString(item)
 		if !known {
 			return unknownValue()
 		}

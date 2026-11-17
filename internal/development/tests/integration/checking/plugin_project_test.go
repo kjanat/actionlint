@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 
@@ -77,7 +76,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +87,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

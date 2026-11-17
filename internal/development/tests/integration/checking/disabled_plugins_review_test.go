@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -34,7 +34,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			configPath := filepath.Join(root, ".github", "actionlint.yaml")
 			if err := os.MkdirAll(filepath.Dir(configPath), 0o700); err != nil {
 				t.Fatal(err)
@@ -89,7 +89,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", component)
-	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)

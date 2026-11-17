@@ -27,7 +27,7 @@ func TestRemoteWorkflowMetadataSharedWithoutRepositoryRoot(t *testing.T) {
 		requests.Add(1)
 		return NewRemoteFile(got, strings.Repeat("a", 40), []byte("on: workflow_call\npermissions: {contents: write}\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"))
 	}))
-	caches := []*Cache{NewCache("", nil), NewCache(t.TempDir(), nil)}
+	caches := []*MetadataCache{NewMetadataCache("", nil), NewMetadataCache(t.TempDir(), nil)}
 	for _, cache := range caches {
 		cache.SetRemote(remote)
 		if metadata, err := cache.Resolved().LookupForCall(spec); err != nil || metadata != nil || requests.Load() != 0 {
@@ -146,7 +146,7 @@ func TestLoadCallsFetchesRemoteWorkflowsConcurrently(t *testing.T) {
 	specs := []string{"example/first/.github/workflows/build.yml@v1", "example/second/.github/workflows/build.yml@v1", "./.github/workflows/local.yml"}
 	released := make(chan struct{})
 	var inFlight atomic.Int32
-	cache := NewCache("", nil)
+	cache := NewMetadataCache("", nil)
 	cache.SetRemote(NewRemote(workflowProviderFunc(func(_ context.Context, spec string) (RemoteFile, error) {
 		if inFlight.Add(1) == 2 {
 			close(released)
@@ -177,7 +177,7 @@ func TestLoadCallsKeepsRemoteWorkflowErrors(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			var requests atomic.Int32
-			cache := NewCache("", nil)
+			cache := NewMetadataCache("", nil)
 			cache.SetRemote(NewRemote(workflowProviderFunc(func(context.Context, string) (RemoteFile, error) {
 				requests.Add(1)
 				if scenario == "canceled" {

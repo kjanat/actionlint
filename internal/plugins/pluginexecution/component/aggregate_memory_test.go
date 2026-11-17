@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
@@ -32,7 +33,7 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 	}
 	plugin := &Plugin{
 		path: path, engine: engine, hostFactory: factory, component: fixture,
-		limits: Limits{Timeout: time.Second, MemoryPages: 1}, gate: semaphore.NewWeighted(1),
+		limits: guestlimits.Limits{Timeout: time.Second, MemoryPages: 1}, gate: semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: 1 << 16}, log: func(string) {},
 	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })

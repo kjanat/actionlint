@@ -10,10 +10,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -121,7 +121,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err := os.Symlink(other, filepath.Join(third, ".github")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, third, ""); err == nil {
+	if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, third, ""); err == nil {
 		t.Fatal("installation followed .github into another repository")
 	}
 	if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), third, input); err == nil {
@@ -136,7 +136,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", wasm)
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {

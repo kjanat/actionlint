@@ -153,7 +153,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 					}
 					if diagnostic.Rule == "expression-reference" {
 						count++
-						if tc.severity == "" || diagnostic.Severity != tc.severity {
+						if tc.severity == "" || string(diagnostic.Severity) != tc.severity {
 							t.Fatalf("output reference policy was not applied: %+v", diagnostic)
 						}
 					}

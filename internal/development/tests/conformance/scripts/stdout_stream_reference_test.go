@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
@@ -51,7 +50,7 @@ func stdoutStreamReferences(t *testing.T) []stdoutStreamReference {
 
 func TestStdoutStreamReferenceRecorded(t *testing.T) {
 	t.Parallel()
-	registry := interpreters.Builtin()
+	registry := commands.BuiltinShells()
 	for _, tc := range stdoutStreamReferences(t) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

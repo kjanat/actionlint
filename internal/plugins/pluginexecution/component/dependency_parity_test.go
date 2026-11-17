@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -23,7 +23,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	if got := plugin.Descriptor().RequiredInputs; len(got) != 1 || got[0] != rule.Dependencies {
 		t.Fatalf("requires=%v", got)
 	}
-	native := dependencypins.Checker{}
+	native := dependencypins.Analyzer{}
 	reference := sourcetext.Reference{Document: "document", Revision: "revision", Node: "node", Address: "jobs.build.steps[0]"}
 	for _, tc := range []struct {
 		name, kind, uses string
@@ -51,11 +51,11 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 			// A component must not reconstruct declarations from raw source text.
 			for _, content := range []string{"", "not YAML: [", "jobs: {}"} {
 				input.Content = content
-				want, err := native.CheckDocument(t.Context(), input)
+				want, err := native.AnalyzeDocument(t.Context(), input)
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, err := plugin.CheckDocument(t.Context(), input)
+				got, err := plugin.AnalyzeDocument(t.Context(), input)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -84,11 +84,11 @@ jobs:
     uses: owner/repo/.github/workflows/ci.yml@main
 permissions: {}
 `
-	check := func(a checkinputs.Checker) []results.Diagnostic {
+	check := func(a results.Analyzer) []results.Diagnostic {
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -102,7 +102,7 @@ permissions: {}
 		return findings
 	}
 	got := check(plugin)
-	assertDependencyFindings(t, got, check(dependencypins.Checker{}))
+	assertDependencyFindings(t, got, check(dependencypins.Analyzer{}))
 	if len(got) != 2 {
 		t.Fatalf("diagnostics=%+v", got)
 	}

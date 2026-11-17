@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 func TestAssessmentWindowsAndAnnouncement(t *testing.T) {
@@ -16,14 +17,14 @@ func TestAssessmentWindowsAndAnnouncement(t *testing.T) {
 		return x
 	}
 	svc, _ := services.ParseService("github.com", "")
-	p, e := NewPolicy("migration", "Prepare", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Before(90), Warning}, {OnEffective(), Error}}, "base.toml")
+	p, e := NewPolicy("migration", "Prepare", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Before(90), severity.Warning}, {OnEffective(), severity.Error}}, "base.toml")
 	if e != nil {
 		t.Fatal(e)
 	}
 	for _, tc := range []struct {
 		as, ann string
-		want    Severity
-	}{{"2026-09-01", "2026-09-15", ""}, {"2026-09-15", "2026-09-15", Warning}, {"2026-12-01", "", Error}} {
+		want    severity.Severity
+	}{{"2026-09-01", "2026-09-15", ""}, {"2026-09-15", "2026-09-15", severity.Warning}, {"2026-12-01", "", severity.Error}} {
 		ev := Evidence{Subject: Runners, Kind: SupportEnds, Service: svc, Effective: d("2026-12-01"), AsOf: d(tc.as)}
 		if tc.ann != "" {
 			ev.Announced = d(tc.ann)
@@ -47,7 +48,7 @@ func TestCompositeEvidence(t *testing.T) {
 		}
 		return d
 	}
-	p, e := NewPolicy("migration", "Prepare", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Starts: Before(90), Severity: Info}, {Starts: OnEffective(), Severity: Error}}, "policy")
+	p, e := NewPolicy("migration", "Prepare", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Starts: Before(90), Severity: severity.Info}, {Starts: OnEffective(), Severity: severity.Error}}, "policy")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -59,19 +60,19 @@ func TestCompositeEvidence(t *testing.T) {
 		name      string
 		e         Evidence
 		matched   bool
-		severity  Severity
+		level     severity.Severity
 		decisions int
 	}{
-		{"all use weakest candidate", Evidence{AllOf: []Evidence{ended, upcoming}}, true, Info, 2},
-		{"any uses strongest fact", Evidence{AnyOf: []Evidence{ended, upcoming}}, true, Error, 1},
+		{"all use weakest candidate", Evidence{AllOf: []Evidence{ended, upcoming}}, true, severity.Info, 2},
+		{"any uses strongest fact", Evidence{AnyOf: []Evidence{ended, upcoming}}, true, severity.Error, 1},
 		{"inactive candidate", Evidence{AllOf: []Evidence{ended, outside}}, true, "", 0},
 		{"candidate not matched", Evidence{AllOf: []Evidence{ended, {Subject: ActionRuntimes, Kind: SupportEnds}}}, false, "", 0},
-		{"deduplicate contributors", Evidence{AllOf: []Evidence{ended, ended}}, true, Error, 1},
+		{"deduplicate contributors", Evidence{AllOf: []Evidence{ended, ended}}, true, severity.Error, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			a := Assess(tc.e, []Policy{p})
-			if a.Matched != tc.matched || a.Severity != tc.severity || len(a.Active) != tc.decisions {
+			if a.Matched != tc.matched || a.Severity != tc.level || len(a.Active) != tc.decisions {
 				t.Fatalf("assessment=%+v", a)
 			}
 		})
@@ -87,12 +88,12 @@ func TestNotificationStartClampsToEarliestDate(t *testing.T) {
 		}
 		return d
 	}
-	p, err := NewPolicy("early", "Early deadline", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Starts: Before(3), Severity: Warning}}, "policy")
+	p, err := NewPolicy("early", "Early deadline", Match{Subjects: []Subject{Runners}, Events: []EventKind{SupportEnds}}, []Notification{{Starts: Before(3), Severity: severity.Warning}}, "policy")
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := Assess(Evidence{Subject: Runners, Kind: SupportEnds, Effective: parse("0000-01-02"), AsOf: parse("0000-01-01")}, []Policy{p})
-	if got.Severity != Warning || len(got.Active) != 1 || got.Active[0].StartsOn.String() != "0000-01-01" {
+	if got.Severity != severity.Warning || len(got.Active) != 1 || got.Active[0].StartsOn.String() != "0000-01-01" {
 		t.Fatalf("assessment = %+v", got)
 	}
 }

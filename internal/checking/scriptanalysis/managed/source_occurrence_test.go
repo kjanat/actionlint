@@ -13,7 +13,7 @@ import (
 
 type capturedScriptGuest struct{ fallbackGuest }
 
-func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *capturedScriptGuest) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Scripts[0].Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Message: "captured script"}}, nil
 }

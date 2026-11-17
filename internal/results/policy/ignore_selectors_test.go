@@ -44,7 +44,7 @@ func TestIgnoreSelectors(t *testing.T) {
 			scope := registry.Prepare(nil, nil, nil)
 			input := []*finding.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}
 			input[0].Binding = scope.Rule(tc.name).ID()
-			published, err := Publish([]Batch{{Processor: Processor{RuleSet: rules}, Policy: Policy{Path: "workflow.yml", IgnoreSelectors: selectors, Scope: scope, Bindings: registry.Seal()}, Findings: input}}, nil)
+			published, err := Publish([]Batch{{Processor: Processor{RuleSet: rules}, Policy: DocumentInputs{Path: "workflow.yml", IgnoreSelectors: selectors, Scope: scope, Bindings: registry.Seal()}, Findings: input}}, nil)
 			findings := published.Findings[0]
 			if err != nil || (len(findings) == 0) != tc.ignored {
 				t.Fatalf("findings=%+v err=%v, want ignored=%t", findings, err, tc.ignored)

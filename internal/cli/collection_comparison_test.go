@@ -62,7 +62,7 @@ func TestCollectionComparisonSeverity(t *testing.T) {
 						continue
 					}
 					found++
-					if finding.Severity != tc.severity {
+					if string(finding.Severity) != tc.severity {
 						t.Errorf("severity=%s, want %s", finding.Severity, tc.severity)
 					}
 					line := []rune(strings.Split(source, "\n")[finding.Start.Line-1])

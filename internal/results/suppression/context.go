@@ -4,23 +4,20 @@ package suppression
 import (
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
 type context struct {
-	first, end                  position
+	first, end                  sourcetext.Position
 	job, stepID, stepName, uses string
 	startsLine                  bool
 }
 
-type position struct{ line, column int }
-
-func (p position) before(other position) bool {
-	return p.line < other.line || p.line == other.line && p.column < other.column
+func start(node *codec.Node) sourcetext.Position {
+	return sourcetext.Position{Line: node.Line, Column: node.Column}
 }
-
-func start(node *codec.Node) position { return position{node.Line, node.Column} }
 
 // Index records concrete YAML job and step ranges, without following aliases.
 type Index []context
@@ -52,9 +49,9 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 		}
 		return value
 	}
-	var visit func(*codec.Node, position, []string, context)
-	var steps func(*codec.Node, position, string)
-	steps = func(node *codec.Node, end position, job string) {
+	var visit func(*codec.Node, sourcetext.Position, []string, context)
+	var steps func(*codec.Node, sourcetext.Position, string)
+	steps = func(node *codec.Node, end sourcetext.Position, job string) {
 		if node.Kind != codec.SequenceNode {
 			return
 		}
@@ -79,7 +76,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 			}
 		}
 	}
-	visit = func(node *codec.Node, end position, path []string, current context) {
+	visit = func(node *codec.Node, end sourcetext.Position, path []string, current context) {
 		if node.Kind == codec.MappingNode {
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, value := node.Content[i], node.Content[i+1]
@@ -98,7 +95,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 			steps(node, end, current.job)
 		}
 	}
-	visit(document.Content[0], position{len(lines) + 1, 1}, nil, context{})
+	visit(document.Content[0], sourcetext.Position{Line: len(lines) + 1, Column: 1}, nil, context{})
 	return result
 }
 
@@ -118,18 +115,18 @@ func (index Index) Match(line, column int, job, step, uses string) bool {
 	if job == "" && step == "" && uses == "" {
 		return true
 	}
-	pos := position{line, column}
+	pos := sourcetext.Position{Line: line, Column: column}
 	for _, location := range index {
-		contains := !pos.before(location.first) && pos.before(location.end)
+		contains := !pos.IsBefore(location.first) && pos.IsBefore(location.end)
 		if column == 0 {
-			contains = location.first.line <= line && (line < location.end.line || line == location.end.line && location.end.column > 1)
+			contains = location.first.Line <= line && (line < location.end.Line || line == location.end.Line && location.end.Column > 1)
 			// A sourced finding records the invoking line but no column. Do not
 			// choose between distinct flow-style constructs on that same line.
 			for _, other := range index {
-				if other.first.line > line || other.end.line < line || other.end.line == line && location.first.line == line && location.startsLine {
+				if other.first.Line > line || other.end.Line < line || other.end.Line == line && location.first.Line == line && location.startsLine {
 					continue
 				}
-				if !other.first.before(location.end) || !location.first.before(other.end) {
+				if !other.first.IsBefore(location.end) || !location.first.IsBefore(other.end) {
 					contains = false
 					break
 				}

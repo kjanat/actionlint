@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
@@ -18,7 +18,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", module)
 	t.Chdir(t.TempDir())
@@ -83,7 +83,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 }
 
 func TestCheckingLegacyConfigDoesNotWriteProjectFiles(t *testing.T) {
-	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")

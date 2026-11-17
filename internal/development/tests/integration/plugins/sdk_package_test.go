@@ -13,8 +13,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -141,17 +141,17 @@ export default defineDocumentProvider({
 	}
 	dependency := facts.Dependency{Reference: sourcetext.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcetext.Position{Line: 6, Column: 15}, End: sourcetext.Position{Line: 6, Column: 30}}
 	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcetext.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []facts.Dependency{dependency}}
-	findings, err := checker.CheckDocument(t.Context(), input)
+	findings, err := checker.AnalyzeDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)
 	}
 	var observed struct {
-		Source       string                           `json:"source"`
-		Kind         string                           `json:"kind"`
-		Config       json.RawMessage                  `json:"config"`
-		Dependencies []checkinputs.DocumentDependency `json:"dependencies"`
-		Path         string                           `json:"path"`
-		ChildVersion string                           `json:"childVersion"`
+		Source       string             `json:"source"`
+		Kind         string             `json:"kind"`
+		Config       json.RawMessage    `json:"config"`
+		Dependencies []facts.Dependency `json:"dependencies"`
+		Path         string             `json:"path"`
+		ChildVersion string             `json:"childVersion"`
 	}
 	if err := json.Unmarshal([]byte(findings[0].Message), &observed); err != nil {
 		t.Fatal(err)

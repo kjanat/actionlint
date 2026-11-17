@@ -10,8 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -46,7 +46,7 @@ func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
 			root := workspaceWith(t, files)
 			registry := fixtureregistry.NewPluginRegistry(t)
 			addRuffFixture(t, registry)
-			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 			if err != nil {
@@ -129,7 +129,7 @@ func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 		".git": "", "bash.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
 		"input.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing()\n",
 	})
-	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "bash.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 	req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 	if err != nil {

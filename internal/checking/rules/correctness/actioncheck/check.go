@@ -19,7 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -154,9 +154,9 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 			id := s.ID.Value
 			switch {
 			case !identifier.Valid(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeInvalidStepID, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Position.Line, s.ID.Position.Column, nil, actionmeta.CodeInvalidStepID, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeDuplicateStepID, "has duplicate ID %q; step IDs are case insensitive", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Position.Line, s.ID.Position.Column, nil, actionmeta.CodeDuplicateStepID, "has duplicate ID %q; step IDs are case insensitive", id)
 			}
 			ids[strings.ToLower(id)] = true
 		}
@@ -167,7 +167,7 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 
 // compositeStepErrorf reports an error at the step's position in its action metadata file.
 func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int, code actionmeta.ProblemCode, format string, args ...any) {
-	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
+	rule.compositeStepErrorfAt(meta, idx, s.Position.Line, s.Position.Column, nil, code, format, args...)
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
@@ -181,7 +181,7 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 	err.EndAt(end)
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
-		origin := &finding.IgnoreOrigin{}
+		origin := &workflows.IgnoreOrigin{}
 		if step.ID != nil {
 			origin.StepID = step.ID.Value
 		}
@@ -209,7 +209,7 @@ func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
 	err.EndAt(end)
-	err.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
+	err.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -530,7 +530,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 			Message: problem.Message, Start: problem.Start, End: problem.End,
 		})
 		item.Source.Content = meta.Source
-		item.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
+		item.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 		rule.errs = append(rule.errs, item)
 	}
 }

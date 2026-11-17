@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 )
 
 func readCacheBytes(ctx context.Context, path string) ([]byte, error) {

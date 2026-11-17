@@ -2,7 +2,7 @@
 
 package tools
 
-func copyOwnedBackend(in Backend) Backend {
+func copyOwnedBackendSelection(in BackendSelection) BackendSelection {
 	out := in
 	return out
 }

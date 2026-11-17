@@ -5,7 +5,9 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 	"github.com/google/go-cmp/cmp"
 )
@@ -22,21 +24,21 @@ func TestCheck3Negotiation(t *testing.T) {
 	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
 		t.Fatalf("descriptor capabilities = %+v", d)
 	}
-	diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
+	diagnostics, err := engine.Check(t.Context(), scriptengine.Request{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The snippet's lone CR is a guest row; host rows are LF rows, and fix
 	// replacements convert with their diagnostic.
-	want := []checkinputs.ScriptDiagnostic{
+	want := []scriptengine.Diagnostic{
 		{
 			Filename: "s.sh", Code: "T1", Message: "fix me", Severity: "style",
-			Location: checkinputs.ScriptPosition{Row: 1, Column: 3}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 6},
-			Fixes: []checkinputs.ScriptFix{{Description: "replace", Replacements: []checkinputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 3, EndColumn: 6, Text: "y"}}}},
+			Location: sourcetext.Position{Line: 1, Column: 3}, EndLocation: sourcetext.Position{Line: 1, Column: 6},
+			Fixes: []scriptengine.Fix{{Description: "replace", Replacements: []scriptengine.Replacement{{Start: sourcetext.Position{Line: 1, Column: 3}, End: sourcetext.Position{Line: 1, Column: 6}, Text: "y"}}}},
 		},
 		{
 			Filename: "lib.sh", Code: "T2", Message: "sourced", Severity: "info", Source: "lib.sh",
-			Location: checkinputs.ScriptPosition{Row: 3, Column: 2}, EndLocation: checkinputs.ScriptPosition{Row: 3, Column: 5},
+			Location: sourcetext.Position{Line: 3, Column: 2}, EndLocation: sourcetext.Position{Line: 3, Column: 5},
 		},
 	}
 	if diff := cmp.Diff(want, diagnostics); diff != "" {

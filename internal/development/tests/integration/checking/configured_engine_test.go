@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
@@ -19,7 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -29,7 +30,7 @@ type configuredBackend struct {
 	closeError error
 }
 
-func (b *configuredBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *configuredBackend) Check(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.checks.Add(1)
 	before, _, _ := strings.Cut(request.Source, "missing")
 	row := strings.Count(before, "\n") + 1
@@ -38,7 +39,7 @@ func (b *configuredBackend) Check(_ context.Context, request checkinputs.ScriptR
 	if request.Filename == "actionlint.sh" {
 		code = "SC2086"
 	}
-	return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: code, Message: "configured engine", Severity: "error", Location: checkinputs.ScriptPosition{Row: row, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: column + 7}}}, nil
+	return []scriptengine.Diagnostic{{Filename: request.Filename, Code: code, Message: "configured engine", Severity: "error", Location: sourcetext.Position{Line: row, Column: column}, EndLocation: sourcetext.Position{Line: row, Column: column + 7}}}, nil
 }
 
 func (b *configuredBackend) Close(ctx context.Context) error {
@@ -124,7 +125,7 @@ func TestConfigurationSelectedEnginesThroughPublicAPI(t *testing.T) {
 			root, paths, cfg := configuredEngineFixture(t)
 			loaded := map[string]*configuredBackend{}
 			var loadedMu sync.Mutex
-			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (scriptengine.Backend, error) {
 				if path != filepath.Join(root, "first.wasm") && path != filepath.Join(root, "second.wasm") {
 					t.Errorf("unresolved path: %s", path)
 				}
@@ -164,7 +165,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			t.Parallel()
 			root, paths, cfg := configuredEngineFixture(t)
 			failure := errors.New("module failed")
-			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failure }}
+			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { return nil, failure }}
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
@@ -173,7 +174,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
 			options.Tools = nil
-			options.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) {
+			options.LoadScriptEngine = func(context.Context, string) (scriptengine.Backend, error) {
 				return &configuredBackend{closeError: failure}, nil
 			}
 			result, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options)
@@ -197,14 +198,14 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		}
 	}
 	backend := &configuredBackend{}
-	options := checking.Options{WorkingDir: root, ConfigFile: "actionlint.yaml", Tools: registry.Registrations(configuredEngineSelections()), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return backend, nil }}
+	options := checking.Options{WorkingDir: root, ConfigFile: "actionlint.yaml", Tools: registry.Registrations(configuredEngineSelections()), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { return backend, nil }}
 	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 	if err != nil || result == nil || len(result.Diagnostics) != 3 || backend.checks.Load() != 3 || backend.closes.Load() != 1 {
 		t.Fatalf("configured ShellCheck: result=%+v err=%v checks=%d closes=%d", result, err, backend.checks.Load(), backend.closes.Load())
 	}
 	explicit := &configuredBackend{}
 	options.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: explicit}})
-	options.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	options.LoadScriptEngine = func(context.Context, string) (scriptengine.Backend, error) {
 		t.Fatal("explicit backend must override configured engine")
 		return nil, nil
 	}
@@ -247,7 +248,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				}
 				backend := &configuredBackend{}
 				var loads atomic.Int32
-				options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+				options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (scriptengine.Backend, error) {
 					loads.Add(1)
 					if path != filepath.Join(root, "composite.wasm") {
 						t.Errorf("module path=%s", path)
@@ -302,7 +303,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 			}
 			backend := &configuredBackend{}
 			var loads atomic.Int32
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(configuredEngineSelections()), LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(configuredEngineSelections()), LoadScriptEngine: func(_ context.Context, path string) (scriptengine.Backend, error) {
 				loads.Add(1)
 				if path != filepath.Join(root, "first.wasm") {
 					t.Errorf("unresolved inline module: %s", path)
@@ -365,7 +366,7 @@ func TestConfiguredEngineURIs(t *testing.T) {
 				}
 				backend := &configuredBackend{}
 				var loads atomic.Int32
-				options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, source string) (checkinputs.ScriptBackend, error) {
+				options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, source string) (scriptengine.Backend, error) {
 					loads.Add(1)
 					if source != uri {
 						t.Errorf("changed engine URI: got %q, want %q", source, uri)

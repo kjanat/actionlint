@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script scriptanalysis.Unit, prepared preparation.Prepared, settings integrationconfig.ResolvedSettings, via route) (preparation.Prepared, error) {
@@ -63,13 +63,13 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourcePl
 		return line
 	}
 	if previousFilter := prepared.AcceptDiagnostic; previousFilter != nil {
-		prepared.AcceptDiagnostic = func(diagnostic checkinputs.ScriptDiagnostic) bool {
-			line := mapped.Line(diagnostic.Location.Row)
+		prepared.AcceptDiagnostic = func(diagnostic scriptengine.Diagnostic) bool {
+			line := mapped.Line(diagnostic.Location.Line)
 			if line.Origin != preparation.LineScript {
 				return true
 			}
-			diagnostic.Location.Row = line.Line
-			diagnostic.EndLocation.Row = mapped.OriginalLine(diagnostic.EndLocation.Row)
+			diagnostic.Location.Line = line.Line
+			diagnostic.EndLocation.Line = mapped.OriginalLine(diagnostic.EndLocation.Line)
 			return previousFilter(diagnostic)
 		}
 	}

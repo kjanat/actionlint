@@ -125,7 +125,7 @@ reports expression problems. Recursive value-to-type conversion belongs to
 `internal/model/contexts/value`, which uses inferred types only for unknown
 parts and does not change evaluation state.
 
-`internal/model/workflows/cache` owns cache-grant inheritance and capability
+`internal/model/workflows/cachegrant` owns cache-grant inheritance and capability
 values. Cache rules receive the captured workflow before their job and step
 callbacks run. Shared write grants have a reporting job assigned in source order;
 the assignment includes all reachable restricted events and does not change when
@@ -138,7 +138,7 @@ check receives workflow defaults and checks each job independently. Permission
 inheritance uses `calls.EffectivePermissions`, which distinguishes absent,
 invalid and explicit declarations and copies repository default maps.
 
-`internal/input/files/nameindex` loads repository workflow names and records whether
+`internal/input/nameindex` loads repository workflow names and records whether
 every name was read. `internal/model/workflows/names` owns the immutable inventory
 and workflow-name filter grammar. The workflow-run-names rule produces findings
 under `internal/checking/rules/correctness`; the input loader

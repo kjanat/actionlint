@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestInstalledProviderShorthands(t *testing.T) {
@@ -88,17 +88,17 @@ func TestInstalledProviderShorthands(t *testing.T) {
 				}
 			}
 			args := []string{"config", "show", "--json", "--plugin", path, "--config", config}
-			output := pluginCommandTest(t, pluginacquisition.Options{}, tc.code, args...)
+			output := pluginCommandTest(t, dependencycache.Acquisition{}, tc.code, args...)
 			if !strings.Contains(output, tc.want) {
 				t.Fatalf("want %q in:\n%s", tc.want, output)
 			}
-			pluginCommandTest(t, pluginacquisition.Options{}, tc.code, "config", "validate", "--plugin", path, "--config", config)
+			pluginCommandTest(t, dependencycache.Acquisition{}, tc.code, "config", "validate", "--plugin", path, "--config", config)
 		})
 	}
 	if err := os.WriteFile(config, []byte("[tools.file-tool]\nlimit = 5\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output := pluginCommandTest(t, pluginacquisition.Options{}, 0, "config", "schema", "--plugin", path, "--config", config)
+	output := pluginCommandTest(t, dependencycache.Acquisition{}, 0, "config", "schema", "--plugin", path, "--config", config)
 	schema, err := toolsettings.Compile([]byte(output))
 	if err != nil {
 		t.Fatal(err)
@@ -124,8 +124,8 @@ func TestInstalledProviderShorthands(t *testing.T) {
 	if err := os.WriteFile(config, []byte("extends = ['base.toml']\n[tools]\nshellcheck = false\nruff = false\n[tools.file-tool]\nenabled = false\n[[overrides]]\nincludes = ['**']\n[overrides.tools.file-tool]\nlimit = 7\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, pluginacquisition.Options{}, 0, "check", "--plugin", path, "--config", config, workflow)
-	if _, err := assembly.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}, pluginacquisition.Options{}); err != nil {
+	pluginCommandTest(t, dependencycache.Acquisition{}, 0, "check", "--plugin", path, "--config", config, workflow)
+	if _, err := assembly.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}, dependencycache.Acquisition{}); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(config)
@@ -133,7 +133,7 @@ func TestInstalledProviderShorthands(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	const source = "https://example.com/provider.manifest.json"
 	network.SetFile(source, data)
 	declared := fmt.Sprintf("plugins = ['%s#sha256=%x']\n%s", source, sha256.Sum256(data), content)

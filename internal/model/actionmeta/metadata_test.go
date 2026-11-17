@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
@@ -71,8 +72,8 @@ inputs:
 					"camelcaseinput":   {Name: "camelCaseInput", Required: false, Deprecated: false, DeprecationMessage: ""},
 				},
 				InputDefaults: []*KeyValue{
-					{Name: "input3", Value: ExprString{Value: "default", Line: 11, Column: 14}},
-					{Name: "input4", Value: ExprString{Value: "default", Line: 15, Column: 14}},
+					{Name: "input3", Value: ExprString{Value: "default", Position: sourcetext.Position{Line: 11, Column: 14}}},
+					{Name: "input4", Value: ExprString{Value: "default", Position: sourcetext.Position{Line: 15, Column: 14}}},
 				},
 			},
 		},
@@ -101,8 +102,8 @@ inputs:
 					"plain":  {Name: "plain", Required: false, Deprecated: false, DeprecationMessage: ""},
 				},
 				InputDefaults: []*KeyValue{
-					{Name: "token", Value: ExprString{Value: "${{ secrets.TOKEN }}", Line: 5, Column: 14}},
-					{Name: "region", Value: ExprString{Value: "${{ vars.REGION }}", Line: 8, Column: 14}},
+					{Name: "token", Value: ExprString{Value: "${{ secrets.TOKEN }}", Position: sourcetext.Position{Line: 5, Column: 14}}},
+					{Name: "region", Value: ExprString{Value: "${{ vars.REGION }}", Position: sourcetext.Position{Line: 8, Column: 14}}},
 				},
 			},
 		},
@@ -174,22 +175,22 @@ runs:
 					Using: "composite",
 					Steps: actionCompositeSteps{
 						{
-							Line: 5, Column: 7, IsMapping: true,
+							Position: sourcetext.Position{Line: 5, Column: 7}, IsMapping: true,
 							Keys:             []string{"if", "run", "shell", "working-directory", "name", "env"},
-							If:               &ExprString{Value: "runner.os == 'Linux'", Line: 5, Column: 11},
-							Run:              &ExprString{Value: "echo ${{ secrets.TOKEN }}", Line: 6, Column: 12},
-							WorkingDirectory: &ExprString{Value: "sub", Line: 8, Column: 26},
-							StepName:         &ExprString{Value: "step one", Line: 9, Column: 13},
+							If:               &ExprString{Value: "runner.os == 'Linux'", Position: sourcetext.Position{Line: 5, Column: 11}},
+							Run:              &ExprString{Value: "echo ${{ secrets.TOKEN }}", Position: sourcetext.Position{Line: 6, Column: 12}},
+							WorkingDirectory: &ExprString{Value: "sub", Position: sourcetext.Position{Line: 8, Column: 26}},
+							StepName:         &ExprString{Value: "step one", Position: sourcetext.Position{Line: 9, Column: 13}},
 							Env: []*KeyValue{
-								{Name: "FOO", Value: ExprString{Value: "${{ vars.BAR }}", Line: 11, Column: 14}},
+								{Name: "FOO", Value: ExprString{Value: "${{ vars.BAR }}", Position: sourcetext.Position{Line: 11, Column: 14}}},
 							},
 						},
 						{
-							Line: 12, Column: 7, IsMapping: true,
+							Position: sourcetext.Position{Line: 12, Column: 7}, IsMapping: true,
 							Keys: []string{"uses", "with"},
 							Uses: new("actions/checkout@v5"),
 							With: []*KeyValue{
-								{Name: "token", Value: ExprString{Value: "${{ secrets.GH }}", Line: 14, Column: 16}},
+								{Name: "token", Value: ExprString{Value: "${{ secrets.GH }}", Position: sourcetext.Position{Line: 14, Column: 16}}},
 							},
 						},
 					},
@@ -276,7 +277,7 @@ func TestActionMetadataAcceptsUnknownInputFields(t *testing.T) {
 			if _, ok := md.Outputs["links"]; !ok {
 				t.Fatalf("decoded inputs or outputs were lost: %+v", md)
 			}
-			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Line != 5 {
+			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Position.Line != 5 {
 				t.Fatalf("positioned default was lost: %+v", md.InputDefaults)
 			}
 		})

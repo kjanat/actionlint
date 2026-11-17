@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -71,7 +71,7 @@ jobs:
 				sources = append(sources, workspace.InputFile{Path: "local/action.yml", Content: []byte(action)})
 			}
 			observer := &invocationAnalyzer{}
-			options := checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}
+			options := checking.Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}}}
 			if mode != "snapshots" {
 				options.ReadFile = func(path string) ([]byte, error) {
 					if filepath.Clean(path) == filepath.Join(root, "local", "action.yml") {
@@ -151,7 +151,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					}
 				}
 				options := checking.Options{
-					WorkingDir: workingDir, Analyzers: []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
+					WorkingDir: workingDir, Analyzers: []results.AnalyzerRegistration{{Analyzer: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
 						rel, err := filepath.Rel(root, path)
 						if err != nil || !filepath.IsAbs(path) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 							return nil, fmt.Errorf("read escaped analysis root: %s", path)

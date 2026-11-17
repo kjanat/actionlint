@@ -180,7 +180,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 					t.Fatalf("want exactly one visible finding, got %+v", result.Diagnostics)
 				}
 				d := result.Diagnostics[0]
-				if d.Rule != tc.rule || filepath.ToSlash(d.Path) != tc.path || d.Severity != tc.severity {
+				if d.Rule != tc.rule || filepath.ToSlash(d.Path) != tc.path || string(d.Severity) != tc.severity {
 					t.Fatalf("want %s at %s with severity %q, got %+v", tc.rule, tc.path, tc.severity, d)
 				}
 			})

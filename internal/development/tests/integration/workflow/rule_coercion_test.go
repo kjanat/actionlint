@@ -37,7 +37,7 @@ func TestCoercionSelectionAndSuppression(t *testing.T) {
 					continue
 				}
 				count++
-				if finding.Severity != tc.severity || finding.Start.Line != 6 {
+				if string(finding.Severity) != tc.severity || finding.Start.Line != 6 {
 					t.Fatalf("unexpected finding: %+v", finding)
 				}
 			}

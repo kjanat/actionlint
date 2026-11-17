@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,33 +15,27 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
-	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
-
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 
-	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
@@ -73,25 +68,26 @@ type analysisRequest struct {
 	ExecutionEnvironment
 	RemoteActions   actions.Provider
 	RemoteWorkflows reusableworkflows.Provider
-	Repository      func(context.Context, string) repository.Snapshot
+	Repository      func(context.Context, string) repository.Settings
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Sources            []workspace.InputFile
 	SourceOverlays     []SourceOverlay
 	DiskSources        bool
 	NoIgnore           bool
-	Analyzers          []checkinputs.Registration
-	Tools              []contract.Registration
-	IgnorePatterns     configuration.IgnorePatterns
-	IgnoreSelectors    policy.IgnoreSelectors
-	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
-	WorkingDir         string
+	// Checks holds the analyzers and tools registerChecks validated, and the
+	// rule set they extend.
+	Checks          *registeredChecks
+	IgnorePatterns  configuration.IgnorePatterns
+	IgnoreSelectors policy.IgnoreSelectors
+	OnRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
+	WorkingDir      string
 	// LocalDependencyRoot supplies the explicit base for prepared sources without
 	// a repository identity. Empty leaves their local dependency root unknown.
 	LocalDependencyRoot  string
 	ReadFile             func(string) ([]byte, error)
 	RulePresets          configuration.Presets
-	LoadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadScriptEngine     func(context.Context, string) (scriptengine.Backend, error)
 	LogWriter            io.Writer
 	LogLevel             LogLevel
 	Processes            *hostprocess.ProcessPool
@@ -101,7 +97,8 @@ type analysisRequest struct {
 // analysisResult contains findings, their sources, and every local input read during analysis.
 type analysisResult struct {
 	report.Analysis
-	files []analyzedFile
+	files     []analyzedFile
+	completed map[string]int
 }
 
 type analyzedFile struct {
@@ -188,36 +185,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if request.Processes == nil {
 		return nil, errors.New("analysis requires an application-owned process pool")
 	}
-	var extensions []rule.Descriptor
-	for _, analyzer := range request.Analyzers {
-		if validation.IsNil(analyzer.Checker) {
-			return nil, errors.New("nil analyzer registration")
-		}
-		extensions = append(extensions, analyzer.Checker.Descriptor().Descriptor)
+	if request.Checks == nil {
+		return nil, errors.New("analysis requires registered checks")
 	}
-	seenTools := map[string]bool{}
-	for _, tool := range request.Tools {
-		name := tool.Name
-		if seenTools[name] {
-			return nil, fmt.Errorf("duplicate script tool %q", name)
-		}
-		seenTools[name] = true
-		if registration.HasRule(name) {
-			return nil, fmt.Errorf("script tool %q conflicts with a built-in analyzer", name)
-		}
-		if _, builtIn := FindRule(name); !builtIn {
-			extensions = append(extensions, tool.Descriptor)
-		}
-	}
-	if _, err := CombineRuleDeclarations(extensions...); err != nil {
-		return nil, err
-	}
-	ruleRegistrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
-	rules, err := ConfigurationRules().WithRegisteredRules(ruleRegistrations...)
-	if err != nil {
-		return nil, err
-	}
-	for _, tool := range request.Tools {
+	for _, tool := range request.Checks.tools {
 		if tool.Build == nil {
 			return nil, fmt.Errorf("tool %q has no adapter", tool.Name)
 		}
@@ -237,10 +208,11 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			return nil, err
 		}
 	}
-	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
+	workingDir, err := filepath.Abs(request.WorkingDir)
 	if err != nil {
 		return nil, err
 	}
+	request.WorkingDir = workingDir
 	inputs := &inputFiles{}
 	lifetime, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -352,7 +324,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
-		request.LoadScriptEngine = func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
+		request.LoadScriptEngine = func(ctx context.Context, path string) (scriptengine.Backend, error) {
 			reference, local, err := pluginreference.NormalizeSource(path, request.WorkingDir)
 			if err != nil {
 				return nil, err
@@ -364,9 +336,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	session := &analysisSession{
 		remoteActions: make(map[references.MirrorAccess]*remote.Service),
 		environment:   request.ExecutionEnvironment,
-		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
+		checks:        request.Checks, ctx: lifetime,
 		captures: captures, snapshots: snapshots, reader: reader,
-		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
+		loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
 		ignoreSelectors: request.IgnoreSelectors,
 	}
@@ -388,16 +360,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		root    string
 		mirrors references.MirrorAccess
 	}
-	workflows := map[workflowCacheKey]*reusableworkflows.Cache{}
+	workflows := map[workflowCacheKey]*reusableworkflows.MetadataCache{}
 	remoteWorkflows := make(map[references.MirrorAccess]*reusableworkflows.Remote)
 	session.workingDir = absPath(cwd)
-	session.repositories = make(map[string]repository.Snapshot)
+	session.repositories = make(map[string]repository.Settings)
 	for _, source := range request.Sources {
 		root := projectRoot(source.Project)
 		if _, exists := session.repositories[root]; exists {
 			continue
 		}
-		var facts repository.Snapshot
+		var facts repository.Settings
 		if request.Repository != nil && root != "" {
 			facts = request.Repository(lifetime, root)
 		}
@@ -442,7 +414,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		key := workflowCacheKey{root, mirrors}
 		wc, configured := workflows[key]
 		if !configured {
-			wc = reusableworkflows.NewCache(root, session.debugWriter())
+			wc = reusableworkflows.NewMetadataCache(root, session.debugWriter())
 			wc.SetRemote(remoteWorkflows[mirrors])
 			workflows[key] = wc
 		}
@@ -531,6 +503,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		err = errors.Join(err, completionErr)
 	}
 	result.IncompleteChecks = session.checkCompletion.incompleteChecks()
+	result.completed = session.checkCompletion.completedRules()
 	err = result.revalidateCaptures(captures, rows, filepath.FromSlash(canonicalWorkingDir), err)
 	slices.SortFunc(session.runnerReports, func(a, b runnerapi.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
@@ -540,14 +513,14 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	})
 	result.RunnerResults = session.runnerReports
 	err = errors.Join(err, result.publishDiagnostics())
-	result.Rules = selection.Templates(ConfigurationRules())
+	result.Rules = selection.Templates()
 	for _, file := range result.files {
 		for _, descriptor := range file.rules {
 			result.Rules = append(result.Rules, descriptor.Clone())
 		}
 	}
 	for i := range result.Rules {
-		result.Rules[i] = session.rules.WithDefaults(result.Rules[i])
+		result.Rules[i] = session.checks.rules.WithDefaults(result.Rules[i])
 	}
 	result.Documents = make(outline.Outlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)
@@ -700,6 +673,21 @@ func (d *actionDocuments) list() []actionDocument {
 func (r *analysisResult) publishDiagnostics() error {
 	r.FileCount = len(r.files)
 	batches := make([]policy.Batch, len(r.files))
+	collected := make(map[string]int)
+	for _, file := range r.files {
+		// A rule that ran without findings still counts as selected.
+		for _, descriptor := range file.rules {
+			if _, seen := collected[descriptor.Name]; !seen {
+				collected[descriptor.Name] = 0
+			}
+		}
+		for _, item := range file.errors {
+			collected[item.Rule]++
+		}
+		if revision := file.captured.Revision(); revision.Valid() {
+			r.LintedFiles = append(r.LintedFiles, report.LintedFile{Path: file.source.InputPath, Digest: revision.Digest()})
+		}
+	}
 	for i, file := range r.files {
 		var batch policy.Batch
 		if file.publication != nil {
@@ -714,6 +702,12 @@ func (r *analysisResult) publishDiagnostics() error {
 	published, err := policy.Publish(batches, r.IncompleteChecks)
 	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
+	r.InlineSuppressions = published.InlineSuppressions
+	completed := r.completedRules()
+	r.CollectedByRule = make([]report.RuleCollection, 0, len(collected))
+	for _, name := range slices.Sorted(maps.Keys(collected)) {
+		r.CollectedByRule = append(r.CollectedByRule, report.RuleCollection{Rule: name, Findings: collected[name], Completed: max(completed[name], r.completed[name])})
+	}
 	if r.Diagnostics == nil {
 		r.Diagnostics = []results.PublishedDiagnostic{}
 	}
@@ -721,6 +715,34 @@ func (r *analysisResult) publishDiagnostics() error {
 		r.files[i].errors = findings
 	}
 	return err
+}
+
+// completedRules counts, per rule, the linted entry documents where the rule
+// was selected and no incomplete check names it. An incomplete check without a
+// rule counts against every rule of its source or entry.
+func (r *analysisResult) completedRules() map[string]int {
+	type ruleSource struct{ rule, document, revision string }
+	incomplete := map[ruleSource]bool{}
+	for _, check := range r.IncompleteChecks {
+		for _, source := range []sourcetext.Reference{check.Source, check.Invocation.Entry} {
+			if source.Document != "" {
+				incomplete[ruleSource{check.Rule, source.Document, source.Revision}] = true
+			}
+		}
+	}
+	completed := map[string]int{}
+	for _, file := range r.files {
+		revision := file.captured.Revision()
+		if !revision.Valid() || incomplete[ruleSource{"", revision.Document(), revision.Digest()}] {
+			continue
+		}
+		for _, descriptor := range file.rules {
+			if !incomplete[ruleSource{descriptor.Name, revision.Document(), revision.Digest()}] {
+				completed[descriptor.Name]++
+			}
+		}
+	}
+	return completed
 }
 
 // revalidateCaptures is the final publication boundary: a handle admitted before

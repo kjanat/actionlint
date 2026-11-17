@@ -1,14 +1,13 @@
 package runners
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -91,7 +90,7 @@ func (plan *ResolutionPlan) Request() runnerapi.Request {
 // Unknown returns the provider identity with no established job capabilities.
 func (plan *ResolutionPlan) Unknown() *Knowledge {
 	return &Knowledge{target: plan.request.Target, report: runnerapi.Report{
-		CacheKey: fmt.Sprintf("%x", sha256.Sum256(plan.dependency)), Provider: plan.selection.Descriptor,
+		CacheKey: sha256hex.Digest(plan.dependency), Provider: plan.selection.Descriptor,
 		ImplementationID: plan.selection.ImplementationID, Target: plan.request.Target, Scope: plan.request.Scope, SnapshotDigest: plan.request.Snapshot.Digest(), Service: plan.request.Service, AsOf: plan.request.AsOf,
 	}}
 }
@@ -196,10 +195,7 @@ func (plan *ResolutionPlan) Complete(response runnerapi.Response) (*Knowledge, e
 	if err != nil {
 		return k, err
 	}
-	cacheKeyHash := sha256.New()
-	cacheKeyHash.Write(plan.dependency)
-	cacheKeyHash.Write(encodedAnswers)
-	k.report.CacheKey = hex.EncodeToString(cacheKeyHash.Sum(nil))
+	k.report.CacheKey = sha256hex.Digest(append(slices.Clone(plan.dependency), encodedAnswers...))
 	jobs := make(map[workflows.BoundJob]jobRecord, len(plan.ranges))
 	for _, span := range plan.ranges {
 		record, err := joinAnswers(span.job, answers[span.start:span.end])

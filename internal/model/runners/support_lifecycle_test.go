@@ -6,6 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -139,7 +140,7 @@ func TestCurrentJointSupportNotificationRequiresEveryCandidate(t *testing.T) {
 			if len(problems) != 2 {
 				t.Fatalf("joint support missing: %+v", problems)
 			}
-			policy, err := lifecycle.NewPolicy("required-migration", "Migrate supported runners", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: tc.start, Severity: lifecycle.Error}}, "organization.toml")
+			policy, err := lifecycle.NewPolicy("required-migration", "Migrate supported runners", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: tc.start, Severity: severity.Error}}, "organization.toml")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,7 +152,7 @@ func TestCurrentJointSupportNotificationRequiresEveryCandidate(t *testing.T) {
 				if (len(assessment.Active) > 0) != tc.active {
 					t.Fatalf("%s: %+v", tc.name, assessment)
 				}
-				if tc.active && assessment.Severity != lifecycle.Error {
+				if tc.active && assessment.Severity != severity.Error {
 					t.Fatalf("required minimum lost: %+v", assessment)
 				}
 			}

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -27,35 +27,35 @@ func TestCallEvaluationDemand(t *testing.T) {
 	for _, tc := range []struct {
 		input   string
 		valid   bool
-		state   values.EvaluationState
+		state   exprvalues.EvaluationState
 		value   any
 		demands []functions.ArgumentDemand
 		failure expressions.FailurePhase
 		error   string
 	}{
-		{"format(true, fromJSON(null))", true, values.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
-		{"format('{1}', fromJSON(null), true)", true, values.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandRequired}, expressions.Success, ""},
-		{"format('{0}', fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
-		{"format('{1}', true)", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
-		{"format('{+0}', fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
-		{"format('{0}{1}', fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
-		{"format('{0:N2}', fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
-		{"format('{0:x}{1}', true, fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
-		{"format('plain', startsWith(true))", false, values.EvaluationNotAttempted, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
-		{"format('plain', noSuchFunction())", false, values.EvaluationNotAttempted, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
-		{"case(1, 'a', 'b')", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
-		{"case(false || 1, 'a', 'b')", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
-		{"case(true && 'text', 'a', 'b')", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
-		{"case(false || fromJSON('{}'), 'a', 'b')", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
-		{"case(true, 'a', 'b')", true, values.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
-		{"case(false, fromJSON(null), 'b')", true, values.EvaluationKnown, "b", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandRequired}, expressions.Success, ""},
-		{"case(true, 'a', 1, fromJSON(null), 'c')", true, values.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped, functions.DemandSkipped}, expressions.Success, ""},
-		{"case(true, 'a', false || 1, fromJSON(null), 'c')", true, values.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped, functions.DemandSkipped}, expressions.Success, ""},
-		{"startsWith(fromJSON('{}'), fromJSON(null))", true, values.EvaluationKnown, false, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
-		{"startsWith(fromJSON(null), fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
-		{"contains(fromJSON('[]'), fromJSON(null))", true, values.EvaluationKnown, false, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
-		{"join(fromJSON('[true]'), fromJSON(null))", true, values.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
-		{"join(fromJSON('[true,false]'), fromJSON(null))", false, values.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"format(true, fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
+		{"format('{1}', fromJSON(null), true)", true, exprvalues.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandRequired}, expressions.Success, ""},
+		{"format('{0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"format('{1}', true)", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
+		{"format('{+0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
+		{"format('{0}{1}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
+		{"format('{0:N2}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"format('{0:x}{1}', true, fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.FormatException"},
+		{"format('plain', startsWith(true))", false, exprvalues.EvaluationNotAttempted, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
+		{"format('plain', noSuchFunction())", false, exprvalues.EvaluationNotAttempted, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
+		{"case(1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(false || 1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(true && 'text', 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(false || fromJSON('{}'), 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped}, expressions.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(true, 'a', 'b')", true, exprvalues.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
+		{"case(false, fromJSON(null), 'b')", true, exprvalues.EvaluationKnown, "b", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandRequired}, expressions.Success, ""},
+		{"case(true, 'a', 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped, functions.DemandSkipped}, expressions.Success, ""},
+		{"case(true, 'a', false || 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped, functions.DemandSkipped}, expressions.Success, ""},
+		{"startsWith(fromJSON('{}'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
+		{"startsWith(fromJSON(null), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"contains(fromJSON('[]'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
+		{"join(fromJSON('[true]'), fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped}, expressions.Success, ""},
+		{"join(fromJSON('[true,false]'), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired}, expressions.RuntimeFailure, "System.Text.Json.JsonException"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -107,7 +107,7 @@ func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
-			if result := evaluate.Evaluate(node, nil); result.State != values.EvaluationInvalid {
+			if result := evaluate.Evaluate(node, nil); result.State != exprvalues.EvaluationInvalid {
 				t.Fatalf("evaluation=%+v, want runtime failure", result)
 			}
 			expressions.CheckOutcome(t, input, nil, expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
@@ -131,7 +131,7 @@ func TestCallConditionalDemand(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
-			if !got.Valid || got.Evaluation.State != values.EvaluationUnknown || got.FailurePhase != FailureNone {
+			if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone {
 				t.Fatalf("conditional failure became certain: %+v", got)
 			}
 			checkCallArgumentDemands(t, got, tc.demands)
@@ -181,11 +181,11 @@ func TestFormatTemplateGrammar(t *testing.T) {
 			got := checkCallDemandResult(t, tc.input)
 			want := expressions.Expectation{Value: tc.value}
 			if tc.valid {
-				if !got.Valid || got.Evaluation.State != values.EvaluationKnown || got.Evaluation.Value != tc.value || got.FailurePhase != FailureNone {
+				if !got.Valid || got.Evaluation.State != exprvalues.EvaluationKnown || got.Evaluation.Value != tc.value || got.FailurePhase != FailureNone {
 					t.Fatalf("valid format did not evaluate to %q: %+v", tc.value, got)
 				}
 			} else {
-				if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
+				if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
 					t.Fatalf("invalid format was not rejected: %+v", got)
 				}
 				want = expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "System.FormatException"}
@@ -199,20 +199,20 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		state values.EvaluationState
+		state exprvalues.EvaluationState
 		phase FailurePhase
 		value any
 	}{
-		{"github.event.unknown || fromJSON(null)", values.EvaluationUnknown, FailureNone, nil},
-		{"github.event.unknown && fromJSON(null)", values.EvaluationUnknown, FailureNone, nil},
-		{"!(github.event.unknown || fromJSON(null))", values.EvaluationUnknown, FailureNone, nil},
-		{"github.event.unknown && (true || fromJSON(null))", values.EvaluationUnknown, FailureNone, nil},
-		{"true || fromJSON(null)", values.EvaluationKnown, FailureNone, true},
-		{"false && fromJSON(null)", values.EvaluationKnown, FailureNone, false},
-		{"false || fromJSON(null)", values.EvaluationInvalid, FailureEvaluation, nil},
-		{"true && fromJSON(null)", values.EvaluationInvalid, FailureEvaluation, nil},
-		{"true || startsWith(true)", values.EvaluationNotAttempted, FailureStaticValidation, nil},
-		{"false && noSuchFunction()", values.EvaluationNotAttempted, FailureStaticValidation, nil},
+		{"github.event.unknown || fromJSON(null)", exprvalues.EvaluationUnknown, FailureNone, nil},
+		{"github.event.unknown && fromJSON(null)", exprvalues.EvaluationUnknown, FailureNone, nil},
+		{"!(github.event.unknown || fromJSON(null))", exprvalues.EvaluationUnknown, FailureNone, nil},
+		{"github.event.unknown && (true || fromJSON(null))", exprvalues.EvaluationUnknown, FailureNone, nil},
+		{"true || fromJSON(null)", exprvalues.EvaluationKnown, FailureNone, true},
+		{"false && fromJSON(null)", exprvalues.EvaluationKnown, FailureNone, false},
+		{"false || fromJSON(null)", exprvalues.EvaluationInvalid, FailureEvaluation, nil},
+		{"true && fromJSON(null)", exprvalues.EvaluationInvalid, FailureEvaluation, nil},
+		{"true || startsWith(true)", exprvalues.EvaluationNotAttempted, FailureStaticValidation, nil},
+		{"false && noSuchFunction()", exprvalues.EvaluationNotAttempted, FailureStaticValidation, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -220,7 +220,7 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 			if got.Valid != (tc.phase == FailureNone) || got.Evaluation.State != tc.state || got.FailurePhase != tc.phase || !cmp.Equal(got.Evaluation.Value, tc.value) {
 				t.Fatalf("logical branch result: %+v; want state=%v phase=%v value=%v", got, tc.state, tc.phase, tc.value)
 			}
-			if tc.state == values.EvaluationUnknown {
+			if tc.state == exprvalues.EvaluationUnknown {
 				return
 			}
 			var want expressions.Expectation
@@ -274,7 +274,7 @@ func TestFormatReplacementExecutionOrder(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
-			if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
+			if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
 				t.Fatalf("missing first replacement failure: %+v", got)
 			}
 			checkCallArgumentDemands(t, got, tc.demands)
@@ -290,7 +290,7 @@ func TestFormatUnknownReplacementOrder(t *testing.T) {
 	t.Parallel()
 	const input = "format('{1}{0}',fromJSON(null),github.event.unknown)"
 	got := checkCallDemandResult(t, input)
-	if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
+	if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
 		t.Fatalf("the required JSON failure after the unknown replacement was lost: %+v", got)
 	}
 	checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandRequired})
@@ -323,7 +323,7 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
-			if !got.Valid || got.Evaluation.State != values.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 {
+			if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 {
 				t.Fatalf("nested conditional JSON failure became certain: %+v", got)
 			}
 			checkCallArgumentDemands(t, got, tc.demands)
@@ -365,7 +365,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		t.Parallel()
 		const input = "case(github.event_name, fromJSON(null), fromJSON(null))"
 		got := checkCallDemandResult(t, input)
-		if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation || got.Type.Kind() != exprtypes.KindAny {
+		if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation || got.Type.Kind() != exprtypes.KindAny {
 			t.Fatalf("required nonboolean predicate did not fail: %+v", got)
 		}
 		checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped})
@@ -373,7 +373,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 			t.Fatalf("unreachable branches contributed findings or return alternatives: %+v", got)
 		}
 		predicate := got.Call.Arguments[0]
-		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != values.EvaluationInvalid {
+		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != exprvalues.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != exprvalues.EvaluationInvalid {
 			t.Fatalf("source evaluation and rejected predicate contract were mixed: %+v", predicate)
 		}
 		expressions.CheckOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "System.InvalidOperationException"})
@@ -383,7 +383,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		t.Parallel()
 		const input = "case(github.event.unknown, fromJSON('[]'), github.event_name, 'b', 'c')"
 		got := checkCallDemandResult(t, input)
-		if !got.Valid || got.Evaluation.State != values.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 || got.Type.Kind() != exprtypes.KindArray {
+		if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 || got.Type.Kind() != exprtypes.KindArray {
 			t.Fatalf("conditional failure obscured the only reachable return: %+v", got)
 		}
 		checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandConditional, functions.DemandConditional, functions.DemandSkipped, functions.DemandSkipped})
@@ -391,7 +391,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 			t.Fatalf("unreachable branches contributed return alternatives: %+v", got.Call)
 		}
 		predicate := got.Call.Arguments[2]
-		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != values.EvaluationInvalid {
+		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != exprvalues.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != exprvalues.EvaluationInvalid {
 			t.Fatalf("source evaluation and rejected predicate contract were mixed: %+v", predicate)
 		}
 		for _, first := range []bool{false, true} {
@@ -424,15 +424,15 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 			t.Run(input, func(t *testing.T) {
 				t.Parallel()
 				got := checkCallDemandResult(t, input)
-				wantState := values.EvaluationUnknown
+				wantState := exprvalues.EvaluationUnknown
 				wantPhase := FailureNone
 				var wantValue any
 				wantFindings := 0
 				switch predicate {
 				case "true":
-					wantState, wantPhase, wantFindings = values.EvaluationInvalid, FailureEvaluation, 1
+					wantState, wantPhase, wantFindings = exprvalues.EvaluationInvalid, FailureEvaluation, 1
 				case "false":
-					wantState, wantValue = values.EvaluationKnown, "fallback"
+					wantState, wantValue = exprvalues.EvaluationKnown, "fallback"
 				}
 				if got.Valid != (wantPhase == FailureNone) || got.FailurePhase != wantPhase || got.Evaluation.State != wantState || !cmp.Equal(got.Evaluation.Value, wantValue) || len(got.Findings) != wantFindings {
 					t.Fatalf("result=%+v, want phase=%v state=%v value=%v findings=%d", got, wantPhase, wantState, wantValue, wantFindings)
@@ -469,7 +469,7 @@ func TestCaseArityRejectsSkippedPaths(t *testing.T) {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
 			got := checkCallDemandResult(t, input)
-			if got.Valid || got.Evaluation.State != values.EvaluationNotAttempted || got.FailurePhase != FailureStaticValidation || len(got.Findings) == 0 {
+			if got.Valid || got.Evaluation.State != exprvalues.EvaluationNotAttempted || got.FailurePhase != FailureStaticValidation || len(got.Findings) == 0 {
 				t.Fatalf("invalid arity survived static validation: %+v", got)
 			}
 			expressions.CheckOutcome(t, input, nil, expressions.Expectation{Failure: expressions.ParseFailure, ExceptionType: "GitHub.Actions.Expressions.ParseException"})
@@ -481,7 +481,7 @@ func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
 	t.Parallel()
 	const input = "join(fromJSON('[true,false]'), ',')"
 	got := checkCallDemandResult(t, input)
-	if !got.Valid || got.Evaluation.State != values.EvaluationKnown || got.Evaluation.Value != "true,false" {
+	if !got.Valid || got.Evaluation.State != exprvalues.EvaluationKnown || got.Evaluation.Value != "true,false" {
 		t.Fatalf("result: %+v", got)
 	}
 	checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired})
@@ -492,7 +492,7 @@ func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
 	if !arg.Accepted || !parameterArray || parameter.Elem().Kind() != exprtypes.KindAny || !sourceArray || source.Elem().Kind() != exprtypes.KindBool || !convertedArray || converted.Elem().Kind() != exprtypes.KindBool || arg.Conversion != functions.ConversionNone {
 		t.Fatalf("array argument falsely claims an aggregate string conversion: %+v", arg)
 	}
-	want := values.EvaluationResult{State: values.EvaluationKnown, Value: []any{true, false}}
+	want := exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: []any{true, false}}
 	if diff := cmp.Diff(want, arg.SourceValue); diff != "" {
 		t.Fatalf("raw argument (-want +got):\n%s", diff)
 	}
@@ -540,7 +540,7 @@ func checkCallArgumentDemands(t *testing.T, got ExpressionCheckResult, want []fu
 		if arg.Demand != want[i] {
 			t.Errorf("argument %d demand=%v, want %v", i, arg.Demand, want[i])
 		}
-		if want[i] == functions.DemandSkipped && arg.Value.State != values.EvaluationUnknown {
+		if want[i] == functions.DemandSkipped && arg.Value.State != exprvalues.EvaluationUnknown {
 			t.Errorf("skipped argument %d was evaluated: %+v", i, arg)
 		}
 	}

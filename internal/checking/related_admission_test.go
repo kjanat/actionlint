@@ -13,9 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -118,7 +118,7 @@ func (relatedAdmissionProbe) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (relatedAdmissionProbe) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	point := sourcetext.Position{Line: 1, Column: 1}
 	valid := results.Related{Path: input.Path, Start: point, End: point}
 	foreign := valid
@@ -154,7 +154,7 @@ func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
 
 func testRelatedBridgeAndSeal(t *testing.T, root string) {
 	t.Helper()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: relatedAdmissionProbe{}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)

@@ -11,10 +11,11 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry, id, tag string, process bool) (CatalogPlugin, string) {
@@ -34,7 +35,7 @@ func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry
 		t.Fatal(err)
 	}
 	p.Name = strings.ToLower(id)
-	p.Manifest = "plugins/" + hash("package-v2\n"+m.Plugin.Issuer+"\n"+m.Plugin.RepositoryID+"\n"+id) + "/index.json"
+	p.Manifest = "plugins/" + sha256hex.Digest([]byte("package-v2\n"+m.Plugin.Issuer+"\n"+m.Plugin.RepositoryID+"\n"+id)) + "/index.json"
 	m.Plugin.SchemaVersion = 2
 	r.IdentityVersion = 2
 	asset := strings.TrimPrefix(id, fixtureregistry.FixturePluginName+"/") + ".wasm"
@@ -90,7 +91,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	network.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-	client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+	client, err := New(fixtureregistry.FixtureRegistryURL, dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 				}
 				network.SetFile(url, data)
 			}
-			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+			client, err := New(fixtureregistry.FixtureRegistryURL, dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,7 +220,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 				}
 			}
 			u := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(root), "/") + "/"}
-			client, err := New(u.String(), pluginacquisition.Options{UserCacheDir: t.TempDir()})
+			client, err := New(u.String(), dependencycache.Acquisition{UserCacheDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

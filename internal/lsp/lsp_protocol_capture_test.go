@@ -15,8 +15,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -133,7 +133,7 @@ func TestEditorCaseAliasPublishesCapturedUTF16WithOriginalURI(t *testing.T) {
 		aliasRoot = strings.ToUpper(root[:1]) + root[1:]
 	}
 	path := filepath.Join(aliasRoot, "workflow.yml")
-	uri := strings.Replace(FileURI(path), path[:2], path[:1]+"%3A", 1)
+	uri := strings.Replace(sourcetext.FileURI(path), path[:2], path[:1]+"%3A", 1)
 	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\npermissions: {}\n"
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	analysis, err := analyzeDocuments(t.Context(), options, map[string]Document{path: {Text: text}})
@@ -174,7 +174,7 @@ func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T)
 			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Start: sourcetext.Position{Line: 2, Column: 1}, Reference: &sourcetext.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: []byte(text), RawScript: raw, Unavailable: reportedSourceIf(unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			publication, logs := firstEditorPublication(t, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 				return FromReport(result, root, documents)
-			}, FileURI(path), text)
+			}, sourcetext.FileURI(path), text)
 			if len(publication.Params.Diagnostics) != 0 || len(logs) != 1 || !strings.Contains(logs[0], "incomplete editor analysis") {
 				t.Fatalf("unavailable evidence produced a range or silent success: publication=%+v logs=%v", publication, logs)
 			}

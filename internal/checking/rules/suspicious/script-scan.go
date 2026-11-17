@@ -22,10 +22,10 @@ func scanRuntimeScripts(
 		if err := ctx.Err(); err != nil {
 			return diagnostics, err
 		}
-		if script.Runtime == nil || !script.Runtime.ShellKnown || script.Interpreters == nil {
+		if script.Runtime == nil || !script.Runtime.Shell.Known() || script.Interpreters == nil {
 			continue
 		}
-		invocation := script.Interpreters.Analyze(script.Runtime.Shell, script.Runtime.ShellImplicit)
+		invocation := script.Interpreters.Analyze(script.Runtime.Shell.Name, script.Runtime.Shell.Implicit)
 		noexec, onecmd := false, false
 		for _, setting := range invocation.Settings {
 			if setting.Group == "set" && setting.Name == "noexec" {

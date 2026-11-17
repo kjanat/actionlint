@@ -3,13 +3,12 @@ package security
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/knownvalues"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
@@ -39,7 +38,7 @@ func Credentials(n workflows.BoundJob) []reporting.StepFinding {
 	rule.checkContainer("\"container\" section", n.Container)
 	if n.Services != nil {
 		if expression := n.Services.Expression; expression != nil {
-			if value, known := knownvalues.Constant(expression); known {
+			if value, known := expression.ConstantValue(); known {
 				if services, ok := value.(map[string]any); ok {
 					for name, container := range services {
 						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, expression.Pos)
@@ -61,7 +60,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 		return
 	}
 	if n.Expression != nil {
-		if value, known := knownvalues.Constant(n.Expression); known {
+		if value, known := n.Expression.ConstantValue(); known {
 			rule.checkContainerValue(where, value, n.Expression.Pos)
 		}
 		return
@@ -71,7 +70,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 		return
 	}
 	if credentials.Expression != nil {
-		if value, known := knownvalues.Constant(credentials.Expression); known {
+		if value, known := credentials.Expression.ConstantValue(); known {
 			rule.checkCredentialsValue(where, value, credentials.Expression.Pos)
 		}
 		return
@@ -80,7 +79,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 	if p == nil {
 		return
 	}
-	if value, known := knownvalues.Constant(p); known {
+	if value, known := p.ConstantValue(); known {
 		rule.checkPasswordValue(where, value, p.Pos)
 	} else if !p.IsExpressionAssigned() {
 		rule.reportPassword(where, p.Pos)

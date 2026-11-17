@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
@@ -33,7 +33,7 @@ type invocationFixture struct {
 	original        *definition.Workflow
 	registry        *parsing.SourceSnapshots
 	snapshots       *declarations.CapturedSnapshots
-	cache           *localactions.Cache
+	cache           *localactions.ManifestCache
 	parsed          []string
 	afterParse      func(string)
 	mutateMeta      func(*actionmeta.Metadata)
@@ -50,7 +50,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		t.Fatal(document.SyntaxErrors)
 	}
 	registry, store, snapshots := newCapturedSnapshots(t, directory)
-	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: localactions.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
+	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: localactions.NewManifestCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
 	var err error
 	f.root, err = f.snapshots.Document(files.PhysicalPath(path), content, document)
 	if err != nil {

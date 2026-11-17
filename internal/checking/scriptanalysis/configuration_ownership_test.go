@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -56,7 +57,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	effective, _ := lifecycle.ParseDate("2026-12-01")
 	publication := policy.Batch{
 		Processor: policy.Processor{RuleSet: rules},
-		Policy:    policy.Policy{Path: "ci.yml", Scope: scope, Bindings: registry.Seal()},
+		Policy:    policy.DocumentInputs{Path: "ci.yml", Scope: scope, Bindings: registry.Seal()},
 		Findings: []*finding.Finding{{
 			Rule: "runtime-check", Message: "future retirement", Binding: scope.Rule("runtime-check").ID(),
 			LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Kind: lifecycle.SupportEnds, Name: "example", AsOf: asOf, Effective: effective},
@@ -67,7 +68,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 		t.Fatalf("baseline policy did not publish the future event: %+v, %v", before.Diagnostics, err)
 	}
 	mutating := contract.Tool{Name: "runtime-check", Runner: configurationRunner(func(input scriptanalysis.Batch) {
-		input.Scopes[0].Config.Lint.Lifecycle.Policies[0].Notifications[0].Severity = lifecycle.Error
+		input.Scopes[0].Config.Lint.Lifecycle.Policies[0].Notifications[0].Severity = severity.Error
 		*input.Scripts[0].Config().Lint.Enabled = false
 	})}
 	if _, err := mutating.AnalyzeScripts(t.Context(), batch); err != nil {
@@ -75,7 +76,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	}
 	observing := contract.Tool{Name: "runtime-check", Runner: configurationRunner(func(input scriptanalysis.Batch) {
 		selected := input.Scopes[0].Config
-		if !*selected.Lint.Enabled || selected.Lint.Lifecycle.Policies[0].Notifications[0].Severity != lifecycle.Warning {
+		if !*selected.Lint.Enabled || selected.Lint.Lifecycle.Policies[0].Notifications[0].Severity != severity.Warning {
 			t.Error("a sibling runner observed another runner's configuration mutation")
 		}
 	})}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/tidwall/jsonc"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
+	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
 )
 
 func parseJSON(path string, data []byte) (*parsedSource, error) {

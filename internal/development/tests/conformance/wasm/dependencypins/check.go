@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Checker requires remote actions and reusable workflows to use full commit
+// Analyzer requires remote actions and reusable workflows to use full commit
 // hashes. Local dependencies and Docker image references follow other policies.
-type Checker struct{}
+type Analyzer struct{}
 
-func (Checker) Descriptor() checkinputs.Descriptor {
+func (Analyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{
 		Name:        "pinned-actions",
 		Description: "Pin remote dependencies to full commit hashes",
@@ -23,7 +23,7 @@ func (Checker) Descriptor() checkinputs.Descriptor {
 	}
 }
 
-func (Checker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (Analyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, dependency := range input.Dependencies {
 		if err := ctx.Err(); err != nil {

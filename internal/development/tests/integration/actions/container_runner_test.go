@@ -92,7 +92,7 @@ func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
 					if label == "ubuntu-slim" {
 						severity = "warning"
 					}
-					if finding.Severity != severity {
+					if string(finding.Severity) != severity {
 						t.Fatalf("severity=%s, want %s", finding.Severity, severity)
 					}
 				}

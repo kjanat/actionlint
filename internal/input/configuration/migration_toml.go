@@ -15,9 +15,7 @@ func containsNull(value any) bool {
 	return slices.ContainsFunc(elements(value), containsNull)
 }
 
-// hasUnknownRepositoryFacts reports whether repository settings, at the root
-// or in an override, contain a null. TOML has no null, so a TOML migration
-// cannot write them.
+// hasUnknownRepositoryFacts finds null repository settings at the root or in overrides.
 func hasUnknownRepositoryFacts(node any) bool {
 	if repository := field(node, "repository"); repository != nil && containsNull(repository) {
 		return true

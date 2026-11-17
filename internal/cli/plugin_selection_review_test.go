@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func TestPluginSelectionFailureExitStatus(t *testing.T) {
@@ -21,13 +21,13 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, command := range []string{"check", "lsp", "rules"} {
-		pluginCommandTest(t, pluginacquisition.Options{}, 3, command)
+		pluginCommandTest(t, dependencycache.Acquisition{}, 3, command)
 	}
 }
 
 func TestProjectPluginLockFlagIsRejected(t *testing.T) {
 	t.Parallel()
 	for _, command := range [][]string{{"check"}, {"lsp"}, {"rules"}, {"plugin", "install"}} {
-		pluginCommandTest(t, pluginacquisition.Options{}, 2, append(command, "--plugin-lock", "unused.json")...)
+		pluginCommandTest(t, dependencycache.Acquisition{}, 2, append(command, "--plugin-lock", "unused.json")...)
 	}
 }

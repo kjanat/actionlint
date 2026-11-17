@@ -177,9 +177,9 @@ func UnavailableEnvironments(reason availability.Unavailability) Environments {
 	return Environments{missing: reason}
 }
 
-// Snapshot is host knowledge for one repository. Each field is independently
+// Settings is host knowledge for one repository. Each field is independently
 // available, so a denied lookup cannot erase facts obtained by other lookups.
-type Snapshot struct {
+type Settings struct {
 	// Service identifies the service that executes this repository's workflows.
 	Service                    services.Service
 	DefaultWorkflowPermissions Permissions

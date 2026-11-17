@@ -12,10 +12,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine/enginediagnostics"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/scriptcoords"
 	"github.com/kjanat/wacogo"
 )
 
@@ -26,17 +28,17 @@ const (
 )
 
 var (
-	_ checkinputs.ScriptBackend         = (*Plugin)(nil)
-	_ checkinputs.ScriptConfigValidator = (*Plugin)(nil)
+	_ scriptengine.Backend         = (*Plugin)(nil)
+	_ scriptengine.ConfigValidator = (*Plugin)(nil)
 )
 
 // HasScriptEngine reports whether the component implements the snippet role.
 func (p *Plugin) HasScriptEngine() bool { return p.scriptDescriptor != nil }
 
 // ScriptDescriptor returns transport-independent snippet engine metadata.
-func (p *Plugin) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (p *Plugin) ScriptDescriptor() scriptengine.Descriptor {
 	if p.scriptDescriptor == nil {
-		return checkinputs.ScriptEngineDescriptor{}
+		return scriptengine.Descriptor{}
 	}
 	return p.scriptDescriptor.Clone()
 }
@@ -68,7 +70,7 @@ func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte)
 		return err
 	}
 	contract, ok := value.(wacogo.ValString)
-	if !ok || string(contract) != checkinputs.TemplateEffectsContract {
+	if !ok || string(contract) != scriptengine.TemplateEffectsContract {
 		return errors.New("unsupported template effects contract")
 	}
 	if err := verifyTemplateMetadata(staticMetadata, string(contract)); err != nil {
@@ -139,7 +141,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 // A script-engine 0.3.0 engine also receives the excluded codes and, when it
 // requested the directory resource and the request carries a directory
 // grant, that grant mounted read-only for this call.
-func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (diagnostics []checkinputs.ScriptDiagnostic, err error) {
+func (p *Plugin) Check(ctx context.Context, request scriptengine.Request) (diagnostics []scriptengine.Diagnostic, err error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
 	}
@@ -190,12 +192,11 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 	if resultBytes > maxScriptResultBytes {
 		return nil, errors.New("script engine result exceeds 8 MiB")
 	}
-	lines := scriptLineWidths(request.Source)
-	starts := scriptLineStarts(request.Source)
-	diagnostics = make([]checkinputs.ScriptDiagnostic, 0, list.Len())
+	snippet := enginediagnostics.NewSnippet(request.Source, enginediagnostics.UniversalNewlineCoordinates)
+	diagnostics = make([]scriptengine.Diagnostic, 0, list.Len())
 	for i := range list.Len() {
 		value := list.Get(i)
-		var effect checkinputs.ScriptTemplateEffect
+		var effect scriptengine.TemplateEffect
 		if p.scriptDescriptor.TemplateContract != "" {
 			wrapped, err := liftRecord(value, "template finding")
 			if err != nil {
@@ -206,7 +207,7 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 			if err != nil {
 				return nil, err
 			}
-			effect = checkinputs.ScriptTemplateEffect(tag)
+			effect = scriptengine.TemplateEffect(tag)
 			if !effect.Valid() {
 				return nil, errors.New("unknown template effect")
 			}
@@ -220,24 +221,17 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 		if resultBytes > maxScriptResultBytes {
 			return nil, errors.New("script engine result exceeds 8 MiB")
 		}
-		if err := p.script.checkDiagnostic(&finding, p.scriptDescriptor, grant, lines, starts); err != nil {
+		if err := p.script.checkDiagnostic(&finding, p.scriptDescriptor, grant); err != nil {
 			return nil, err
 		}
-		if finding.Source != "" {
-			// Positions are the reported file's own, not the snippet's.
-			diagnostics = append(diagnostics, finding)
-			continue
+		if finding.Source == "" && (finding.Filename != request.Filename || finding.Code == "" || finding.Message == "") {
+			return nil, errors.New("script engine returned an invalid filename or diagnostic")
 		}
-		if finding.Filename != request.Filename || finding.Code == "" || finding.Message == "" ||
-			!validScriptPosition(lines, finding.Location) || !validScriptPosition(lines, finding.EndLocation) ||
-			finding.EndLocation.Row < finding.Location.Row ||
-			finding.EndLocation.Row == finding.Location.Row && finding.EndLocation.Column < finding.Location.Column {
-			return nil, errors.New("script engine returned an invalid filename, diagnostic or source range")
+		// Guests count universal newlines; the workflow source mapper uses LF
+		// rows. A reported source keeps the positions of its own file.
+		if err := snippet.Normalize(&finding); err != nil {
+			return nil, fmt.Errorf("script engine returned an invalid source range: %w", err)
 		}
-		// Guests recognize universal newlines; the workflow source mapper uses
-		// LF rows. Preserve the exact decoded-source coordinates across lone CRs.
-		finding.Location = scriptSourcePosition(starts, finding.Location)
-		finding.EndLocation = scriptSourcePosition(starts, finding.EndLocation)
 		diagnostics = append(diagnostics, finding)
 	}
 	if failure != nil {
@@ -246,46 +240,17 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 	return diagnostics, nil
 }
 
-// LF, CRLF and lone CR delimit lines; columns count Unicode scalar values.
-func scriptLineWidths(source string) []int {
-	widths := []int{0}
-	for i, character := range source {
-		if character == '\r' || character == '\n' {
-			if character == '\r' && i+1 < len(source) && source[i+1] == '\n' {
-				continue
-			}
-			widths = append(widths, 0)
-		} else {
-			widths[len(widths)-1]++
-		}
-	}
-	return widths
-}
-
-func scriptLineStarts(source string) []checkinputs.ScriptPosition {
-	return scriptcoords.Starts(source)
-}
-
-func scriptSourcePosition(starts []checkinputs.ScriptPosition, position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
-	return scriptcoords.SourcePosition(starts, position)
-}
-
-func validScriptPosition(lines []int, position checkinputs.ScriptPosition) bool {
-	return position.Row > 0 && position.Row <= len(lines) && position.Column > 0 &&
-		position.Column <= lines[position.Row-1]+1
-}
-
-func liftScriptPosition(value wacogo.Val) (checkinputs.ScriptPosition, error) {
+func liftScriptPosition(value wacogo.Val) (sourcetext.Position, error) {
 	r, err := liftRecord(value, "script position")
 	if err != nil {
-		return checkinputs.ScriptPosition{}, err
+		return sourcetext.Position{}, err
 	}
 	row, rowOK := r.Field("row").(wacogo.ValU32)
 	column, columnOK := r.Field("column").(wacogo.ValU32)
 	if !rowOK || !columnOK || uint64(row) > math.MaxInt || uint64(column) > math.MaxInt {
-		return checkinputs.ScriptPosition{}, errors.New("invalid script position")
+		return sourcetext.Position{}, errors.New("invalid script position")
 	}
-	return checkinputs.ScriptPosition{Row: int(row), Column: int(column)}, nil
+	return sourcetext.Position{Line: int(row), Column: int(column)}, nil
 }
 
 func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
@@ -306,10 +271,10 @@ func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
 
 // liftScriptDiagnostic lifts a script-engine 0.2.0 diagnostic, whose
 // severity is an enum.
-func liftScriptDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
+func liftScriptDiagnostic(value wacogo.Val) (scriptengine.Diagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
-		return checkinputs.ScriptDiagnostic{}, err
+		return scriptengine.Diagnostic{}, err
 	}
 	d, err := liftScriptDiagnosticFields(r)
 	if err != nil {
@@ -321,8 +286,8 @@ func liftScriptDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error
 
 // liftScriptDiagnosticFields lifts the diagnostic fields every
 // script-engine version shares.
-func liftScriptDiagnosticFields(r *wacogo.ValRecord) (checkinputs.ScriptDiagnostic, error) {
-	var d checkinputs.ScriptDiagnostic
+func liftScriptDiagnosticFields(r *wacogo.ValRecord) (scriptengine.Diagnostic, error) {
+	var d scriptengine.Diagnostic
 	var err error
 	for name, dest := range map[string]*string{"filename": &d.Filename, "code": &d.Code, "name": &d.Name, "message": &d.Message} {
 		if *dest, err = liftString(r, name); err != nil {
@@ -342,12 +307,12 @@ func liftScriptDiagnosticFields(r *wacogo.ValRecord) (checkinputs.ScriptDiagnost
 	return d, err
 }
 
-func liftScriptDescriptor(value wacogo.Val, reserved rule.Names) (checkinputs.ScriptEngineDescriptor, error) {
+func liftScriptDescriptor(value wacogo.Val, reserved rule.Names) (scriptengine.Descriptor, error) {
 	r, err := liftRecord(value, "script descriptor")
 	if err != nil {
-		return checkinputs.ScriptEngineDescriptor{}, err
+		return scriptengine.Descriptor{}, err
 	}
-	var d checkinputs.ScriptEngineDescriptor
+	var d scriptengine.Descriptor
 	for name, dest := range map[string]*string{"id": &d.ID, "version": &d.Version, "name": &d.Name, "engine": &d.Engine, "engine-version": &d.EngineVersion} {
 		if *dest, err = liftString(r, name); err != nil {
 			return d, err
@@ -433,7 +398,7 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 // verifyScriptMetadata checks the artifact's static metadata against the
 // descriptor the engine exported through iface, and takes the action-input
 // selectors only the static metadata declares.
-func verifyScriptMetadata(data []byte, iface string, d *checkinputs.ScriptEngineDescriptor) error {
+func verifyScriptMetadata(data []byte, iface string, d *scriptengine.Descriptor) error {
 	if data == nil {
 		if len(d.Shells) == 0 {
 			return errors.New("script descriptor needs shell or static action-input selectors")

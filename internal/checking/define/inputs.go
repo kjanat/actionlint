@@ -5,10 +5,10 @@ import (
 	"io"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
@@ -35,10 +35,10 @@ type RuleInputs struct {
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
 	Config                        *configuration.Config
-	Repository                    repository.Snapshot
+	Repository                    repository.Settings
 	Actions                       *localactions.Resolver
 	RemoteActions                 *remote.ResolvedActions
-	WorkflowSources               *reusableworkflows.Cache
+	WorkflowSources               *reusableworkflows.MetadataCache
 	Workflows                     *reusableworkflows.ResolvedWorkflows
 	WorkflowNames                 *nameindex.Index
 	WorkflowNameInventory         names.Inventory

@@ -12,10 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-func commandEscape(value string) string {
-	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(value)
-}
-
 const actionHeader = `{{define "header"}}{{if eq (printf "%.2s" .Filepath) "::"}}./{{end}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{if and .Code (ne .Code .Kind)}}{{.Code}}: {{end}}{{.Message}} [{{.Kind}}]{{end}}`
 
 const actionDefault = actionHeader + `{{range .}}{{template "header" .}}
@@ -34,9 +30,6 @@ const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.K
 {{end}}
 {{end}}`
 
-const actionGitHub = `{{range .}}::{{if eq .Severity "info"}}notice{{else if eq .Severity "warning"}}warning{{else}}error{{end}} file={{escapeProperty .Filepath}},line={{.Line}},col={{.Column}},endColumn={{.EndColumn}},title=actionlint ({{escapeProperty .Kind}}{{if and .Code (ne .Code .Kind)}}/{{escapeProperty .Code}}{{end}})::{{escapeData .Message}}{{if .Snippet}}%0A%0A{{escapeData .Snippet}}{{end}}
-{{end}}`
-
 func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, workspaceDir string) (string, error) {
 	var template string
 	switch format {
@@ -47,9 +40,8 @@ func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, 
 	case formatMarkdown:
 		template = actionMarkdown
 	case formatGitHub:
-		template = actionGitHub
 		// Only annotation serialization uses workspace-relative paths.
-		analysis = workspaceReportAnalysis(analysis, workingDir, workspaceDir)
+		return actionAnnotations(workspaceReportAnalysis(analysis, workingDir, workspaceDir)), nil
 	case formatJSON, formatJSONLines, formatSARIF:
 		// Structured formats are serialized without templates.
 		fallthrough
@@ -65,6 +57,32 @@ func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, 
 		return "", err
 	}
 	return rendered.String(), nil
+}
+
+// actionAnnotations writes one workflow command per finding. The title names
+// the rule and code; the body appends the source excerpt to the message.
+func actionAnnotations(analysis *report.Analysis) string {
+	var annotations strings.Builder
+	for _, finding := range analysis.Diagnostics {
+		fields := output.TemplateFieldsOf(finding)
+		title := "actionlint (" + fields.Kind
+		if fields.Code != "" && fields.Code != fields.Kind {
+			title += "/" + fields.Code
+		}
+		title += ")"
+		message := fields.Message
+		if fields.Snippet != "" {
+			message += "\n\n" + fields.Snippet
+		}
+		annotations.WriteString(output.FormatGitHubCommand(output.GitHubAnnotationCommand(finding.Severity), []output.GitHubCommandProperty{
+			{Name: "file", Value: fields.Filepath},
+			{Name: "line", Value: strconv.Itoa(fields.Line)},
+			{Name: "col", Value: strconv.Itoa(fields.Column)},
+			{Name: "endColumn", Value: strconv.Itoa(fields.EndColumn)},
+			{Name: "title", Value: title},
+		}, message))
+	}
+	return annotations.String()
 }
 
 func renderOutcome(result *lintResult) (*lintOutcome, string, string) {

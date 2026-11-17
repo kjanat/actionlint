@@ -12,9 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -22,9 +23,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"golang.org/x/sync/errgroup"
@@ -32,12 +33,12 @@ import (
 
 // Register selects scripts by the supplied shell names. Backends with
 // language-specific preparation can supply their own registration.
-func Register(descriptor rule.Descriptor, shells []string, backend checkinputs.ScriptBackend) (contract.Registration, error) {
-	return RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: descriptor, Shells: shells}, backend)
+func Register(descriptor rule.Descriptor, shells []string, backend scriptengine.Backend) (contract.Registration, error) {
+	return RegisterEngine(scriptengine.Descriptor{Rule: descriptor, Shells: shells}, backend)
 }
 
 // RegisterEngine routes both shell snippets and declared action-input sites.
-func RegisterEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend) (contract.Registration, error) {
+func RegisterEngine(descriptor scriptengine.Descriptor, backend scriptengine.Backend) (contract.Registration, error) {
 	return registerEngine(descriptor, backend, engineOptions{})
 }
 
@@ -71,10 +72,10 @@ type findingCapabilities struct {
 	messageTemplate string
 	// severities maps engine severities to host severities; an unmapped
 	// severity becomes a warning. Empty passes severities through.
-	severities map[string]toolmanifest.Severity
+	severities map[string]severity.Severity
 }
 
-func registerEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) (contract.Registration, error) {
+func registerEngine(descriptor scriptengine.Descriptor, backend scriptengine.Backend, options engineOptions) (contract.Registration, error) {
 	descriptor = descriptor.Clone()
 	if backend == nil {
 		return contract.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
@@ -122,7 +123,7 @@ type runner struct {
 	descriptor       rule.Descriptor
 	shells           map[string]struct{}
 	inputs           map[checkinputs.ScriptInput]struct{}
-	backend          checkinputs.ScriptBackend
+	backend          scriptengine.Backend
 	context          contract.Context
 	options          engineOptions
 	// directory sends the working directory to an engine that requested the
@@ -134,7 +135,7 @@ type runner struct {
 // takes preparation variables, reports the files the engine read and may run
 // checks at once, each holding a slot of the shared process pool.
 type processRunner interface {
-	Run(context.Context, checkinputs.ScriptRequest, map[string]string) (process.DecodedCheck, error)
+	Run(context.Context, scriptengine.Request, map[string]string) (process.DecodedCheck, error)
 	Concurrent() bool
 }
 
@@ -158,7 +159,7 @@ func (r runner) scriptEnabled(cfg *configuration.Config) bool {
 type check struct {
 	index    int
 	prepared preparation.Prepared
-	request  checkinputs.ScriptRequest
+	request  scriptengine.Request
 	scope    *scriptanalysis.Scope
 }
 
@@ -166,7 +167,8 @@ type check struct {
 // had a directory grant, holds the display copy of each reported source read
 // through that grant; reported sources missing from it are unreadable.
 type outcome struct {
-	diagnostics []checkinputs.ScriptDiagnostic
+	skipped     bool
+	diagnostics []scriptengine.Diagnostic
 	sources     []string
 	directory   string
 	copies      map[string]reportedFile
@@ -186,6 +188,9 @@ func (r runner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]cont
 		findings, err := r.findings(c, batch.Scripts[c.index], outcomes[i])
 		out = append(out, findings...)
 		failures = errors.Join(failures, outcomes[i].err, err)
+		if !outcomes[i].skipped && outcomes[i].err == nil && err == nil && r.context.Completed != nil {
+			r.context.Completed(r.descriptor.Name)
+		}
 	}
 	return out, failures
 }
@@ -256,21 +261,21 @@ func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]chec
 			failures = errors.Join(failures, fmt.Errorf("tool %s options: %w", r.descriptor.Name, err))
 			continue
 		}
-		if validator, ok := r.backend.(checkinputs.ScriptConfigValidator); ok {
+		if validator, ok := r.backend.(scriptengine.ConfigValidator); ok {
 			if err := validator.ValidateConfig(ctx, options); err != nil {
 				failures = errors.Join(failures, err)
 				continue
 			}
 		}
-		if validator, ok := r.backend.(checkinputs.ScriptTemplateValidator); ok && prepared.TemplateContract != "" {
+		if validator, ok := r.backend.(scriptengine.TemplateValidator); ok && prepared.TemplateContract != "" {
 			available, err := validator.ValidateTemplates(ctx)
 			if err != nil || !available {
 				failures = errors.Join(failures, err)
 				continue
 			}
 		}
-		request := checkinputs.ScriptRequest{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
-		request.Environment = checkinputs.ScriptEnvironments(script.Environment)
+		request := scriptengine.Request{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
+		request.Environment = script.Environment
 		// Process backends and engines that requested the directory resource
 		// receive the directory.
 		if directory, known := script.WorkingDirectory(); (reporting || r.directory) && known {
@@ -289,7 +294,7 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 	run := func(i int) {
 		if reporting {
 			result, err := processes.Run(ctx, checks[i].request, checks[i].prepared.Vars)
-			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, err: err}
+			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, skipped: result.Skipped, err: err}
 			return
 		}
 		outcomes[i] = r.checkGranted(ctx, checks[i])
@@ -329,15 +334,15 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 			}
 			// Template effects describe the masked snippet. A file the engine
 			// read has no template expressions, so it carries none.
-			if d.TemplateEffect != "" && d.TemplateEffect != checkinputs.TemplateEffectNone {
+			if d.TemplateEffect != "" && d.TemplateEffect != scriptengine.TemplateEffectNone {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned template effect %q for reported source %q", r.descriptor.Name, d.TemplateEffect, d.Source))
 				continue
 			}
 			out = append(out, r.reportedFinding(c.index, script, d, result, files))
 			continue
 		}
-		if r.templateContract == checkinputs.TemplateEffectsContract && !d.TemplateEffect.Valid() ||
-			r.templateContract != checkinputs.TemplateEffectsContract && d.TemplateEffect != "" {
+		if r.templateContract == scriptengine.TemplateEffectsContract && !d.TemplateEffect.Valid() ||
+			r.templateContract != scriptengine.TemplateEffectsContract && d.TemplateEffect != "" {
 			failures = errors.Join(failures, fmt.Errorf("tool %s returned an undeclared template effect %q", r.descriptor.Name, d.TemplateEffect))
 			continue
 		}
@@ -369,16 +374,16 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 // generated startup line is dropped unless its severity is error. An
 // unmapped start falls back to the script key; an unmapped or reversed end is
 // dropped.
-func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs.ScriptDiagnostic) (*contract.ToolFinding, error) {
-	row, endRow := d.Location.Row, d.EndLocation.Row
-	hasEnd := d.EndLocation != (checkinputs.ScriptPosition{})
+func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d scriptengine.Diagnostic) (*contract.ToolFinding, error) {
+	row, endRow := d.Location.Line, d.EndLocation.Line
+	hasEnd := d.EndLocation != (sourcetext.Position{})
 	if lines := c.prepared.LineMap; lines != nil {
-		start := lines(d.Location.Row)
+		start := lines(d.Location.Line)
 		switch start.Origin {
 		case preparation.LineScript:
 			row = start.Line
 		case preparation.LineStartup:
-			if r.severity(d.Severity) != toolmanifest.SeverityError {
+			if r.severity(d.Severity) != severity.Error {
 				r.debug("%s: dropped %s on the generated startup line: %s", r.descriptor.Name, d.Code, d.Message)
 				return nil, nil
 			}
@@ -387,7 +392,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs
 			return nil, r.configurationError(d)
 		}
 		if hasEnd {
-			end := lines(d.EndLocation.Row)
+			end := lines(d.EndLocation.Line)
 			endRow, hasEnd = end.Line, end.Origin == preparation.LineScript
 		}
 	}
@@ -404,7 +409,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := contract.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
+	finding := contract.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: r.severity(d.Severity), DocumentationURL: d.URL, Start: *start, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source(), c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)
@@ -415,7 +420,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs
 
 // configurationError reports a diagnostic on a line preparation generated
 // from the tool's configuration.
-func (r runner) configurationError(d checkinputs.ScriptDiagnostic) error {
+func (r runner) configurationError(d scriptengine.Diagnostic) error {
 	if d.Code == "" {
 		return fmt.Errorf("tools.%s.config: %s", r.descriptor.Name, d.Message)
 	}
@@ -424,7 +429,7 @@ func (r runner) configurationError(d checkinputs.ScriptDiagnostic) error {
 
 // message formats a finding message from the manifest's template. Row and
 // column are script coordinates after line mapping.
-func (r runner) message(d checkinputs.ScriptDiagnostic, row, column int) string {
+func (r runner) message(d scriptengine.Diagnostic, row, column int) string {
 	if r.options.findings.messageTemplate == "" {
 		return d.Message
 	}
@@ -433,10 +438,10 @@ func (r runner) message(d checkinputs.ScriptDiagnostic, row, column int) string 
 
 // severity maps an engine severity to a host severity through the
 // manifest's table, logging a severity the table does not list.
-func (r runner) severity(severity string) toolmanifest.Severity {
-	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(severity)
+func (r runner) severity(tool string) severity.Severity {
+	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(tool)
 	if !listed {
-		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, severity, mapped)
+		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, tool, mapped)
 	}
 	return mapped
 }
@@ -476,15 +481,15 @@ func inputFilename(site checkinputs.ScriptInput, extension string) string {
 }
 
 func scriptShell(script scriptanalysis.Unit) string {
-	shell, implicit := script.RuntimeShell()
-	if shell == "" && script.Shell != nil {
-		shell = *script.Shell
+	shell := script.RuntimeShell()
+	if !shell.Known() && script.Shell != nil {
+		shell.Name = *script.Shell
 	}
 	registry := script.Interpreters
 	if registry == nil {
-		registry = interpreters.Builtin()
+		registry = commands.BuiltinShells()
 	}
-	invocation := registry.Analyze(shell, implicit)
+	invocation := registry.Analyze(shell.Name, shell.Implicit)
 	if invocation.Status == commands.Valid && invocation.Input == "file" && invocation.Language != "" {
 		return invocation.Language
 	}

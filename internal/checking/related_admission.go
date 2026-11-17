@@ -3,8 +3,8 @@ package checking
 import (
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

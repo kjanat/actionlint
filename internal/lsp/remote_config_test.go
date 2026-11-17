@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -34,12 +35,12 @@ func TestEditorRemoteConfigUsesSessionConnections(t *testing.T) {
 			if err := os.WriteFile(path, []byte("on: push\npermissions: {}\njobs: {}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			options := checking.Options{WorkingDir: root, ConfigFile: config}
 			sources := pluginselection.Sources{Acquisition: acquisition}
 			if explicit {
 				options.ConfigConnections = registry.Connections()
-				sources.Acquisition = pluginacquisition.Options{}
+				sources.Acquisition = dependencycache.Acquisition{}
 			}
 			session, err := newEditorSources(t.Context(), options, sources)
 			if err != nil {
@@ -50,7 +51,7 @@ func TestEditorRemoteConfigUsesSessionConnections(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			documents := map[string]Document{path: {URI: FileURI(path), Version: 1, Text: "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"}}
+			documents := map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 1, Text: "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"}}
 			result, err := session.analyze(t.Context(), documents)
 			if err != nil {
 				t.Fatal(err)

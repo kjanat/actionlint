@@ -7,10 +7,10 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )

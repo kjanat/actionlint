@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -104,7 +104,7 @@ func newOCICandidate(t *testing.T, kind artifacts.ArtifactFormat) ociCandidateFi
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
-	client, err := pluginregistry.New(u.String(), pluginacquisition.Options{UserCacheDir: cache})
+	client, err := pluginregistry.New(u.String(), dependencycache.Acquisition{UserCacheDir: cache})
 	if err != nil {
 		t.Fatal(err)
 	}

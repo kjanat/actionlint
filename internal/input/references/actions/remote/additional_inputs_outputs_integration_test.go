@@ -98,7 +98,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			if !exists {
 				t.Fatal("fixture job is missing")
 			}
-			checker := expressions.New(expressions.Dependencies{Action: func(spec string) (actionmeta.Definition, error) {
+			checker := expressions.NewVisitor(expressions.Dependencies{Action: func(spec string) (actionmeta.Definition, error) {
 				return service.Lookup(t.Context(), spec)
 			}}, expressions.Options{})
 			if err := checker.VisitWorkflowPre(view); err != nil {

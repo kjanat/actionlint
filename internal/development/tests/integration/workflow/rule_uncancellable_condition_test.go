@@ -33,7 +33,7 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Rule != "uncancellable-condition" || findings[0].Severity != tc.severity || findings[0].Start.Line != 5 {
+			if len(findings) != 1 || findings[0].Rule != "uncancellable-condition" || string(findings[0].Severity) != tc.severity || findings[0].Start.Line != 5 {
 				t.Fatalf("unexpected findings: %+v", findings)
 			}
 			if len(findings[0].Fixes) != 1 || findings[0].Fixes[0].Edits[0].Path != "test.yaml" {

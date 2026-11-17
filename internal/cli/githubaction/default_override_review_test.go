@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func TestDefaultRuffEnabledByWorkflowOverride(t *testing.T) {
@@ -16,7 +16,7 @@ func TestDefaultRuffEnabledByWorkflowOverride(t *testing.T) {
 		"python.yml":             "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
 		"bash.yml":               "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
 	})
-	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "python.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 	req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 	if err != nil {

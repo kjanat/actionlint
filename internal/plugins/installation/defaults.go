@@ -5,10 +5,10 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // DefaultPluginOptions selects registry defaults for tools without an explicit
@@ -24,7 +24,7 @@ type DefaultPluginOptions struct {
 	// Rules supplies already inspected plugin descriptors. Missing descriptors
 	// are read from local or cached provider manifests, never by executing guests.
 	Rules       []rule.Descriptor
-	Acquisition pluginacquisition.Options
+	Acquisition dependencycache.Acquisition
 }
 
 // DefaultReferences supplies the v2 defaults only when plugins was omitted.

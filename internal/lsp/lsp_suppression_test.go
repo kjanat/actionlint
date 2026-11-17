@@ -10,9 +10,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -22,7 +22,7 @@ func TestEditorUnusedSuppressionQuickFix(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
-	uri := FileURI(path)
+	uri := sourcetext.FileURI(path)
 	const line = "      - run: echo 😀 # ignore[expression-reference, script-interpolation]"
 	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n" + line + "\n" + "\npermissions: {}\n"
 	publication, logs := firstEditorPublication(t, func(ctx context.Context, documents map[string]Document) (Analysis, error) {
@@ -77,7 +77,7 @@ func TestEditorSuppressionQuickFix(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
-	uri := FileURI(path)
+	uri := sourcetext.FileURI(path)
 	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo '::set-output name=result::value'\n        shell: bash\npermissions: {}\n"
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	publication, logs := firstEditorPublication(t, func(ctx context.Context, documents map[string]Document) (Analysis, error) {
@@ -159,7 +159,7 @@ func TestEditorSuppressionRespectsPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: \"echo '::set-output name=x::y'\"}]}}\npermissions: {}\n"
-	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}}, map[string]Document{path: {URI: FileURI(path), Version: 1, Text: text}})
+	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}}, map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 1, Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 {
 		t.Fatalf("fixture analysis: %+v, %v", analysis.Diagnostics, err)
 	}
@@ -181,7 +181,7 @@ func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
 		result := &report.Analysis{
 			Diagnostics: []results.PublishedDiagnostic{{
 				Path: script, Rule: "plugin-check", Start: sourcetext.Position{Line: 1, Column: 1},
-				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}},
+				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, Lines: sourcetext.LineRange{First: 1, Last: 2}}},
 			}},
 			CapturedSources: map[string]report.CapturedSource{script: reportfixture.CapturedSource(t, script, raw, sourcetext.YAML)},
 			Rules:           []rule.Descriptor{{Name: "plugin-check"}},
@@ -189,7 +189,7 @@ func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
 		if available {
 			result.CapturedSources[workflow] = captured
 		}
-		analysis, err := FromReport(result, root, map[string]Document{workflow: {URI: FileURI(workflow), Version: 8, Text: string(yaml)}})
+		analysis, err := FromReport(result, root, map[string]Document{workflow: {URI: sourcetext.FileURI(workflow), Version: 8, Text: string(yaml)}})
 		if err != nil || len(analysis.Diagnostics) != 1 {
 			t.Fatalf("origin fixture failed: %+v, %v", analysis.Diagnostics, err)
 		}

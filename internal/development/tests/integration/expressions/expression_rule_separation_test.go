@@ -103,7 +103,7 @@ func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
 			}
 			if want == 1 {
 				finding := result.Diagnostics[0]
-				if finding.Rule != "expression-call" || finding.Code != "format-placeholder" || finding.Severity != tc.severity || finding.Start.Line != 6 || !strings.Contains(finding.Message, "unused in the format string") {
+				if finding.Rule != "expression-call" || finding.Code != "format-placeholder" || string(finding.Severity) != tc.severity || finding.Start.Line != 6 || !strings.Contains(finding.Message, "unused in the format string") {
 					t.Fatalf("wrong finding: %+v", finding)
 				}
 			}

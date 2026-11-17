@@ -124,7 +124,7 @@ func TestRepositoryNullThenPartialRetainsUnknownFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := repository.Snapshot{Service: svc, RunnerLabels: labels}
+	host := repository.Settings{Service: svc, RunnerLabels: labels}
 	got := loaded.Config.Repository.Apply(host)
 	if got.Service.Kind() != services.GitHubCom || got.RunnerLabels.Reason() != availability.NotFetchedReason {
 		t.Fatalf("repository facts after reset: %+v", got)

@@ -214,7 +214,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	next.Overrides = nil
 	next.Lint.locations = origins
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
-	next.Paths, next.Policy = nil, Policy{}
+	next.Paths, next.Policy = nil, PolicyConfig{}
 	ruleSet.projectSettings(&next)
 	return &next, nil
 }

@@ -6,23 +6,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-func TestNativeCatalogOwnsDeclarationsAndRegistrationOrder(t *testing.T) {
+func TestNativeCatalogOwnsDeclarationsAndOrder(t *testing.T) {
 	t.Parallel()
 	declarations := Declarations()
 	if len(declarations) == 0 {
 		t.Fatal("native catalog is empty")
 	}
-	rules, err := configuration.NewRuleSet(declarations)
-	if err != nil {
+	if _, err := configuration.NewRuleSet(declarations); err != nil {
 		t.Fatal(err)
 	}
-	registrations := Registrations(rules)
-	if len(registrations) != len(declarations) {
-		t.Fatalf("got %d registrations for %d declarations", len(registrations), len(declarations))
+	if len(All) != len(declarations) {
+		t.Fatalf("got %d native rules for %d declarations", len(All), len(declarations))
 	}
 	for i, declaration := range declarations {
-		if registrations[i].Name != declaration.Name {
-			t.Fatalf("registration %d is %q, want %q", i, registrations[i].Name, declaration.Name)
+		if All[i].Name != declaration.Name {
+			t.Fatalf("native rule %d is %q, want %q", i, All[i].Name, declaration.Name)
 		}
 	}
 	for i := range declarations {

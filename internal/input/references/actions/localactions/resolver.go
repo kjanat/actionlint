@@ -9,14 +9,15 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+	"actionlint.kjanat.dev/v2/internal/input/runnerpaths"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -40,7 +41,7 @@ type ActionMetadataDocumentLookup interface {
 type Resolver struct {
 	repositorySource     func(string) (RepositoryDocument, error)
 	runners              *runners.Knowledge
-	base                 *Cache
+	base                 *ManifestCache
 	prepared             preparedAction
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
@@ -54,7 +55,7 @@ type Resolver struct {
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
 	shellEnvUnknown      bool
-	checkoutShell        execution.Shell
+	checkoutShell        scripts.Shell
 }
 
 // resolverDocuments owns the consulted-source map and its synchronization.
@@ -92,7 +93,7 @@ func (d SourceDocument) Provenance() parsing.Provenance { return d.provenance }
 
 // NewResolver starts a document scope over shared repository metadata and takes
 // its own immutable copy of the source mappings.
-func NewResolver(cache *Cache, checkoutMappings map[string]string) *Resolver {
+func NewResolver(cache *ManifestCache, checkoutMappings map[string]string) *Resolver {
 	return &Resolver{base: cache, sourceMappings: maps.Clone(checkoutMappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
 }
 

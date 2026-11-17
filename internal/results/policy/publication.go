@@ -1,12 +1,14 @@
 package policy
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -17,7 +19,7 @@ import (
 // Sources and References must contain only sources accepted by final capture validation.
 type Batch struct {
 	Processor          Processor
-	Policy             Policy
+	Policy             DocumentInputs
 	Project, InputPath string
 	Source             sourcetext.Revision
 	Action             bool
@@ -28,10 +30,13 @@ type Batch struct {
 }
 
 // Publication contains the retained findings in batch order and their public projections.
+// InlineSuppressions lists each rule named by an inline directive in an
+// evaluated source once, ordered by path, line and rule.
 type Publication struct {
-	Diagnostics      []results.PublishedDiagnostic
-	Findings         [][]*finding.Finding
-	IncompleteChecks []report.IncompleteCheck
+	Diagnostics        []results.PublishedDiagnostic
+	Findings           [][]*finding.Finding
+	IncompleteChecks   []report.IncompleteCheck
+	InlineSuppressions []report.InlineSuppression
 }
 
 // obligation is issued by a policy evaluator, never by a diagnostic producer.
@@ -49,6 +54,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 	usage := suppressionUses{}
 	sourceCopies := sourceCopies{}
 	records := finding.NewCopier()
+	declared := make(map[report.InlineSuppression]struct{})
 	failedSources := make(map[checkRevision]bool)
 	for _, check := range incomplete {
 		if check.Rule == "" {
@@ -94,6 +100,9 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 				usage.observe(index.Document, position, rule)
 			}
 		}
+		p.declaredSuppression = func(path string, position sourcetext.Position, rule string) {
+			declared[report.InlineSuppression{Path: path, Line: position.Line, Rule: rule}] = struct{}{}
+		}
 		sources := maps.Clone(batch.Sources)
 		if sources == nil {
 			sources = make(map[string][]byte)
@@ -116,8 +125,13 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 	usage.discardUnproven(files, incomplete)
 	addUnusedSuppressionFixes(files)
 	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*finding.Finding, len(files)), IncompleteChecks: incomplete}
+	result.InlineSuppressions = slices.SortedFunc(maps.Keys(declared), compareInlineSuppressions)
 	for i, file := range files {
 		result.Findings[i] = file.Findings
 	}
 	return result, resultErr
+}
+
+func compareInlineSuppressions(a, b report.InlineSuppression) int {
+	return cmp.Or(strings.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line), strings.Compare(a.Rule, b.Rule))
 }

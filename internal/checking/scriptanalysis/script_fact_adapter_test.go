@@ -20,7 +20,7 @@ type factAdapterAnalyzer struct {
 }
 
 func (a factAdapterAnalyzer) Descriptor() checkinputs.Descriptor { return a.descriptor }
-func (a factAdapterAnalyzer) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a factAdapterAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return a.run(ctx, input)
 }
 
@@ -137,7 +137,7 @@ func (a *factDescriptorCounter) Descriptor() checkinputs.Descriptor {
 	return a.descriptor
 }
 
-func (a *factDescriptorCounter) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *factDescriptorCounter) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.analyzeCalls++
 	return nil, nil
 }

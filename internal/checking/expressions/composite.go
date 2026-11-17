@@ -8,7 +8,7 @@ import (
 
 // BeginComposite initializes the expression contexts owned by one action invocation.
 // Caller values are unknown; step output declarations are added as steps execute.
-func (rule *Checker) BeginComposite(body workflows.ActionBody) {
+func (rule *Visitor) BeginComposite(body workflows.ActionBody) {
 	rule.compositeScript = true
 	rule.inputsTy = new(exprtypes.NewMapObjectType(exprtypes.StringType()))
 	rule.stepsTy = new(exprtypes.NewMapObjectType(exprtypes.AnyType()))
@@ -18,14 +18,14 @@ func (rule *Checker) BeginComposite(body workflows.ActionBody) {
 
 // CheckCompositeStep checks invocation-dependent references and script sinks.
 // Declaration validation owns syntax, context availability and call diagnostics.
-func (rule *Checker) CheckCompositeStep(step workflows.BoundStep) error {
+func (rule *Visitor) CheckCompositeStep(step workflows.BoundStep) error {
 	mark := len(rule.errs)
 	err := rule.VisitStep(step)
 	rule.filterCompositeFindings(mark)
 	return err
 }
 
-func (rule *Checker) filterCompositeFindings(mark int) {
+func (rule *Visitor) filterCompositeFindings(mark int) {
 	findings := rule.errs[mark:]
 	rule.errs = rule.errs[:mark]
 	for _, finding := range findings {
@@ -36,7 +36,7 @@ func (rule *Checker) filterCompositeFindings(mark int) {
 }
 
 // CheckCompositeOutputs checks output values against the invocation's final steps.
-func (rule *Checker) CheckCompositeOutputs(body workflows.ActionBody) {
+func (rule *Visitor) CheckCompositeOutputs(body workflows.ActionBody) {
 	mark := len(rule.errs)
 	for output := range body.OutputValues() {
 		rule.checkString(output, "jobs.<job_id>.outputs.<output_id>")

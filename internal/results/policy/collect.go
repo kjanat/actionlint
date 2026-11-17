@@ -5,7 +5,8 @@ import (
 	"reflect"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -28,8 +29,9 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 		}
 	}
 	type metadataLocation struct {
-		project, kind, severity string
-		finding                 finding.MetadataKey
+		project, kind string
+		severity      severity.Severity
+		finding       finding.MetadataKey
 	}
 	seenMetadata := make(map[metadataLocation][]int)
 	type declarationLocation struct {

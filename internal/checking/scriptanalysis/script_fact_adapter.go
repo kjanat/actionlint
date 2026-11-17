@@ -7,27 +7,27 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type FactAnalyzer struct {
-	Analyzer         checkinputs.Checker
+	Analyzer         results.Analyzer
 	Options          json.RawMessage
 	IncludeExecution bool
 }
 
-type describedFactChecker struct {
-	checkinputs.Checker
+type describedFactAnalyzer struct {
+	results.Analyzer
 	descriptor checkinputs.Descriptor
 }
 
-func (c describedFactChecker) Descriptor() checkinputs.Descriptor { return c.descriptor }
+func (c describedFactAnalyzer) Descriptor() checkinputs.Descriptor { return c.descriptor }
 
 func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*finding.Finding, error) {
 	if !batch.Valid() {
@@ -37,11 +37,11 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if adapter.IncludeExecution {
 		available = append(available, rule.Execution)
 	}
-	if validation.IsNil(adapter.Analyzer) {
+	if results.IsNilAnalyzer(adapter.Analyzer) {
 		return nil, errors.New("nil analyzer registration")
 	}
 	descriptor := adapter.Analyzer.Descriptor()
-	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
+	described := describedFactAnalyzer{Analyzer: adapter.Analyzer, descriptor: descriptor}
 	prepared := make(map[binding.ID]executor.PreparedRegistration)
 	for _, scope := range batch.Scopes {
 		var identity binding.ID
@@ -58,7 +58,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if _, exists := prepared[identity]; exists {
 			continue
 		}
-		registration, err := executor.Prepare(checkinputs.Registration{Checker: checker, Options: options}, available)
+		registration, err := executor.Prepare(results.AnalyzerRegistration{Analyzer: described, Options: options}, available)
 		if err != nil {
 			return nil, err
 		}

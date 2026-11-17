@@ -3,8 +3,8 @@ package remote
 import (
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
@@ -26,7 +26,7 @@ func allowReviewedAdditionalInputs(manifest actions.Manifest, definition actionm
 	if identity.Host() == "github.com" && repositoryMatches &&
 		identity.Commit() == "3d6703deef41a82916a2e5ca87096f93035cef66" &&
 		identity.Directory() == "" && manifest.Filename() == "action.yml" &&
-		sourcetext.ContentDigest([]byte(manifest.Content())) == "bb286e504a0e382a926ee922bd1cd2dd15d390b60220cc9bf97e442db65ebd80" {
+		sha256hex.Digest([]byte(manifest.Content())) == "bb286e504a0e382a926ee922bd1cd2dd15d390b60220cc9bf97e442db65ebd80" {
 		return definition.WithAdditionalInputs()
 	}
 	return definition

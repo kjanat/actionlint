@@ -6,6 +6,7 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -45,7 +46,7 @@ func scriptEvaluatesArguments(command string, arguments []*syntax.Word) bool {
 	return false
 }
 
-func (rule *Checker) addScriptEnvironmentFix(report *report) {
+func (rule *Visitor) addScriptEnvironmentFix(report *report) {
 	first := rule.expressionOffset - 3
 	replacement, ok := rule.scriptEnvironment[first]
 	if !ok || !replacement.environment.Available(rule.compositeScript) {
@@ -62,7 +63,7 @@ func (rule *Checker) addScriptEnvironmentFix(report *report) {
 	}
 	report.fixes = append(report.fixes, results.Fix{
 		Description:   "Use the existing " + replacement.environment.Name() + " environment variable",
-		Applicability: results.FixSuggested,
+		Applicability: applicability.Suggested,
 		Edits:         []results.Edit{edit},
 	})
 }

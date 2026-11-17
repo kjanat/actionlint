@@ -8,7 +8,8 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/scriptcoords"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine/enginediagnostics"
 	"github.com/kjanat/wacogo"
 )
 
@@ -17,7 +18,7 @@ const scriptDirectoryMount = "/directory"
 
 // liftScriptCapabilities reads the capabilities of a script-engine 0.3.0
 // descriptor into d.
-func liftScriptCapabilities(value wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error {
+func liftScriptCapabilities(value wacogo.Val, d *scriptengine.Descriptor) error {
 	r, err := liftRecord(value, "script capabilities")
 	if err != nil {
 		return err
@@ -56,7 +57,7 @@ type scriptGrant struct {
 // engine requested the directory resource. The component never opens a
 // path itself: the caller confines the grant to the workspace and records
 // the reads. Without a grant the engine sees no files.
-func grantScriptResources(request checkinputs.ScriptRequest, d *checkinputs.ScriptEngineDescriptor) scriptGrant {
+func grantScriptResources(request scriptengine.Request, d *scriptengine.Descriptor) scriptGrant {
 	if request.DirectoryFS == nil || !slices.Contains(d.Resources, checkinputs.ToolDirectory) {
 		return scriptGrant{}
 	}
@@ -74,7 +75,7 @@ type staticScriptCapabilities struct {
 
 // readStaticScriptCapabilities03 takes the script-engine 0.3.0
 // capabilities of static metadata into d.
-func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error {
+func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *scriptengine.Descriptor) error {
 	d.Fixes, d.ReportedSources = declared.Fixes, declared.ReportedSources
 	for _, resource := range declared.Resources {
 		if resource != checkinputs.ToolDirectory || slices.Contains(d.Resources, resource) {
@@ -86,7 +87,7 @@ func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *checki
 }
 
 // lowerScriptRequest03 builds a script-engine 0.3.0 request.
-func lowerScriptRequest03(request checkinputs.ScriptRequest, options string, grant scriptGrant) *wacogo.ValRecord {
+func lowerScriptRequest03(request scriptengine.Request, options string, grant scriptGrant) *wacogo.ValRecord {
 	excluded := make([]wacogo.Val, len(request.Excluded))
 	for i, code := range request.Excluded {
 		excluded[i] = wacogo.ValString(code)
@@ -112,10 +113,10 @@ func validExcluded(codes []string) bool {
 
 // liftScriptDiagnostic03 lifts a script-engine 0.3.0 diagnostic, including
 // its reported source and fixes.
-func liftScriptDiagnostic03(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
+func liftScriptDiagnostic03(value wacogo.Val) (scriptengine.Diagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
-		return checkinputs.ScriptDiagnostic{}, err
+		return scriptengine.Diagnostic{}, err
 	}
 	d, err := liftScriptDiagnosticFields(r)
 	if err != nil {
@@ -130,7 +131,7 @@ func liftScriptDiagnostic03(value wacogo.Val) (checkinputs.ScriptDiagnostic, err
 	}
 	if source != nil {
 		d.Source = *source
-		if !scriptcoords.ReportedSource(d.Source) {
+		if !enginediagnostics.ValidReportedSource(d.Source) {
 			return d, fmt.Errorf("script engine reported invalid source %q", d.Source)
 		}
 	}
@@ -148,12 +149,12 @@ func liftScriptDiagnostic03(value wacogo.Val) (checkinputs.ScriptDiagnostic, err
 	return d, nil
 }
 
-func liftScriptFix(value wacogo.Val) (checkinputs.ScriptFix, error) {
+func liftScriptFix(value wacogo.Val) (scriptengine.Fix, error) {
 	r, err := liftRecord(value, "script fix")
 	if err != nil {
-		return checkinputs.ScriptFix{}, err
+		return scriptengine.Fix{}, err
 	}
-	var fix checkinputs.ScriptFix
+	var fix scriptengine.Fix
 	if fix.Description, err = liftString(r, "description"); err != nil {
 		return fix, err
 	}
@@ -181,15 +182,15 @@ func liftScriptFix(value wacogo.Val) (checkinputs.ScriptFix, error) {
 		if err != nil {
 			return fix, err
 		}
-		fix.Replacements = append(fix.Replacements, checkinputs.ScriptReplacement{Row: start.Row, Column: start.Column, EndRow: end.Row, EndColumn: end.Column, Text: text})
+		fix.Replacements = append(fix.Replacements, scriptengine.Replacement{Start: start, End: end, Text: text})
 	}
 	return fix, nil
 }
 
 // checkScriptDiagnostic03 validates the 0.3.0 parts of a diagnostic against
-// the engine's capabilities and this check's grant, and converts fix
-// positions to decoded-source rows as the diagnostic's own.
-func checkScriptDiagnostic03(d *checkinputs.ScriptDiagnostic, descriptor *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
+// the engine's capabilities and this check's grant. Positions and fix ranges
+// are validated by enginediagnostics, as every transport's are.
+func checkScriptDiagnostic03(d *scriptengine.Diagnostic, descriptor *scriptengine.Descriptor, grant scriptGrant) error {
 	if d.Severity == "" {
 		return errors.New("script engine returned a diagnostic without a severity")
 	}
@@ -201,38 +202,20 @@ func checkScriptDiagnostic03(d *checkinputs.ScriptDiagnostic, descriptor *checki
 			return fmt.Errorf("script engine %s reported a finding in %q without a granted directory", descriptor.ID, d.Source)
 		case len(d.Fixes) != 0:
 			return fmt.Errorf("script engine %s returned fixes for reported source %q", descriptor.ID, d.Source)
-		case d.Code == "" || d.Message == "" || !orderedScriptRange(d.Location, d.EndLocation):
-			return errors.New("script engine returned an invalid diagnostic or source range")
+		case d.Code == "" || d.Message == "":
+			return errors.New("script engine returned an invalid diagnostic")
 		}
 		return nil
 	}
 	if len(d.Fixes) != 0 && !descriptor.Fixes {
 		return fmt.Errorf("script engine %s returned fixes but does not declare them", descriptor.ID)
 	}
-	for i := range d.Fixes {
-		for j := range d.Fixes[i].Replacements {
-			r := &d.Fixes[i].Replacements[j]
-			start, end := checkinputs.ScriptPosition{Row: r.Row, Column: r.Column}, checkinputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn}
-			if !validScriptPosition(lines, start) || !validScriptPosition(lines, end) || !orderedScriptRange(start, end) {
-				return errors.New("script engine returned a fix with an invalid source range")
-			}
-			start, end = scriptSourcePosition(starts, start), scriptSourcePosition(starts, end)
-			r.Row, r.Column, r.EndRow, r.EndColumn = start.Row, start.Column, end.Row, end.Column
-		}
-	}
 	return nil
-}
-
-// orderedScriptRange reports whether a range has positive coordinates and
-// does not end before it starts.
-func orderedScriptRange(start, end checkinputs.ScriptPosition) bool {
-	return start.Row > 0 && start.Column > 0 && end.Row > 0 && end.Column > 0 &&
-		(end.Row > start.Row || end.Row == start.Row && end.Column >= start.Column)
 }
 
 // scriptDiagnosticBytes counts the text a diagnostic carries towards the
 // result limit.
-func scriptDiagnosticBytes(d checkinputs.ScriptDiagnostic) uint64 {
+func scriptDiagnosticBytes(d scriptengine.Diagnostic) uint64 {
 	total := uint64(0)
 	for _, text := range []string{d.Filename, d.Code, d.Name, d.Message, d.Severity, d.URL, d.Source} {
 		total += uint64(len(text))

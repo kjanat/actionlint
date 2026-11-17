@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func TestDoctorToolPresentation(t *testing.T) {
@@ -22,7 +22,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	}
 	request := doctorRequest{Config: configuration.ConfigFileSelection{Disabled: true}, Tools: registry.ToolSelections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
 	var text, data bytes.Buffer
-	if err := writeDoctor(t.Context(), &text, request, pluginacquisition.Options{}); err != nil {
+	if err := writeDoctor(t.Context(), &text, request, dependencycache.Acquisition{}); err != nil {
 		t.Fatal(err)
 	}
 	values := map[string]string{}
@@ -45,7 +45,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
-	if err := writeDoctor(t.Context(), &data, request, pluginacquisition.Options{}); err != nil {
+	if err := writeDoctor(t.Context(), &data, request, dependencycache.Acquisition{}); err != nil {
 		t.Fatal(err)
 	}
 	var report struct {

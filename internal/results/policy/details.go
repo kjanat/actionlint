@@ -3,7 +3,8 @@ package policy
 import (
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -34,7 +35,7 @@ func (processor Processor) completeDiagnostic(d *results.Diagnostic, content []b
 		}
 		for _, edit := range f.Edits {
 			if filepath.Clean(edit.Path) == filepath.Clean(d.Path) && f.Revisions[edit.Path] == "" {
-				f.Revisions[edit.Path] = sourcetext.ContentDigest(content)
+				f.Revisions[edit.Path] = sha256hex.Digest(content)
 			}
 		}
 	}

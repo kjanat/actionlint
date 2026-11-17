@@ -28,7 +28,7 @@ func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
 					t.Fatal(err)
 				}
 				item := &finding.Finding{Rule: "shellcheck", Code: "SC2086", Message: message}
-				var policy Policy
+				var policy DocumentInputs
 				var paths []configuration.PathConfig
 				if scope == "global" {
 					policy.IgnorePatterns = patterns

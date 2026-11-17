@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -132,8 +133,8 @@ func validate(m Manifest) error {
 	if p.Version == nil || p.Version.TemplateEffects == "" {
 		return errors.New("process.template_effects requires process.version.template_effects, the reviewed engine version")
 	}
-	if m.Capabilities.TemplateContract != checkinputs.TemplateEffectsContract {
-		return fmt.Errorf("process.template_effects requires capabilities.template_contract %q", checkinputs.TemplateEffectsContract)
+	if m.Capabilities.TemplateContract != scriptengine.TemplateEffectsContract {
+		return fmt.Errorf("process.template_effects requires capabilities.template_contract %q", scriptengine.TemplateEffectsContract)
 	}
 	for code, effect := range p.TemplateEffects {
 		if !effect.Valid() {

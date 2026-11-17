@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -37,11 +36,8 @@ type Document struct {
 	Provenance Provenance
 }
 
-// Provenance seals the source text and declarations published by one decode,
-// before a registry assigns them a document identity. Only this package
-// creates it, so admission cannot bind a hand-built tree to captured bytes;
-// its zero value has no parse provenance. SourceSnapshots binds it to a
-// workflows.BoundDocument once the capture names the document.
+// Provenance associates source text with the declarations decoded from it.
+// SourceSnapshots binds it to a workflows.BoundDocument during admission.
 type Provenance struct {
 	parsed   bool
 	text     string
@@ -133,7 +129,7 @@ func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
 		if job.Outputs == nil {
 			job.Outputs = make(map[string]*definition.Output)
 		}
-		job.Outputs[field.FieldPath] = &definition.Output{Value: &definition.String{Value: field.Value.Value, Pos: &sourcetext.Position{Line: field.Value.Line, Column: field.Value.Column}}}
+		job.Outputs[field.FieldPath] = &definition.Output{Value: &definition.String{Value: field.Value.Value, Pos: new(field.Value.Position)}}
 	}
 	workflow := &definition.Workflow{Jobs: map[string]*definition.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
 	parser.IndexDependencySpans(workflow)

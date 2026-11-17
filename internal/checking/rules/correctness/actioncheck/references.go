@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -103,7 +103,7 @@ func (rule *validator) runtimeFinding(pos *sourcetext.Position, problem actionme
 }
 
 func (rule *validator) checkRepositoryReference(spec string, pos *sourcetext.Position) bool {
-	problem := callreferences.ActionReferenceProblem(spec)
+	_, problem := callreferences.ParseRepositoryAction(spec)
 	if problem != "" {
 		rule.invalidActionFormat(pos, spec, problem)
 		return false

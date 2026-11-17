@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -17,12 +18,12 @@ import (
 
 // ScriptEngineLoader loads configured core modules and script-engine components
 // with the same artifact verification and lifecycle for every native entrypoint.
-func ScriptEngineLoader(acquisition pluginacquisition.Options, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (checkinputs.ScriptBackend, error) {
-	return func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
+func ScriptEngineLoader(acquisition dependencycache.Acquisition, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (scriptengine.Backend, error) {
+	return func(ctx context.Context, path string) (scriptengine.Backend, error) {
 		if err := artifacts.RequireRemotePin(path); err != nil {
 			return nil, err
 		}
-		artifact, err := artifacts.Resolve(ctx, path, acquisition.ArtifactOptions())
+		artifact, err := artifacts.Resolve(ctx, path, pluginacquisition.ArtifactOptions(acquisition))
 		if err != nil {
 			return nil, err
 		}
@@ -31,7 +32,7 @@ func ScriptEngineLoader(acquisition pluginacquisition.Options, reserved rule.Nam
 }
 
 // LoadScriptArtifact opens a verified core module or component that implements script checking.
-func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acquisition pluginacquisition.Options, reserved rule.Names, log io.Writer, debug bool) (checkinputs.ScriptBackend, error) {
+func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acquisition dependencycache.Acquisition, reserved rule.Names, log io.Writer, debug bool) (scriptengine.Backend, error) {
 	if artifact.Info.Kind != artifacts.Core && artifact.Info.Kind != artifacts.Component {
 		return nil, fmt.Errorf("%s is a %s artifact, not a WebAssembly module", artifact.Info.Source, artifact.Info.Kind)
 	}
@@ -54,7 +55,7 @@ func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acqui
 		}
 		return plugin, nil
 	}
-	engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: acquisition.CompiledModuleCacheDir()})
+	engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(acquisition)})
 	if err != nil {
 		return nil, err
 	}

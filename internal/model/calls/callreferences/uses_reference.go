@@ -190,22 +190,26 @@ func classifyRepository(raw string) UsesReference {
 	if rest, self := strings.CutPrefix(location, selfHostPrefix); self {
 		r.HostSource, location = HostSourceSelf, rest
 	}
-	if at := strings.LastIndexByte(location, '@'); at >= 0 {
-		location, r.Ref = location[:at], location[at+1:]
-		if r.Ref == "" {
-			return UnknownReference{}
-		}
-	}
 	if strings.Contains(location, "://") {
+		at := strings.LastIndexByte(location, '@')
+		if at >= 0 {
+			location, r.Ref = location[:at], location[at+1:]
+		}
 		u, err := url.Parse(location)
-		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || r.HostSource == HostSourceSelf {
+		if err != nil || at >= 0 && r.Ref == "" || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || r.HostSource == HostSourceSelf {
 			return UnknownReference{}
 		}
 		r.Host, r.Scheme, r.HostSource = u.Host, u.Scheme, HostSourceExplicit
 		location = strings.TrimPrefix(u.Path, "/")
-	} else if r.Ref == "" {
-		return UnknownReference{}
+	} else {
+		// The default and self hosts use the runner's action syntax.
+		action, problem := ParseRepositoryAction(location)
+		if problem != "" {
+			return UnknownReference{}
+		}
+		location, r.Ref = action.Location(), action.Ref
 	}
+	// Paths the runner accepts but a reference cannot identify, such as "..", stay unknown.
 	target, known := ParseRepositoryPath(location)
 	if !known {
 		return UnknownReference{}

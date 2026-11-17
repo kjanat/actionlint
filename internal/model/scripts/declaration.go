@@ -4,7 +4,7 @@ package scripts
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -25,13 +25,22 @@ type Declaration struct {
 	Comments  []facts.SourceComment
 }
 
+// Shell is the shell command a run step executes under. Implicit marks the
+// runner's bash -e fallback or a platform default, which differ from an
+// explicit bash by omitting pipefail; custom templates supply their own
+// options. The zero value means static analysis could not resolve the shell.
+type Shell struct {
+	Name     string
+	Implicit bool
+}
+
+// Known reports whether static analysis resolved the shell.
+func (s Shell) Known() bool { return s.Name != "" }
+
 // Execution carries the shell and working directory the runner would use.
-// ShellKnown and DirectoryKnown report whether static analysis determined the
-// value. ShellImplicit marks a shell supplied by the runner or platform.
+// DirectoryKnown reports whether static analysis determined the directory.
 type Execution struct {
-	Shell          string
-	ShellKnown     bool
-	ShellImplicit  bool
+	Shell          Shell
 	Directory      string
 	DirectoryKnown bool
 }

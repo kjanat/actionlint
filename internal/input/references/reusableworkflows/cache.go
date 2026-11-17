@@ -9,16 +9,16 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// Cache shares captured reusable-workflow metadata within one repository.
-type Cache struct {
+// MetadataCache shares captured reusable-workflow metadata within one repository.
+type MetadataCache struct {
 	remote     *Remote
 	captures   *capture.Store
 	ctx        context.Context
@@ -91,7 +91,7 @@ func (f metadataError) Error() string {
 
 func (f metadataError) Unwrap() error { return f.cause }
 
-func (c *Cache) debug(format string, args ...any) {
+func (c *MetadataCache) debug(format string, args ...any) {
 	if c.dbg == nil {
 		return
 	}
@@ -101,7 +101,7 @@ func (c *Cache) debug(format string, args ...any) {
 
 // Lookup returns a memoized dependency result without reading the filesystem.
 // The metadata is a detached copy owned by the caller.
-func (c *Cache) Lookup(key string) (*calls.Metadata, error, bool) {
+func (c *MetadataCache) Lookup(key string) (*calls.Metadata, error, bool) {
 	c.mu.RLock()
 	result, ok := c.cache[key]
 	c.mu.RUnlock()
@@ -119,11 +119,11 @@ func (c *Cache) Lookup(key string) (*calls.Metadata, error, bool) {
 
 // Store records a copy of parsed metadata for a repository-relative
 // specification. A nil val records that the specification has no metadata.
-func (c *Cache) Store(key string, val *calls.Metadata) {
+func (c *MetadataCache) Store(key string, val *calls.Metadata) {
 	c.store(key, reusableWorkflowMetadataResult{metadata: val})
 }
 
-func (c *Cache) store(key string, result reusableWorkflowMetadataResult) {
+func (c *MetadataCache) store(key string, result reusableWorkflowMetadataResult) {
 	if c.root == "" {
 		return
 	}
@@ -134,7 +134,7 @@ func (c *Cache) store(key string, result reusableWorkflowMetadataResult) {
 
 // Seed indexes reusable metadata only from this result's admitted workflow.
 // Mutable visitor ASTs never supply independent source bytes or declarations.
-func (c *Cache) Seed(snapshot parsing.SourceSnapshot) error {
+func (c *MetadataCache) Seed(snapshot parsing.SourceSnapshot) error {
 	if c == nil || c.root == "" {
 		return nil
 	}
@@ -179,7 +179,7 @@ func (c *Cache) Seed(snapshot parsing.SourceSnapshot) error {
 // Non-local references and a disabled repository scope return no metadata.
 // ctx cancels this caller's wait; the capture store owns backing IO.
 // Concurrent callers receive detached metadata or the cached failure.
-func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
+func (c *MetadataCache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.M
 // LoadForCall loads local metadata using a normalized ./ cache key and reports
 // failures with the caller's reference spelling. Syntax checks handle non-local
 // or invalid references; this loader returns no metadata for them.
-func (c *Cache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Metadata, error) {
+func (c *MetadataCache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Metadata, error) {
 	localSpec, ok := callreferences.LocalWorkflow(sourceSpec)
 	if !ok {
 		return nil, nil
@@ -247,10 +247,10 @@ func workflowPathToSpec(root, path string) (string, bool) {
 	return p, true
 }
 
-// NewCache indexes reusable workflows under root. An empty root disables local
+// NewMetadataCache indexes reusable workflows under root. An empty root disables local
 // file reads. SetSources configures local captures; SetRemote supplies remote metadata.
-func NewCache(root string, dbg io.Writer) *Cache {
-	return &Cache{
+func NewMetadataCache(root string, dbg io.Writer) *MetadataCache {
+	return &MetadataCache{
 		root:  root,
 		cache: map[string]reusableWorkflowMetadataResult{},
 		dbg:   dbg,

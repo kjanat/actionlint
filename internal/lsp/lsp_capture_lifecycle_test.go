@@ -13,10 +13,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -107,7 +107,7 @@ func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
 	if err != nil || len(analysis.Diagnostics) != 1 || analysis.Diagnostics[0].Path != dependency || analysis.Sources[dependency].Text != text || reads.Load() != 0 {
 		t.Fatalf("virtual buffers fell back to disk: analysis=%+v error=%v reads=%d", analysis, err, reads.Load())
 	}
-	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != sourcetext.ContentDigest([]byte(text)) {
+	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != sha256hex.Digest([]byte(text)) {
 		t.Fatal("virtual dependency digest did not match its buffer")
 	}
 }
@@ -139,7 +139,7 @@ func TestEditorSymlinkDependencyAndClosingBufferUseCurrentCapture(t *testing.T) 
 	if err != nil || len(second.Diagnostics) != 1 || second.Diagnostics[0].Rule != "deprecated-commands" || second.Sources[alias].Text != disk {
 		t.Fatalf("closed buffer did not fall back to disk: %+v %v", second, err)
 	}
-	if second.Sources[alias].Revision == first.Sources[alias].Revision || second.Diagnostics[0].Reference == nil || second.Diagnostics[0].Reference.Revision != sourcetext.ContentDigest([]byte(disk)) {
+	if second.Sources[alias].Revision == first.Sources[alias].Revision || second.Diagnostics[0].Reference == nil || second.Diagnostics[0].Reference.Revision != sha256hex.Digest([]byte(disk)) {
 		t.Fatal("closed overlay retained stale source identity")
 	}
 }
@@ -177,7 +177,7 @@ func (*cancellingEditorAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *cancellingEditorAnalyzer) AnalyzeDocument(ctx context.Context, _ checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	close(a.started)
 	<-ctx.Done()
 	return nil, ctx.Err()
@@ -195,7 +195,7 @@ func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		done <- result{analysis, err}
 	}()
 	select {

@@ -6,9 +6,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-
 	"golang.org/x/text/unicode/norm"
+
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 func sanitize(src string, expressionEnd ExpressionEnd, placeholders *Masks) (string, bool, error) {
@@ -18,10 +18,10 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *Masks) (str
 	original := norm.NFKC.String(src)
 	if placeholders != nil {
 		placeholders.sourceLines = strings.Split(src, "\n")
-		placeholders.percentConversions = make(map[checkinputs.ScriptPosition]bool)
+		placeholders.percentConversions = make(map[sourcetext.Position]bool)
 	}
 	nextName := uint64(0)
-	position := checkinputs.ScriptPosition{Row: 1, Column: 1}
+	position := sourcetext.Position{Line: 1, Column: 1}
 	for {
 		start := strings.Index(src, "${{")
 		if start < 0 {
@@ -75,8 +75,8 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *Masks) (str
 			if placeholders.lines == nil {
 				placeholders.lines = make(map[int]bool)
 			}
-			lastLine := position.Row + strings.Count(src[start:end], "\n")
-			for line := position.Row; line <= lastLine; line++ {
+			lastLine := position.Line + strings.Count(src[start:end], "\n")
+			for line := position.Line; line <= lastLine; line++ {
 				placeholders.lines[line] = true
 			}
 		}
@@ -174,10 +174,10 @@ func templateDebugFieldSuffix(suffix string) bool {
 	return rest != "" && strings.ContainsRune("}!:", rune(rest[0]))
 }
 
-func advancePosition(position *checkinputs.ScriptPosition, text string) {
+func advancePosition(position *sourcetext.Position, text string) {
 	for _, r := range text {
 		if r == '\n' {
-			position.Row++
+			position.Line++
 			position.Column = 1
 		} else {
 			position.Column++

@@ -39,8 +39,8 @@ func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema
 
 func toolSchema(manifest toolmanifest.Manifest, reflectMapping func(any) *jsonschema.Schema) (*jsonschema.Schema, error) {
 	mapping := reflectMapping(struct {
-		Backend *tools.Backend `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
-		Enabled *bool          `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable this tool. Omission or null keeps it enabled."`
+		Backend *tools.BackendSelection `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
+		Enabled *bool                   `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable this tool. Omission or null keeps it enabled."`
 	}{})
 	mapping.Version, mapping.ID = "", ""
 	mapping.Description = manifest.Rule.Description + "."

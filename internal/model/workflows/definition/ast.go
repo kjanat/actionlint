@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -153,6 +154,21 @@ func IsExprAssigned(s string) bool {
 // IsExpressionAssigned returns whether a single expression is assigned to the String.
 func (s *String) IsExpressionAssigned() bool {
 	return s != nil && IsExprAssigned(s.Value)
+}
+
+// ConstantValue evaluates an assigned expression when all its required inputs
+// are known. It reports false for an absent String, for text that is not one
+// assigned expression and for an expression whose value depends on runtime
+// contexts.
+func (s *String) ConstantValue() (any, bool) {
+	if s == nil {
+		return nil, false
+	}
+	expr := syntax.ParseAssignedExpression(s.Value)
+	if expr == nil {
+		return nil, false
+	}
+	return evaluate.ConditionConstantValue(expr)
 }
 
 // Bool represents a YAML boolean or expression and its source position.
@@ -889,27 +905,8 @@ func (s *RawYAMLString) ScalarValue() any {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !codec.IsCoreSchemaNumber(s.Value) {
-			break
-		}
-		switch strings.ToLower(s.Value) {
-		case ".inf", "+.inf":
-			return math.Inf(1)
-		case "-.inf":
-			return math.Inf(-1)
-		case ".nan":
-			return math.NaN()
-		}
-		if strings.HasPrefix(s.Value, "0x") || strings.HasPrefix(s.Value, "0o") {
-			// GitHub converts hexadecimal and octal scalars through a signed 32-bit integer.
-			if n, err := strconv.ParseUint(s.Value, 0, 32); err == nil {
-				if n > math.MaxInt32 {
-					return float64(n) - (1 << 32)
-				}
-				return float64(n)
-			}
-		} else if n, err := strconv.ParseFloat(s.Value, 64); err == nil {
-			return n
+		if number, ok := codec.CoreSchemaNumber(s.Value); ok {
+			return number
 		}
 	}
 	return s.Value

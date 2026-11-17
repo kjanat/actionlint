@@ -3,6 +3,7 @@ package suppression
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -31,14 +32,14 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 				return Decision{Suppress: true}
 			}, rule.Names{})
 			for _, extent := range [][2]int{{1, 1}, {2, 2}, {3, 3}, {2, 4}} {
-				if got := result.Suppresses("expression", extent[0], extent[1]); got != tc.decision.Suppress {
+				if got := result.Suppresses("expression", sourcetext.LineRange{First: extent[0], Last: extent[1]}); got != tc.decision.Suppress {
 					t.Fatalf("origin %v: suppressed=%v, want %v", extent, got, tc.decision.Suppress)
 				}
 			}
-			if result.Suppresses("expression", 4, 4) || result.Suppresses("other", 2, 2) {
+			if result.Suppresses("expression", sourcetext.LineRange{First: 4, Last: 4}) || result.Suppresses("other", sourcetext.LineRange{First: 2, Last: 2}) {
 				t.Fatal("exception escaped its declaration or rule")
 			}
-			if !result.Suppresses("shellcheck", 2, 2) {
+			if !result.Suppresses("shellcheck", sourcetext.LineRange{First: 2, Last: 2}) {
 				t.Fatal("restriction on one rule changed another rule")
 			}
 			wantReports := 0
@@ -69,7 +70,7 @@ func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
 		if len(directives) != 0 || len(invalid) != 1 || invalid[0].Rule != "inline-suppression" {
 			t.Fatalf("invalid directive accepted: %q: %+v, %+v", source, directives, invalid)
 		}
-		if evaluation, _ := Evaluate(directives, nil, rule.Names{}); evaluation.Suppresses("expression", 1, 1) {
+		if evaluation, _ := Evaluate(directives, nil, rule.Names{}); evaluation.Suppresses("expression", sourcetext.LineRange{First: 1, Last: 1}) {
 			t.Fatalf("invalid directive hid a finding: %q", source)
 		}
 	}

@@ -15,7 +15,9 @@ func TestParseReference(t *testing.T) {
 		{"o/r@v", "github.com", "o/r", "", "v", ""},
 		{"o/r/p/q@v", "github.com", "o/r", "p/q", "v", ""},
 		{"O/R/p@V", "github.com", "O/R", "p", "V", ""},
-		{"o/r@v@w", "github.com", "o/r", "", "v@w", ""},
+		{"o/r@v@w", "", "", "", "", `action reference contains more than one "@"`},
+		{"o//r@v", "github.com", "o/r", "", "v", ""},
+		{`o\r\p@v`, "github.com", "o/r", "p", "v", ""},
 		{"o/r", "", "", "", "", "action ref is missing"},
 		{"o/r@", "", "", "", "", "action ref is missing"},
 		{"./a", "", "", "", "", "action ref is missing"},
@@ -24,11 +26,11 @@ func TestParseReference(t *testing.T) {
 		{"$/a@v", "", "", "", "", "action needs an owner and repository"},
 		{"o/@v", "", "", "", "", "action needs an owner and repository"},
 		{"@v", "", "", "", "", "action needs an owner and repository"},
-		{"o/r/p/@v", "", "", "", "", "invalid action directory \"p/\""},
-		{"o/r//p@v", "", "", "", "", "invalid action directory \"/p\""},
+		{"o/r/p/@v", "github.com", "o/r", "p", "v", ""},
+		{"o/r//p@v", "github.com", "o/r", "p", "v", ""},
 		{"o/r/../p@v", "", "", "", "", "invalid action directory \"../p\""},
 		{"o/r/./p@v", "", "", "", "", "invalid action directory \"./p\""},
-		{"o/r/\\p@v", "", "", "", "", "invalid action directory \"\\\\p\""},
+		{"o/r/\\p@v", "github.com", "o/r", "p", "v", ""},
 	} {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()

@@ -3,7 +3,7 @@ package outline
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // Action is a lossy projection of selected action declarations.

@@ -11,15 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -199,10 +198,10 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) err
 		return err
 	}
 	declaration := step
-	origin := canonicalStepOrigin(declaration, analysis.jobID)
+	origin := declaration.IgnoreOrigin(analysis.jobID)
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
-		if err := selection.VisitWithOrigin(pass, origin, selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
+		if err := workflowvisit.VisitWithOrigin(pass, origin, workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
 	}
@@ -211,18 +210,5 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) err
 
 // visitJobPass attributes what a pass reports while visiting a job to that job.
 func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.BoundJob, visit func() error) error {
-	return selection.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
-}
-
-func canonicalStepOrigin(step workflows.BoundStep, job string) *finding.IgnoreOrigin {
-	return canonicalOrigin(step.Origin(job))
-}
-
-func canonicalOrigin(owned workflows.Origin) *finding.IgnoreOrigin {
-	origin := &finding.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
-	if owned.HasPosition {
-		position := owned.Position
-		origin.StepPosition = &position
-	}
-	return origin
+	return workflowvisit.VisitWithOrigin(pass, job.IgnoreOrigin(), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }

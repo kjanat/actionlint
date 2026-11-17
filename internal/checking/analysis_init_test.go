@@ -11,7 +11,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
@@ -171,7 +171,7 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 				}
 				var reads atomic.Int32
 				request := analysisRequest{
-					Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget,
+					Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget, Checks: testChecks(t, nil, nil),
 					SourceOverlays: []SourceOverlay{{Path: "first.yml"}, {Path: "later.yml"}},
 					ReadFile:       func(string) ([]byte, error) { reads.Add(1); return nil, nil },
 				}

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/lsp"
 )
 
@@ -108,7 +109,7 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 			receive()
 			params, err := json.Marshal(struct {
 				Document lsp.Document `json:"textDocument"`
-			}{lsp.Document{URI: lsp.FileURI(filepath.Join(root, "ci.yml")), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"}})
+			}{lsp.Document{URI: sourcetext.FileURI(filepath.Join(root, "ci.yml")), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"}})
 			if err != nil {
 				t.Fatal(err)
 			}

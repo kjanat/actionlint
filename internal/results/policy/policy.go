@@ -5,23 +5,24 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Policy supplies source text and the rule bindings prepared for this analysis.
-type Policy struct {
+// DocumentInputs supplies source text and the rule bindings prepared for this analysis.
+type DocumentInputs struct {
 	Path, ConfigPath, Root, WorkingDir string
 	ProjectRoot                        string
 	Content                            []byte
 
 	EnforcedLifecycle []lifecycle.Policy
-	Bindings          *rulebinding.Snapshot
+	Bindings          *rulebinding.SealedRegistry
 	Scope             *rulebinding.Scope
 	SourceBindings    map[string]*rulebinding.Scope
 	Metadata          *actionmeta.Metadata
@@ -31,9 +32,11 @@ type Policy struct {
 	Log               func(...any)
 	Debug             func(string, ...any)
 	usedSuppression   func(string, sourcetext.Position, string)
+	// declaredSuppression receives each rule an inline directive names.
+	declaredSuppression func(string, sourcetext.Position, string)
 }
 
-func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSources map[string][]byte, authority map[*finding.Finding]obligation) ([]*finding.Finding, error) {
+func (processor Processor) evaluate(p DocumentInputs, all []*finding.Finding, metadataSources map[string][]byte, authority map[*finding.Finding]obligation) ([]*finding.Finding, error) {
 	path, configPath, root, content, cfg, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Scope.Caller(), p.Metadata
 	additionalRules := p.AdditionalRules
 	var suppressionPolicy *configuration.SuppressionsPolicy
@@ -131,7 +134,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 		}
 		findings = slices.DeleteFunc(findings, func(e *finding.Finding) bool {
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
-			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
+			executionFailure := descriptor.ExecutionFailure && e.Severity.Effective() == severity.Error
 			e.NonBlocking = sourcetext.RemoteAddress(e.Path) && e.Path != p.Path &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			prepared, _ := p.Bindings.Lookup(e.Binding)
@@ -139,15 +142,11 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 			if e.LifecycleEvidence != nil && e.Lifecycle != nil && level != "off" {
 				return false
 			}
-			switch level {
-			case "off":
+			if level == "off" {
 				return true
-			case "warn":
-				e.Severity = "warning"
-			case "info":
-				e.Severity = "info"
-			case "error":
-				e.Severity = "error"
+			}
+			if selected, ok := level.Severity(); ok {
+				e.Severity = selected
 			}
 			return false
 		})
@@ -173,15 +172,19 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 	return all, nil
 }
 
-func (p Policy) inlineAudit(path string, level func(string) ruleconfig.Level) *inlineAudit {
+func (p DocumentInputs) inlineAudit(path string, level func(string) ruleconfig.Level) *inlineAudit {
 	return &inlineAudit{level: level, used: func(position sourcetext.Position, rule string) {
 		if p.usedSuppression != nil {
 			p.usedSuppression(path, position, rule)
 		}
+	}, declared: func(position sourcetext.Position, rule string) {
+		if p.declaredSuppression != nil {
+			p.declaredSuppression(path, position, rule)
+		}
 	}}
 }
 
-func filterErrors(p Policy, errs []*finding.Finding, cfgs []configuration.PathConfig) []*finding.Finding {
+func filterErrors(p DocumentInputs, errs []*finding.Finding, cfgs []configuration.PathConfig) []*finding.Finding {
 	if len(p.IgnorePatterns) == 0 && len(cfgs) == 0 {
 		return errs
 	}
@@ -214,13 +217,13 @@ func matchesIgnorePatterns(patterns configuration.IgnorePatterns, item *finding.
 		item.Code != "" && patterns.Match(item.Code+": "+item.Message))
 }
 
-func debug(p Policy, format string, args ...any) {
+func debug(p DocumentInputs, format string, args ...any) {
 	if p.Debug != nil {
 		p.Debug(format, args...)
 	}
 }
 
-func log(p Policy, args ...any) {
+func log(p DocumentInputs, args ...any) {
 	if p.Log != nil {
 		p.Log(args...)
 	}

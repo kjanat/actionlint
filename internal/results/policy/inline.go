@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -25,11 +25,20 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 type inlineAudit struct {
 	level func(string) ruleconfig.Level
 	used  func(sourcetext.Position, string)
+	// declared receives each rule a directive names, used or not.
+	declared func(sourcetext.Position, string)
 }
 
 func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*finding.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*finding.Finding {
 	allowedRules := processor.SuppressionRules(additional...)
 	directives, invalid := suppression.ParseInlineSuppressions(source, allowedRules, processor.RuleSet.Names())
+	if audit != nil && audit.declared != nil {
+		for _, directive := range directives {
+			for _, name := range directive.Rules {
+				audit.declared(directive.Position, name)
+			}
+		}
+	}
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(processor.RuleSet.ResolveAlias(name))
 		return suppression.Decision{
@@ -47,16 +56,16 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 	}
 	used := make(map[selector]bool)
 	for _, finding := range findings {
-		first, last, applies := finding.Start.Line, finding.Start.Line, finding.Source.Content == nil
+		lines, applies := sourcetext.LineRange{First: finding.Start.Line, Last: finding.Start.Line}, finding.Source.Content == nil
 		targetPath := scope
 		if origin := finding.SuppressionOrigin; origin != nil {
-			first, last, applies = origin.First, origin.Last, origin.Path == scope
+			lines, applies = origin.Lines, origin.Path == scope
 			targetPath = origin.Path
 		}
 		if audit != nil && applies && audit.level(finding.Rule) != "off" && finding.Rule != "unused-suppression" {
 			for index, directive := range directives {
 				for _, selected := range directive.Rules {
-					if first > directive.Last || last < directive.First || processor.RuleSet.ResolveAlias(selected) != processor.RuleSet.ResolveAlias(finding.Rule) {
+					if !lines.Overlaps(directive.Lines) || processor.RuleSet.ResolveAlias(selected) != processor.RuleSet.ResolveAlias(finding.Rule) {
 						continue
 					}
 					used[selector{index, selected}] = true
@@ -71,11 +80,11 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 			slices.ContainsFunc(allowedRules, func(name string) bool {
 				return processor.RuleSet.ResolveAlias(name) == processor.RuleSet.ResolveAlias(finding.Rule)
 			}) && policy.ReportFor(finding.Rule) == configuration.SuppressionsAllowed {
-			finding.Source.Suppression = &results.SuppressionOrigin{Path: targetPath, First: first, Last: last}
+			finding.Source.Suppression = &results.SuppressionOrigin{Path: targetPath, Lines: lines}
 		} else {
 			finding.Source.Suppression = nil
 		}
-		if applies && evaluation.Suppresses(finding.Rule, first, last) {
+		if applies && evaluation.Suppresses(finding.Rule, lines) {
 			continue
 		}
 		filtered = append(filtered, finding)
@@ -86,7 +95,7 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 	if audit != nil {
 		for index, directive := range directives {
 			for _, name := range directive.Rules {
-				if !used[selector{index, name}] && !evaluation.Suppresses("unused-suppression", directive.Position.Line, directive.Position.Line) {
+				if !used[selector{index, name}] && !evaluation.Suppresses("unused-suppression", sourcetext.LineRange{First: directive.Position.Line, Last: directive.Position.Line}) {
 					finding := finding.FromDiagnostic(results.Diagnostic{
 						Rule: "unused-suppression", Start: directive.Position,
 						Message: fmt.Sprintf("inline suppression of %q did not match any findings", name),

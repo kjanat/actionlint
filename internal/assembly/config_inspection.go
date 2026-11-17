@@ -4,28 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition pluginacquisition.Options) (inspection configreport.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition dependencycache.Acquisition) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
@@ -43,15 +41,11 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
+	plugins, configured, err := loadDeclarations(ctx, sources)
 	if err != nil {
 		return inspection, err
 	}
 	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	configured, err := ConfigureManagedPlugins(plugins, checking.Options{Tools: registry.Registrations(nil), Analyzers: plugins.Registrations()})
-	if err != nil {
-		return inspection, err
-	}
 	rules := checking.ConfigurationRegistrations(configured.Analyzers, configured.Tools)
 	for _, engine := range plugins.ScriptEngines {
 		rules = append(rules, configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true}, ReplacesTool: engine.Descriptor.Engine})
@@ -83,7 +77,7 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition pluginacquisition.Options) ([]toolmanifest.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition dependencycache.Acquisition) ([]toolmanifest.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -95,7 +89,7 @@ func InstalledProviders(ctx context.Context, selection configuration.ConfigFileS
 	var manifests []toolmanifest.Manifest
 	for _, path := range sources.Paths {
 		if toolmanifest.IsLocalManifest(path) {
-			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
+			manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, err
 			}

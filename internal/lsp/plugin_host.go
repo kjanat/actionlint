@@ -3,17 +3,15 @@ package lsp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
-
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -26,12 +24,12 @@ import (
 // because in-flight analyses may use an earlier version.
 type editorPluginHost struct {
 	options checking.Options
-	plugins *pluginexecution.Loaded
+	session *assembly.Session
 	engines *editorEngines
 	sources pluginselection.Sources
 }
 
-func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition pluginacquisition.Options) (*editorPluginHost, error) {
+func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition dependencycache.Acquisition) (*editorPluginHost, error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -40,55 +38,27 @@ func newEditorPluginHost(ctx context.Context, options checking.Options, paths []
 }
 
 func newEditorSources(ctx context.Context, options checking.Options, sources pluginselection.Sources) (*editorPluginHost, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	log := options.LogWriter
-	if log == nil {
-		log = io.Discard
-	}
-	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
-		return nil, err
-	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	session, err := assembly.Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
 	sources.Artifacts = nil
-	options, err = assembly.ConfigurePlugins(plugins, ctx, options)
-	if err != nil {
-		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
-	}
-	options, err = assembly.ConfigureManagedPlugins(plugins, options)
-	if err != nil {
-		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
-	}
-	engines := &editorEngines{
-		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]checkinputs.ScriptBackend),
-		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
-	}
-	options.LoadScriptEngine = engines.load
-	return &editorPluginHost{options: options, plugins: plugins, engines: engines, sources: sources}, nil
-}
-
-func checkEditorPluginStatuses(ctx context.Context, sources pluginselection.Sources, log io.Writer) error {
-	if sources.Releases == nil {
-		return nil
-	}
+	options = session.Options
+	log := options.LogWriter
 	if log == nil {
 		log = io.Discard
 	}
-	if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) {
-		_, _ = fmt.Fprintln(log, "warning:", message)
-	}, Acquisition: sources.Acquisition}); err != nil {
-		return &pluginexecution.LoadError{Err: err}
+	engines := &editorEngines{
+		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]scriptengine.Backend),
+		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
-	return nil
+	options.LoadScriptEngine = engines.load
+	return &editorPluginHost{options: options, session: session, engines: engines, sources: sources}, nil
 }
 
 // Serve waits for every analysis before this releases their shared resources.
 func (s *editorPluginHost) close(ctx context.Context) error {
-	return errors.Join(s.plugins.Close(ctx), s.engines.close(ctx))
+	return errors.Join(s.session.Close(ctx), s.engines.close(ctx))
 }
 
 type editorEngineIdentity struct {
@@ -98,14 +68,14 @@ type editorEngineIdentity struct {
 
 type editorEngines struct {
 	gate        chan struct{}
-	loaded      map[editorEngineIdentity]checkinputs.ScriptBackend
-	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
+	loaded      map[editorEngineIdentity]scriptengine.Backend
+	customLoad  func(context.Context, string) (scriptengine.Backend, error)
 	log         io.Writer
 	debug       bool
-	acquisition pluginacquisition.Options
+	acquisition dependencycache.Acquisition
 }
 
-func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {
+func (s *editorEngines) load(ctx context.Context, source string) (scriptengine.Backend, error) {
 	select {
 	case s.gate <- struct{}{}:
 		defer func() { <-s.gate }()
@@ -120,7 +90,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 	if backend, ok := s.loaded[identity]; ok {
 		return borrowEditorEngine(backend), nil
 	}
-	var backend checkinputs.ScriptBackend
+	var backend scriptengine.Backend
 	var err error
 	if s.customLoad != nil {
 		backend, err = s.customLoad(ctx, source)
@@ -128,7 +98,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 		if err := artifacts.RequireRemotePin(source); err != nil {
 			return nil, err
 		}
-		artifact, resolveErr := artifacts.Resolve(ctx, source, s.acquisition.ArtifactOptions())
+		artifact, resolveErr := artifacts.Resolve(ctx, source, pluginacquisition.ArtifactOptions(s.acquisition))
 		if resolveErr != nil {
 			return nil, resolveErr
 		}
@@ -166,29 +136,29 @@ func (s *editorEngines) close(ctx context.Context) error {
 
 // Hide Close so per-analysis cleanup cannot close a session-owned engine.
 type (
-	borrowedEditorEngine  struct{ checkinputs.ScriptBackend }
+	borrowedEditorEngine  struct{ scriptengine.Backend }
 	describedEditorEngine struct {
-		checkinputs.DescribedScriptBackend
+		scriptengine.DescribedBackend
 	}
 	validatingDescribedEditorEngine struct {
-		checkinputs.DescribedScriptBackend
-		checkinputs.ScriptConfigValidator
+		scriptengine.DescribedBackend
+		scriptengine.ConfigValidator
 	}
 	validatingEditorEngine struct {
-		checkinputs.ScriptBackend
-		checkinputs.ScriptConfigValidator
+		scriptengine.Backend
+		scriptengine.ConfigValidator
 	}
 )
 
-func borrowEditorEngine(backend checkinputs.ScriptBackend) checkinputs.ScriptBackend {
-	if described, ok := backend.(checkinputs.DescribedScriptBackend); ok {
-		if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
-			return validatingDescribedEditorEngine{DescribedScriptBackend: described, ScriptConfigValidator: validator}
+func borrowEditorEngine(backend scriptengine.Backend) scriptengine.Backend {
+	if described, ok := backend.(scriptengine.DescribedBackend); ok {
+		if validator, ok := backend.(scriptengine.ConfigValidator); ok {
+			return validatingDescribedEditorEngine{DescribedBackend: described, ConfigValidator: validator}
 		}
-		return describedEditorEngine{DescribedScriptBackend: described}
+		return describedEditorEngine{DescribedBackend: described}
 	}
-	if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
-		return validatingEditorEngine{ScriptBackend: backend, ScriptConfigValidator: validator}
+	if validator, ok := backend.(scriptengine.ConfigValidator); ok {
+		return validatingEditorEngine{Backend: backend, ConfigValidator: validator}
 	}
-	return borrowedEditorEngine{ScriptBackend: backend}
+	return borrowedEditorEngine{Backend: backend}
 }

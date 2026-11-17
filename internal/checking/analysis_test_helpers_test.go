@@ -9,16 +9,18 @@ import (
 	"runtime"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -48,7 +50,7 @@ permissions: {}
 // checkWithCaches analyzes with the same registry and store, so the cache and
 // the analysis see one capture of each document.
 type capturedWorkflowCache struct {
-	*reusableworkflows.Cache
+	*reusableworkflows.MetadataCache
 	registry  *parsing.SourceSnapshots
 	captures  *capture.Store
 	snapshots *declarations.CapturedSnapshots
@@ -60,33 +62,32 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 		cwd = sourceFixtureBase(tb)
 	}
 	registry, captures, snapshots := newCapturedSnapshots(tb, cwd)
-	cache := reusableworkflows.NewCache(root, debug)
+	cache := reusableworkflows.NewMetadataCache(root, debug)
 	cache.SetSources(tb.Context(), captures, cwd)
-	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
+	return &capturedWorkflowCache{MetadataCache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
-	registrations := ConfigurationRegistrations(request.Analyzers, request.Tools)
-	ruleSet, err := ConfigurationRules().WithRegisteredRules(registrations...)
-	if err != nil {
-		tb.Fatal(err)
+	checks := request.Checks
+	if checks == nil {
+		checks = testChecks(tb, nil, nil)
 	}
-	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, rules: ruleSet, ruleRegistrations: registrations}
+	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), checks: checks, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated}
 	session.ignoreSelectors = request.IgnoreSelectors
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(tb)
 	}
 	var fixture *declarations.CapturedSnapshots
-	var workflowCache *reusableworkflows.Cache
+	var workflowCache *reusableworkflows.MetadataCache
 	if workflows != nil {
 		session.snapshots, session.captures, fixture = workflows.registry, workflows.captures, workflows.snapshots
-		workflowCache = workflows.Cache
+		workflowCache = workflows.MetadataCache
 	} else {
 		session.snapshots, session.captures, fixture = newCapturedSnapshots(tb, session.workingDir)
 	}
@@ -145,9 +146,27 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 	return sources
 }
 
-// runTestAnalysis supplies the process pool that production callers must own.
-// It invokes application analysis without input selection or rendering.
+// testChecks registers analyzers and tools as Check registers them.
+func testChecks(tb testing.TB, analyzers []results.AnalyzerRegistration, tools []contract.Registration) *registeredChecks {
+	tb.Helper()
+	checks, err := registerChecks(analyzers, tools)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return checks
+}
+
+// runTestAnalysis supplies the process pool and the registered checks that
+// production callers must own. A request without checks registers none. It
+// invokes application analysis without input selection or rendering.
 func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
+	if request.Checks == nil {
+		checks, err := registerChecks(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		request.Checks = checks
+	}
 	if request.Processes == nil {
 		request.Processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 		defer request.Processes.Wait()
@@ -203,7 +222,7 @@ func publishTestDiagnostics(tb testing.TB, result *analysisResult) {
 		for _, finding := range file.errors {
 			finding.Binding = scope.Rule(finding.Rule).ID()
 		}
-		file.publication = &policy.Batch{Processor: policy.Processor{RuleSet: rules}, Policy: policy.Policy{Path: file.source.Path, ConfigPath: file.source.InputPath, Content: file.source.Content, Scope: scope, Bindings: registry.Seal()}}
+		file.publication = &policy.Batch{Processor: policy.Processor{RuleSet: rules}, Policy: policy.DocumentInputs{Path: file.source.Path, ConfigPath: file.source.InputPath, Content: file.source.Content, Scope: scope, Bindings: registry.Seal()}}
 	}
 	if err := result.publishDiagnostics(); err != nil {
 		tb.Fatal(err)

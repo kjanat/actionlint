@@ -22,7 +22,7 @@ func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (stepNameAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" {
 		return nil, nil
 	}
@@ -62,7 +62,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		panic(err)

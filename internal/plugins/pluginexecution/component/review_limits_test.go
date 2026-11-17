@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
@@ -48,7 +49,7 @@ func TestComponentCoordinatesAreOneBasedAndRepresentable(t *testing.T) {
 func TestQueuedPluginCallsHonorCallerCancellationAndDeadline(t *testing.T) {
 	t.Parallel()
 	for _, callerCancels := range []bool{false, true} {
-		p := &Plugin{limits: Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
+		p := &Plugin{limits: guestlimits.Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
 		if err := p.gate.Acquire(t.Context(), 1); err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +78,7 @@ func TestQueuedPluginCallsHonorCallerCancellationAndDeadline(t *testing.T) {
 
 func TestPluginExecutionBudgetStartsAfterQueue(t *testing.T) {
 	t.Parallel()
-	p := &Plugin{limits: Limits{Timeout: 5 * time.Millisecond}, gate: semaphore.NewWeighted(1)}
+	p := &Plugin{limits: guestlimits.Limits{Timeout: 5 * time.Millisecond}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
 	}

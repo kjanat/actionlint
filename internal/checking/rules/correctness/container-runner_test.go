@@ -3,7 +3,7 @@ package correctness
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
@@ -26,7 +26,7 @@ func TestContainerRuleConsumesPreparedUses(t *testing.T) {
 				}
 				continue
 			}
-			if len(findings) != 1 || findings[0].Severity != tc.severity || findings[0].Start != uses[0].Position || findings[0].Message == "consumer mutation" {
+			if len(findings) != 1 || string(findings[0].Severity) != tc.severity || findings[0].Start != uses[0].Position || findings[0].Message == "consumer mutation" {
 				t.Fatalf("prepared use lost its severity or location: %+v", findings)
 			}
 			findings[0].Message = "consumer mutation"

@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"golang.org/x/sync/semaphore"
 )
 
 func TestQueuedCallKeepsExecutionBudget(t *testing.T) {
 	t.Parallel()
-	p := &Plugin{path: "queued.wasm", limits: Limits{Timeout: time.Millisecond}, gate: semaphore.NewWeighted(1)}
+	p := &Plugin{path: "queued.wasm", limits: guestlimits.Limits{Timeout: time.Millisecond}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +36,7 @@ func TestQueuedCallKeepsExecutionBudget(t *testing.T) {
 
 func TestQueuedCallHonorsCallerCancellation(t *testing.T) {
 	t.Parallel()
-	p := &Plugin{limits: Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
+	p := &Plugin{limits: guestlimits.Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
 	}

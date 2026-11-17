@@ -12,28 +12,47 @@ import (
 
 const module = "actionlint.kjanat.dev/v2/internal/"
 
+// lowerLayers orders the layers below internal/externallinters from lowest to
+// highest. Each may depend only on the layers before it:
+//
+//   - internal/base holds source text, byte captures, filesystem reads and
+//     digests, which every other layer shares.
+//   - internal/languages parses and evaluates the expression and YAML
+//     languages that documents are written in.
+//   - internal/model describes workflows, actions, rules and tool manifests
+//     in those languages.
+//   - internal/integrations reaches external services: HTTP and Git access,
+//     network policy and accounting, host processes and the dependency cache.
+//   - internal/input reads configuration, local files and remote metadata
+//     into the model, through those integrations.
+//   - internal/results defines findings, the analyzers that produce them and
+//     the policies and reports that publish them.
+var lowerLayers = []string{"base", "languages", "model", "integrations", "input", "results"}
+
+// upperLayers are the layers above lowerLayers. internal/externallinters
+// prepares scripts for external linters and runs them as host processes;
+// built-in tools and tool provider plugins share it. Plugin hosting in
+// internal/plugins and rule execution in internal/checking build on those
+// layers and never on each other. internal/assembly loads the selected plugins
+// and wires them into checking. Rendering in internal/output and the entry
+// points in internal/cli and internal/lsp sit on top.
+var upperLayers = []string{"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"}
+
 // higherLayers lists, for each layer, the layers its production code must not
-// depend on, directly or through any other package. Lower layers describe
-// documents and languages, read inputs, reach external services and publish
-// results. internal/externallinters prepares scripts for external linters and
-// runs them as host processes; built-in tools and tool provider plugins share
-// it. Plugin hosting in internal/plugins and rule execution in
-// internal/checking build on those layers and never on each other.
-// internal/assembly loads the selected plugins and wires them into checking.
-// Rendering in internal/output and the entry points in internal/cli and
-// internal/lsp sit on top.
-var higherLayers = map[string][]string{
-	"model":           {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"input":           {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"results":         {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"languages":       {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"integrations":    {"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"externallinters": {"checking", "plugins", "assembly", "output", "cli", "lsp"},
-	"plugins":         {"checking", "assembly", "output", "cli", "lsp"},
-	"checking":        {"plugins", "assembly", "output", "cli", "lsp"},
-	"assembly":        {"output", "cli", "lsp"},
-	"output":          {"externallinters", "checking", "plugins", "assembly", "cli", "lsp"},
-}
+// depend on, directly or through any other package.
+var higherLayers = func() map[string][]string {
+	layers := map[string][]string{
+		"externallinters": {"checking", "plugins", "assembly", "output", "cli", "lsp"},
+		"plugins":         {"checking", "assembly", "output", "cli", "lsp"},
+		"checking":        {"plugins", "assembly", "output", "cli", "lsp"},
+		"assembly":        {"output", "cli", "lsp"},
+		"output":          {"externallinters", "checking", "plugins", "assembly", "cli", "lsp"},
+	}
+	for i, layer := range lowerLayers {
+		layers[layer] = slices.Concat(lowerLayers[i+1:], upperLayers)
+	}
+	return layers
+}()
 
 // TestLowerLayersDoNotDependOnHigherLayers keeps rule identity, tool
 // settings, plugin references, the checker contract and other shared
@@ -86,7 +105,17 @@ func TestHigherLayerDependenciesFollowTransitiveImports(t *testing.T) {
 	node(module+"inputs", module+"checking")
 	node(module+"languages/messages", module+"output")
 	node(module+"checking/scripts", module+"plugins/artifacts")
+	node(module + "base/files")
+	node(module + "input/references")
+	node(module+"languages/yaml", module+"base/files")
+	node(module+"model/parsing", module+"languages/yaml", module+"input/references")
+	node(module+"base/sourcetext", module+"model/parsing")
+	node(module+"integrations/github", module+"base/files", module+"input/references")
 	loaded := []*packages.Package{
+		graph[module+"base/sourcetext"],
+		graph[module+"languages/yaml"],
+		graph[module+"model/parsing"],
+		graph[module+"integrations/github"],
 		node(module+"input/configuration", module+"model/rule", module+"checking/rules/security", module+"input/configuration/schema"),
 		node(module+"input/workspace", module+"input/files", module+"plugins/artifacts"),
 		node(module+"results", module+"checking"),
@@ -98,11 +127,14 @@ func TestHigherLayerDependenciesFollowTransitiveImports(t *testing.T) {
 	}
 	got := higherLayerDependencies(loaded)
 	want := []string{
+		module + "base/sourcetext depends on " + module + "model/parsing",
 		module + "checking/scripts depends on " + module + "plugins/artifacts",
 		module + "input/configuration depends on " + module + "checking/rules/security",
 		module + "input/configuration depends on " + module + "plugins/loader through " + module + "input/configuration/schema",
 		module + "input/workspace depends on " + module + "plugins/artifacts",
+		module + "integrations/github depends on " + module + "input/references",
 		module + "languages/messages depends on " + module + "output",
+		module + "model/parsing depends on " + module + "input/references",
 		module + "plugins/loader depends on " + module + "checking",
 		module + "results depends on " + module + "checking",
 	}

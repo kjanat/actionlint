@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -767,7 +767,7 @@ func looseEqual(left, right value.Value) bool {
 			return item.Number()
 		case value.String:
 			text, _ := item.Text()
-			return values.ToNumber(text), true
+			return exprvalues.ToNumber(text), true
 		case value.KindUnknown, value.Array, value.Object:
 		}
 		return 0, false

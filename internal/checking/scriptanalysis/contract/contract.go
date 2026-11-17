@@ -5,6 +5,7 @@ package contract
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
@@ -23,12 +24,15 @@ type Context struct {
 	Config, ProjectConfig   *configuration.Config
 	WorkingDir, ProjectRoot string
 	Processes               *hostprocess.ProcessPool
-	LoadEngine              func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadEngine              func(context.Context, string) (scriptengine.Backend, error)
 	Debug                   func(string, ...any)
 	Warn                    func(error)
 	// Skipped receives the rule name of an enabled check that could not run.
 	// Providers may call it concurrently; disabling a check does not call it.
 	Skipped func(string)
+	// Completed receives the rule name after a script check succeeds, including
+	// checks without findings. Providers may call it concurrently.
+	Completed func(string)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
 	Document             checkinputs.AnalyzerInput
@@ -44,18 +48,19 @@ type Registration struct {
 	rule.Declaration
 	ScriptInputs      []checkinputs.ScriptInput
 	InputSelectors    func(Context) ([]checkinputs.ScriptInput, error)
-	ConfiguredBackend func(Context) (checkinputs.ScriptBackend, error)
+	ConfiguredBackend func(Context) (scriptengine.Backend, error)
 	RequiresExecution bool
 	NeedsProcess      func(context.Context, *configuration.Config, *configuration.Config) (bool, error)
 	Validate          func() error
 	Enabled           func(Context) bool
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
-	WithBackend       func(checkinputs.ScriptBackend) (Registration, error)
+	WithBackend       func(scriptengine.Backend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
-	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
-	WithAnalyzer func(checkinputs.Checker) (Registration, error)
+	// WithAnalyzer adapts a document analyzer to this tool's configuration and
+	// policy. The registration's options replace the configured rule options.
+	WithAnalyzer func(results.AnalyzerRegistration) (Registration, error)
 }
 
 // Runner analyzes the batch prepared for one tool. ToolFinding.Script indexes

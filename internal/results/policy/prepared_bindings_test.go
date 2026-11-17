@@ -8,7 +8,7 @@ import (
 )
 
 // preparePolicy mirrors the host's per-entry preparation and seals it before publication.
-func preparePolicy(rules configuration.RuleSet, caller *configuration.Config, p policy.Policy, sources map[string]*configuration.Config, findings []*finding.Finding) policy.Policy {
+func preparePolicy(rules configuration.RuleSet, caller *configuration.Config, p policy.DocumentInputs, sources map[string]*configuration.Config, findings []*finding.Finding) policy.DocumentInputs {
 	registry := rulebinding.NewRegistry(rules)
 	p.Scope = registry.Prepare(caller, caller, caller)
 	p.SourceBindings = make(map[string]*rulebinding.Scope, len(sources))
@@ -26,7 +26,7 @@ func preparePolicy(rules configuration.RuleSet, caller *configuration.Config, p 
 	return p
 }
 
-func publishFindings(processor policy.Processor, p policy.Policy, findings []*finding.Finding, sources map[string][]byte) ([]*finding.Finding, error) {
+func publishFindings(processor policy.Processor, p policy.DocumentInputs, findings []*finding.Finding, sources map[string][]byte) ([]*finding.Finding, error) {
 	published, err := policy.Publish([]policy.Batch{{Processor: processor, Policy: p, InputPath: p.ConfigPath, Findings: findings, Sources: sources}}, nil)
 	return published.Findings[0], err
 }

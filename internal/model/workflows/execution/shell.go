@@ -4,41 +4,35 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
-// Shell distinguishes the runner's bash -e fallback from explicit bash,
-// which also enables pipefail. Custom templates supply their own options.
-type Shell struct {
-	Name     string
-	Implicit bool
-}
-
 // ResolveShell applies step, job, workflow and runner shell precedence.
-func ResolveShell(step, job, workflow, runner value.Value) Shell {
+func ResolveShell(step, job, workflow, runner value.Value) scripts.Shell {
 	for _, candidate := range []value.Value{step, job, workflow} {
 		if candidate.State() == value.Missing {
 			continue
 		}
 		text, ok := executableShellText(candidate)
 		if !ok {
-			return Shell{}
+			return scripts.Shell{}
 		}
 		if text != "" {
-			return Shell{Name: text}
+			return scripts.Shell{Name: text}
 		}
 	}
 	if runner.State() == value.Dynamic || runner.State() == value.Invalid {
-		return Shell{}
+		return scripts.Shell{}
 	}
 	if runner.State() != value.Missing {
 		name, ok := runner.ScalarString()
 		if !ok {
-			return Shell{}
+			return scripts.Shell{}
 		}
-		return Shell{Name: name, Implicit: true}
+		return scripts.Shell{Name: name, Implicit: true}
 	}
 	// Static analysis cannot discover whether a remote runner lacks Bash.
-	return Shell{Name: "bash", Implicit: true}
+	return scripts.Shell{Name: "bash", Implicit: true}
 }
 
 func executableShellText(candidate value.Value) (string, bool) {

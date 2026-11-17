@@ -12,15 +12,15 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 var emptyComponent = []byte{0, 97, 115, 109, 13, 0, 1, 0}
 
-func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Options {
-	return pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+func fixtureAcquisition(r *fixtureregistry.PluginRegistry) dependencycache.Acquisition {
+	return dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 }
 
 func registryClient(t *testing.T, r *fixtureregistry.PluginRegistry) *pluginregistry.Client {

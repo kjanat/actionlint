@@ -9,7 +9,7 @@ import (
 
 func TestUnknownDiffersFromKnownEmptyFacts(t *testing.T) {
 	t.Parallel()
-	var unknown repository.Snapshot
+	var unknown repository.Settings
 	names, err := repository.NewNames()
 	if err != nil {
 		t.Fatal(err)

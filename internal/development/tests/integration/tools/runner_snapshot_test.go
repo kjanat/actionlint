@@ -5,21 +5,22 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 type snapshotScriptBackend struct{ calls int }
 
-func (b *snapshotScriptBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *snapshotScriptBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.calls++
-	return []checkinputs.ScriptDiagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}, nil
+	return []scriptengine.Diagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestRunnerSnapshotScriptRouting(t *testing.T) {
@@ -63,7 +64,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 			if selection == "" {
 				selection = "desktop-pool"
 			}
-			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.Snapshot{
+			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.RunnerSnapshot{
 				Scope: "repo", Freshness: freshness, Complete: true,
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}

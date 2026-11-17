@@ -11,7 +11,7 @@ import (
 )
 
 // Get type of `outputs.<output name>`
-func (rule *Checker) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
+func (rule *Visitor) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
 	if spec == nil {
 		return outputs.ActionType(actionmeta.Definition{})
 	}
@@ -25,7 +25,7 @@ func (rule *Checker) getActionOutputsType(spec *definition.String) exprtypes.Obj
 	return outputs.ActionType(metadata)
 }
 
-func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.Metadata {
+func (rule *Visitor) workflowCallMetadata(call *definition.WorkflowCall) *calls.Metadata {
 	if call.Uses == nil {
 		return nil
 	}
@@ -39,7 +39,7 @@ func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.
 	return m
 }
 
-func (rule *Checker) calcNeedsType(job workflows.BoundJob) exprtypes.ObjectType {
+func (rule *Visitor) calcNeedsType(job workflows.BoundJob) exprtypes.ObjectType {
 	resolved := map[workflows.BoundJob]*calls.Metadata{}
 	for _, dependency := range outputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall; call != nil {
@@ -49,7 +49,7 @@ func (rule *Checker) calcNeedsType(job workflows.BoundJob) exprtypes.ObjectType 
 	return outputs.NeedsType(rule.workflow, job, resolved)
 }
 
-func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.BoundWorkflow) {
+func (rule *Visitor) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.BoundWorkflow) {
 	hasOutputs := false
 	for range call.Outputs {
 		hasOutputs = true

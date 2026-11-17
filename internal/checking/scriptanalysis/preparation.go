@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -67,11 +67,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			return nil, err
 		}
 		request := requests[record.ID]
-		provenance := decl.Origin(job)
-		origin := &finding.IgnoreOrigin{Job: provenance.Job, StepID: provenance.StepID, StepName: provenance.StepName, Uses: provenance.Uses}
-		if provenance.HasPosition {
-			origin.StepPosition = new(provenance.Position)
-		}
+		origin := decl.IgnoreOrigin(job)
 		unit := Unit{
 			Occurrence: record.ID, Reference: record.Declaration,
 			Scope: scope, Execution: request.Execution,

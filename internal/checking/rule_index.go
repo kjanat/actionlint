@@ -6,73 +6,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 var builtins = registration.Declarations()
 
-// bundledManifests returns the bundled provider manifests.
-// Invalid embedded metadata causes a panic.
-func bundledManifests() []toolmanifest.Manifest {
-	manifests, err := toolmanifest.Bundled()
-	if err != nil {
-		panic(err)
-	}
-	return manifests
-}
-
-// providerRules lists the bundled providers' rules in directory order.
-func providerRules() []rule.Descriptor {
-	manifests := bundledManifests()
-	rules := make([]rule.Descriptor, len(manifests))
-	for i, manifest := range manifests {
-		rules[i] = manifest.Rule
-	}
-	return rules
-}
-
-// BuiltinRuleDeclarations returns the built-in rules and their configuration requirements.
-// Each descriptor's slices belong to the caller.
-func BuiltinRuleDeclarations() []rule.Declaration {
-	declarations := slices.Clone(builtins)
-	for i := range declarations {
-		declarations[i] = declarations[i].Clone()
-	}
-	return declarations
-}
-
-// ListRules lists the built-in checks followed by the bundled tool providers' rules.
-func ListRules() []rule.Descriptor {
-	rules := make([]rule.Descriptor, 0, len(builtins)+len(providerRules()))
-	for _, declaration := range builtins {
-		rules = append(rules, declaration.Descriptor)
-	}
-	rules = append(rules, providerRules()...)
-	for i := range rules {
-		rules[i] = rules[i].Clone()
-	}
-	return rules
-}
+// ListRules lists the built-in checks followed by the bundled tool providers'
+// rules, as the configuration rules declare them.
+func ListRules() []rule.Descriptor { return ConfigurationRules().RuleInfos() }
 
 // FindRule returns the built-in or bundled provider rule named name.
 func FindRule(name string) (rule.Descriptor, bool) {
-	name = ResolveRuleAlias(name)
-	for _, r := range builtins {
-		if r.Name == name {
-			return r.Descriptor.Clone(), true
-		}
-	}
-	for _, r := range providerRules() {
-		if r.Name == name {
-			return r.Clone(), true
-		}
-	}
-	return rule.Descriptor{}, false
+	declaration, found := ConfigurationRules().FindRule(name)
+	return declaration.Descriptor, found
 }
 
 // IsProviderRule reports whether name is the rule of a bundled tool provider.
 func IsProviderRule(name string) bool {
-	return slices.ContainsFunc(providerRules(), func(r rule.Descriptor) bool { return r.Name == name })
+	declaration, found := ConfigurationRules().FindRule(name)
+	return found && declaration.Name == name && !slices.ContainsFunc(builtins, func(builtin rule.Declaration) bool { return builtin.Name == name })
 }
 
 // RuleCategory returns the semantic category used by configuration and reference

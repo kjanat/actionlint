@@ -7,10 +7,11 @@ import (
 	"runtime"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -104,7 +105,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 		t.Run(tc.severity, func(t *testing.T) {
 			t.Parallel()
 			finding := results.Diagnostic{
-				Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
+				Rule: "shellcheck", Code: "SC2086", Severity: severity.Severity(tc.severity), Message: "Quote", Path: "dir/my workflow.yml",
 				Start: sourcetext.Position{Line: 7, Column: 12}, End: sourcetext.Position{Line: 7, Column: 16},
 				Fixes: []results.Fix{{Description: "Quote variable", Edits: []results.Edit{
 					{Path: "dir/my workflow.yml", Start: sourcetext.Position{Line: 7, Column: 12}, End: sourcetext.Position{Line: 7, Column: 12}, Replacement: `"`},

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
@@ -17,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -312,10 +312,9 @@ func (p shellPreparation) batch(ctx context.Context, batch scriptanalysis.Batch)
 			}
 			return preparation.Prepared{Skip: "its tool settings are invalid"}, nil
 		}
-		shellName, implicit := script.RuntimeShell()
 		_, directoryKnown := script.WorkingDirectory()
 		run := shell.Run{
-			Shell:    shell.Shell{Name: shellName, Implicit: implicit, Registry: script.Interpreters, Platform: shell.TargetArguments(script.Environment)},
+			Shell:    shell.Shell{Shell: script.RuntimeShell(), Registry: script.Interpreters, Platform: shell.TargetArguments(script.Environment)},
 			Settings: resolved.settings, SourcePlanner: p.sourcePlanner, ConfigFile: resolved.configFile,
 			Sources: p.route == routeProcess && directoryKnown, Engine: p.route == routeEngine,
 			Environment: script.Environment,

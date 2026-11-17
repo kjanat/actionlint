@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
@@ -17,6 +19,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -24,14 +29,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -60,15 +62,12 @@ type analysisSession struct {
 	runnerReports   []runnerapi.Report
 	environment     ExecutionEnvironment
 
-	ruleRegistrations    []configuration.RuleRegistration
-	rules                configuration.RuleSet
-	tools                []contract.Registration
-	analyzers            []checkinputs.Registration
-	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
+	checks               *registeredChecks
+	loadScriptEngine     func(context.Context, string) (scriptengine.Backend, error)
 	allowConfigProcesses bool
 	workflowNames        *nameindex.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service
-	repositories         map[string]repository.Snapshot
+	repositories         map[string]repository.Settings
 	analysisLogger
 	ctx             context.Context
 	workingDir      string
@@ -85,7 +84,7 @@ type analysisSession struct {
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+	processes *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
@@ -104,7 +103,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
+	actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) (findings []*finding.Finding, outline outline.Outline, publication *policy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -119,7 +118,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, nil, err
 	}
-	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules)
+	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.checks.rules)
 	var cfg *configuration.Config
 	if action {
 		cfg, err = settings.action(sourcePath)
@@ -130,17 +129,14 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		return nil, outline, nil, err
 	}
 	entryBinding := settings.bindEntry(sourcePath, cfg)
-	names := selection.RuleNames(s.analyzers)
-	for _, registration := range s.ruleRegistrations {
-		names = append(names, registration.Declaration.Name)
-	}
+	names := s.checks.registeredNames()
 	if err := settings.rules.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, nil, err
 	}
-	if err := configuration.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
+	if err := configuration.ValidateToolNames(projectConfig, s.checks.toolNames()...); err != nil {
 		return nil, nil, nil, err
 	}
-	registrations, err := selection.ConfigureAnalyzers(entryBinding, s.analyzers)
+	registrations, err := configureAnalyzers(entryBinding, s.checks.analyzers)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -251,7 +247,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		finding.Binding = scope.Rule(finding.Rule).ID()
 	}
-	resultPolicy := policy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	resultPolicy := policy.DocumentInputs{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
 	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
 	resultPolicy.IgnoreSelectors = s.ignoreSelectors
 	// Suppression findings use paths relative to the working directory. Add those
@@ -271,7 +267,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *localactions.Cache, workflows *reusableworkflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
+	actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, registrations []results.AnalyzerRegistration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -337,6 +333,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		skippedMu.Lock()
 		skipped[name] = true
 		skippedMu.Unlock()
+	}, Completed: func(name string) {
+		s.checkCompletion.markCompleted(snapshot.Reference(), name)
 	}, Warn: func(err error) {
 		if s.logOut != nil {
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
@@ -364,7 +362,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			participant.attachScope(process.Scope)
 		}
 	}
-	requires := selection.RequiredFacts(registrations)
+	requires := requiredInputs(registrations)
 	options := composites.Options{
 		Bindings: settings.bindings[sourcePath], BindSource: settings.bindInvocation,
 		SourceSnapshots:        s.snapshots,

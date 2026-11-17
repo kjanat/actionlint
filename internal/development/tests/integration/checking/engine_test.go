@@ -8,13 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 type ruffEchoBackend struct{ *module.Engine }
 
-func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b ruffEchoBackend) ScriptDescriptor() scriptengine.Descriptor {
 	descriptor := b.Engine.ScriptDescriptor()
 	descriptor.Engine = "ruff"
 	descriptor.Rule.Name = "ruff"

@@ -187,7 +187,7 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if !ok {
 		t.Fatal("source snapshot has no workflow")
 	}
-	rule := New(Dependencies{Runners: runners}, Options{})
+	rule := NewVisitor(Dependencies{Runners: runners}, Options{})
 	if err := rule.VisitWorkflowPre(workflow); err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 
 func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	t.Parallel()
-	checker := &Checker{
+	checker := &Visitor{
 		stepsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"producer": exprtypes.StringType()})),
 		needsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"build": exprtypes.StringType()})),
 	}
@@ -328,7 +328,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	needs := exprtypes.NewObjectType(map[string]exprtypes.Type{
 		"build": exprtypes.NewObjectType(map[string]exprtypes.Type{"result": exprtypes.StringType()}).Type(),
 	})
-	rule := &Checker{stepsTy: &steps, needsTy: &needs}
+	rule := &Visitor{stepsTy: &steps, needsTy: &needs}
 	for _, tc := range []struct {
 		expression string
 		wordSafe   bool

@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // assessLifecycle separates required findings before project suppressions run.
-func (processor Processor) assessLifecycle(p Policy, findings []*finding.Finding, authority map[*finding.Finding]obligation) ([]*finding.Finding, []*finding.Finding, error) {
+func (processor Processor) assessLifecycle(p DocumentInputs, findings []*finding.Finding, authority map[*finding.Finding]obligation) ([]*finding.Finding, []*finding.Finding, error) {
 	optional := make([]*finding.Finding, 0, len(findings))
 	var required []*finding.Finding
 	for _, finding := range findings {
@@ -41,24 +42,19 @@ func (processor Processor) assessLifecycle(p Policy, findings []*finding.Finding
 			}
 			continue
 		}
-		severity := lifecycle.Severity("")
+		var level severity.Severity
 		if projectActive {
-			severity = project.Severity
+			level = project.Severity
 		}
-		if level, fixed := processor.RuleSet.FixedDiagnosticLevel(config, finding.Rule); fixed {
-			switch level {
-			case "info":
-				severity = lifecycle.Info
-			case "warn":
-				severity = lifecycle.Warning
-			case "error":
-				severity = lifecycle.Error
+		if configured, fixed := processor.RuleSet.FixedDiagnosticLevel(config, finding.Rule); fixed {
+			if selected, ok := configured.Severity(); ok {
+				level = selected
 			}
 		}
-		if mandatoryActive && mandatory.Severity.Rank() > severity.Rank() {
-			severity = mandatory.Severity
+		if mandatoryActive && mandatory.Severity.Rank() > level.Rank() {
+			level = mandatory.Severity
 		}
-		finding.Severity = string(severity)
+		finding.Severity = level
 		finding.Lifecycle = lifecycleReport(*evidence, project.Active, mandatory.Active)
 		if mandatoryActive {
 			identity, err := json.Marshal(finding.Lifecycle)
@@ -85,7 +81,7 @@ func lifecycleReport(e lifecycle.Evidence, optional, required []lifecycle.Decisi
 		for _, decision := range decisions {
 			report.Policies = append(report.Policies, results.LifecyclePolicyReport{
 				ID: decision.PolicyID, Description: decision.Description, Origin: decision.Origin,
-				Severity: string(decision.Severity), StartsOn: decision.StartsOn.String(), Enforced: enforced,
+				Severity: decision.Severity, StartsOn: decision.StartsOn.String(), Enforced: enforced,
 			})
 		}
 	}

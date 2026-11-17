@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -22,23 +23,40 @@ type toolProvider struct {
 	configFiles bool
 }
 
-// toolProviders indexes the bundled tool providers by rule name. The
-// manifests are embedded build inputs, so a defect panics, as missing rule
-// metadata does.
-var toolProviders = sync.OnceValue(func() map[string]toolProvider {
+// toolProviders indexes the bundled tool providers by rule name. A provider
+// whose embedded manifest is invalid is left out of the index, and
+// BundledToolProvidersError reports why.
+func toolProviders() map[string]toolProvider {
+	index, _ := bundledToolProviders()
+	return index
+}
+
+// BundledToolProvidersError reports why a bundled tool provider could not be
+// indexed, or nil when every one was. Invalid embedded manifests are a build
+// defect that TestBundledToolProvidersLoad rejects; the rule catalog reports
+// this error to every check.
+func BundledToolProvidersError() error {
+	_, err := bundledToolProviders()
+	return err
+}
+
+// bundledToolProviders decodes the bundled tool providers once per process.
+var bundledToolProviders = sync.OnceValues(func() (map[string]toolProvider, error) {
+	index := map[string]toolProvider{}
 	bundled, err := toolmanifest.Bundled()
 	if err != nil {
-		panic(fmt.Sprintf("bundled tool providers: %v", err))
+		return index, fmt.Errorf("bundled tool providers: %w", err)
 	}
-	index := map[string]toolProvider{}
+	var failures []error
 	for _, manifest := range bundled {
 		tool, err := loadToolProvider(manifest)
 		if err != nil {
-			panic(fmt.Sprintf("bundled tool provider %s: %v", manifest.Rule.Name, err))
+			failures = append(failures, fmt.Errorf("bundled tool provider %s: %w", manifest.Rule.Name, err))
+			continue
 		}
 		index[manifest.Rule.Name] = tool
 	}
-	return index
+	return index, errors.Join(failures...)
 })
 
 func loadToolProvider(manifest toolmanifest.Manifest) (toolProvider, error) {

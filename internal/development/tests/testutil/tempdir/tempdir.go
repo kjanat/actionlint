@@ -5,7 +5,7 @@ package tempdir
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 )
 
 // Physical returns t.TempDir with symlinked and short-name ancestors resolved.

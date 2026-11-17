@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -40,10 +41,10 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	t.Parallel()
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
 	position := sourcetext.Position{Line: 1, Column: strings.Index(content, "#") + 1}
-	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sourcetext.ContentDigest([]byte(content))}
+	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sha256hex.Digest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
-	files := []evaluatedBatch{{Policy: Policy{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
+	files := []evaluatedBatch{{Policy: DocumentInputs{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
 	for _, name := range []string{"shellcheck", "expression-reference"} {
 		files[0].Findings = append(files[0].Findings, &finding.Finding{
 			Rule: "unused-suppression", Start: position, Reference: &ref, Path: "alias/action.yml", UnusedSuppressionRule: name,
@@ -55,7 +56,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 		t.Fatalf("lost reconciled cleanup: %+v", files)
 	}
 	fix := files[0].Findings[0].Fixes[0]
-	if fix.Applicability != results.FixSafe || len(fix.Edits) != 1 || fix.Edits[0].Replacement != "# ignore shellcheck -- keep reason" || fix.Edits[0].Path != "alias/action.yml" || fix.Revisions["alias/action.yml"] != ref.Revision {
+	if fix.Applicability != applicability.Safe || len(fix.Edits) != 1 || fix.Edits[0].Replacement != "# ignore shellcheck -- keep reason" || fix.Edits[0].Path != "alias/action.yml" || fix.Revisions["alias/action.yml"] != ref.Revision {
 		t.Fatalf("cleanup removed a selector used by another invocation: %+v", fix)
 	}
 }

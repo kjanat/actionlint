@@ -11,9 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -23,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -32,8 +35,8 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
 	}
-	base.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
-		return withAnalyzer(base, p, guest)
+	base.WithAnalyzer = func(registration results.AnalyzerRegistration) (contract.Registration, error) {
+		return withAnalyzer(base, p, registration)
 	}
 	return base
 }
@@ -53,9 +56,12 @@ func defaultSelection(sel backends.ToolSelection, name string) bool {
 
 // withAnalyzer selects a document analyzer or the provider's transport per
 // document, accounting for settings in overrides and composite actions.
-func withAnalyzer(base contract.Registration, p backends.Provider, guest checkinputs.Checker) (contract.Registration, error) {
+// Options in registration take precedence over the options configuration
+// gives the analyzer's rule.
+func withAnalyzer(base contract.Registration, p backends.Provider, registration results.AnalyzerRegistration) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
+	guest := registration.Analyzer
 	integrator, ok := guest.(checkinputs.ToolIntegrator)
 	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != m.Integration.Contract || integrator.ToolIntegration().Tool != m.Integration.Tool {
 		return contract.Registration{}, fmt.Errorf("analyzer does not advertise the %s configuration contract", name)
@@ -68,9 +74,10 @@ func withAnalyzer(base contract.Registration, p backends.Provider, guest checkin
 	if err != nil {
 		return contract.Registration{}, err
 	}
-	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver}
+	descriptor := guest.Descriptor().Descriptor
+	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver, optionsSchema: descriptor.OptionsSchema, analyzerOptions: slices.Clone(registration.Options)}
 	next := base
-	next.Descriptor = guest.Descriptor().Descriptor
+	next.Descriptor = descriptor
 	integration := *integrator.ToolIntegration()
 	next.ToolIntegration = &integration
 	next.NeedsProcess = func(ctx context.Context, cfg, project *configuration.Config) (bool, error) {
@@ -131,6 +138,10 @@ type documentRoute struct {
 	settingsResolver *integrationconfig.SettingsResolver
 	name             string
 	capabilities     toolmanifest.Capabilities
+	// optionsSchema validates the options the guest negotiates with.
+	optionsSchema json.RawMessage
+	// analyzerOptions replaces the options configuration gives the guest's rule.
+	analyzerOptions json.RawMessage
 }
 
 // enabled reports whether configuration leaves the provider on.
@@ -223,6 +234,14 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 			}
 		}
 	}
+	if len(r.analyzerOptions) != 0 {
+		pluginOptions = slices.Clone(r.analyzerOptions)
+	}
+	if len(pluginOptions) != 0 {
+		if err := executor.ValidateOptions(r.optionsSchema, pluginOptions); err != nil {
+			return nil, fmt.Errorf("analyzer %q options: %w", r.name, err)
+		}
+	}
 	negotiated, err := guest.NegotiateTool(ctx, data, pluginOptions)
 	if err == nil && negotiated == nil {
 		return nil, errors.New("tool negotiation returned no result")
@@ -232,7 +251,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 
 type documentRunner struct {
 	documentRoute
-	guest      checkinputs.Checker
+	guest      results.Analyzer
 	integrator checkinputs.ToolIntegrator
 	context    contract.Context
 	native     func(*configuration.Config) (contract.Runner, error)
@@ -297,17 +316,21 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 			continue
 		}
 		files.configure(&input)
-		result, err := executor.Run(ctx, input, []checkinputs.Registration{{Checker: r.guest, Options: input.Options}})
+		result, err := executor.Run(ctx, input, []results.AnalyzerRegistration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			mapped, mapErr := files.finding(r.name, finding, script, i)
 			if mapErr != nil {
 				err = errors.Join(err, mapErr)
 				continue
 			}
-			mapped.Severity = r.severity(mapped.Severity)
+			mapped.Severity = r.severity(string(mapped.Severity))
 			findings = append(findings, mapped)
 		}
-		failure = errors.Join(failure, err, files.close())
+		err = errors.Join(err, files.close())
+		failure = errors.Join(failure, err)
+		if err == nil && r.context.Completed != nil {
+			r.context.Completed(r.name)
+		}
 	}
 	// Scopes without analyzed runs still negotiate configuration. Source grants
 	// are materialized only for scripts that need them.
@@ -354,12 +377,12 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 
 // severity maps a guest severity through the manifest's table, as the
 // provider's own transport does.
-func (r documentRunner) severity(severity string) string {
-	mapped, listed := r.capabilities.HostSeverity(severity)
+func (r documentRunner) severity(tool string) severity.Severity {
+	mapped, listed := r.capabilities.HostSeverity(tool)
 	if !listed && r.context.Debug != nil {
-		r.context.Debug("%s: mapped unlisted severity %q to %s", r.name, severity, mapped)
+		r.context.Debug("%s: mapped unlisted severity %q to %s", r.name, tool, mapped)
 	}
-	return string(mapped)
+	return mapped
 }
 
 func (r documentRunner) validateDocumentBatch(batch scriptanalysis.Batch) error {

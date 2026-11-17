@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -32,7 +33,7 @@ func testGetWantedActionMetadata() *actionmeta.Metadata {
 			Main:  "index.js",
 		},
 		InputDefaults: []*actionmeta.KeyValue{
-			{Name: "name", Value: actionmeta.ExprString{Value: "anonymous", Line: 8, Column: 14}},
+			{Name: "name", Value: actionmeta.ExprString{Value: "anonymous", Position: sourcetext.Position{Line: 8, Column: 14}}},
 		},
 	}
 	return want
@@ -116,7 +117,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	wantBranding.Branding.Color = "white"
 	// The "branding" section pushes the inputs (and the "default" value node) down the file.
 	wantBranding.InputDefaults = []*actionmeta.KeyValue{
-		{Name: "name", Value: actionmeta.ExprString{Value: "anonymous", Line: 11, Column: 14}},
+		{Name: "name", Value: actionmeta.ExprString{Value: "anonymous", Position: sourcetext.Position{Line: 11, Column: 14}}},
 	}
 
 	wantNode24 := testGetWantedActionMetadata()

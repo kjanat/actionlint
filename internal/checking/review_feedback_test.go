@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func writeReviewFixture(t *testing.T, root, path, content string) {
@@ -54,7 +54,7 @@ permissions: {}
 
 type reviewShellcheckBackend struct{ calls int }
 
-func (b *reviewShellcheckBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *reviewShellcheckBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.calls++
 	return nil, nil
 }
@@ -70,7 +70,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	}
 	backend := &reviewShellcheckBackend{}
 	_, err = runTestAnalysis(t.Context(), analysisRequest{
-		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: backend}}),
+		WorkingDir: root, Checks: testChecks(t, nil, registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: backend}})),
 		Sources: []workspace.InputFile{{
 			Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"),
@@ -128,7 +128,7 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			if tool == "shellcheck" {
 				shell = "bash"
 			}
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []workspace.InputFile{{
+			request := analysisRequest{WorkingDir: root, Checks: testChecks(t, nil, registry.Registrations(options)), Sources: []workspace.InputFile{{
 				Path: "ci.yml", Config: cfg,
 				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n"),
 			}}}

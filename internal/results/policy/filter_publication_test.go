@@ -5,16 +5,16 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 // publishSuppressionFixture enables the tested rules so publication exercises
 // suppression independently of their recommendation and default levels.
-func publishSuppressionFixture(t *testing.T, p policy.Policy, cfg *configuration.Config, findings []*finding.Finding, sources map[string][]byte) []*finding.Finding {
+func publishSuppressionFixture(t *testing.T, p policy.DocumentInputs, cfg *configuration.Config, findings []*finding.Finding, sources map[string][]byte) []*finding.Finding {
 	t.Helper()
 	rules := checking.ConfigurationRules()
 	groups := map[string]any{}
@@ -95,19 +95,19 @@ func fixtureInline(t *testing.T, source []byte, findings []*finding.Finding, res
 	t.Helper()
 	cfg := &configuration.Config{}
 	cfg.Policy.DisallowSuppressions = restrictions
-	return publishSuppressionFixture(t, policy.Policy{Path: "fixture.yml", ConfigPath: "fixture.yml", Content: source, AdditionalRules: additional}, cfg, findings, nil)
+	return publishSuppressionFixture(t, policy.DocumentInputs{Path: "fixture.yml", ConfigPath: "fixture.yml", Content: source, AdditionalRules: additional}, cfg, findings, nil)
 }
 
 func fixtureForeign(t *testing.T, path string, source []byte, findings []*finding.Finding, restrictions *configuration.SuppressionsPolicy) []*finding.Finding {
 	t.Helper()
 	cfg := &configuration.Config{}
 	cfg.Policy.DisallowSuppressions = restrictions
-	return publishSuppressionFixture(t, policy.Policy{Path: "caller.yml", ConfigPath: "caller.yml"}, cfg, findings, map[string][]byte{path: source})
+	return publishSuppressionFixture(t, policy.DocumentInputs{Path: "caller.yml", ConfigPath: "caller.yml"}, cfg, findings, map[string][]byte{path: source})
 }
 
 func fixtureConfigured(t *testing.T, path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config) []*finding.Finding {
 	t.Helper()
-	return publishSuppressionFixture(t, policy.Policy{Path: path, ConfigPath: path, Root: root, Content: source}, cfg, findings, nil)
+	return publishSuppressionFixture(t, policy.DocumentInputs{Path: path, ConfigPath: path, Root: root, Content: source}, cfg, findings, nil)
 }
 
 // fixtureIdentity keeps the attributes under test while publication adds bindings and paths.

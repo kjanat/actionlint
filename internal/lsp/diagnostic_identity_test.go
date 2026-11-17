@@ -3,7 +3,8 @@ package lsp
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -28,13 +29,13 @@ func TestDiagnosticSeverities(t *testing.T) {
 		severity string
 		want     int
 	}{
-		{"error", 1}, {"warning", 2}, {"warn", 2}, {"info", 3},
+		{"", 1}, {"error", 1}, {"warning", 2}, {"info", 3},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
 			t.Parallel()
 			doc := Document{Text: "value"}
 			finding := results.Diagnostic{
-				Rule: "shellcheck", Severity: tc.severity, Message: "finding",
+				Rule: "shellcheck", Severity: severity.Severity(tc.severity), Message: "finding",
 				Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 6},
 			}
 			items := diagnosticItems(doc, []results.Diagnostic{finding}, nil)

@@ -13,12 +13,13 @@ import (
 	"strings"
 	"syscall"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/externallinters/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -346,7 +347,7 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 				last = max(last, span.Document.Line)
 			}
 		}
-		result.Suppression = &results.SuppressionOrigin{Path: script.Path, First: script.Key().Line, Last: last}
+		result.Suppression = &results.SuppressionOrigin{Path: script.Path, Lines: sourcetext.LineRange{First: script.Key().Line, Last: last}}
 		return result, nil
 	}
 	return contract.ToolFinding{}, fmt.Errorf("tool reported source outside its grants: %q", finding.Path)

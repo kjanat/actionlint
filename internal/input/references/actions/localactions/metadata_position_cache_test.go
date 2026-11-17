@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
 	t.Parallel()
-	value := &actionmeta.ExprString{Value: "example", Line: 2, Column: 3}
+	value := &actionmeta.ExprString{Value: "example", Position: sourcetext.Position{Line: 2, Column: 3}}
 	checkSourceLess := func(meta *actionmeta.Metadata) {
 		t.Helper()
 		if _, parsed := meta.OriginalSource(); parsed {

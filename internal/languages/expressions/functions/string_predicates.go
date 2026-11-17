@@ -3,8 +3,8 @@ package functions
 import (
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
@@ -18,21 +18,21 @@ func IsStringPredicate(name string) bool {
 	}
 }
 
-func evaluateContains(context EvaluationContext) values.EvaluationResult {
+func evaluateContains(context EvaluationContext) exprvalues.EvaluationResult {
 	return evaluatePredicate(context, "contains")
 }
 
-func evaluateStartsWith(context EvaluationContext) values.EvaluationResult {
+func evaluateStartsWith(context EvaluationContext) exprvalues.EvaluationResult {
 	return evaluatePredicate(context, "startswith")
 }
 
-func evaluateEndsWith(context EvaluationContext) values.EvaluationResult {
+func evaluateEndsWith(context EvaluationContext) exprvalues.EvaluationResult {
 	return evaluatePredicate(context, "endswith")
 }
 
-func evaluatePredicate(context EvaluationContext, operation string) values.EvaluationResult {
+func evaluatePredicate(context EvaluationContext, operation string) exprvalues.EvaluationResult {
 	first := context.Argument(0)
-	if first.State != values.EvaluationKnown {
+	if first.State != exprvalues.EvaluationKnown {
 		return first
 	}
 	if items, array := first.Value.([]any); array && operation == "contains" {
@@ -40,12 +40,12 @@ func evaluatePredicate(context EvaluationContext, operation string) values.Evalu
 			return knownValue(false)
 		}
 		second := context.Argument(1)
-		if second.State != values.EvaluationKnown {
+		if second.State != exprvalues.EvaluationKnown {
 			return second
 		}
 		known := true
 		for _, item := range items {
-			equal, comparisonKnown := values.CompareConditionValues(syntax.CompareOpNodeKindEq, item, second.Value)
+			equal, comparisonKnown := exprvalues.CompareConditionValues(syntax.CompareOpNodeKindEq, item, second.Value)
 			if comparisonKnown && equal {
 				return knownValue(true)
 			}
@@ -61,15 +61,15 @@ func evaluatePredicate(context EvaluationContext, operation string) values.Evalu
 		return knownValue(false)
 	}
 	second := context.Argument(1)
-	if second.State != values.EvaluationKnown {
+	if second.State != exprvalues.EvaluationKnown {
 		return second
 	}
 	switch second.Value.(type) {
 	case []any, map[string]any:
 		return knownValue(false)
 	}
-	left, leftKnown := values.PredicateString(first.Value)
-	right, rightKnown := values.PredicateString(second.Value)
+	left, leftKnown := exprvalues.PredicateString(first.Value)
+	right, rightKnown := exprvalues.PredicateString(second.Value)
 	if !leftKnown || !rightKnown {
 		return unknownValue()
 	}

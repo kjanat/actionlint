@@ -16,10 +16,12 @@ import (
 	"sync/atomic"
 	"syscall/js"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/lsp"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 var requestSequence atomic.Uint64
@@ -98,7 +100,7 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		PathFromURI: workspace.Path,
 		URIFromPath: workspace.URI,
 		Complete:    lsp.CompleteDocument,
-		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (lsp.Analysis, error) {
+		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (analysis lsp.Analysis, err error) {
 			selections := registry.ToolSelections{}
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
@@ -123,7 +125,14 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 				}
 				return []byte(value.String()), nil
 			}
-			return lsp.AnalyzeEditorDocuments(ctx, options, documents)
+			// The browser selects no plugins; assembly still composes the
+			// bundled tools as it does for the native entry points.
+			session, err := assembly.Open(ctx, options, pluginselection.Sources{})
+			if err != nil {
+				return lsp.Analysis{}, err
+			}
+			defer func() { err = errors.Join(err, session.Close(ctx)) }()
+			return lsp.AnalyzeEditorDocuments(ctx, session.Options, documents)
 		},
 	})
 }

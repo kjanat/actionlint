@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -102,7 +102,7 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 			Executable: &executable, AllowWasm: true,
 			LauncherArguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"},
 		}}}),
-		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return backend, nil },
+		LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { return backend, nil },
 	}
 	needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 	if err != nil || !needed["shellcheck"] {

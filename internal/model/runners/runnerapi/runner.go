@@ -4,11 +4,10 @@ package runnerapi
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
@@ -64,9 +63,9 @@ const (
 	Missing Freshness = "missing"
 )
 
-// Snapshot contains runner data supplied explicitly by the host. Content is
+// RunnerSnapshot contains runner data supplied explicitly by the host. Content is
 // provider-specific data, never a capability to access files or the network.
-type Snapshot struct {
+type RunnerSnapshot struct {
 	Content    string    `json:"content"`
 	Scope      string    `json:"scope"`
 	ObtainedAt string    `json:"obtained_at"`
@@ -74,9 +73,9 @@ type Snapshot struct {
 	Complete   bool      `json:"complete"`
 }
 
-func (s Snapshot) Digest() string {
+func (s RunnerSnapshot) Digest() string {
 	data, _ := json.Marshal(s)
-	return fmt.Sprintf("%x", sha256.Sum256(data))
+	return sha256hex.Digest(data)
 }
 
 type Request struct {
@@ -84,7 +83,7 @@ type Request struct {
 	AsOf      lifecycle.Date
 	Target    string
 	Scope     string
-	Snapshot  Snapshot
+	Snapshot  RunnerSnapshot
 	Selectors []Selector
 }
 
@@ -172,7 +171,7 @@ type Options struct {
 	Target    string
 	Provider  string
 	Scope     string
-	Snapshot  Snapshot
+	Snapshot  RunnerSnapshot
 	Providers []Registration
 }
 

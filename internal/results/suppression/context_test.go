@@ -128,8 +128,8 @@ func TestSuppressionYAMLLineEndings(t *testing.T) {
 			if len(findings) != 0 || len(directives) != 1 {
 				t.Fatalf("directives=%#v findings=%#v", directives, findings)
 			}
-			if directives[0].Position.Line != 4 || directives[0].First != 4 {
-				t.Errorf("directive source position = line %d, target %d; want 4", directives[0].Position.Line, directives[0].First)
+			if directives[0].Position.Line != 4 || directives[0].Lines.First != 4 {
+				t.Errorf("directive source position = line %d, target %d; want 4", directives[0].Position.Line, directives[0].Lines.First)
 			}
 		})
 	}

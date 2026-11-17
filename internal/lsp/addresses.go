@@ -31,16 +31,3 @@ func filePath(uri string) (string, error) {
 	}
 	return filepath.Clean(path), nil
 }
-
-// FileURI converts an absolute local path to an editor URI, including drive paths.
-func FileURI(path string) string {
-	path = filepath.ToSlash(path)
-	if runtime.GOOS == "windows" && strings.HasPrefix(path, "//") {
-		host, rest, _ := strings.Cut(path[2:], "/")
-		return (&url.URL{Scheme: "file", Host: host, Path: "/" + rest}).String()
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return (&url.URL{Scheme: "file", Path: path}).String()
-}

@@ -35,7 +35,7 @@ runs:
 		if diagnostic.Rule != "inline-suppression" {
 			t.Fatalf("unexpected finding: %+v", diagnostic)
 		}
-		counts[diagnostic.Severity]++
+		counts[string(diagnostic.Severity)]++
 	}
 	if len(result.Diagnostics) != 2 || counts["warning"] != 1 || counts["info"] != 1 {
 		t.Fatalf("alias scopes collapsed: %+v", result.Diagnostics)

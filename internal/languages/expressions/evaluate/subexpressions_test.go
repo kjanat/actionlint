@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
@@ -57,7 +57,7 @@ func TestSubexpressionResultsSkipUnusedBranches(t *testing.T) {
 	results := EvaluateSubexpressions(root)
 	parent, _ := results.Result(root)
 	child, found := results.Result(logical.Right)
-	if parent.State != values.EvaluationKnown || parent.Value != false || found {
+	if parent.State != exprvalues.EvaluationKnown || parent.Value != false || found {
 		t.Fatalf("parent=%+v child=%+v found=%t", parent, child, found)
 	}
 }

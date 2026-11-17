@@ -158,7 +158,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 			}
 		})
 	}
-	for _, cfg := range []*configuration.Config{nil, {}, {Policy: configuration.Policy{}}} {
+	for _, cfg := range []*configuration.Config{nil, {}, {Policy: configuration.PolicyConfig{}}} {
 		if cfg.RequiresPermissions() != nil {
 			t.Fatal("unset policy must remain nil")
 		}

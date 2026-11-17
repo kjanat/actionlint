@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 type actionInputObserver struct{ input checkinputs.AnalyzerInput }
@@ -26,7 +26,7 @@ func (*actionInputObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (o *actionInputObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (o *actionInputObserver) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.input = input
 	return nil, nil
 }
@@ -52,7 +52,7 @@ jobs:
 	observer := &actionInputObserver{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []checkinputs.Registration{{Checker: observer}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: observer}},
 	}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Options{})
+	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}

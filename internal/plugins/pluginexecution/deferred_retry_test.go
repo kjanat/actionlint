@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -35,7 +35,7 @@ func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	bytes := registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: fixtureregistry.FixtureRegistryURL, Name: "github.com/publisher/plugin", RepositoryID: 10, Metadata: metadata}, "v1.0.0", component)
-	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)

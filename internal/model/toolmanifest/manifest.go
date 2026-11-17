@@ -12,9 +12,11 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -178,15 +180,6 @@ type Selectors struct {
 	Filename string `json:"filename,omitempty"`
 }
 
-// Severity is a host severity a tool severity maps to.
-type Severity string
-
-const (
-	SeverityError   Severity = "error"
-	SeverityWarning Severity = "warning"
-	SeverityInfo    Severity = "info"
-)
-
 // Resource is a host resource a provider may request while checking.
 type Resource string
 
@@ -206,22 +199,24 @@ type Capabilities struct {
 	// MessageTemplate formats finding messages from {code}, {severity}, {row},
 	// {column} and {message}; row and column are script coordinates.
 	MessageTemplate string `json:"message_template,omitempty"`
-	// Severities maps tool severities to host severities. Empty passes tool
-	// severities through.
-	Severities map[string]Severity `json:"severities,omitempty"`
+	// Severities maps tool severities to host severities. Without a table,
+	// tool severities that name a host severity pass through.
+	Severities map[string]severity.Severity `json:"severities,omitempty"`
 }
 
-// HostSeverity maps a tool severity through Severities. Without a table
-// the severity passes through; a severity the table does not list maps to
-// SeverityWarning and reports false.
-func (c Capabilities) HostSeverity(severity string) (Severity, bool) {
+// HostSeverity maps a tool severity through Severities. Without a table a
+// tool severity that names a host severity, as severity.Parse reads it, maps
+// to that severity. Any other tool severity maps to severity.Warning and
+// reports false.
+func (c Capabilities) HostSeverity(text string) (severity.Severity, bool) {
 	if len(c.Severities) == 0 {
-		return Severity(severity), true
-	}
-	if mapped, ok := c.Severities[severity]; ok {
+		if parsed, ok := severity.Parse(text); ok {
+			return parsed, true
+		}
+	} else if mapped, ok := c.Severities[text]; ok {
 		return mapped, true
 	}
-	return SeverityWarning, false
+	return severity.Warning, false
 }
 
 // Stdin selects what a process reads on standard input.
@@ -230,7 +225,7 @@ type Stdin string
 const (
 	// StdinSource sends the prepared script source.
 	StdinSource Stdin = "source"
-	// StdinRequest sends the JSON analyzer.ScriptRequest.
+	// StdinRequest sends the JSON scriptengine.Request.
 	StdinRequest Stdin = "request"
 )
 
@@ -272,13 +267,13 @@ type ProcessSpec struct {
 	Config      ConfigRendering `json:"config"`
 	ConfigFiles *ConfigFiles    `json:"config_files,omitempty"`
 	// ConfigSchema further restricts tools.<name>.config on this transport.
-	ConfigSchema json.RawMessage `json:"config_schema,omitempty"`
-	Version      *VersionProbe   `json:"version,omitempty"`
-	Output       Output          `json:"output"`
+	ConfigSchema json.RawMessage   `json:"config_schema,omitempty"`
+	Version      *VersionProbeSpec `json:"version,omitempty"`
+	Output       Output            `json:"output"`
 	// TemplateEffects maps diagnostic codes to template effects. It is honoured
 	// only when the probed version equals Version.TemplateEffects.
-	TemplateEffects map[string]checkinputs.ScriptTemplateEffect `json:"template_effects,omitempty"`
-	UserArgs        *UserArgs                                   `json:"user_args,omitempty"`
+	TemplateEffects map[string]scriptengine.TemplateEffect `json:"template_effects,omitempty"`
+	UserArgs        *UserArgs                              `json:"user_args,omitempty"`
 	// Concurrency defaults to ConcurrencyPool.
 	Concurrency Concurrency `json:"concurrency,omitempty"`
 }
@@ -382,7 +377,7 @@ const (
 )
 
 // Coordinates describe a tool's position convention. Omitted means
-// lf/chars/exclusive, the analyzer.ScriptPosition contract.
+// lf/chars/exclusive, the scriptengine.Diagnostic contract.
 type Coordinates struct {
 	Rows    RowConvention `json:"rows"`
 	Columns ColumnUnit    `json:"columns"`
@@ -403,8 +398,8 @@ type Transform struct {
 	Inline   string            `json:"inline,omitempty"`
 }
 
-// VersionProbe identifies the installed engine version.
-type VersionProbe struct {
+// VersionProbeSpec identifies the installed engine version.
+type VersionProbeSpec struct {
 	// Args are literal arguments, including spaces within an argument. Version
 	// probes do not substitute the check command's argument placeholders.
 	Args []string `json:"args"`

@@ -2,12 +2,14 @@ package githubaction
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -53,17 +55,17 @@ func (a *action) emitConfiguration(result *lintResult, workingDir string) {
 		if len(config.Overrides) > 0 {
 			source += "; overrides: " + strings.Join(config.Overrides, ", ")
 		}
-		_, _ = fmt.Fprintf(a.stdout, "Configuration: %s\n", commandEscape(source))
+		_, _ = fmt.Fprintf(a.stdout, "Configuration: %s\n", output.EscapeGitHubCommandData(source))
 		for _, warning := range config.Inspection.Warnings {
 			file := warning.File
 			if file == "" {
 				file = config.File
 			}
 			text := fmt.Sprintf("%s:%d:%d: %s", file, warning.Line, warning.Column, warning.Message)
-			_, _ = fmt.Fprintf(a.stdout, "::warning title=Check configuration::%s\n", commandEscape(text))
+			_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("warning", []output.GitHubCommandProperty{{Name: "title", Value: "Check configuration"}}, text))
 		}
 	}
 	for _, hint := range result.report.Hints {
-		_, _ = fmt.Fprintf(a.stdout, "::warning title=Check Action inputs::%s\n", commandEscape(hint))
+		_, _ = io.WriteString(a.stdout, output.FormatGitHubCommand("warning", []output.GitHubCommandProperty{{Name: "title", Value: "Check Action inputs"}}, hint))
 	}
 }

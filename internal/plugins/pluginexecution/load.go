@@ -10,15 +10,18 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -43,7 +46,7 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
 	ToolIDs      []string
-	Acquisition  pluginacquisition.Options
+	Acquisition  dependencycache.Acquisition
 	DisableTools bool
 }
 
@@ -54,8 +57,8 @@ type SelectedProvider struct {
 	Repository bool
 }
 type ScriptEngineRegistration struct {
-	Backend    checkinputs.ScriptBackend
-	Descriptor checkinputs.ScriptEngineDescriptor
+	Backend    scriptengine.Backend
+	Descriptor scriptengine.Descriptor
 }
 
 func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
@@ -93,7 +96,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 				continue
 			}
 			// A local manifest names a command found on PATH; nothing is fetched.
-			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
+			manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -156,7 +159,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			loaded.ToolIDs = append(loaded.ToolIDs, ids...)
 		}
 		if artifact.Info.Kind == artifacts.Core {
-			engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: sources.Acquisition.CompiledModuleCacheDir()})
+			engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(sources.Acquisition)})
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -187,8 +190,8 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 	return loaded, nil
 }
 
-func (l *Loaded) Registrations() []checkinputs.Registration {
-	registrations := make([]checkinputs.Registration, 0, len(l.Components))
+func (l *Loaded) Registrations() []results.AnalyzerRegistration {
+	registrations := make([]results.AnalyzerRegistration, 0, len(l.Components))
 	if l.DisableTools {
 		return registrations
 	}
@@ -196,7 +199,7 @@ func (l *Loaded) Registrations() []checkinputs.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, checkinputs.Registration{Checker: plugin})
+		registrations = append(registrations, results.AnalyzerRegistration{Analyzer: plugin})
 	}
 	return registrations
 }

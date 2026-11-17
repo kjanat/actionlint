@@ -58,7 +58,7 @@ runs:
 				t.Fatalf("findings=%+v", result.Diagnostics)
 			}
 			for _, diagnostic := range result.Diagnostics {
-				if severity, ok := want[diagnostic.Code]; !ok || diagnostic.Severity != severity {
+				if severity, ok := want[diagnostic.Code]; !ok || string(diagnostic.Severity) != severity {
 					t.Errorf("alias lost its configuration: %+v", diagnostic)
 				}
 				delete(want, diagnostic.Code)

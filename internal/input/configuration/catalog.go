@@ -20,20 +20,20 @@ type policySetting struct {
 	disable func(*Config)
 }
 
-// policySettings binds each legacy policy key to its field in [Policy]. A rule
+// policySettings binds each legacy policy key to its field in [PolicyConfig]. A rule
 // names the key it replaced in [rulescope.Declaration.Policy].
 var policySettings = map[string]policySetting{
-	"cache-call-unrestricted": defaultPolicy(func(p *Policy) **bool { return &p.CacheCallUnrestricted }),
-	"cache-operation":         defaultPolicy(func(p *Policy) **bool { return &p.CacheOperation }),
-	"cache-write-untrusted":   defaultPolicy(func(p *Policy) **bool { return &p.CacheWriteUntrusted }),
+	"cache-call-unrestricted": defaultPolicy(func(p *PolicyConfig) **bool { return &p.CacheCallUnrestricted }),
+	"cache-operation":         defaultPolicy(func(p *PolicyConfig) **bool { return &p.CacheOperation }),
+	"cache-write-untrusted":   defaultPolicy(func(p *PolicyConfig) **bool { return &p.CacheWriteUntrusted }),
 	suppressionsPolicy: {
 		configure: configureSuppressionsPolicy,
 		enabled:   func(c *Config) bool { return c != nil && c.Policy.DisallowSuppressions.Enabled() },
 		disable:   func(c *Config) { c.Policy.DisallowSuppressions = &SuppressionsPolicy{} },
 	},
-	"require-action-metadata": {configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata })},
+	"require-action-metadata": {configure: boolRuleOption(func(p *PolicyConfig) **bool { return &p.RequireActionMetadata })},
 	"require-commit-hash": {
-		configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash }),
+		configure: boolRuleOption(func(p *PolicyConfig) **bool { return &p.RequireCommitHash }),
 		enabled:   (*Config).RequiresCommitHash,
 	},
 	"require-job-timeout": {
@@ -59,7 +59,7 @@ func (ruleSet RuleSet) suppressionsRule() (rule.Declaration, bool) {
 }
 
 // defaultPolicy projects a boolean policy that applies unless disabled.
-func defaultPolicy(field func(*Policy) **bool) policySetting {
+func defaultPolicy(field func(*PolicyConfig) **bool) policySetting {
 	return policySetting{
 		configure: boolRuleOption(field),
 		enabled: func(c *Config) bool {
@@ -80,7 +80,7 @@ func (cfg *Config) CachePolicyEnabled(name string) bool {
 	return !found || !setting.enabledByDefault || setting.enabled(cfg)
 }
 
-func boolRuleOption(field func(*Policy) **bool) func(*Config, ruleconfig.Setting) {
+func boolRuleOption(field func(*PolicyConfig) **bool) func(*Config, ruleconfig.Setting) {
 	return func(c *Config, s ruleconfig.Setting) { *field(&c.Policy) = new(s.Level() != "off") }
 }
 

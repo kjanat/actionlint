@@ -7,7 +7,38 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
+
+func TestTemplateSeverityWithStringHelpers(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		level severity.Severity
+		want  string
+	}{
+		{"", "||default|"},
+		{severity.Info, "Info|info|info|info"},
+		{severity.Warning, "Warning|warning|warning|warning"},
+		{severity.Error, "Error|error|error|error"},
+	} {
+		t.Run(string(tc.level), func(t *testing.T) {
+			t.Parallel()
+			formatter, err := NewFormatter(`{{range .}}{{toPascalCase .Severity}}|{{escapeData .Severity}}|{{if .Severity}}{{replace .Severity "unused" "replacement"}}{{else}}default{{end}}|{{escapeProperty .Severity}}{{end}}`, func() string { return "" }, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fields := TemplateFieldsOf(results.PublishedDiagnostic{Severity: tc.level})
+			var out strings.Builder
+			if err := formatter.Print(&out, []*TemplateFields{fields}); err != nil {
+				t.Fatal(err)
+			}
+			if got := out.String(); got != tc.want {
+				t.Fatalf("template output = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestFormatterGitHubCommandEscaping(t *testing.T) {
 	t.Parallel()

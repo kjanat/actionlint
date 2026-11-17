@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
@@ -47,8 +47,8 @@ func TestErrexitStatusReads(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			inv := interpreters.Builtin().Analyze(tc.shell, false)
-			got := scripts.ErrexitStatusReads(tc.text, inv, interpreters.Builtin())
+			inv := commands.BuiltinShells().Analyze(tc.shell, false)
+			got := scripts.ErrexitStatusReads(tc.text, inv, commands.BuiltinShells())
 			if len(got) != tc.want {
 				t.Fatalf("got %+v, want %d", got, tc.want)
 			}

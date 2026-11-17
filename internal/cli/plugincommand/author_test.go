@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func TestPluginValidateBoundsLocalManifestRead(t *testing.T) {
@@ -19,8 +19,8 @@ func TestPluginValidateBoundsLocalManifestRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout bytes.Buffer
-	streams := commandio.Streams{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &bytes.Buffer{}}
-	if status, err := (ValidateOptions{Path: path, JSON: true}).Run(t.Context(), streams, pluginacquisition.Options{}); status != 1 || err != nil {
+	streams := output.Streams{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &bytes.Buffer{}}
+	if status, err := (ValidateOptions{Path: path, JSON: true}).Run(t.Context(), streams, dependencycache.Acquisition{}); status != 1 || err != nil {
 		t.Fatalf("status=%d error=%v stdout=%s", status, err, stdout.String())
 	}
 	var report authoringReport

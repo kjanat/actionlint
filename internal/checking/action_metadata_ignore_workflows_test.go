@@ -43,7 +43,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 					t.Fatalf("attempt %d: expected %d findings, got %+v", attempt, len(tc.wantPaths), result.Diagnostics)
 				}
 				for i, d := range result.Diagnostics {
-					if d.Rule != "action" || !strings.Contains(d.Message, "description is required") || filepath.ToSlash(d.Path) != tc.wantPaths[i] || d.Severity != tc.wantSeverities[i] {
+					if d.Rule != "action" || !strings.Contains(d.Message, "description is required") || filepath.ToSlash(d.Path) != tc.wantPaths[i] || string(d.Severity) != tc.wantSeverities[i] {
 						t.Fatalf("attempt %d: finding %d = %+v; expected %s with severity %s", attempt, i, d, tc.wantPaths[i], tc.wantSeverities[i])
 					}
 				}

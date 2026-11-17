@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -25,9 +25,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
-func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
+func (rule *Visitor) checkExprsIn(s string, pos *sourcetext.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
 	restore := rule.scopeExpressionSource(s, pos)
 	defer restore()
 
@@ -82,7 +83,7 @@ func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 	return ts, valid
 }
 
-func (rule *Checker) syntaxError(issue *syntax.SyntaxError, base sourcetext.Position) {
+func (rule *Visitor) syntaxError(issue *syntax.SyntaxError, base sourcetext.Position) {
 	rule.exprError(&typecheck.Error{
 		Message: issue.Message, Offset: issue.Offset, EndOffset: issue.EndOffset,
 		Position: issue.Position,
@@ -90,11 +91,11 @@ func (rule *Checker) syntaxError(issue *syntax.SyntaxError, base sourcetext.Posi
 	}, base)
 }
 
-func (rule *Checker) exprError(err *typecheck.Error, base sourcetext.Position) {
+func (rule *Visitor) exprError(err *typecheck.Error, base sourcetext.Position) {
 	rule.exprFinding(err, base, "")
 }
 
-func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, severity string) {
+func (rule *Visitor) exprFinding(err *typecheck.Error, base sourcetext.Position, level severity.Severity) {
 	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
@@ -102,7 +103,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position,
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: documentPosition(base, err.Position)}
+	r := report{rule: kind, code: err.Code, severity: level, message: err.Message, start: documentPosition(base, err.Position)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
@@ -115,7 +116,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position,
 	rule.errs = append(rule.errs, r)
 }
 
-func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.Position, checkUntrusted bool, workflowKey string) typecheck.ExpressionCheckResult {
+func (rule *Visitor) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.Position, checkUntrusted bool, workflowKey string) typecheck.ExpressionCheckResult {
 	options := rule.options.Semantics
 	if rule.jobReferences != nil {
 		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
@@ -201,7 +202,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.
 		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
 	for _, finding := range correctness.PermissiveJSONCalls(expr) {
-		rule.exprFinding(finding, base, "info")
+		rule.exprFinding(finding, base, severity.Info)
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *typecheck.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed
@@ -255,7 +256,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.
 	return result
 }
 
-func (rule *Checker) safeScriptStatusSelector(node syntax.Node) bool {
+func (rule *Visitor) safeScriptStatusSelector(node syntax.Node) bool {
 	var context, name string
 	switch node := node.(type) {
 	case *syntax.ObjectDerefNode:
@@ -292,7 +293,7 @@ func (rule *Checker) safeScriptStatusSelector(node syntax.Node) bool {
 
 // checkSemantics parses and checks the expression at the start of src. offset
 // is where the expression ends in src. parsed is false after a syntax error.
-func (rule *Checker) checkSemantics(src string, base sourcetext.Position, checkUntrusted bool, workflowKey string) (result typecheck.ExpressionCheckResult, offset int, parsed bool) {
+func (rule *Visitor) checkSemantics(src string, base sourcetext.Position, checkUntrusted bool, workflowKey string) (result typecheck.ExpressionCheckResult, offset int, parsed bool) {
 	l := syntax.NewLexer(src)
 	p := syntax.NewParser()
 	expr, err := p.ParseExpression(l)
@@ -304,7 +305,11 @@ func (rule *Checker) checkSemantics(src string, base sourcetext.Position, checkU
 }
 
 // documentPosition places at, a one-based position within an expression, in
-// the document where the expression starts at base.
+// the document where the expression starts at base. Only the first line of
+// the expression starts at base.Column; later lines start at column 1.
 func documentPosition(base, at sourcetext.Position) sourcetext.Position {
-	return sourcetext.Position{Line: base.Line + at.Line - 1, Column: base.Column + at.Column - 1}
+	if at.Line > 1 {
+		return sourcetext.Position{Line: base.Line + at.Line - 1, Column: at.Column}
+	}
+	return sourcetext.Position{Line: base.Line, Column: base.Column + at.Column - 1}
 }

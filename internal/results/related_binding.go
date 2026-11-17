@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // RejectedRelatedError counts withheld related locations, never primary diagnostics.

@@ -2,7 +2,7 @@ package functions
 
 import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 )
 
 // DemandForArgument is shared by semantic checking and constant evaluation. Earlier
@@ -113,7 +113,7 @@ func ArgumentFormatPlan(first *CallArgument, count int) (FormatPlan, bool) {
 	if first.Format != nil {
 		return *first.Format, true
 	}
-	format, known := values.FunctionString(first.Value)
+	format, known := exprvalues.FunctionString(first.Value)
 	if first.State != ArgumentKnown || !known {
 		return FormatPlan{}, false
 	}

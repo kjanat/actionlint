@@ -14,6 +14,9 @@ const (
 	Git       RequestKind = "git"
 	OCI       RequestKind = "oci"
 	Delegated RequestKind = "delegated"
+	// Cache identifies lookups in a local cache of remote data. They make no
+	// network request and count only CacheHits and CacheMisses.
+	Cache RequestKind = "cache"
 )
 
 // CredentialStatus describes credentials supplied, not proof of an authenticated
@@ -48,9 +51,14 @@ type RequestOptions struct {
 }
 
 // RequestCounts combines operations with the same host, credential status, protocol and purpose.
+// An external resolver reports its own requests with the same record in a
+// RequestReport: it sets Host, RequestKind, Credentials, Attempts and Failures,
+// and the tracker reads no other field of a reported record.
+// Host is an authority without credentials, paths or queries.
 // Attempts counts transport calls, including failures before a response arrives.
 // QuotaRejections counts rejected requests or batch checks, never transport attempts.
 // UnreportedResolverCalls counts resolver calls without a complete request report.
+// CacheMisses counts local cache lookups that found no usable entry.
 type RequestCounts struct {
 	ResolverCalls            uint64           `json:"resolver_calls"`
 	Host                     string           `json:"host"`
@@ -62,8 +70,17 @@ type RequestCounts struct {
 	Failures                 uint64           `json:"failures"`
 	QuotaRejections          uint64           `json:"quota_rejections"`
 	CacheHits                uint64           `json:"cache_hits"`
+	CacheMisses              uint64           `json:"cache_misses"`
 	UnreportedResolverCalls  uint64           `json:"unreported_resolver_calls"`
 	ResolverReportedAttempts uint64           `json:"resolver_reported_attempts"`
+}
+
+// RequestReport is a resolver's account of its own network activity.
+// AllRequestsReported means every remote attempt is included, including failed
+// attempts. Omission does not mean zero.
+type RequestReport struct {
+	AllRequestsReported bool            `json:"all_requests_reported"`
+	Requests            []RequestCounts `json:"requests"`
 }
 
 // QuotaStatus is the latest conservative observation for a host and credential scope.

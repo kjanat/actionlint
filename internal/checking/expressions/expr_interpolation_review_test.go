@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
@@ -23,12 +23,12 @@ func TestExpressionFailurePhases(t *testing.T) {
 	for _, tc := range []struct {
 		source string
 		phase  typecheck.FailurePhase
-		state  values.EvaluationState
+		state  exprvalues.EvaluationState
 		kind   exprtypes.TypeKind
 	}{
-		{"${{ startsWith(true) }}", typecheck.FailureStaticValidation, values.EvaluationNotAttempted, exprtypes.KindBool},
-		{"${{ startsWith(fromJSON(null), 'x') }}", typecheck.FailureEvaluation, values.EvaluationInvalid, exprtypes.KindBool},
-		{"${{ case(1, 'a', 'b') }}", typecheck.FailureEvaluation, values.EvaluationInvalid, exprtypes.KindAny},
+		{"${{ startsWith(true) }}", typecheck.FailureStaticValidation, exprvalues.EvaluationNotAttempted, exprtypes.KindBool},
+		{"${{ startsWith(fromJSON(null), 'x') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindBool},
+		{"${{ case(1, 'a', 'b') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindAny},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
@@ -108,7 +108,7 @@ func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 	if len(rule.Findings()) != 1 || rule.Findings()[0].Rule != "coercion" {
 		t.Fatalf("expected coercion advisory: %+v", rule.Findings())
 	}
-	if types[0].semantics.Evaluation.State != values.EvaluationKnown || types[0].semantics.Evaluation.Value != true {
+	if types[0].semantics.Evaluation.State != exprvalues.EvaluationKnown || types[0].semantics.Evaluation.Value != true {
 		t.Fatalf("advisory lost constant evaluation: %+v", types[0].semantics.Evaluation)
 	}
 }

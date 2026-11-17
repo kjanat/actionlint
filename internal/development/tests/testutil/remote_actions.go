@@ -28,8 +28,8 @@ func WithFixtureKnowledge(t *testing.T, options checking.Options) checking.Optio
 		if err != nil {
 			t.Fatal(err)
 		}
-		options.Repository = func(context.Context, string) repository.Snapshot {
-			return repository.Snapshot{RunnerLabels: labels}
+		options.Repository = func(context.Context, string) repository.Settings {
+			return repository.Settings{RunnerLabels: labels}
 		}
 	}
 	return options

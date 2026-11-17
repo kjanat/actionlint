@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func TestScriptBudgetWithoutRegisteredTools(t *testing.T) {
@@ -20,7 +20,7 @@ func TestScriptBudgetWithoutRegisteredTools(t *testing.T) {
 	loads := 0
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
-		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+		LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) {
 			loads++
 			return nil, errors.New("unexpected script engine load")
 		},

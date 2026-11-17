@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -18,7 +19,7 @@ func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 				t.Fatal(invalid)
 			}
 			result, _ := Evaluate(directives, nil, rule.Names{})
-			if !result.Suppresses("expression", 3, 3) || result.Suppresses("expression", 4, 4) {
+			if !result.Suppresses("expression", sourcetext.LineRange{First: 3, Last: 3}) || result.Suppresses("expression", sourcetext.LineRange{First: 4, Last: 4}) {
 				t.Fatalf("flow scalar suppression must end before sibling: %+v", directives)
 			}
 		})
@@ -57,10 +58,10 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 					t.Fatal(invalid)
 				}
 				result, _ := Evaluate(directives, nil, rule.Names{})
-				if !result.Suppresses("expression", body, body) || result.Suppresses("expression", sibling, sibling) {
+				if !result.Suppresses("expression", sourcetext.LineRange{First: body, Last: body}) || result.Suppresses("expression", sourcetext.LineRange{First: sibling, Last: sibling}) {
 					t.Fatalf("scalar body should be ignored without swallowing sibling: %+v", directives)
 				}
-				if len(directives) != 1 || directives[0].First != 2 || directives[0].Last != sibling-1 {
+				if len(directives) != 1 || directives[0].Lines.First != 2 || directives[0].Lines.Last != sibling-1 {
 					t.Fatalf("wrong complete scalar extent: %+v", directives)
 				}
 			})

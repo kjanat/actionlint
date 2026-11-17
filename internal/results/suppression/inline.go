@@ -5,19 +5,19 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Directive is a validated inline exception over a physical source range.
-// Position identifies its comment; First and Last bound the declaration it covers.
+// Position identifies its comment; Lines bound the declaration it covers.
 type Directive struct {
-	Position    sourcetext.Position
-	First, Last int
-	Rules       []string
-	Reason      string
+	Position sourcetext.Position
+	Lines    sourcetext.LineRange
+	Rules    []string
+	Reason   string
 }
 
 // ParseInlineSuppressions reads real YAML comments, recovers comments in malformed documents, and
@@ -105,19 +105,17 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, 
 			}
 		}
 	}
-	return Directive{Position: comment.pos, First: target, Last: max(target, comment.endLine), Rules: rules, Reason: strings.TrimSpace(reason)}, nil
+	return Directive{Position: comment.pos, Lines: sourcetext.LineRange{First: target, Last: max(target, comment.endLine)}, Rules: rules, Reason: strings.TrimSpace(reason)}, nil
 }
 
 // Decision independently controls whether an exception hides findings and
 // whether using that exception produces a policy diagnostic.
 type Decision struct{ Suppress, Report bool }
 
-type lineRange struct{ first, last int }
-
 // Evaluation contains the source-local exceptions permitted by policy.
 // Invocation/source ownership is supplied by the host before calling Suppresses.
 type Evaluation struct {
-	ranges map[string][]lineRange
+	ranges map[string][]sourcetext.LineRange
 	names  rule.Names
 }
 
@@ -126,7 +124,7 @@ type Evaluation struct {
 // diagnostics for prohibited ones. Grammar diagnostics are evaluated by the same
 // ranges as analyzer diagnostics; policy diagnostics are emitted after filtering.
 func Evaluate(directives []Directive, policy func(string) Decision, names rule.Names) (Evaluation, []results.Diagnostic) {
-	result := Evaluation{ranges: make(map[string][]lineRange), names: names}
+	result := Evaluation{ranges: make(map[string][]sourcetext.LineRange), names: names}
 	var reports []results.Diagnostic
 	for _, directive := range directives {
 		var prohibited []string
@@ -140,7 +138,7 @@ func Evaluate(directives []Directive, policy func(string) Decision, names rule.N
 			}
 			if decision.Suppress {
 				current := names.ResolveAlias(name)
-				result.ranges[current] = append(result.ranges[current], lineRange{directive.First, directive.Last})
+				result.ranges[current] = append(result.ranges[current], directive.Lines)
 			}
 		}
 		if len(prohibited) != 0 {
@@ -150,7 +148,7 @@ func Evaluate(directives []Directive, policy func(string) Decision, names rule.N
 	return result, reports
 }
 
-// Suppresses reports whether a finding's origin overlaps an allowed exception.
-func (e Evaluation) Suppresses(ruleName string, first, last int) bool {
-	return slices.ContainsFunc(e.ranges[e.names.ResolveAlias(ruleName)], func(lines lineRange) bool { return first <= lines.last && last >= lines.first })
+// Suppresses reports whether a finding's origin lines overlap an allowed exception.
+func (e Evaluation) Suppresses(ruleName string, origin sourcetext.LineRange) bool {
+	return slices.ContainsFunc(e.ranges[e.names.ResolveAlias(ruleName)], origin.Overlaps)
 }

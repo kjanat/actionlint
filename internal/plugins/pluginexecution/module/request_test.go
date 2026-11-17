@@ -4,12 +4,14 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func TestEncodeRequestPerCheckVersion(t *testing.T) {
 	t.Parallel()
-	request := checkinputs.ScriptRequest{Source: "echo", Filename: "s.sh", Directory: "/work", Excluded: []string{"SC1091"}}
+	request := scriptengine.Request{Source: "echo", Filename: "s.sh", Directory: "/work", Excluded: []string{"SC1091"}}
 	for _, tc := range []struct {
 		name      string
 		version   int
@@ -33,7 +35,7 @@ func TestEncodeRequestPerCheckVersion(t *testing.T) {
 		})
 	}
 	e := &Engine{checkVersion: 3}
-	got, err := e.encodeRequest(checkinputs.ScriptRequest{Source: "echo", Filename: "s.sh"})
+	got, err := e.encodeRequest(scriptengine.Request{Source: "echo", Filename: "s.sh"})
 	if err != nil || !strings.Contains(string(got), `"excluded":[]`) {
 		t.Fatalf("check 3 sends an empty excluded list: %s %v", got, err)
 	}
@@ -41,24 +43,22 @@ func TestEncodeRequestPerCheckVersion(t *testing.T) {
 
 func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 	t.Parallel()
-	fix := []checkinputs.ScriptFix{{Replacements: []checkinputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 1, EndColumn: 2}}}}
+	fix := []scriptengine.Fix{{Replacements: []scriptengine.Replacement{{Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}}}}}
 	for _, tc := range []struct {
 		name         string
 		capabilities Capabilities
-		finding      checkinputs.ScriptDiagnostic
+		finding      scriptengine.Diagnostic
 		want         string
 	}{
-		{"absolute source", Capabilities{ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: "/etc/passwd"}, "invalid source"},
-		{"parent source", Capabilities{ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: "../../secret"}, "invalid source"},
-		{"backslash source", Capabilities{ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: `scripts\lib.sh`}, "invalid source"},
-		{"drive source", Capabilities{ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: `C:\secret`}, "invalid source"},
-		{"declared source", Capabilities{ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: "scripts/lib.sh"}, ""},
-		{"fixes", Capabilities{}, checkinputs.ScriptDiagnostic{Fixes: fix}, "without the fixes capability"},
-		{"source", Capabilities{Fixes: true}, checkinputs.ScriptDiagnostic{Source: "lib.sh"}, "without the reported_sources capability"},
-		{"fixes on a source", Capabilities{Fixes: true, ReportedSources: true}, checkinputs.ScriptDiagnostic{Source: "lib.sh", Fixes: fix}, "fixes for reported source"},
-		{"empty fix", Capabilities{Fixes: true}, checkinputs.ScriptDiagnostic{Fixes: []checkinputs.ScriptFix{{}}}, "without replacements"},
-		{"reversed fix", Capabilities{Fixes: true}, checkinputs.ScriptDiagnostic{Fixes: []checkinputs.ScriptFix{{Replacements: []checkinputs.ScriptReplacement{{Row: 2, EndRow: 1, Column: 1, EndColumn: 1}}}}}, "invalid range"},
-		{"declared", Capabilities{Fixes: true, ReportedSources: true}, checkinputs.ScriptDiagnostic{Fixes: fix}, ""},
+		{"absolute source", Capabilities{ReportedSources: true}, scriptengine.Diagnostic{Source: "/etc/passwd"}, "invalid source"},
+		{"parent source", Capabilities{ReportedSources: true}, scriptengine.Diagnostic{Source: "../../secret"}, "invalid source"},
+		{"backslash source", Capabilities{ReportedSources: true}, scriptengine.Diagnostic{Source: `scripts\lib.sh`}, "invalid source"},
+		{"drive source", Capabilities{ReportedSources: true}, scriptengine.Diagnostic{Source: `C:\secret`}, "invalid source"},
+		{"declared source", Capabilities{ReportedSources: true}, scriptengine.Diagnostic{Source: "scripts/lib.sh"}, ""},
+		{"fixes", Capabilities{}, scriptengine.Diagnostic{Fixes: fix}, "without the fixes capability"},
+		{"source", Capabilities{Fixes: true}, scriptengine.Diagnostic{Source: "lib.sh"}, "without the reported_sources capability"},
+		{"fixes on a source", Capabilities{Fixes: true, ReportedSources: true}, scriptengine.Diagnostic{Source: "lib.sh", Fixes: fix}, "fixes for reported source"},
+		{"declared", Capabilities{Fixes: true, ReportedSources: true}, scriptengine.Diagnostic{Fixes: fix}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -71,7 +71,7 @@ func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 	}
 	// A source anchors at the request directory; without one there is none.
 	e := &Engine{checkVersion: 3, metadata: Metadata{Capabilities: Capabilities{ReportedSources: true}}}
-	if got := e.checkFindings3(checkinputs.ScriptDiagnostic{Source: "lib.sh"}, ""); !strings.Contains(got, "carried no directory") {
+	if got := e.checkFindings3(scriptengine.Diagnostic{Source: "lib.sh"}, ""); !strings.Contains(got, "carried no directory") {
 		t.Fatalf("source without a directory: %q", got)
 	}
 }

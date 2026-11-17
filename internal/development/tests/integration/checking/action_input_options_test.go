@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -19,13 +20,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 )
 
 type inputOptionsBackend struct {
 	mu        sync.Mutex
 	name      string
-	requests  []checkinputs.ScriptRequest
+	requests  []scriptengine.Request
 	validated map[string]int
 }
 
@@ -47,7 +49,7 @@ func (b *inputOptionsBackend) ValidateConfig(_ context.Context, options json.Raw
 	return nil
 }
 
-func (b *inputOptionsBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *inputOptionsBackend) Check(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.requests = append(b.requests, request)
@@ -60,7 +62,7 @@ func (b *inputOptionsBackend) Check(_ context.Context, request checkinputs.Scrip
 	}
 	before, _, _ := strings.Cut(request.Source, marker)
 	row := strings.Count(before, "\n") + 1
-	return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: checkinputs.ScriptPosition{Row: row, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: len(marker) + 1}}}, nil
+	return []scriptengine.Diagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: sourcetext.Position{Line: row, Column: 1}, EndLocation: sourcetext.Position{Line: row, Column: len(marker) + 1}}}, nil
 }
 
 func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
@@ -91,7 +93,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 				}
 			}
 			engine := &inputOptionsBackend{name: tc.name, validated: map[string]int{}}
-			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: scriptengine.Descriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
 			}}}}
 			options, err := assembly.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})

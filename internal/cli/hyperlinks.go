@@ -3,13 +3,14 @@ package cli
 import (
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"github.com/mattn/go-isatty"
 )
 
@@ -103,10 +104,10 @@ func (a *commandApp) helpHyperlinks() bool {
 }
 
 func terminalLink(enabled bool, label, url string) string {
-	if !enabled || url == "" {
+	if !enabled {
 		return label
 	}
-	return "\x1b]8;;" + url + "\x1b\\" + label + "\x1b]8;;\x1b\\"
+	return output.TerminalLink(label, url)
 }
 
 func fileLink(enabled bool, path string) string {
@@ -123,7 +124,7 @@ func fileLink(enabled bool, path string) string {
 	return terminalLink(true, label, fileURL(path))
 }
 
-// File URI syntax follows https://www.rfc-editor.org/rfc/rfc8089.
+// fileURL resolves path against the working directory and returns its file URI.
 func fileURL(path string) string {
 	if path == "" {
 		return ""
@@ -132,28 +133,5 @@ func fileURL(path string) string {
 	if err != nil {
 		return ""
 	}
-	path = filepath.ToSlash(abs)
-	u := url.URL{Scheme: "file"}
-	if filepath.Separator == '\\' {
-		switch {
-		case strings.HasPrefix(strings.ToUpper(path), "//?/UNC/"):
-			path = "//" + path[len("//?/UNC/"):]
-		case strings.HasPrefix(path, "//?/"):
-			path = path[len("//?/"):]
-		case strings.HasPrefix(path, "//./"):
-			return ""
-		}
-		switch {
-		case strings.HasPrefix(path, "//"):
-			var rest string
-			u.Host, rest, _ = strings.Cut(path[2:], "/")
-			path = "/" + rest
-		case len(path) >= 2 && path[1] == ':':
-			path = "/" + path
-		default:
-			return ""
-		}
-	}
-	u.Path = path
-	return u.String()
+	return sourcetext.FileURI(abs)
 }

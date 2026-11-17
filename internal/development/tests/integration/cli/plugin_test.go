@@ -17,14 +17,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	// This module has an invalid code section. Static inspection succeeds, while
 	// compilation or execution would fail; inspection must never start a runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)

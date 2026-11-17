@@ -15,7 +15,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -281,7 +281,7 @@ func TestPreflightWaitIsOutsideLookupBudget(t *testing.T) {
 			probing <- s.LoadGitHubRateLimits(ctx, client, request(t, ctx, "/repos/example/action", "token"))
 		}()
 		synctest.Wait()
-		budgeted, stop := references.StartLookupBudget(ctx, time.Second)
+		budgeted, stop := network.StartLookupBudget(ctx, time.Second)
 		defer stop()
 		err := s.LoadGitHubRateLimits(budgeted, client, request(t, budgeted, "/repos/example/action", "token"))
 		if probeErr := <-probing; err != nil || probeErr != nil || budgeted.Err() != nil {
@@ -330,8 +330,8 @@ func TestResolverCoverageIsNotInvented(t *testing.T) {
 	ctx, s := TrackRequests(t.Context())
 	RecordResolverCall(ctx, nil, false)
 	RecordResolverCall(ctx, nil, true)
-	RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true, Requests: []references.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}, false)
-	RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true, Requests: []references.RequestCounts{{Host: "https://token@host/private?secret", RequestKind: "rest", Credentials: "provided", Attempts: 2}}}, false)
+	RecordResolverCall(ctx, &RequestReport{AllRequestsReported: true, Requests: []RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}, false)
+	RecordResolverCall(ctx, &RequestReport{AllRequestsReported: true, Requests: []RequestCounts{{Host: "https://token@host/private?secret", RequestKind: "rest", Credentials: "provided", Attempts: 2}}}, false)
 	var attempts, opaque, cached, lookups uint64
 	for _, group := range s.Statistics().Requests {
 		attempts += group.Attempts
@@ -341,5 +341,26 @@ func TestResolverCoverageIsNotInvented(t *testing.T) {
 	}
 	if attempts != 2 || opaque != 2 || cached != 1 || lookups != 4 {
 		t.Fatalf("attempts=%d opaque=%d cache=%d lookups=%d", attempts, opaque, cached, lookups)
+	}
+}
+
+func TestCacheLookupsCountHitsAndMissesWithoutRequests(t *testing.T) {
+	t.Parallel()
+	RecordCacheLookup(t.Context(), "repository-metadata", true)
+	ctx, tracker := TrackRequests(t.Context())
+	ctx = WithRequestOptions(ctx, RequestOptions{Priority: Enrichment})
+	for _, hit := range []bool{true, true, false} {
+		RecordCacheLookup(ctx, "repository-metadata", hit)
+	}
+	stats := tracker.Statistics()
+	if len(stats.Requests) != 1 {
+		t.Fatalf("groups = %+v, want one cache group", stats.Requests)
+	}
+	group := stats.Requests[0]
+	if group.RequestKind != Cache || group.Purpose != "repository-metadata" || group.Priority != Enrichment {
+		t.Fatalf("group = %+v, want an enrichment cache group for repository-metadata", group)
+	}
+	if group.CacheHits != 2 || group.CacheMisses != 1 || group.Attempts != 0 {
+		t.Fatalf("hits=%d misses=%d attempts=%d, want 2, 1 and 0", group.CacheHits, group.CacheMisses, group.Attempts)
 	}
 }

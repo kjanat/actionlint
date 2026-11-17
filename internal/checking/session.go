@@ -13,9 +13,11 @@ import (
 	"slices"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -25,7 +27,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
@@ -34,7 +35,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -51,7 +51,7 @@ type Options struct {
 	// them when it also implements workflows.Provider.
 	RemoteWorkflows reusableworkflows.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
-	Repository func(context.Context, string) repository.Snapshot
+	Repository func(context.Context, string) repository.Settings
 	Tools      []contract.Registration
 	Resolver   references.Resolver
 	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
@@ -73,14 +73,14 @@ type Options struct {
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
-	Analyzers []checkinputs.Registration
+	Analyzers []results.AnalyzerRegistration
 	ReadFile  func(string) ([]byte, error)
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
-	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadScriptEngine             func(context.Context, string) (scriptengine.Backend, error)
 	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
@@ -136,14 +136,14 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var definitions []commands.Definition
 	for _, registration := range options.Analyzers {
-		if !validation.IsNil(registration.Checker) {
-			definitions = append(definitions, registration.Checker.Descriptor().InvocationDefinitions...)
+		if !results.IsNilAnalyzer(registration.Analyzer) {
+			definitions = append(definitions, registration.Analyzer.Descriptor().InvocationDefinitions...)
 		}
 	}
 	for _, registration := range options.Tools {
 		definitions = append(definitions, registration.InvocationDefinitions...)
 	}
-	registry, err := interpreters.New(definitions)
+	registry, err := commands.NewWithShells(definitions)
 	if err != nil {
 		return nil, err
 	}
@@ -165,14 +165,18 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
-		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
-			Checker: security.NewResolvedReferenceCheck(),
+		options.Analyzers = append(slices.Clone(options.Analyzers), results.AnalyzerRegistration{
+			Analyzer: security.NewResolvedReferenceCheck(),
 			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err
 			},
 		})
+	}
+	checks, err := registerChecks(options.Analyzers, options.Tools)
+	if err != nil {
+		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -231,7 +235,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
+	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Checks: checks, ReadFile: options.ReadFile, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
 	request.NoIgnore = options.NoIgnore
 	request.RemoteActions = options.RemoteActions
@@ -279,29 +283,16 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 		}
 		return result, err
 	}
-	var names []string
-	for _, registration := range options.Analyzers {
-		if !validation.IsNil(registration.Checker) {
-			names = append(names, registration.Checker.Descriptor().Name)
-		}
-	}
-	for _, registration := range options.Tools {
-		names = append(names, registration.Name)
-	}
 	selectionLog := func(args ...any) {
 		if options.LogSelection && request.LogLevel >= LogLevelVerbose {
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	rules, err := ConfigurationRules().WithRegisteredRules(ConfigurationRegistrations(options.Analyzers, options.Tools)...)
-	if err != nil {
-		return nil, err
-	}
 	session, err := workspace.New(ctx, workspace.Options{
-		Rules:      rules,
+		Rules:      checks.rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.sharedConfigSources(), OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
+		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: checks.names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})
 	if err != nil {

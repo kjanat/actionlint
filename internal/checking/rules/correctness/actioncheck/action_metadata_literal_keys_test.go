@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
@@ -91,7 +91,7 @@ runs:
 		t.Fatalf("expected two input defaults, got %d", len(meta.InputDefaults))
 	}
 	for i, name := range []string{"MixedInput", "SecondInput"} {
-		if got := meta.InputDefaults[i]; got.Name != name || got.Value.Line != 6 {
+		if got := meta.InputDefaults[i]; got.Name != name || got.Value.Position.Line != 6 {
 			t.Fatalf("input default %s name or position changed: %#v", name, *got)
 		}
 	}

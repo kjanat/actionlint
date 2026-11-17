@@ -5,7 +5,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -56,7 +56,7 @@ func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 	if !s.indexed {
 		s.index()
 	}
-	key := sourcetext.Position{Line: value.Line, Column: value.Column}
+	key := value.Position
 	scalar := s.scalars[key]
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
@@ -97,7 +97,7 @@ func (s *parsedSource) index() {
 // ExpressionPosition maps a decoded expression offset to its YAML source position.
 // If the offset cannot be mapped, it returns the start of the value.
 func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *sourcetext.Position {
-	fallback := &sourcetext.Position{Line: value.Line, Column: value.Column}
+	fallback := new(value.Position)
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}

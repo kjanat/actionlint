@@ -10,13 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Run isolates each analyzer's input and joins all started work.
 // Findings and errors follow registration order.
-func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []checkinputs.Registration) ([]results.Diagnostic, error) {
+func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []results.AnalyzerRegistration) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ type PreparedRegistration struct {
 }
 
 type preparedRegistration struct {
-	analyzer        checkinputs.Checker
+	analyzer        results.Analyzer
 	prepare         func(context.Context, checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error)
 	descriptor      checkinputs.Descriptor
 	options         []byte
@@ -53,11 +52,11 @@ type preparedRegistration struct {
 }
 
 // Prepare validates a registration once for an exact set of available input kinds.
-func Prepare(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
-	if validation.IsNil(registration.Checker) {
+func Prepare(registration results.AnalyzerRegistration, available []rule.InputKind) (PreparedRegistration, error) {
+	if results.IsNilAnalyzer(registration.Analyzer) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
-	descriptor := registration.Checker.Descriptor().Detached()
+	descriptor := registration.Analyzer.Descriptor().Detached()
 	options := slices.Clone(registration.Options)
 	if descriptor.Name == "" {
 		return PreparedRegistration{}, errors.New("analyzer name must not be empty")
@@ -77,13 +76,13 @@ func Prepare(registration checkinputs.Registration, available []rule.InputKind) 
 			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable input kind %q", descriptor.Name, requirement)
 		}
 	}
-	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Checker, prepare: registration.Prepare, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
+	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, prepare: registration.Prepare, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
 }
 
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
+func PrepareForwarding(registration results.AnalyzerRegistration, available []rule.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err
@@ -149,7 +148,7 @@ func RunOne(ctx context.Context, input checkinputs.AnalyzerInput, registration P
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(preparationErr, err)
 	}
-	findings, err := registration.data.analyzer.CheckDocument(ctx, supplied)
+	findings, err := registration.data.analyzer.AnalyzeDocument(ctx, supplied)
 	findings = slices.Clone(findings)
 	for i := range findings {
 		findings[i] = findings[i].Clone()

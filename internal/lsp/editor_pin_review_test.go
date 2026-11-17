@@ -9,8 +9,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
@@ -22,7 +22,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	}
 	const source = fixtureregistry.FixtureRegistryURL + "engine.wasm"
 	registry.SetFile(source, data)
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	findings, err := engine.Check(t.Context(), scriptengine.Request{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
 		t.Fatalf("pinned engine: %+v, %v", findings, err)
 	}

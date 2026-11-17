@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -73,7 +74,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 					sources[path] = content
 				}
 				revision := candidate.Revisions[e.Path]
-				if revision == "" || revision != sourcetext.ContentDigest(content) {
+				if revision == "" || revision != sha256hex.Digest(content) {
 					return Plan{}, fmt.Errorf("fix for %s has a missing or stale source revision", e.Path)
 				}
 				start, end, err := byteoffset.Range(content, sourcetext.YAML, e.Start, e.End)
@@ -109,7 +110,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 		}
 		after.Write(before[cursor:])
 		if after.String() != string(before) {
-			p.Changes = append(p.Changes, Change{path, string(before), after.String(), sourcetext.ContentDigest(before)})
+			p.Changes = append(p.Changes, Change{path, string(before), after.String(), sha256hex.Digest(before)})
 		}
 	}
 	return p, nil

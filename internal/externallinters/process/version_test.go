@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 func TestCompareVersions(t *testing.T) {
@@ -116,7 +116,7 @@ func TestFailedOptionalProbeReportsEverySkippedConsumer(t *testing.T) {
 		backend := ruffBackend(t, runner, Options{
 			Probe: &probe, Warn: func(error) { warnings.Add(1) }, Skipped: func() { skipped.Add(1) },
 		})
-		findings, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(1)", Filename: "actionlint.py"})
+		findings, err := backend.Check(t.Context(), scriptengine.Request{Source: "print(1)", Filename: "actionlint.py"})
 		if err != nil || len(findings) != 0 {
 			t.Fatalf("optional probe failure became a fatal check: findings=%v error=%v", findings, err)
 		}

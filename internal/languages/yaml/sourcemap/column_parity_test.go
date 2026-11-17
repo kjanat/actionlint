@@ -4,7 +4,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 func TestIndexedColumnsMatchRawCodepointColumns(t *testing.T) {

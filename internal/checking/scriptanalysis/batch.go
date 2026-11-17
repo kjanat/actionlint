@@ -8,12 +8,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -33,7 +34,7 @@ type Unit struct {
 	Shell       *string
 	Path        string
 	Content     []byte
-	Origin      *finding.IgnoreOrigin
+	Origin      *workflows.IgnoreOrigin
 	Owner       *finding.Owner
 	Scope       *Scope
 	// Execution is nil when the analysis did not resolve the run's shell and
@@ -101,13 +102,13 @@ func (u Unit) Config() *configuration.Config {
 	return u.Scope.Config
 }
 
-// RuntimeShell returns the resolved shell and whether the runner supplies it
-// implicitly. Unresolved execution returns no shell.
-func (u Unit) RuntimeShell() (string, bool) {
+// RuntimeShell returns the resolved shell. Unresolved execution returns the
+// zero shell.
+func (u Unit) RuntimeShell() scripts.Shell {
 	if u.Execution == nil {
-		return "", false
+		return scripts.Shell{}
 	}
-	return u.Execution.Shell, u.Execution.ShellImplicit
+	return u.Execution.Shell
 }
 
 // WorkingDirectory returns the directory a tool runs the script in and whether
@@ -242,9 +243,7 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 
 func (batch Batch) Valid() bool { return batch.CallGraph.Valid() }
 
-// ForTool returns the batch the named tool analyzes. Each scope carries a
-// detached copy of the configuration bound to the tool, and each script its own
-// environment, so a tool cannot change what other analyzers read.
+// ForTool returns a batch with independent configuration and environment values for the named tool.
 func (batch Batch) ForTool(name string) (Batch, error) {
 	view := Batch{CallGraph: batch.CallGraph, Collected: batch.Collected, Scopes: make([]*Scope, 0, len(batch.Scopes)), Scripts: slices.Clone(batch.Scripts)}
 	scopes := make(map[*Scope]*Scope, len(batch.Scopes))
@@ -269,6 +268,6 @@ func (batch Batch) ForTool(name string) (Batch, error) {
 	return view, nil
 }
 
-type Analyzer interface {
+type BatchAnalyzer interface {
 	AnalyzeScripts(context.Context, Batch) ([]*finding.Finding, error)
 }

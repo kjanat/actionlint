@@ -32,8 +32,6 @@ func TestDirectURL(t *testing.T) {
 	}
 }
 
-// Direct OCI declarations use the artifact resolver's grammar, so a
-// declaration the resolver would refuse is refused when it is parsed.
 func TestDirectOCI(t *testing.T) {
 	t.Parallel()
 	digest := strings.Repeat("ab", 32)

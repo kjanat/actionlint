@@ -12,19 +12,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-type pathRetargetChecker struct{ retarget func() error }
+type pathRetargetAnalyzer struct{ retarget func() error }
 
-func (pathRetargetChecker) Descriptor() checkinputs.Descriptor {
+func (pathRetargetAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "captured-path-test", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (checker pathRetargetAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -75,13 +75,13 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := pathRetargetChecker{retarget: func() error {
+	checker := pathRetargetAnalyzer{retarget: func() error {
 		if err := os.Remove(alias); err != nil {
 			return err
 		}
 		return os.Symlink(second, alias)
 	}}
-	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
+	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
 	if err != nil || result == nil {
 		t.Fatalf("result available=%t error=%v", result != nil, err)
 	}

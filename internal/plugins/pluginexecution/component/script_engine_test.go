@@ -15,8 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"github.com/kjanat/wacogo"
 )
 
@@ -180,14 +181,14 @@ func TestScriptEngineComponent(t *testing.T) {
 			t.Fatalf("accepted invalid options %s", config)
 		}
 	}
-	request := checkinputs.ScriptRequest{Source: "é = missing\r\nmissing\n", Filename: "script.py"}
+	request := scriptengine.Request{Source: "é = missing\r\nmissing\n", Filename: "script.py"}
 	for range 2 {
 		found, err := p.Check(t.Context(), request)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(found) != 2 || found[0].Location.Column != 5 || found[0].EndLocation.Column != 12 ||
-			found[1].Location.Row != 2 || found[0].Severity != "warning" || found[0].URL != "https://example.com/echo" {
+			found[1].Location.Line != 2 || found[0].Severity != "warning" || found[0].URL != "https://example.com/echo" {
 			t.Fatalf("findings: %#v", found)
 		}
 	}
@@ -205,7 +206,7 @@ func TestScriptEngineComponent(t *testing.T) {
 func TestScriptEngineResultLimits(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	for _, request := range []checkinputs.ScriptRequest{
+	for _, request := range []scriptengine.Request{
 		{Source: strings.Repeat("missing\n", maxScriptDiagnostics+1), Filename: "script.py"},
 		{Source: "missing", Filename: "script.py", Config: json.RawMessage(`{"mode":"large-message"}`)},
 	} {
@@ -220,16 +221,16 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 	p := loadScriptFixture(t)
 	for _, tc := range []struct {
 		source string
-		starts []checkinputs.ScriptPosition
+		starts []sourcetext.Position
 	}{
-		{"é = missing\rmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 1, Column: 13}}},
-		{"é = missing\r\nmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
-		{"é = missing\nmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
-		{"é = missing\r\nmissing\rmissing\nmissing\r", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}, {Row: 2, Column: 9}, {Row: 3, Column: 1}}},
+		{"é = missing\rmissing", []sourcetext.Position{{Line: 1, Column: 5}, {Line: 1, Column: 13}}},
+		{"é = missing\r\nmissing", []sourcetext.Position{{Line: 1, Column: 5}, {Line: 2, Column: 1}}},
+		{"é = missing\nmissing", []sourcetext.Position{{Line: 1, Column: 5}, {Line: 2, Column: 1}}},
+		{"é = missing\r\nmissing\rmissing\nmissing\r", []sourcetext.Position{{Line: 1, Column: 5}, {Line: 2, Column: 1}, {Line: 2, Column: 9}, {Line: 3, Column: 1}}},
 	} {
 		t.Run(fmt.Sprintf("%q", tc.source), func(t *testing.T) {
 			t.Parallel()
-			found, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: tc.source, Filename: "script.py"})
+			found, err := p.Check(t.Context(), scriptengine.Request{Source: tc.source, Filename: "script.py"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +240,7 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 			for i, finding := range found {
 				start := tc.starts[i]
 				if finding.Location != start ||
-					finding.EndLocation != (checkinputs.ScriptPosition{Row: start.Row, Column: start.Column + 7}) {
+					finding.EndLocation != (sourcetext.Position{Line: start.Line, Column: start.Column + 7}) {
 					t.Fatalf("finding %d: %#v", i, finding)
 				}
 			}
@@ -247,27 +248,10 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 	}
 }
 
-func TestScriptLineWidths(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		source string
-		widths []int
-	}{
-		{"", []int{0}},
-		{"é\r\n界\ra\n", []int{1, 1, 1, 0}},
-		{"\r\r\n\n", []int{0, 0, 0, 0}},
-		{"a\u2028b", []int{3}},
-	} {
-		if got := scriptLineWidths(tc.source); !slices.Equal(got, tc.widths) {
-			t.Fatalf("%q: widths %v, want %v", tc.source, got, tc.widths)
-		}
-	}
-}
-
 func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	request := checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}
+	request := scriptengine.Request{Source: "missing", Filename: "script.py"}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := p.Check(ctx, request); !errors.Is(err, context.Canceled) {
@@ -286,7 +270,7 @@ func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 	}
 	for _, source := range []string{"trap", "loop"} {
 		ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
-		_, err := p.Check(ctx, checkinputs.ScriptRequest{Source: source, Filename: "script.py"})
+		_, err := p.Check(ctx, scriptengine.Request{Source: source, Filename: "script.py"})
 		cancel()
 		if err == nil {
 			t.Fatalf("%s succeeded", source)
@@ -320,7 +304,7 @@ func TestScriptEngineContractCurrent(t *testing.T) {
 func TestScriptEngineRejectsOtherRoles(t *testing.T) {
 	t.Parallel()
 	p := loadRunnerFixture(t)
-	if _, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}); err == nil {
+	if _, err := p.Check(t.Context(), scriptengine.Request{Source: "missing", Filename: "script.py"}); err == nil {
 		t.Fatal("provider accepted script request")
 	}
 	if err := p.ValidateConfig(t.Context(), nil); err == nil {

@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -78,7 +79,7 @@ func TestProcessToolHelper(t *testing.T) {
 	if os.Getenv("ACTIONLINT_TEST_SCRIPT_PROVIDER") != "1" {
 		return
 	}
-	var request checkinputs.ScriptRequest
+	var request scriptengine.Request
 	if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
 		os.Exit(2)
 	}
@@ -86,9 +87,9 @@ func TestProcessToolHelper(t *testing.T) {
 		os.Exit(3)
 	}
 	_ = json.NewEncoder(os.Stdout).Encode(struct {
-		OK          bool                           `json:"ok"`
-		Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
-	}{true, []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "EX1", Message: "independent result", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8}}}})
+		OK          bool                      `json:"ok"`
+		Diagnostics []scriptengine.Diagnostic `json:"diagnostics"`
+	}{true, []scriptengine.Diagnostic{{Filename: request.Filename, Code: "EX1", Message: "independent result", Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 8}}}})
 	if os.Getenv("ACTIONLINT_TEST_SCRIPT_FAILURE") == "1" {
 		os.Exit(1)
 	}

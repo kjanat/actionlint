@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/fatih/color"
@@ -51,7 +51,7 @@ func TemplateFieldsOf(f results.PublishedDiagnostic) *TemplateFields {
 	}
 	return &TemplateFields{
 		Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		Kind: d.Rule, Code: d.Code, Severity: d.Severity, Snippet: snippet, EndColumn: end,
+		Kind: d.Rule, Code: d.Code, Severity: string(d.Severity), Snippet: snippet, EndColumn: end,
 	}
 }
 

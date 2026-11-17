@@ -9,10 +9,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestUncancellableCondition(t *testing.T) {
@@ -107,7 +107,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("missing fix: %+v", findings)
 				}
 				fix := findings[0].Fixes[0]
-				if fix.Applicability != results.FixUnsafe || fix.Applicability.Automatic() || len(fix.Edits) != 1 {
+				if fix.Applicability != applicability.Unsafe || fix.Applicability.Automatic() || len(fix.Edits) != 1 {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]

@@ -55,7 +55,7 @@ severity = "error"
 				continue
 			}
 			found++
-			if diagnostic.Severity != tc.severity || diagnostic.Start.Line != 9 || diagnostic.Lifecycle == nil || diagnostic.Lifecycle.AsOf != tc.date || len(diagnostic.Lifecycle.Policies) != 1 || diagnostic.Lifecycle.Policies[0].ID != "prepare-for-support-removal" {
+			if string(diagnostic.Severity) != tc.severity || diagnostic.Start.Line != 9 || diagnostic.Lifecycle == nil || diagnostic.Lifecycle.AsOf != tc.date || len(diagnostic.Lifecycle.Policies) != 1 || diagnostic.Lifecycle.Policies[0].ID != "prepare-for-support-removal" {
 				t.Errorf("%s %s: unexpected lifecycle diagnostic: %+v", tc.flag, tc.date, diagnostic)
 			}
 		}

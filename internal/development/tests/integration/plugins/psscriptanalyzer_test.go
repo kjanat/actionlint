@@ -6,14 +6,15 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -21,7 +22,7 @@ const psscriptanalyzerExample = "../../../../../plugins/examples/psscriptanalyze
 
 func loadPSScriptAnalyzer(t *testing.T) (toolmanifest.Manifest, toolmanifest.Programs) {
 	t.Helper()
-	manifest, programs, err := toolmanifest.ReadLocal(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
+	manifest, programs, err := localproviders.Read(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,12 +131,12 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 	}
 	for _, source := range []string{"Get-ChildItem .", "gci ."} {
 		config := []byte(`{"ExcludeRules":["PSAvoidUsingCmdletAliases"]}`)
-		findings, err := native.Check(t.Context(), checkinputs.ScriptRequest{Source: source, Filename: "actionlint.ps1", Config: config, Directory: root})
+		findings, err := native.Check(t.Context(), scriptengine.Request{Source: source, Filename: "actionlint.ps1", Config: config, Directory: root})
 		if err != nil || len(findings) != 0 {
 			t.Fatalf("clean or excluded snippet %q: %+v, %v", source, findings, err)
 		}
 	}
-	findings, err := native.Check(t.Context(), checkinputs.ScriptRequest{Source: "Write-Output (", Filename: "actionlint.ps1", Directory: root})
+	findings, err := native.Check(t.Context(), scriptengine.Request{Source: "Write-Output (", Filename: "actionlint.ps1", Directory: root})
 	if err != nil || len(findings) == 0 || findings[0].Severity != "error" {
 		t.Fatalf("PowerShell parse failure: %+v, %v", findings, err)
 	}

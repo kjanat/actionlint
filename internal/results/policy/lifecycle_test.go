@@ -3,11 +3,12 @@ package policy_test
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -57,9 +58,9 @@ func lifecycleRulesConfig(t *testing.T, text string) *configuration.Config {
 	return cfg
 }
 
-func lifecycleApply(t *testing.T, cfg *configuration.Config, f *finding.Finding, edit func(*policy.Policy)) []*finding.Finding {
+func lifecycleApply(t *testing.T, cfg *configuration.Config, f *finding.Finding, edit func(*policy.DocumentInputs)) []*finding.Finding {
 	t.Helper()
-	p := policy.Policy{Path: "workflow.yml", Content: []byte("# actionlint-ignore-next-line runner-support -- intentional\nruns-on: old\n")}
+	p := policy.DocumentInputs{Path: "workflow.yml", Content: []byte("# actionlint-ignore-next-line runner-support -- intentional\nruns-on: old\n")}
 	if edit != nil {
 		edit(&p)
 	}
@@ -79,7 +80,7 @@ func lifecycleApply(t *testing.T, cfg *configuration.Config, f *finding.Finding,
 
 func lifecycleRequired(t *testing.T) []lifecycle.Policy {
 	t.Helper()
-	p, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: lifecycle.Warning}}, "trusted.yml")
+	p, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: severity.Warning}}, "trusted.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,14 +113,14 @@ func TestLifecycleOptionalWindowsAndRuleLevels(t *testing.T) {
 				}
 			}
 			cfg := lifecycleRulesConfig(t, text)
-			got := lifecycleApply(t, cfg, lifecycleFinding(t, tc.date, tc.current), func(p *policy.Policy) { p.Content = []byte("on: push\nruns-on: old\n") })
+			got := lifecycleApply(t, cfg, lifecycleFinding(t, tc.date, tc.current), func(p *policy.DocumentInputs) { p.Content = []byte("on: push\nruns-on: old\n") })
 			if tc.want == "" {
 				if len(got) != 0 {
 					t.Fatalf("got %+v", got)
 				}
 				return
 			}
-			if len(got) != 1 || got[0].Severity != tc.want {
+			if len(got) != 1 || string(got[0].Severity) != tc.want {
 				t.Fatalf("got %+v; want %s", got, tc.want)
 			}
 		})
@@ -153,7 +154,7 @@ func TestLifecycleIntroductionPolicyPreservesUnavailableRuntime(t *testing.T) {
 				t.Fatalf("expected an unavailable Node.js release: %+v", evidence)
 			}
 			f.Rule, f.Message, f.LifecycleEvidence = "runtime-lifecycle", message, &evidence
-			got := lifecycleApply(t, lifecycleRulesConfig(t, tc.config), f, func(p *policy.Policy) {
+			got := lifecycleApply(t, lifecycleRulesConfig(t, tc.config), f, func(p *policy.DocumentInputs) {
 				p.Content = []byte("on: push\njobs: {}\n")
 			})
 			if len(got) != tc.want {
@@ -181,7 +182,7 @@ func TestRequiredLifecycleCannotBeWeakened(t *testing.T) {
 			t.Parallel()
 			cfg := lifecycleRulesConfig(t, tc.config)
 			f := lifecycleFinding(t, "2026-09-01", true)
-			got := lifecycleApply(t, cfg, f, func(p *policy.Policy) {
+			got := lifecycleApply(t, cfg, f, func(p *policy.DocumentInputs) {
 				p.EnforcedLifecycle = lifecycleRequired(t)
 				if tc.name != "inline suppression" {
 					p.Content = []byte("on: push\nruns-on: old\n")
@@ -220,7 +221,7 @@ func TestRequiredRemoteLifecycleIsBlocking(t *testing.T) {
 	cfg := lifecycleRulesConfig(t, "{}")
 	f := lifecycleFinding(t, "2026-09-01", true)
 	f.Path = remote
-	got := lifecycleApply(t, cfg, f, func(p *policy.Policy) {
+	got := lifecycleApply(t, cfg, f, func(p *policy.DocumentInputs) {
 		p.Content = []byte("on: push\n")
 		p.EnforcedLifecycle = lifecycleRequired(t)
 	})
@@ -235,7 +236,7 @@ func TestPublicLifecycleMetadataCannotCreateAuthority(t *testing.T) {
 	f := lifecycleFinding(t, "2026-09-01", true)
 	f.LifecycleEvidence = nil
 	f.Lifecycle = &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "forged", Enforced: true}}}
-	got := lifecycleApply(t, cfg, f, func(p *policy.Policy) { p.Content = []byte("on: push\nruns-on: old\n") })
+	got := lifecycleApply(t, cfg, f, func(p *policy.DocumentInputs) { p.Content = []byte("on: push\nruns-on: old\n") })
 	if len(got) != 0 {
 		t.Fatalf("untrusted public metadata bypassed rule off: %+v", got)
 	}

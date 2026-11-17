@@ -42,7 +42,7 @@ func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 	return &checkinputs.ToolNegotiation{Options: data}, nil
 }
 
-func (guest *fallbackGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (guest *fallbackGuest) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	guest.inputs = append(guest.inputs, input)
 	return []results.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil
 }
@@ -64,7 +64,7 @@ func documentBatchFixture(tb testing.TB, count int) scriptanalysis.Batch {
 		batch.Scripts = append(batch.Scripts, scriptanalysis.Unit{
 			Occurrence: occurrence.ID, Reference: occurrence.Declaration, Path: "workflow.yml",
 			Run:       &definition.ExecRun{Run: &definition.String{Value: "echo test"}},
-			Execution: &scripts.Execution{Shell: "bash", ShellKnown: true},
+			Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}},
 		})
 	}
 	return batch
@@ -119,7 +119,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 
 type scalingGuest struct{ fallbackGuest }
 
-func (*scalingGuest) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (*scalingGuest) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 

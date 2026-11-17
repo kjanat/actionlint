@@ -3,8 +3,9 @@
 // script engines, tool providers, runners and reference resolvers in the
 // checking options. Package checking runs rules and knows nothing about
 // plugin files; package plugins finds, fetches and instantiates plugins and
-// knows nothing about checking. The command-line and editor entry points
-// call this package.
+// knows nothing about checking. The command line, the GitHub Action and both
+// language servers build their checks through [Open] and connect to GitHub
+// through [ConnectGitHub].
 package assembly
 
 import (
@@ -23,18 +24,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options checking.Options, input checkrequest.Request, paths []string, acquisition pluginacquisition.Options) (result *report.Analysis, err error) {
+func CheckWithPluginPaths(ctx context.Context, options checking.Options, input checkrequest.Request, paths []string, acquisition dependencycache.Acquisition) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -44,40 +45,29 @@ func CheckWithPluginPaths(ctx context.Context, options checking.Options, input c
 
 // CheckWithPlugins loads the selected plugins and checks the input.
 func CheckWithPlugins(ctx context.Context, options checking.Options, input checkrequest.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	log := options.LogWriter
-	if log == nil {
-		log = io.Discard
-	}
-	if sources.Releases != nil {
-		if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
-			return nil, &pluginexecution.LoadError{Err: err}
-		}
-	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	session, err := Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	options, err = ConfigurePlugins(plugins, ctx, options)
-	if err != nil {
-		return nil, err
-	}
-	options, err = ConfigureManagedPlugins(plugins, options)
-	if err != nil {
-		return nil, err
-	}
+	defer func() { err = errors.Join(err, session.Close(ctx)) }()
+	options = session.Options
 	if options.LoadScriptEngine == nil {
+		log := options.LogWriter
+		if log == nil {
+			log = io.Discard
+		}
 		options.LoadScriptEngine = pluginexecution.ScriptEngineLoader(sources.Acquisition, checking.BuiltinRuleNames(), log, options.Debug)
 	}
-	return checking.Check(ctx, options, input)
+	result, err = checking.Check(ctx, options, input)
+	if result != nil {
+		result.Providers = providerStatuses(sources, options.Tools, result)
+	}
+	return result, err
 }
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition pluginacquisition.Options) (needed workspace.ExternalToolRequirements, err error) {
+func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition dependencycache.Acquisition) (needed workspace.ExternalToolRequirements, err error) {
 	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err
@@ -86,22 +76,15 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options,
 }
 
 // RequiredToolsWithPlugins applies the selected plugins before checking which
-// native tools are needed.
+// native tools are needed. Plugin warnings and logs are discarded.
 func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, paths []string, sources pluginselection.Sources) (needed workspace.ExternalToolRequirements, err error) {
-	loaded, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
+	options.LogWriter, options.Debug = io.Discard, false
+	session, err := Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, loaded.Close(context.WithoutCancel(ctx))) }()
-	options, err = ConfigurePlugins(loaded, ctx, options)
-	if err != nil {
-		return nil, err
-	}
-	options, err = ConfigureManagedPlugins(loaded, options)
-	if err != nil {
-		return nil, err
-	}
-	return checking.RequiredTools(ctx, options, paths)
+	defer func() { err = errors.Join(err, session.Close(ctx)) }()
+	return checking.RequiredTools(ctx, session.Options, paths)
 }
 
 // ConfigureManagedPlugins configures the built-in tool integrations, leaving
@@ -199,7 +182,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 		}
 		if local.Files.Source != "" {
 			// Only now, after the check above, download the executable.
-			artifactOptions := l.Acquisition.ArtifactOptions()
+			artifactOptions := pluginacquisition.ArtifactOptions(l.Acquisition)
 			artifactOptions.Network = local.Network
 			fetched, err := local.Files.Materialize(ctx, artifactOptions)
 			if err != nil {
@@ -220,11 +203,11 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			checker, err := process.NewDocumentAnalyzer(local.Files.Manifest, command, process.Options{Programs: local.Files.Programs, Required: true})
+			analyzer, err := process.NewDocumentAnalyzer(local.Files.Manifest, command, process.Options{Programs: local.Files.Programs, Required: true})
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
+			options.Analyzers = append(slices.Clone(options.Analyzers), results.AnalyzerRegistration{Analyzer: analyzer})
 			continue
 		}
 		selection := backends.ToolSelection{Command: name}

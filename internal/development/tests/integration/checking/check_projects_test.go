@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -92,6 +92,6 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 	}
 }
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Options {
-	return pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) dependencycache.Acquisition {
+	return dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

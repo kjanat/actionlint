@@ -46,7 +46,7 @@ func TestRemoteMetadataAdvisoriesUseEachInvocationBinding(t *testing.T) {
 					if !strings.Contains(diagnostic.Path, "example/shared/blob/") {
 						t.Fatalf("advisory has wrong source: %+v", diagnostic)
 					}
-					severities = append(severities, diagnostic.Severity)
+					severities = append(severities, string(diagnostic.Severity))
 				}
 				if diagnostic.Rule == "unused-suppression" {
 					t.Fatalf("used suppression was reported unused: %+v", diagnostic)

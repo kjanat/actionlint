@@ -112,7 +112,7 @@ type ProcessSpec struct {
 	ExitCodes       []int             `json:"exit_codes,omitempty"`       // accepted when stdout non-empty; default [0]
 	Config          ConfigRendering   `json:"config"`
 	ConfigFiles     []string          `json:"config_files,omitempty"`     // e.g. [".shellcheckrc","shellcheckrc"]; discovered upward only when policy allows
-	Version         *VersionProbe     `json:"version,omitempty"`
+	Version         *VersionProbeSpec `json:"version,omitempty"`
 	Output          Output            `json:"output"`
 	TemplateEffects map[string]analyzer.ScriptTemplateEffect `json:"template_effects,omitempty"` // code -> effect; honoured only when probed version == Version.TemplateEffects
 }
@@ -130,7 +130,7 @@ type Transform struct {
 	Digest   string `json:"digest,omitempty"` // SHA-256 digest of the transform program
 	Inline   string `json:"inline,omitempty"` // bundled manifests only
 }
-type VersionProbe struct {
+type VersionProbeSpec struct {
 	Args            []string `json:"args"`
 	Pattern         string   `json:"pattern"`                    // RE2, one capture group
 	Minimum         string   `json:"minimum,omitempty"`

@@ -12,30 +12,30 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type Backend -output internal/input/configuration/tools/owned_backend.gen.go
+//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type BackendSelection -output internal/input/configuration/tools/owned_backend.gen.go
 
-// Backend selects one transport: a native process or a core WebAssembly engine.
+// BackendSelection selects one transport: a native process or a core WebAssembly engine.
 // Executable names and argv are never the general backend contract.
 //
 // ProcessBackend, WasmBackend and decoding select exactly one transport. The
-// zero Backend selects neither and behaves as an omitted backend.
-type Backend struct {
+// zero BackendSelection selects neither and behaves as an omitted backend.
+type BackendSelection struct {
 	// transport is a Command or a Module.
 	transport interface{ backendTransport() } `clone:"shared"`
 }
 
 // ProcessBackend selects native invocation of command.
-func ProcessBackend(command Command) *Backend {
-	return &Backend{transport: command}
+func ProcessBackend(command Command) *BackendSelection {
+	return &BackendSelection{transport: command}
 }
 
 // WasmBackend selects the core WebAssembly engine at module.
-func WasmBackend(module Module) *Backend {
-	return &Backend{transport: module}
+func WasmBackend(module Module) *BackendSelection {
+	return &BackendSelection{transport: module}
 }
 
 // Process returns the native invocation when the backend selects one.
-func (b *Backend) Process() (Command, bool) {
+func (b *BackendSelection) Process() (Command, bool) {
 	if b == nil {
 		return Command{}, false
 	}
@@ -44,7 +44,7 @@ func (b *Backend) Process() (Command, bool) {
 }
 
 // Wasm returns the core WebAssembly engine when the backend selects one.
-func (b *Backend) Wasm() (Module, bool) {
+func (b *BackendSelection) Wasm() (Module, bool) {
 	if b == nil {
 		return Module{}, false
 	}
@@ -71,12 +71,12 @@ type moduleDocument struct {
 
 // DecodeConfig reads exactly one of a process or a wasm mapping and checks
 // it as NewCommand or NewModule does.
-func (b *Backend) DecodeConfig(value any) error {
+func (b *BackendSelection) DecodeConfig(value any) error {
 	var document backendDocument
 	if err := configdecode.Decode(value, &document); err != nil {
 		return err
 	}
-	var next Backend
+	var next BackendSelection
 	if document.Process != nil {
 		command, err := NewCommand(document.Process.Executable, document.Process.Args, document.Process.Env)
 		if err != nil {
@@ -100,7 +100,7 @@ func (b *Backend) DecodeConfig(value any) error {
 
 // EncodeConfig writes the selected transport in the form DecodeConfig reads.
 // The zero Backend is written as null.
-func (b *Backend) EncodeConfig() (any, error) {
+func (b *BackendSelection) EncodeConfig() (any, error) {
 	if command, ok := b.Process(); ok {
 		return backendDocument{Process: &commandDocument{Executable: command.Executable(), Args: command.Args(), Env: command.Env()}}, nil
 	}
@@ -200,4 +200,4 @@ func NormalizePaths(value any, directory string) {
 }
 
 // CopyConfig copies the owned configuration state.
-func (b *Backend) CopyConfig() (any, error) { return copyOwnedBackend(*b), nil }
+func (b *BackendSelection) CopyConfig() (any, error) { return copyOwnedBackendSelection(*b), nil }

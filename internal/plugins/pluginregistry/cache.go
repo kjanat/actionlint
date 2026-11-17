@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -23,7 +24,7 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	if err != nil {
 		return Pin{}, err
 	}
-	path := filepath.Join(directory, "selections", hash(name+"\n"+selector)+".json")
+	path := filepath.Join(directory, "selections", sha256hex.Digest([]byte(name+"\n"+selector))+".json")
 	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
 		data, err := readCacheBytes(ctx, path)
 		if err != nil {
@@ -114,7 +115,7 @@ func (c *Client) releasePath(name, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(directory, "releases", hash(name+"\n"+version)+".json"), nil
+	return filepath.Join(directory, "releases", sha256hex.Digest([]byte(name+"\n"+version))+".json"), nil
 }
 
 func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, bool, error) {
@@ -233,7 +234,7 @@ func (c *Client) candidateCachePath(name, version, digest string) (string, error
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(directory, "candidates", hash(name+"\n"+version+"\n"+digest)+".json"), nil
+	return filepath.Join(directory, "candidates", sha256hex.Digest([]byte(name+"\n"+version+"\n"+digest))+".json"), nil
 }
 
 func sameCandidate(left, right Pin) bool {

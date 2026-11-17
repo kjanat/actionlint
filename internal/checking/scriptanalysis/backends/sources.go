@@ -10,11 +10,11 @@ import (
 	"strings"
 	"syscall"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -174,7 +174,7 @@ func RecordSources(sourceReader *files.Reader, paths []string, directory string)
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkinputs.ScriptDiagnostic, result outcome, reportedFiles map[string]reportedFile) contract.ToolFinding {
+func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scriptengine.Diagnostic, result outcome, reportedFiles map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
@@ -205,20 +205,20 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkin
 		Script: index,
 		Source: results.DiagnosticSource{Content: file.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed)},
 	}
-	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
-	finding.Message = r.message(d, d.Location.Row, d.Location.Column)
-	finding.Start = sourcetext.Position{Line: d.Location.Row, Column: d.Location.Column}
-	if d.EndLocation.Row >= d.Location.Row && d.EndLocation.Column > 0 {
-		finding.End = sourcetext.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
+	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, r.severity(d.Severity), d.URL
+	finding.Message = r.message(d, d.Location.Line, d.Location.Column)
+	finding.Start = sourcetext.Position{Line: d.Location.Line, Column: d.Location.Column}
+	if d.EndLocation.Line >= d.Location.Line && d.EndLocation.Column > 0 {
+		finding.End = sourcetext.Position{Line: d.EndLocation.Line, Column: d.EndLocation.Column}
 	}
 	if key := script.Key(); key != nil {
-		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}
+		origin := &results.SuppressionOrigin{Path: script.Path, Lines: sourcetext.LineRange{First: key.Line, Last: key.Line}}
 		if value := script.Value(); value != nil {
-			origin.Last = max(origin.Last, value.Line)
+			origin.Lines.Last = max(origin.Lines.Last, value.Line)
 		}
 		if source := script.Source(); source != nil {
 			for _, span := range source.Spans {
-				origin.Last = max(origin.Last, span.Document.Line)
+				origin.Lines.Last = max(origin.Lines.Last, span.Document.Line)
 			}
 		}
 		finding.Suppression = origin

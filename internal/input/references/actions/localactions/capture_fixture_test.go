@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func sourceFixtureBase(tb testing.TB) string {
@@ -16,14 +16,14 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-func newCapturedActionCache(tb testing.TB, root string, debug io.Writer, overlays ...capture.Overlay) *Cache {
+func newCapturedActionCache(tb testing.TB, root string, debug io.Writer, overlays ...capture.Overlay) *ManifestCache {
 	tb.Helper()
-	cache := NewCache(tb.Context(), root, debug)
+	cache := NewManifestCache(tb.Context(), root, debug)
 	bindCapturedActionSources(tb, cache, overlays...)
 	return cache
 }
 
-func bindCapturedActionSources(tb testing.TB, cache *Cache, overlays ...capture.Overlay) {
+func bindCapturedActionSources(tb testing.TB, cache *ManifestCache, overlays ...capture.Overlay) {
 	tb.Helper()
 	store, err := capture.New(tb.Context(), overlays, func(_ context.Context, path string) ([]byte, error) {
 		return cache.reader.ReadFile(filepath.FromSlash(path))

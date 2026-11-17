@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
@@ -541,7 +541,7 @@ func (sema *Checker) checkCallArgument(node syntax.Node, demand functions.Argume
 	if invalid && demand != functions.DemandSkipped {
 		arg.State = functions.ArgumentInvalid
 	} else if demand != functions.DemandSkipped {
-		if value, found := sema.constants.Result(node); found && value.State == values.EvaluationKnown {
+		if value, found := sema.constants.Result(node); found && value.State == exprvalues.EvaluationKnown {
 			arg.Value, arg.State = value.Value, functions.ArgumentKnown
 		}
 	}
@@ -712,13 +712,13 @@ func (sema *Checker) recordCallArguments(n *syntax.FuncCallNode, match signature
 	facts := sema.callFacts[n]
 	facts.SignatureMatched = match.err == nil
 	for _, arg := range match.arguments {
-		value := values.EvaluationResult{State: values.EvaluationState(arg.State), Value: arg.Value}
+		value := exprvalues.EvaluationResult{State: exprvalues.EvaluationState(arg.State), Value: arg.Value}
 		if arg.Argument.Demand == functions.DemandSkipped {
-			value = values.EvaluationResult{State: values.EvaluationUnknown}
+			value = exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 		}
 		facts.Arguments = append(facts.Arguments, functions.FunctionArgumentFacts{
 			Source:      arg.Argument.Source,
-			SourceValue: values.EvaluationResult{State: values.EvaluationState(arg.Argument.State), Value: arg.Argument.Value},
+			SourceValue: exprvalues.EvaluationResult{State: exprvalues.EvaluationState(arg.Argument.State), Value: arg.Argument.Value},
 			Accepted:    arg.Accepted,
 			Demand:      arg.Argument.Demand,
 			Parameter:   arg.Parameter,
@@ -850,7 +850,7 @@ type ExpressionCheckResult struct {
 	Calls      CheckedCalls
 	Valid      bool
 	Findings   []*Error
-	Evaluation values.EvaluationResult
+	Evaluation exprvalues.EvaluationResult
 	// Call is nil when the root expression has no known function contract.
 	Call         *functions.FunctionCallFacts
 	FailurePhase FailurePhase
@@ -880,25 +880,25 @@ func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult 
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
-	evaluation := values.EvaluationResult{State: values.EvaluationUnknown}
+	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 	phase := FailureNone
 	switch {
 	case sema.staticInvalid:
-		evaluation.State = values.EvaluationNotAttempted
+		evaluation.State = exprvalues.EvaluationNotAttempted
 		phase = FailureStaticValidation
 	case sema.evaluationInvalid:
-		evaluation.State = values.EvaluationInvalid
+		evaluation.State = exprvalues.EvaluationInvalid
 		phase = FailureEvaluation
 	default:
 		evaluation, _ = sema.constants.Result(expr)
-		if evaluation.State == values.EvaluationInvalid {
+		if evaluation.State == exprvalues.EvaluationInvalid {
 			phase = FailureEvaluation
 		}
 	}
 	result := ExpressionCheckResult{Type: ty, Types: InferredTypes{byNode: sema.nodeTypes}, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
 	if call, ok := expr.(*syntax.FuncCallNode); ok {
 		if facts, found := sema.callFacts[call]; found {
-			if evaluation.State == values.EvaluationKnown {
+			if evaluation.State == exprvalues.EvaluationKnown {
 				facts.ReturnDomain = functions.ReturnDomainExcludesValue
 				for _, declared := range facts.DeclaredReturns {
 					if returnContainsValue(declared, evaluation.Value) {

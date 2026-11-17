@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
 // AllowsModule reports whether invocation settings permit configured Wasm selection.
@@ -27,7 +27,7 @@ func Module(name, requested string, explicit *hostprocess.CommandOptions, cfg *c
 }
 
 // LoadConfiguredModule resolves a configured WebAssembly module through the invocation loader.
-func LoadConfiguredModule(name, requested string, explicit *hostprocess.CommandOptions, cfg *configuration.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
+func LoadConfiguredModule(name, requested string, explicit *hostprocess.CommandOptions, cfg *configuration.Config, load func(string) (scriptengine.Backend, error)) (scriptengine.Backend, error) {
 	module := Module(name, requested, explicit, cfg)
 	if module == nil {
 		return nil, nil

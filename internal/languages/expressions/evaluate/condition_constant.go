@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
@@ -26,12 +26,12 @@ func ConditionConstantValue(expr syntax.Node) (any, bool) {
 // It never changes the parsed expression or the caller's context values.
 func ExpressionValue(expr syntax.Node, variables func(string) (any, bool)) (any, bool) {
 	result := Evaluate(expr, variables)
-	return result.Value, result.State == values.EvaluationKnown
+	return result.Value, result.State == exprvalues.EvaluationKnown
 }
 
 // Evaluate reports a known value, missing runtime knowledge, a runtime failure,
 // or a call rejected before evaluation. It does not perform name or type checks.
-func Evaluate(expr syntax.Node, variables func(string) (any, bool)) values.EvaluationResult {
+func Evaluate(expr syntax.Node, variables func(string) (any, bool)) exprvalues.EvaluationResult {
 	return expressionResult(expr, variables, nil, nil)
 }
 
@@ -40,30 +40,30 @@ func Evaluate(expr syntax.Node, variables func(string) (any, bool)) values.Evalu
 // properties as null. Unknown paths fall back to ordinary object evaluation.
 func ExpressionValueWithLookup(expr syntax.Node, lookup func(string) (any, bool)) (any, bool) {
 	result := EvaluateWithLookup(expr, lookup)
-	return result.Value, result.State == values.EvaluationKnown
+	return result.Value, result.State == exprvalues.EvaluationKnown
 }
 
 // EvaluateWithLookup accepts known qualified paths as well as root variables.
-func EvaluateWithLookup(expr syntax.Node, lookup func(string) (any, bool)) values.EvaluationResult {
+func EvaluateWithLookup(expr syntax.Node, lookup func(string) (any, bool)) exprvalues.EvaluationResult {
 	return expressionResult(expr, lookup, lookup, nil)
 }
 
-func knownResult(value any) values.EvaluationResult {
-	return values.EvaluationResult{State: values.EvaluationKnown, Value: value}
+func knownResult(value any) exprvalues.EvaluationResult {
+	return exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: value}
 }
 
-func unknownResult() values.EvaluationResult {
-	return values.EvaluationResult{State: values.EvaluationUnknown}
+func unknownResult() exprvalues.EvaluationResult {
+	return exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 }
 
-func observedResult(value any, known bool) values.EvaluationResult {
+func observedResult(value any, known bool) exprvalues.EvaluationResult {
 	if known {
 		return knownResult(value)
 	}
 	return unknownResult()
 }
 
-func expressionResult(expr syntax.Node, variables, properties func(string) (any, bool), constants map[syntax.Node]values.EvaluationResult) (result values.EvaluationResult) {
+func expressionResult(expr syntax.Node, variables, properties func(string) (any, bool), constants map[syntax.Node]exprvalues.EvaluationResult) (result exprvalues.EvaluationResult) {
 	if constants != nil {
 		if cached, exists := constants[expr]; exists {
 			return cached
@@ -85,17 +85,17 @@ func expressionResult(expr syntax.Node, variables, properties func(string) (any,
 		return observedResult(variables(n.Name))
 	case *syntax.ObjectDerefNode:
 		receiver := expressionResult(n.Receiver, variables, properties, constants)
-		if receiver.State != values.EvaluationKnown {
+		if receiver.State != exprvalues.EvaluationKnown {
 			return receiver
 		}
 		return observedResult(constantProperty(receiver.Value, n.Property))
 	case *syntax.IndexAccessNode:
 		receiver := expressionResult(n.Operand, variables, properties, constants)
-		if receiver.State != values.EvaluationKnown {
+		if receiver.State != exprvalues.EvaluationKnown {
 			return receiver
 		}
 		index := expressionResult(n.Index, variables, properties, constants)
-		if index.State != values.EvaluationKnown {
+		if index.State != exprvalues.EvaluationKnown {
 			return index
 		}
 		if name, ok := index.Value.(string); ok {
@@ -130,35 +130,35 @@ func expressionResult(expr syntax.Node, variables, properties func(string) (any,
 		return knownResult(n.Value)
 	case *syntax.NotOpNode:
 		value := expressionResult(n.Operand, variables, properties, constants)
-		if value.State != values.EvaluationKnown {
+		if value.State != exprvalues.EvaluationKnown {
 			return value
 		}
-		return knownResult(!values.ExpressionTruthy(value.Value))
+		return knownResult(!exprvalues.ExpressionTruthy(value.Value))
 	case *syntax.LogicalOpNode:
 		left := expressionResult(n.Left, variables, properties, constants)
-		if left.State != values.EvaluationKnown {
+		if left.State != exprvalues.EvaluationKnown {
 			return left
 		}
-		if values.ExpressionTruthy(left.Value) == (n.Kind == syntax.LogicalOpNodeKindOr) {
+		if exprvalues.ExpressionTruthy(left.Value) == (n.Kind == syntax.LogicalOpNodeKindOr) {
 			return left
 		}
 		return expressionResult(n.Right, variables, properties, constants)
 	case *syntax.CompareOpNode:
 		left := expressionResult(n.Left, variables, properties, constants)
-		if left.State != values.EvaluationKnown {
+		if left.State != exprvalues.EvaluationKnown {
 			return left
 		}
 		right := expressionResult(n.Right, variables, properties, constants)
-		if right.State != values.EvaluationKnown {
+		if right.State != exprvalues.EvaluationKnown {
 			return right
 		}
-		return observedResult(values.CompareConditionValues(n.Kind, left.Value, right.Value))
+		return observedResult(exprvalues.CompareConditionValues(n.Kind, left.Value, right.Value))
 	case *syntax.FuncCallNode:
 		function, found := functions.Builtins[strings.ToLower(n.Callee)]
 		if !found {
 			return unknownResult()
 		}
-		context := &functionContext{call: n, variables: variables, properties: properties, constants: constants, results: make([]values.EvaluationResult, len(n.Args)), observed: make([]bool, len(n.Args))}
+		context := &functionContext{call: n, variables: variables, properties: properties, constants: constants, results: make([]exprvalues.EvaluationResult, len(n.Args)), observed: make([]bool, len(n.Args))}
 		return function.Evaluate(context)
 	}
 	return unknownResult()
@@ -189,13 +189,13 @@ type functionContext struct {
 	call       *syntax.FuncCallNode
 	variables  func(string) (any, bool)
 	properties func(string) (any, bool)
-	constants  map[syntax.Node]values.EvaluationResult
-	results    []values.EvaluationResult
+	constants  map[syntax.Node]exprvalues.EvaluationResult
+	results    []exprvalues.EvaluationResult
 	observed   []bool
 }
 
 func (context *functionContext) ArgumentCount() int { return len(context.call.Args) }
-func (context *functionContext) Argument(index int) values.EvaluationResult {
+func (context *functionContext) Argument(index int) exprvalues.EvaluationResult {
 	if !context.observed[index] {
 		context.results[index] = expressionResult(context.call.Args[index], context.variables, context.properties, context.constants)
 		context.observed[index] = true

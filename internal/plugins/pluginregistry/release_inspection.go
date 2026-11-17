@@ -3,6 +3,7 @@ package pluginregistry
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -10,7 +11,7 @@ import (
 )
 
 // InspectRelease resolves a registry reference and verifies its downloaded metadata.
-func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition pluginacquisition.Options) (artifacts.ArtifactProvenance, error) {
+func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition dependencycache.Acquisition) (artifacts.ArtifactProvenance, error) {
 	client, err := New(ref.Registry(), acquisition)
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err
@@ -20,11 +21,11 @@ func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisit
 		return artifacts.ArtifactProvenance{}, err
 	}
 	if pin.Origin == "candidate" {
-		if err := pin.importCandidate(ctx, acquisition.ArtifactOptions()); err != nil {
+		if err := pin.importCandidate(ctx, pluginacquisition.ArtifactOptions(acquisition)); err != nil {
 			return artifacts.ArtifactProvenance{}, err
 		}
 	}
-	info, err := toolproviders.InspectArtifact(ctx, pin.Source(), acquisition.ArtifactOptions())
+	info, err := toolproviders.InspectArtifact(ctx, pin.Source(), pluginacquisition.ArtifactOptions(acquisition))
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err
 	}

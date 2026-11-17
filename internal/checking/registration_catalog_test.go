@@ -9,16 +9,12 @@ import (
 func TestRuleBehavioursMatchCatalog(t *testing.T) {
 	t.Parallel()
 	rules := ConfigurationRules()
-	registrations := registration.Registrations(rules)
-	if len(registrations) != len(rules.Rules()) {
-		t.Fatal("registration count differs from the declared rule count")
-	}
-	for _, d := range registrations {
-		if d.Build == nil && d.Script == nil && d.Enabled == nil {
-			continue
+	for _, native := range registration.All {
+		if _, declared := rules.FindRule(native.Name); !declared {
+			t.Errorf("native rule %q has no declaration", native.Name)
 		}
-		if !registration.HasRule(d.Name) {
-			t.Errorf("descriptor %q carries implementation without a implementation entry", d.Name)
+		if registration.HasRule(native.Name) != native.Executable() {
+			t.Errorf("native rule %q executes without an implementation entry", native.Name)
 		}
 	}
 }

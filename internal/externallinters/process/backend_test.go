@@ -12,11 +12,12 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -41,13 +42,13 @@ func TestProcessHelper(t *testing.T) {
 	case "echo":
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"args": args, "stdin": string(stdin), "env": os.Environ(), "cwd": cwd})
 	case "envelope":
-		var request checkinputs.ScriptRequest
+		var request scriptengine.Request
 		if err := json.Unmarshal(stdin, &request); err != nil {
 			os.Exit(2)
 		}
-		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "errors": []string{"partial analysis"}, "diagnostics": []checkinputs.ScriptDiagnostic{{
+		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "errors": []string{"partial analysis"}, "diagnostics": []scriptengine.Diagnostic{{
 			Filename: request.Filename, Code: "EX1", Message: "envelope " + string(request.Config),
-			Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8},
+			Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 8},
 		}}})
 	case "sarif":
 		_, _ = fmt.Fprintf(os.Stdout, `{"version":"2.1.0","runs":[{"tool":{"driver":{"rules":[{"id":"S1","helpUri":"https://example.com/S1"}]}},"results":[{"ruleId":"S1","level":"error","message":{"text":"sarif finding"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":%q},"region":{"startLine":1,"startColumn":3,"endColumn":5}}}]}]}]}`, filepath.Join(cwd, args[0]))
@@ -106,7 +107,7 @@ type echoReport struct {
 	ExitCode string `json:"exit_code"`
 }
 
-func runEcho(t *testing.T, backend *Backend, request checkinputs.ScriptRequest, vars map[string]string) echoReport {
+func runEcho(t *testing.T, backend *Backend, request scriptengine.Request, vars map[string]string) echoReport {
 	t.Helper()
 	result, err := backend.Run(t.Context(), request, vars)
 	if err != nil {
@@ -143,7 +144,7 @@ func TestBackendInvocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	report := runEcho(t, backend, checkinputs.ScriptRequest{Source: "echo $x\n", Filename: "actionlint.sh", Config: json.RawMessage(`{"key": ["--fix"]}`), Directory: directory}, map[string]string{"dialect": "bash", "exclude": "SC1\nSC2"})
+	report := runEcho(t, backend, scriptengine.Request{Source: "echo $x\n", Filename: "actionlint.sh", Config: json.RawMessage(`{"key": ["--fix"]}`), Directory: directory}, map[string]string{"dialect": "bash", "exclude": "SC1\nSC2"})
 	want := []string{"--user", "value", "--set", `"key" = ["--fix"]`, "--file", "actionlint.sh", "--shell", "bash", "SC1,SC2"}
 	if !slices.Equal(report.Report.Args, want) {
 		t.Errorf("args %q, want %q", report.Report.Args, want)
@@ -184,7 +185,7 @@ func TestBackendDecoders(t *testing.T) {
 		mode   string
 		spec   toolmanifest.ProcessSpec
 		config json.RawMessage
-		want   checkinputs.ScriptDiagnostic
+		want   scriptengine.Diagnostic
 		err    string
 	}{
 		{
@@ -192,13 +193,13 @@ func TestBackendDecoders(t *testing.T) {
 			spec: toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinRequest, Args: []string{"--"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
 			// The request carries the configuration the transform rendered.
 			config: json.RawMessage(`{"a": 1}`),
-			want:   checkinputs.ScriptDiagnostic{Filename: "snippet.py", Code: "EX1", Message: `envelope {"a":1}`, Location: position(1, 1), EndLocation: position(1, 8)},
+			want:   scriptengine.Diagnostic{Filename: "snippet.py", Code: "EX1", Message: `envelope {"a":1}`, Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 8}},
 			err:    "partial analysis",
 		},
 		{
 			mode: "sarif",
 			spec: toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Args: []string{"--", "{var:filename}"}, Output: toolmanifest.Output{Format: toolmanifest.FormatSARIF}},
-			want: checkinputs.ScriptDiagnostic{Filename: "snippet.py", Code: "S1", Message: "sarif finding", Severity: "error", URL: "https://example.com/S1", Location: position(1, 3), EndLocation: position(1, 5)},
+			want: scriptengine.Diagnostic{Filename: "snippet.py", Code: "S1", Message: "sarif finding", Severity: "error", URL: "https://example.com/S1", Location: sourcetext.Position{Line: 1, Column: 3}, EndLocation: sourcetext.Position{Line: 1, Column: 5}},
 		},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
@@ -207,7 +208,7 @@ func TestBackendDecoders(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			diagnostics, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(x)\n", Filename: "snippet.py", Config: tc.config, Directory: t.TempDir()})
+			diagnostics, err := backend.Check(t.Context(), scriptengine.Request{Source: "print(x)\n", Filename: "snippet.py", Config: tc.config, Directory: t.TempDir()})
 			if tc.err == "" && err != nil || tc.err != "" && (err == nil || !strings.Contains(err.Error(), tc.err)) {
 				t.Fatalf("err=%v, want %q", err, tc.err)
 			}
@@ -225,7 +226,7 @@ func TestBackendRejectsUnlistedExitStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Filename: "a.sh"}); err == nil || !strings.Contains(err.Error(), "status 1") {
+	if _, err := backend.Check(t.Context(), scriptengine.Request{Filename: "a.sh"}); err == nil || !strings.Contains(err.Error(), "status 1") {
 		t.Fatalf("accepted an unlisted status: %v", err)
 	}
 }
@@ -291,7 +292,7 @@ func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
 		directory := t.TempDir()
 		runner := &embedded{version: "ruff 0.17.0\n", output: "[]"}
 		backend := ruffBackend(t, runner, Options{Required: true})
-		if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "x", Filename: "actionlint.py", Config: json.RawMessage(config), Directory: directory}); err != nil {
+		if _, err := backend.Check(t.Context(), scriptengine.Request{Source: "x", Filename: "actionlint.py", Config: json.RawMessage(config), Directory: directory}); err != nil {
 			t.Fatal(err)
 		}
 		checks := runner.checks()
@@ -310,7 +311,7 @@ func TestRuffConfigRejectsSideEffectsBeforeExecution(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = backend.Check(t.Context(), checkinputs.ScriptRequest{Filename: "actionlint.py", Config: config, Directory: t.TempDir()})
+		_, err = backend.Check(t.Context(), scriptengine.Request{Filename: "actionlint.py", Config: config, Directory: t.TempDir()})
 		if err == nil || !strings.Contains(err.Error(), key) || len(runner.checks()) != 0 {
 			t.Fatalf("%s: err=%v checks=%q", key, err, runner.checks())
 		}
@@ -333,7 +334,7 @@ func TestInvalidLauncherFailsBeforeExecution(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(1)", Filename: "actionlint.py", Directory: t.TempDir()}); err == nil || len(runner.calls) != 0 {
+		if _, err := backend.Check(t.Context(), scriptengine.Request{Source: "print(1)", Filename: "actionlint.py", Directory: t.TempDir()}); err == nil || len(runner.calls) != 0 {
 			t.Fatalf("%s %q: err=%v calls=%q", launcher.exe, launcher.args, err, runner.calls)
 		}
 	}
@@ -347,7 +348,7 @@ func TestRuffLauncherPrecedesManifestArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "\nprint(x)\n", Filename: "actionlint.py", Directory: directory}); err != nil {
+	if _, err := backend.Check(t.Context(), scriptengine.Request{Source: "\nprint(x)\n", Filename: "actionlint.py", Directory: directory}); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(runner.calls[0], []string{"-I", "-m", "ruff", "--version"}) {
@@ -364,16 +365,16 @@ func TestRuffOutputIdentityAndEffects(t *testing.T) {
 	directory := t.TempDir()
 	runner := &embedded{version: "ruff 0.17.0\n", output: ruffOutput(t, directory, "actionlint.py")}
 	backend := ruffBackend(t, runner, Options{Required: true})
-	diagnostics, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "a = 1\r\nprint(x)\n", Filename: "actionlint.py", Directory: directory})
+	diagnostics, err := backend.Check(t.Context(), scriptengine.Request{Source: "a = 1\r\nprint(x)\n", Filename: "actionlint.py", Directory: directory})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Ruff counts CRLF as one break; the contract keeps the CR on row 1.
-	if len(diagnostics) != 1 || diagnostics[0].Filename != "actionlint.py" || diagnostics[0].TemplateEffect != checkinputs.TemplateEffectOpaqueName || diagnostics[0].Location != position(2, 7) {
+	if len(diagnostics) != 1 || diagnostics[0].Filename != "actionlint.py" || diagnostics[0].TemplateEffect != scriptengine.TemplateEffectOpaqueName || diagnostics[0].Location != (sourcetext.Position{Line: 2, Column: 7}) {
 		t.Fatalf("diagnostics=%+v", diagnostics)
 	}
 	runner.output = ruffOutput(t, t.TempDir(), "actionlint.py")
-	if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(x)\n", Filename: "actionlint.py", Directory: directory}); err == nil || !strings.Contains(err.Error(), "unexpected file") {
+	if _, err := backend.Check(t.Context(), scriptengine.Request{Source: "print(x)\n", Filename: "actionlint.py", Directory: directory}); err == nil || !strings.Contains(err.Error(), "unexpected file") {
 		t.Fatalf("accepted a finding in another file: %v", err)
 	}
 }
@@ -400,7 +401,7 @@ func TestVersionGate(t *testing.T) {
 			runner := &embedded{version: tc.version, output: "[]"}
 			backend := ruffBackend(t, runner, Options{Required: tc.required, Warn: func(err error) { warnings = append(warnings, err) }})
 			templates, templateErr := backend.ValidateTemplates(t.Context())
-			_, checkErr := backend.Check(t.Context(), checkinputs.ScriptRequest{Filename: "actionlint.py", Directory: t.TempDir()})
+			_, checkErr := backend.Check(t.Context(), scriptengine.Request{Filename: "actionlint.py", Directory: t.TempDir()})
 			_, _ = backend.ValidateTemplates(t.Context())
 			if templates != tc.templates || tc.failure != (templateErr != nil) {
 				t.Errorf("templates=%t err=%v", templates, templateErr)
@@ -427,7 +428,7 @@ func TestBackendRequiresDeclaredReportedSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Check(t.Context(), checkinputs.ScriptRequest{Filename: "actionlint.sh", Directory: t.TempDir()}); err == nil || !strings.Contains(err.Error(), "reported sources") {
+	if _, err := backend.Check(t.Context(), scriptengine.Request{Filename: "actionlint.sh", Directory: t.TempDir()}); err == nil || !strings.Contains(err.Error(), "reported sources") {
 		t.Fatalf("undeclared reported source accepted: %v", err)
 	}
 }
@@ -439,7 +440,7 @@ func TestShellCheckUserShellDropsDialect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Run(t.Context(), checkinputs.ScriptRequest{Filename: "actionlint.sh", Directory: t.TempDir()}, map[string]string{"dialect": "bash", "exclude": "SC1091"}); err != nil {
+	if _, err := backend.Run(t.Context(), scriptengine.Request{Filename: "actionlint.sh", Directory: t.TempDir()}, map[string]string{"dialect": "bash", "exclude": "SC1091"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"--shell=sh", "--norc", "-f", "json1", "-e", "SC1091", "-"}
@@ -482,7 +483,7 @@ func testBundledToolsEndToEnd(t *testing.T, offline bool) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			request := checkinputs.ScriptRequest{Source: tc.source, Filename: tc.filename, Directory: t.TempDir()}
+			request := scriptengine.Request{Source: tc.source, Filename: tc.filename, Directory: t.TempDir()}
 			if tc.config != "" {
 				request.Config = json.RawMessage(tc.config)
 			}

@@ -6,10 +6,11 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -52,7 +53,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 			t.Parallel()
 			parent := NewResolver(nil, nil)
 			parent.platform, parent.caseInsensitive = runners.Windows, true
-			parent.checkoutShell = execution.Shell{Name: "bash", Implicit: true}
+			parent.checkoutShell = scripts.Shell{Name: "bash", Implicit: true}
 			parent.setCheckout(execution.Directory{Kind: execution.DirectoryKnown, Path: "."})
 			before := parent.state()
 			context := compositeContext(t, invocation.Facts{
@@ -63,7 +64,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			if child == parent || child.platform != parent.platform || child.caseInsensitive != parent.caseInsensitive || child.checkoutShell != (execution.Shell{}) || !child.checkoutEnvUnknown || !child.shellEnvUnknown {
+			if child == parent || child.platform != parent.platform || child.caseInsensitive != parent.caseInsensitive || child.checkoutShell != (scripts.Shell{}) || !child.checkoutEnvUnknown || !child.shellEnvUnknown {
 				t.Fatal("child did not inherit isolated invocation assumptions")
 			}
 			if child.CheckoutState() != before.checkout {
@@ -71,7 +72,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 			}
 			child.persistentEnvUnknown = true
 			child.platform, child.caseInsensitive = runners.MacOrLinux, false
-			child.checkoutShell = execution.Shell{Name: "pwsh"}
+			child.checkoutShell = scripts.Shell{Name: "pwsh"}
 			if !tc.unchanged {
 				path := "child"
 				if tc.samePath {

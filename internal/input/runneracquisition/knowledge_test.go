@@ -159,27 +159,27 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 		resolution     runnerapi.Resolution
 		fresh          runnerapi.Freshness
 		complete       bool
-		snapshot       runnerapi.Snapshot
+		snapshot       runnerapi.RunnerSnapshot
 		failure        error
 		wantShell      string
 		wantRejections int
 	}{
-		{"windows", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{}, nil, "pwsh", 0},
-		{"incomplete candidates", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, false, runnerapi.Snapshot{}, nil, "", 0},
-		{"no match", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{}, nil, "", 1},
-		{"incomplete absence", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, false, runnerapi.Snapshot{}, nil, "", 0},
-		{"stale absence", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Stale, true, runnerapi.Snapshot{}, nil, "", 0},
-		{"stale host snapshot", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{Content: "old", Freshness: runnerapi.Stale, Complete: true}, nil, "", 0},
-		{"incomplete host snapshot", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{Content: "partial", Freshness: runnerapi.Fresh}, nil, "", 0},
-		{"metadata-only host snapshot", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{ObtainedAt: "2026-10-19T00:00:00Z"}, nil, "", 0},
-		{"unknown", runnerapi.Unknown{Reason: "runtime selector"}, runnerapi.Fresh, true, runnerapi.Snapshot{}, nil, "", 0},
-		{"not applicable", runnerapi.NotApplicable{}, runnerapi.Fresh, true, runnerapi.Snapshot{}, nil, "", 0},
-		{"failure", nil, runnerapi.Fresh, true, runnerapi.Snapshot{}, errors.New("offline"), "", 0},
+		{"windows", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{}, nil, "pwsh", 0},
+		{"incomplete candidates", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, false, runnerapi.RunnerSnapshot{}, nil, "", 0},
+		{"no match", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{}, nil, "", 1},
+		{"incomplete absence", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, false, runnerapi.RunnerSnapshot{}, nil, "", 0},
+		{"stale absence", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Stale, true, runnerapi.RunnerSnapshot{}, nil, "", 0},
+		{"stale host snapshot", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{Content: "old", Freshness: runnerapi.Stale, Complete: true}, nil, "", 0},
+		{"incomplete host snapshot", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{Content: "partial", Freshness: runnerapi.Fresh}, nil, "", 0},
+		{"metadata-only host snapshot", runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "no queue"}}}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{ObtainedAt: "2026-10-19T00:00:00Z"}, nil, "", 0},
+		{"unknown", runnerapi.Unknown{Reason: "runtime selector"}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{}, nil, "", 0},
+		{"not applicable", runnerapi.NotApplicable{}, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{}, nil, "", 0},
+		{"failure", nil, runnerapi.Fresh, true, runnerapi.RunnerSnapshot{}, errors.New("offline"), "", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			w := runnerWorkflow(t, "buildkite-windows")
-			if tc.snapshot != (runnerapi.Snapshot{}) {
+			if tc.snapshot != (runnerapi.RunnerSnapshot{}) {
 				tc.snapshot.Scope = "scope"
 			}
 			p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
@@ -204,15 +204,15 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		snapshot runnerapi.Snapshot
+		snapshot runnerapi.RunnerSnapshot
 		fresh    runnerapi.Freshness
 		known    bool
 	}{
-		{"absent", runnerapi.Snapshot{}, runnerapi.Missing, true},
-		{"metadata only", runnerapi.Snapshot{Scope: "scope", ObtainedAt: "2026-10-21T00:00:00Z"}, runnerapi.Missing, false},
-		{"fresh", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, runnerapi.Fresh, true},
-		{"stale", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}, runnerapi.Stale, false},
-		{"missing", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Missing}, runnerapi.Missing, false},
+		{"absent", runnerapi.RunnerSnapshot{}, runnerapi.Missing, true},
+		{"metadata only", runnerapi.RunnerSnapshot{Scope: "scope", ObtainedAt: "2026-10-21T00:00:00Z"}, runnerapi.Missing, false},
+		{"fresh", runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, runnerapi.Fresh, true},
+		{"stale", runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}, runnerapi.Stale, false},
+		{"missing", runnerapi.RunnerSnapshot{Scope: "scope", Freshness: runnerapi.Missing}, runnerapi.Missing, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -234,7 +234,7 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 			if k.Report().SnapshotDigest != p.request.Snapshot.Digest() {
 				t.Fatal("report does not identify the snapshot supplied to the provider")
 			}
-			if tc.snapshot != (runnerapi.Snapshot{}) {
+			if tc.snapshot != (runnerapi.RunnerSnapshot{}) {
 				options.Snapshot.Freshness = tc.fresh
 				normalized, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 				if err != nil || normalized.Report().CacheKey != k.Report().CacheKey {

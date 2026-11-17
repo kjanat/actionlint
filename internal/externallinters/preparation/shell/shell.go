@@ -4,7 +4,6 @@
 package shell
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -13,11 +12,10 @@ import (
 // ID names this profile in tool provider manifests.
 const ID = "kjanat:actionlint/shell-preparation@0.3.0"
 
-// Shell is the shell command a run block executes under. Implicit marks the
-// runner's default shell, which omits pipefail.
+// Shell is the shell command a run block executes under, with the
+// interpreter definitions and argument platform that parse it.
 type Shell struct {
-	Name     string
-	Implicit bool
+	scripts.Shell
 	Registry *commands.Registry
 	Platform commands.ArgumentPlatform
 }
@@ -26,7 +24,7 @@ type Shell struct {
 func (s Shell) Invocation() commands.Invocation {
 	registry := s.Registry
 	if registry == nil {
-		registry = interpreters.Builtin()
+		registry = commands.BuiltinShells()
 	}
 	return registry.AnalyzeFor(s.Name, s.Implicit, s.Platform)
 }
@@ -40,7 +38,7 @@ func (s Shell) Analysis() (dialect, startup string) {
 	}
 	switch invocation.Language {
 	case "bash", "sh", "dash", "ksh":
-		return invocation.Language, interpreters.BashSetup(invocation.Settings)
+		return invocation.Language, commands.BashSetup(invocation.Settings)
 	default:
 		return "", ""
 	}

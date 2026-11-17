@@ -37,7 +37,7 @@ permissions: {}
 			if level == "warn" {
 				want = "warning"
 			}
-			if findings[0].Severity != want {
+			if string(findings[0].Severity) != want {
 				t.Fatalf("got %q, want %q", findings[0].Severity, want)
 			}
 		})

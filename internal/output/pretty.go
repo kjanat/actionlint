@@ -7,9 +7,10 @@ import (
 	"strings"
 	"unicode"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
@@ -17,18 +18,16 @@ import (
 func printPretty(out io.Writer, f results.PublishedDiagnostic, width int, hyperlinks, colored bool, configPath string) error {
 	var b strings.Builder
 	d := f.Diagnostic
-	severity := d.Severity
-	if severity == "" {
-		severity = "error"
-	}
+	level := d.Severity.Effective()
 	style := colorStyle(colored, color.Bold, color.FgRed)
-	switch severity {
-	case "warning", "warn":
+	switch level {
+	case severity.Warning:
 		style = colorStyle(colored, color.Bold, color.FgYellow)
-	case "info", "note", "hint":
+	case severity.Info:
 		style = colorStyle(colored, color.Bold, color.FgCyan)
+	case severity.Error:
 	}
-	label := severity
+	label := string(level)
 	if d.Rule != "" {
 		label += "[" + d.Rule + "]"
 	}
@@ -105,9 +104,8 @@ func writePrettyLocation(b *strings.Builder, prefix, path string, position sourc
 	writeWrapped(b, prefix, fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column), width, nil, hyperlinks)
 }
 
-// writeRemoteLocation writes a URL location on one line so the URL is never
-// split. The visible text names the line and column; the link target adds a
-// #L<line> anchor, which GitHub blob pages scroll to.
+// writeRemoteLocation prints an unbroken URL with its line and column.
+// The hyperlink points to the corresponding line on GitHub.
 func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcetext.Position, hyperlinks bool) {
 	b.WriteString(prefix)
 	if hyperlinks {

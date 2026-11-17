@@ -89,7 +89,7 @@ func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 	}
 }
 
-func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
+func TestScriptAnalyzerAttachesRuleNameToScriptFindings(t *testing.T) {
 	t.Parallel()
 	native := &Rule{
 		Name: "example", Description: "d", Category: "c", Subcategory: "s",
@@ -97,11 +97,11 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 			return []results.Diagnostic{{Message: "unnamed"}, {Rule: "other", Message: "named"}}, nil
 		},
 	}
-	registration := native.Registration(rule.Declaration{})
-	if registration.Build != nil || registration.Script == nil {
-		t.Fatalf("script rule registered as %+v", registration)
+	analyzer, ok := native.ScriptAnalyzer()
+	if native.Visits() || !ok {
+		t.Fatal("script rule does not run as a script analyzer")
 	}
-	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.AnalyzerInput{})
+	got, err := analyzer.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,8 +113,7 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 func TestDeclarationOnlyRuleRegistersNoExecution(t *testing.T) {
 	t.Parallel()
 	native := &Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s", DeclaredBy: "expression"}
-	registration := native.Registration(rule.Declaration{})
-	if native.Executable() || registration.Build != nil || registration.Script != nil {
-		t.Fatalf("declaration-only rule executes: %+v", registration)
+	if _, analyzes := native.ScriptAnalyzer(); native.Executable() || native.Visits() || analyzes {
+		t.Fatal("declaration-only rule executes")
 	}
 }
