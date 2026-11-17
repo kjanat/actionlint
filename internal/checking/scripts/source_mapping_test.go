@@ -43,7 +43,7 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	}
 }
 
-func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical *workflowlang.ScriptSource) {
+func assertScalarMapping(t *testing.T, original, canonical *workflowlang.ScriptSource) {
 	t.Helper()
 	if original == nil || canonical != original {
 		t.Fatal("unit lost its declared scalar source")
