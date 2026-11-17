@@ -7,29 +7,30 @@ import (
 	"sync"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestRenderColor(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		mode      render.Color
+		mode      output.Color
 		terminal  bool
 		noColor   string
 		term      string
 		wantColor bool
 	}{
-		{mode: render.ColorAlways, noColor: "1", term: "dumb", wantColor: true},
-		{mode: render.ColorNever, terminal: true, term: "xterm"},
-		{mode: render.ColorAuto, terminal: true, term: "xterm", wantColor: true},
-		{mode: render.ColorAuto, term: "xterm"},
-		{mode: render.ColorAuto, terminal: true, noColor: "1", term: "xterm"},
-		{mode: render.ColorAuto, terminal: true, noColor: "0", term: "xterm"},
-		{mode: render.ColorAuto, terminal: true, term: "dumb"},
-		{mode: render.ColorAuto, terminal: true, wantColor: true},
+		{mode: output.ColorAlways, noColor: "1", term: "dumb", wantColor: true},
+		{mode: output.ColorNever, terminal: true, term: "xterm"},
+		{mode: output.ColorAuto, terminal: true, term: "xterm", wantColor: true},
+		{mode: output.ColorAuto, term: "xterm"},
+		{mode: output.ColorAuto, terminal: true, noColor: "1", term: "xterm"},
+		{mode: output.ColorAuto, terminal: true, noColor: "0", term: "xterm"},
+		{mode: output.ColorAuto, terminal: true, term: "dumb"},
+		{mode: output.ColorAuto, terminal: true, wantColor: true},
 	} {
 		env := map[string]string{"NO_COLOR": tc.noColor, "TERM": tc.term}
 		if got := renderColor(tc.mode, tc.terminal, func(name string) string { return env[name] }); got != tc.wantColor {
@@ -43,14 +44,14 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	finding := results.Publish(results.Diagnostic{
 		Rule: "expression-reference", Message: "unknown variable", Path: "ci.yml",
-		Start: sourcepos.Position{Line: 1, Column: 3}, End: sourcepos.Position{Line: 1, Column: 6},
+		Start: sourcetext.Position{Line: 1, Column: 3}, End: sourcetext.Position{Line: 1, Column: 6},
 	}, results.DiagnosticSource{Content: []byte("  bad")})
 	stop := make(chan struct{})
 	failures := make(chan error, 4)
 	var renders sync.WaitGroup
-	for _, format := range []render.Format{render.FormatText, render.FormatPretty, render.FormatText, render.FormatPretty} {
+	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Pretty, outputformat.Text, outputformat.Pretty} {
 		renders.Go(func() {
-			renderer, err := render.New(format, "", false, buildinfo.Version, nil)
+			renderer, err := output.New(format, "", false, buildinfo.Version, nil)
 			if err != nil {
 				failures <- err
 				return
@@ -62,7 +63,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 				default:
 				}
 				var out strings.Builder
-				if err := renderer.Render(&out, render.RenderedReport{Findings: []results.PublishedDiagnostic{finding}}); err != nil {
+				if err := renderer.Render(&out, output.RenderedReport{Findings: []results.PublishedDiagnostic{finding}}); err != nil {
 					failures <- err
 					return
 				}

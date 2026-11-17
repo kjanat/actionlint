@@ -5,10 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // CollectionComparisonRule is the single definition of the collection-comparison rule.
@@ -34,10 +34,10 @@ var CollectionComparisonRule = &define.Rule{
 }
 
 // CollectionComparison reports equality comparisons between object or array instances.
-func CollectionComparison(root exprsyntax.Node, types exprlang.InferredTypes, evaluation exprlang.EvaluationResults) []*exprlang.Error {
-	var findings []*exprlang.Error
-	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
-		comparison, ok := node.(*exprsyntax.CompareOpNode)
+func CollectionComparison(root syntax.Node, types typecheck.InferredTypes, evaluation typecheck.EvaluationResults) []*typecheck.Error {
+	var findings []*typecheck.Error
+	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
+		comparison, ok := node.(*syntax.CompareOpNode)
 		if !entering || !ok || !comparison.Kind.IsEqualityOp() {
 			return
 		}
@@ -49,8 +49,8 @@ func CollectionComparison(root exprsyntax.Node, types exprlang.InferredTypes, ev
 		if !leftKnown || !rightKnown || left.Kind() != right.Kind() || left.Kind() != exprtypes.KindObject && left.Kind() != exprtypes.KindArray {
 			return
 		}
-		leftPath, leftStatic := exprsyntax.ReferencePath(comparison.Left)
-		rightPath, rightStatic := exprsyntax.ReferencePath(comparison.Right)
+		leftPath, leftStatic := syntax.ReferencePath(comparison.Left)
+		rightPath, rightStatic := syntax.ReferencePath(comparison.Right)
 		if leftStatic && rightStatic && slices.Equal(leftPath, rightPath) {
 			return
 		}

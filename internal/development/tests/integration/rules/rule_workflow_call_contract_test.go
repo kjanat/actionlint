@@ -4,15 +4,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -50,16 +50,16 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
 			c := newCapturedWorkflowCache(t, "", "", nil)
-			r := workflowCallVisitor(t, fixturedecl.Workflow(&workflowlang.Workflow{}), c, repofacts.Snapshot{})
-			j := &workflowlang.Job{
-				WorkflowCall: &workflowlang.WorkflowCall{
-					Uses: &workflowlang.String{
+			r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), c, repository.Snapshot{})
+			j := &definition.Job{
+				WorkflowCall: &definition.WorkflowCall{
+					Uses: &definition.String{
 						Value: tc.uses,
-						Pos:   &source.Position{},
+						Pos:   &sourcetext.Position{},
 					},
 				},
 			}
-			err := r.VisitJobPre(fixturedecl.Job(j))
+			err := r.VisitJobPre(declarations.Job(j))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -78,31 +78,31 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 
 func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	t.Parallel()
-	w := &workflowlang.Workflow{
-		On: []workflowlang.Event{
-			&workflowlang.WorkflowCallEvent{
-				Pos: &source.Position{},
+	w := &definition.Workflow{
+		On: []definition.Event{
+			&definition.WorkflowCallEvent{
+				Pos: &sourcetext.Position{},
 			},
 		},
 	}
 
-	j := &workflowlang.Job{
-		WorkflowCall: &workflowlang.WorkflowCall{
-			Uses: &workflowlang.String{
+	j := &definition.Job{
+		WorkflowCall: &definition.WorkflowCall{
+			Uses: &definition.String{
 				Value: "o/r/w.yaml@r",
-				Pos:   &source.Position{},
+				Pos:   &sourcetext.Position{},
 			},
 		},
 	}
 
 	c := newCapturedWorkflowCache(t, "", "", nil)
-	r := workflowCallVisitor(t, fixturedecl.Workflow(w), c, repofacts.Snapshot{})
+	r := workflowCallVisitor(t, declarations.Workflow(w), c, repository.Snapshot{})
 
-	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := r.VisitJobPre(fixturedecl.Job(j)); err != nil {
+	if err := r.VisitJobPre(declarations.Job(j)); err != nil {
 		t.Fatal(err)
 	}
 	errs := r.Errs()
@@ -127,12 +127,12 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	if !available {
 		t.Fatal("captured workflow unavailable")
 	}
-	c := workflowinputs.NewCache(cwd, nil)
+	c := reusableworkflows.NewCache(cwd, nil)
 	c.SetSources(t.Context(), store, cwd)
 	if err := c.Seed(snapshot); err != nil {
 		t.Fatal(err)
 	}
-	r := workflowCallVisitor(t, w, c, repofacts.Snapshot{})
+	r := workflowCallVisitor(t, w, c, repository.Snapshot{})
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
@@ -150,7 +150,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 
 	want := &calls.Metadata{
 		Inputs: calls.Inputs{
-			"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+			"input1": {Name: "input1", Required: false, Type: definition.WorkflowCallEventInputTypeString},
 		},
 		Outputs: calls.Outputs{
 			"output1": {Name: "output1"},

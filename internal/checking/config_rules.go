@@ -5,11 +5,11 @@ import (
 	"slices"
 	"sync"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ConfigurationRules supplies the declarations used by the native and editor entry points.
@@ -48,7 +48,7 @@ var configurationRules = sync.OnceValue(func() configuration.RuleSet {
 		if err != nil {
 			panic(fmt.Errorf("bundled provider %s: %w", manifest.Rule.Name, err))
 		}
-		declarations = append(declarations, rulemeta.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true})
+		declarations = append(declarations, rule.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true})
 	}
 	rules, err := configuration.NewRuleSet(declarations)
 	if err != nil {

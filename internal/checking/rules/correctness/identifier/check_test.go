@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,9 +24,9 @@ func TestValid(t *testing.T) {
 
 func TestCheck(t *testing.T) {
 	t.Parallel()
-	at := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 5} }
+	at := func(line int) sourcetext.Position { return sourcetext.Position{Line: line, Column: 5} }
 	long := strings.Repeat("x", 100)
-	job := Job{
+	job := JobIdentifiers{
 		ID:    &Name{Value: "1build", Start: at(1)},
 		Needs: []Name{{Value: "ok", Start: at(2)}, {Value: "bad.need", Start: at(3)}, {Value: "${{ dynamic }}", Dynamic: true, Start: at(4)}},
 		Steps: []Name{
@@ -51,7 +51,7 @@ func TestCheck(t *testing.T) {
 	if diff := cmp.Diff(want, Check(job)); diff != "" {
 		t.Fatal(diff)
 	}
-	if findings := Check(Job{}); findings != nil {
+	if findings := Check(JobIdentifiers{}); findings != nil {
 		t.Fatal(findings)
 	}
 }

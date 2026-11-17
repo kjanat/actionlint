@@ -6,9 +6,9 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestCompositeSuggestionPositions(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
 				suggestion := 0
 				if tc.name == "later-expression" {
-					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Code != "unknown-script-value" || result.Diagnostics[0].Start != (sourcepos.Position{Line: 10, Column: 21}) {
+					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Code != "unknown-script-value" || result.Diagnostics[0].Start != (sourcetext.Position{Line: 10, Column: 21}) {
 						t.Fatalf("first expression must retain its independent script finding: %+v", result.Diagnostics)
 					}
 					suggestion = 1
@@ -58,7 +58,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				if len(result.Diagnostics) != suggestion+1 || result.Diagnostics[suggestion].Rule != "action" || !strings.Contains(result.Diagnostics[suggestion].Message, "did you mean") {
 					t.Fatalf("expected one action suggestion: %+v", result.Diagnostics)
 				}
-				var want sourcepos.Position
+				var want sourcetext.Position
 				for i, line := range strings.Split(metadata, "\n") {
 					if tc.fallback {
 						key := "run: "
@@ -66,11 +66,11 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 							key = "if: "
 						}
 						if col := strings.Index(line, key); col >= 0 {
-							want = sourcepos.Position{Line: i + 1, Column: col + len(key) + 1}
+							want = sourcetext.Position{Line: i + 1, Column: col + len(key) + 1}
 							break
 						}
 					} else if col := strings.Index(line, tc.token); col >= 0 && !strings.Contains(line, tc.token+":") {
-						want = sourcepos.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+						want = sourcetext.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
 						break
 					}
 				}

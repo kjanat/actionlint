@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
@@ -80,7 +80,7 @@ func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
 		t.Fatal("final declaration projection lost the anonymous step")
 	}
-	refs.Steps[0] = source.Reference{}
+	refs.Steps[0] = sourcetext.Reference{}
 	if snapshot.Bound().SourceIndex().Steps[0] != view.Reference() {
 		t.Fatal("consumer changed canonical index")
 	}
@@ -108,14 +108,14 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.Step{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflows.Step{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if err := bound.ValidateStep(workflowdecl.Step{}); err == nil {
+	if err := bound.ValidateStep(workflows.Step{}); err == nil {
 		t.Fatal("missing declaration accepted")
 	}
-	zero := workflowdecl.Step{}
-	if zero.Present() || zero.Reference() != (source.Reference{}) {
+	zero := workflows.Step{}
+	if zero.Present() || zero.Reference() != (sourcetext.Reference{}) {
 		t.Fatal("zero handle exposes declarations")
 	}
 }

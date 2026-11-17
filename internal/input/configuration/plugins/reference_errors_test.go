@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 func TestReferencesErrorPaths(t *testing.T) {
@@ -21,7 +21,7 @@ func TestReferencesErrorPaths(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, declared, err := References(map[string]any{"plugins": tc.value})
-			failure, ok := errors.AsType[*binding.Error](err)
+			failure, ok := errors.AsType[*configdecode.Error](err)
 			if !declared || !ok || failure.Path != tc.path {
 				t.Fatalf("declared=%t error=%v, want path %s", declared, err, tc.path)
 			}

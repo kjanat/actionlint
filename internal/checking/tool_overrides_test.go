@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 )
 
 func TestFileOverrideToolRequirements(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	config := writeFixture(t, root, "actionlint.yml", "tools: {shellcheck: false}\noverrides: [{includes: [ci.yml], tools: {shellcheck: true}}]")
-	options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 	for _, tc := range []struct {
 		path string
 		want bool

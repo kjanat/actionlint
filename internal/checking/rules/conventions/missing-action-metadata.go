@@ -4,11 +4,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // MissingActionMetadataRule is the single definition of the missing-action-metadata rule.
@@ -30,50 +30,50 @@ var MissingActionMetadataRule = &define.Rule{
 
 // MissingActionMetadataChecks reads acquisition outcomes prepared by the host.
 // It does not start provider requests or depend on preceding step callbacks.
-func MissingActionMetadataChecks(remote *actionremote.ResolvedActions) define.Checks {
-	return define.Checks{Step: func(step workflowdecl.Step) []reporting.StepFinding {
+func MissingActionMetadataChecks(remote *remote.ResolvedActions) define.Checks {
+	return define.Checks{Step: func(step workflows.Step) []reporting.StepFinding {
 		return missingActionMetadata(step, remote)
 	}}
 }
 
-func missingActionMetadata(step workflowdecl.Step, remote *actionremote.ResolvedActions) []reporting.StepFinding {
+func missingActionMetadata(step workflows.Step, remote *remote.ResolvedActions) []reporting.StepFinding {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil || action.Uses.ContainsExpression() {
 		return nil
 	}
 	spec := action.Uses.Value
-	switch references.FormOf(spec) {
-	case references.FormWorkspace, references.FormSelfRepository, references.FormContainer:
+	switch callreferences.FormOf(spec) {
+	case callreferences.FormWorkspace, callreferences.FormSelfRepository, callreferences.FormContainer:
 		return nil
-	case references.FormRepository, references.FormBuiltin:
+	case callreferences.FormRepository, callreferences.FormBuiltin:
 	}
-	if references.ActionReferenceProblem(spec) != "" {
+	if callreferences.ActionReferenceProblem(spec) != "" {
 		return nil
 	}
 	result := remote.Inspect(spec)
-	availability := result.Availability()
-	if availability.State() == actions.MetadataAvailable {
+	availabilityFacts := result.Availability()
+	if availabilityFacts.State() == actions.MetadataAvailable {
 		return nil
 	}
-	if reason := availability.Reason(); reason == factavailability.LookupDisabledReason || reason == factavailability.OfflineReason || reason == factavailability.CacheMissReason || reason == factavailability.ResolverNotConfiguredReason {
+	if reason := availabilityFacts.Reason(); reason == availability.LookupDisabledReason || reason == availability.OfflineReason || reason == availability.CacheMissReason || reason == availability.ResolverNotConfiguredReason {
 		return nil
 	}
-	reason := string(availability.Reason())
-	if availability.State() == actions.MetadataInvalid {
+	reason := string(availabilityFacts.Reason())
+	if availabilityFacts.State() == actions.MetadataInvalid {
 		reason = "invalid parse/schema metadata"
 	}
 	help := ""
-	switch availability.Reason() {
-	case factavailability.UnsupportedHostReason:
+	switch availabilityFacts.Reason() {
+	case availability.UnsupportedHostReason:
 		help = "; the GitHub metadata provider only supports github.com"
-	case factavailability.UnsupportedObjectFormatReason:
+	case availability.UnsupportedObjectFormatReason:
 		help = "; metadata lookup supports SHA-1 commit IDs; use a branch or tag name instead"
-	case factavailability.InvalidResolverResultReason:
+	case availability.InvalidResolverResultReason:
 		help = "; the reference resolver returned an invalid or incomplete selection"
-	case factavailability.NotFetchedReason, factavailability.OfflineReason, factavailability.LookupDisabledReason,
-		factavailability.DeniedReason, factavailability.FailedReason, factavailability.NotFoundReason,
-		factavailability.UnsupportedReason, factavailability.ResolverNotConfiguredReason, factavailability.CacheMissReason,
-		factavailability.InaccessibleReason, factavailability.LimitReason:
+	case availability.NotFetchedReason, availability.OfflineReason, availability.LookupDisabledReason,
+		availability.DeniedReason, availability.FailedReason, availability.NotFoundReason,
+		availability.UnsupportedReason, availability.ResolverNotConfiguredReason, availability.CacheMissReason,
+		availability.InaccessibleReason, availability.LimitReason:
 	}
 	collector := reporting.Collector{Step: step}
 	collector.Error(action.Uses.Pos, "could not inspect metadata for "+spec+" ("+reason+")"+help)

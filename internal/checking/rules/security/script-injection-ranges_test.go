@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestUntrustedExpressionSpans(t *testing.T) {
@@ -24,7 +24,7 @@ func TestUntrustedExpressionSpans(t *testing.T) {
 			if serialized {
 				source = "toJSON(" + expression + ")"
 			}
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +48,7 @@ func TestUntrustedExpressionSpans(t *testing.T) {
 
 func TestExpressionSpanParserReuse(t *testing.T) {
 	t.Parallel()
-	p := exprsyntax.NewParser()
+	p := syntax.NewParser()
 	for _, source := range []string{
 		"", "(", "foo.", "contains('a',)", "'unclosed", "foo\x00",
 		" (((github.event.issue.title))) ", "(startWith('a')).x", "env[format('{0}', (true))]",
@@ -56,8 +56,8 @@ func TestExpressionSpanParserReuse(t *testing.T) {
 		"foo &&\n", "((1))", "github.event[github.event.issue.title].body",
 	} {
 		source += "}}"
-		node, err := p.ParseExpression(exprsyntax.NewLexer(source))
-		fresh, freshErr := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source))
+		node, err := p.ParseExpression(syntax.NewLexer(source))
+		fresh, freshErr := syntax.NewParser().ParseExpression(syntax.NewLexer(source))
 		if err != nil {
 			if freshErr == nil || *err != *freshErr {
 				t.Fatalf("reuse changed error for %q: %+v / %+v", source, err, freshErr)
@@ -67,10 +67,10 @@ func TestExpressionSpanParserReuse(t *testing.T) {
 			}
 			continue
 		}
-		if freshErr != nil || exprsyntax.ExpressionSpan(node) != exprsyntax.ExpressionSpan(fresh) {
+		if freshErr != nil || syntax.ExpressionSpan(node) != syntax.ExpressionSpan(fresh) {
 			t.Fatalf("reuse changed parse span for %q", source)
 		}
-		_, findings := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(node))
+		_, findings := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(node))
 		findings = append(findings, checkUntrustedInputs(node)...)
 		for _, finding := range findings {
 			if finding.Offset < 0 || finding.EndOffset < finding.Offset || finding.EndOffset > len(source)-2 {

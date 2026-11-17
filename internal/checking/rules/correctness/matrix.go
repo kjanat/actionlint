@@ -2,9 +2,9 @@ package correctness
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrix"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrixcheck"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // MatrixRule is the single definition of the matrix rule.
@@ -25,8 +25,8 @@ var MatrixRule = &define.Rule{
 // not load configuration or depend on earlier jobs.
 func MatrixChecks(checkMixedTypeFilters bool) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
-			return reporting.FromDiagnostics(matrixcheck.Check(workflowdecl.MatrixResolution(job.Strategy), checkMixedTypeFilters))
+		Job: func(job workflows.Job) []reporting.StepFinding {
+			return reporting.FromDiagnostics(matrixcheck.Check(workflows.MatrixResolution(job.Strategy), checkMixedTypeFilters))
 		},
 	}
 }

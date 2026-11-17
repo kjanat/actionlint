@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
@@ -38,7 +39,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	for _, tc := range []struct {
 		rules string
 		name  string
-		want  configuration.Level
+		want  ruleconfig.Level
 	}{
 		{"correctness: false", "expression", "off"},
 		{"preset: none, correctness: true", "expression", "on"},
@@ -103,7 +104,7 @@ func TestRuleLevelAliasesWithStrict(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := configuration.Level("on")
+		want := ruleconfig.Level("on")
 		if level == "off" || level == "false" {
 			want = "off"
 		}
@@ -119,7 +120,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 		rules  string
 		preset configuration.Presets
 		name   string
-		want   configuration.Level
+		want   ruleconfig.Level
 	}{
 		{"preset: none", configuration.Presets{}, "expression", "off"},
 		{"preset: none, correctness: {expression: warn}", configuration.Presets{}, "expression", "warn"},
@@ -245,12 +246,12 @@ func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			setting, err := configuration.NewSetting("error", options)
+			setting, err := ruleconfig.NewSetting("error", options)
 			if err != nil {
 				t.Fatal(err)
 			}
 			cfg := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
-				Policy: configuration.NewGroup("", "", map[string]configuration.Setting{name: setting}),
+				Policy: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{name: setting}),
 			}}}
 			if err := checking.ConfigurationRules().ValidateRuleNames(cfg); err == nil || !strings.Contains(err.Error(), name) {
 				t.Fatalf("invalid options for %s accepted: %v", name, err)
@@ -266,7 +267,7 @@ func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
 		"require-permissions":   &configuration.PermissionsPolicy{},
 		"disallow-suppressions": &configuration.SuppressionsPolicy{},
 	} {
-		if _, err := configuration.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "boolean") {
+		if _, err := ruleconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "boolean") {
 			t.Fatalf("%s: disabled policy accepted as options: %v", name, err)
 		}
 	}

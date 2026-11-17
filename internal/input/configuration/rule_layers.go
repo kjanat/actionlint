@@ -1,5 +1,7 @@
 package configuration
 
+import "actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+
 // normalizeRuleLocations gives named settings one merge key across accepted
 // category spellings. Group defaults stay in their declared groups because
 // their membership can depend on plugin declarations loaded later.
@@ -23,7 +25,7 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 			continue
 		}
 		var setting any
-		level := Level("default")
+		level := ruleconfig.Level("default")
 		for _, category := range append(categories, descriptor.Category) {
 			candidate := ruleSet.ruleSettingNode(field(nextRules, category), descriptor.Name)
 			if candidate == nil {
@@ -95,14 +97,14 @@ func (ruleSet RuleSet) ruleSettingNode(group any, name string) any {
 	return nil
 }
 
-func settingLevelNode(setting any) (Level, error) {
+func settingLevelNode(setting any) (ruleconfig.Level, error) {
 	if isMapping(setting) {
 		setting = field(setting, "level")
 	}
 	if setting == nil || isNull(setting) {
 		return "default", nil
 	}
-	var level Level
+	var level ruleconfig.Level
 	err := decodeValue(setting, &level)
 	return level, err
 }

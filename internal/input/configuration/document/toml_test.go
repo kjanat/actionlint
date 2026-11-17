@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func decodeValue(t *testing.T, doc *Node) any { t.Helper(); return doc.Value() }
@@ -70,11 +72,11 @@ func TestDecodeTOMLPositions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	positions := map[string]Location{
-		"names key": keyAt(node, "/names"), "names value": node.Origins()["/names"], "names second": node.Origins()["/names/1"],
-		"inline value": node.Origins()["/t"], "inline b key": keyAt(node, "/t/b"),
-		"server key": keyAt(node, "/server"), "host key": keyAt(node, "/server/host"), "host value": node.Origins()["/server/host"],
-		"port key": keyAt(node, "/server/port"), "port value": node.Origins()["/server/port"],
+	positions := map[string]sourcetext.Position{
+		"names key": keyAt(node, "/names"), "names value": valueAt(node, "/names"), "names second": valueAt(node, "/names/1"),
+		"inline value": valueAt(node, "/t"), "inline b key": keyAt(node, "/t/b"),
+		"server key": keyAt(node, "/server"), "host key": keyAt(node, "/server/host"), "host value": valueAt(node, "/server/host"),
+		"port key": keyAt(node, "/server/port"), "port value": valueAt(node, "/server/port"),
 	}
 	want := map[string][2]int{
 		"names key": {1, 1}, "names value": {1, 9}, "names second": {1, 15}, "inline value": {2, 5}, "inline b key": {2, 16},

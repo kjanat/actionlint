@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestSemanticDiagnosticSpans(t *testing.T) {
@@ -24,11 +24,11 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(node))
+			_, findings := NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(node))
 			for _, finding := range findings {
 				if !strings.Contains(finding.Message, tc.message) {
 					continue
@@ -54,25 +54,25 @@ func FuzzExpressionParserSpans(f *testing.F) {
 		if len(source) > 4096 {
 			t.Skip()
 		}
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 		if err != nil {
 			return
 		}
-		exprsyntax.Visit(node, func(node, parent exprsyntax.Node, entering bool) {
+		syntax.Visit(node, func(node, parent syntax.Node, entering bool) {
 			if !entering {
 				return
 			}
-			span := exprsyntax.ExpressionSpan(node)
+			span := syntax.ExpressionSpan(node)
 			if span.Start < 0 || span.End < span.Start || span.End > len(source) {
 				t.Fatalf("invalid %T span %+v", node, span)
 			}
 			if parent != nil {
-				outer := exprsyntax.ExpressionSpan(parent)
+				outer := syntax.ExpressionSpan(parent)
 				if span.Start < outer.Start || span.End > outer.End {
 					t.Fatalf("%T %+v outside %T %+v", node, span, parent, outer)
 				}
 			}
-			parsed, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source[span.Start:span.End] + "}}"))
+			parsed, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source[span.Start:span.End] + "}}"))
 			if err != nil || parsed == nil {
 				t.Fatalf("%T span %q cannot be parsed: %v", node, source[span.Start:span.End], err)
 			}
@@ -91,7 +91,7 @@ func TestExpressionSyntaxErrorSpans(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			_, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source))
+			_, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source))
 			if err == nil {
 				t.Fatal("expected syntax error")
 			}
@@ -110,7 +110,7 @@ func TestBareConditionSyntheticDelimiterSpans(t *testing.T) {
 	for _, source := range []string{"github.actor &&", "github.actor &&\n", "'unclosed", "'unclosed\n", "contains('é"} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			_, err, _ := exprsyntax.ParseConditionExpression(source)
+			_, err, _ := syntax.ParseConditionExpression(source)
 			if err == nil {
 				t.Fatal("expected syntax error")
 			}

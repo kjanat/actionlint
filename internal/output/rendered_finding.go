@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/fatih/color"
@@ -19,13 +19,13 @@ func indicator(f results.PublishedDiagnostic) string {
 	if column <= 0 {
 		return ""
 	}
-	start, ok := source.ByteOffsetAtColumn(line, column)
+	start, ok := sourcetext.ByteOffsetAtColumn(line, column)
 	if !ok {
 		return ""
 	}
 	width := 0
 	if end := f.Excerpt.EndColumn; end >= column {
-		offset, ok := source.ByteOffsetAtColumn(line, end+1)
+		offset, ok := sourcetext.ByteOffsetAtColumn(line, end+1)
 		if !ok {
 			offset = len(line)
 		}

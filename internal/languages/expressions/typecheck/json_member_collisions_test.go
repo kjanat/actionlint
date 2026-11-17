@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 func TestJSONMemberCollisions(t *testing.T) {
@@ -40,8 +40,8 @@ func TestJSONMemberCollisions(t *testing.T) {
 			if len(collisions) != tc.count {
 				t.Fatalf("got %v", collisions)
 			}
-			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + tc.input + "') }}")
-			_, errs := NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(expr))
+			expr := syntax.ParseAssignedExpression("${{ fromJSON('" + tc.input + "') }}")
+			_, errs := NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr))
 			if len(errs) != tc.count {
 				t.Fatal(errs)
 			}
@@ -65,8 +65,8 @@ func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
 			if got := runnerjson.JSONMemberCollisions(input); len(got) != 0 {
 				t.Fatal(got)
 			}
-			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + input + "') }}")
-			_, errs := NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(expr))
+			expr := syntax.ParseAssignedExpression("${{ fromJSON('" + input + "') }}")
+			_, errs := NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr))
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "broken JSON string") {
 				t.Fatal(errs)
 			}

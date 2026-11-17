@@ -1,15 +1,15 @@
 package policy
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
 // unusedSuppressionFix removes selectors after invocation-wide usage is known.
 // The edit is range-checked and bound to the exact admitted document revision.
-func (processor Processor) unusedSuppressionFix(content []byte, path string, ref sourcepos.Reference, position sourcepos.Position, rules, allowed []string) (results.Fix, bool) {
-	if path == "" || ref.Document == "" || ref.Revision != sourcepos.ContentDigest(content) {
+func (processor Processor) unusedSuppressionFix(content []byte, path string, ref sourcetext.Reference, position sourcetext.Position, rules, allowed []string) (results.Fix, bool) {
+	if path == "" || ref.Document == "" || ref.Revision != sourcetext.ContentDigest(content) {
 		return results.Fix{}, false
 	}
 	edit, ok := suppression.Remove(content, position, rules, allowed, processor.RuleSet.Names())

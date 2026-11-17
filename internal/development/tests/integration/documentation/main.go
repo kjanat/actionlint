@@ -18,16 +18,17 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -79,16 +80,16 @@ func Actionlint(src []byte) ([]byte, error) {
 		WorkingDir: root,
 		ReadFile:   readDocumentationFile,
 		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
-		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
+		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}}}),
 	}, []workspace.InputFile{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}
-	renderer, err := render.New(render.FormatText, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(outputformat.Text, "", false, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+	if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 		return nil, err
 	}
 	if len(result.Diagnostics) == 0 {

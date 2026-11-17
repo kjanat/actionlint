@@ -4,9 +4,9 @@ import (
 	"cmp"
 	"slices"
 
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // NameComparison describes name lookup, independently of filesystem behavior.
@@ -41,15 +41,15 @@ type EnvironmentLayer struct {
 // DeclaredEnvironment reads keys without applying the generic mapping's
 // case-insensitive lookup. Source positions restore YAML declaration order;
 // expression-generated keys with the same origin preserve their supplied order.
-func DeclaredEnvironment(scope EnvironmentScope, declarations mapping.Mapping) EnvironmentLayer {
+func DeclaredEnvironment(scope EnvironmentScope, declarations mappings.Mapping) EnvironmentLayer {
 	layer := EnvironmentLayer{Scope: scope, UnknownNames: !declarations.Complete()}
 	entries := slices.Collect(declarations.Declarations())
-	slices.SortStableFunc(entries, func(a, b mapping.Declaration) int {
+	slices.SortStableFunc(entries, func(a, b mappings.Declaration) int {
 		left, right := a.Origin.Span.Start, b.Origin.Span.Start
 		return cmp.Or(cmp.Compare(left.Line, right.Line), cmp.Compare(left.Column, right.Column))
 	})
 	for _, entry := range entries {
-		if entry.State == mapping.KnownKey {
+		if entry.State == mappings.KnownKey {
 			layer.Names = append(layer.Names, entry.Name)
 		}
 	}

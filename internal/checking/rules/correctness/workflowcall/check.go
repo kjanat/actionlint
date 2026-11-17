@@ -5,26 +5,26 @@ import (
 	"fmt"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-func callFinding(pos sourcepos.Position, format string, args ...any) results.Diagnostic {
+func callFinding(pos sourcetext.Position, format string, args ...any) results.Diagnostic {
 	return results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: pos}
 }
 
 // CheckArguments validates required and supplied inputs and secrets against
 // reusable workflow metadata.
-func CheckArguments(call *workflowlang.WorkflowCall, m *calls.Metadata) []results.Diagnostic {
+func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if call == nil || call.Uses == nil || m == nil {
 		return findings
 	}
 	u := call.Uses
-	report := func(pos sourcepos.Position, format string, args ...any) {
+	report := func(pos sourcetext.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	// Validate inputs
@@ -67,12 +67,12 @@ func declaredNote(kind string, names []string) string {
 
 // CheckPermissions compares every callee job's requirements with the explicit
 // caller grant. Conditions do not weaken this contract: GitHub validates it before execution.
-func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
+func CheckPermissions(call *definition.WorkflowCall, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if call == nil || call.Uses == nil || m == nil || granted.Kind != calls.PermissionsDeclared {
 		return findings
 	}
-	report := func(pos sourcepos.Position, format string, args ...any) {
+	report := func(pos sourcetext.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	ids := make([]string, 0, len(m.JobPermissions))
@@ -114,7 +114,7 @@ func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPer
 	return findings
 }
 
-func callPosition(node *workflowlang.String) sourcepos.Position {
+func callPosition(node *definition.String) sourcetext.Position {
 	pos, _ := node.Position()
 	return pos
 }

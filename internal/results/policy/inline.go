@@ -5,9 +5,10 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
@@ -22,11 +23,11 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 }
 
 type inlineAudit struct {
-	level func(string) configuration.Level
-	used  func(sourcepos.Position, string)
+	level func(string) ruleconfig.Level
+	used  func(sourcetext.Position, string)
 }
 
-func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
+func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*finding.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*finding.Finding {
 	allowedRules := processor.SuppressionRules(additional...)
 	directives, invalid := suppression.ParseInlineSuppressions(source, allowedRules, processor.RuleSet.Names())
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
@@ -37,9 +38,9 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 		}
 	}, processor.RuleSet.Names())
 	for _, d := range invalid {
-		findings = append(findings, findingmodel.FromDiagnostic(d))
+		findings = append(findings, finding.FromDiagnostic(d))
 	}
-	filtered := make([]*findingmodel.Finding, 0, len(findings)+len(reports))
+	filtered := make([]*finding.Finding, 0, len(findings)+len(reports))
 	type selector struct {
 		directive int
 		rule      string
@@ -80,13 +81,13 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 		filtered = append(filtered, finding)
 	}
 	for _, d := range reports {
-		filtered = append(filtered, findingmodel.FromDiagnostic(d))
+		filtered = append(filtered, finding.FromDiagnostic(d))
 	}
 	if audit != nil {
 		for index, directive := range directives {
 			for _, name := range directive.Rules {
 				if !used[selector{index, name}] && !evaluation.Suppresses("unused-suppression", directive.Position.Line, directive.Position.Line) {
-					finding := findingmodel.FromDiagnostic(results.Diagnostic{
+					finding := finding.FromDiagnostic(results.Diagnostic{
 						Rule: "unused-suppression", Start: directive.Position,
 						Message: fmt.Sprintf("inline suppression of %q did not match any findings", name),
 					})
@@ -99,8 +100,8 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 	return filtered
 }
 
-func (processor Processor) filterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *configuration.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
-	local := make([]*findingmodel.Finding, len(findings))
+func (processor Processor) filterForeignInline(path string, source []byte, findings []*finding.Finding, policy *configuration.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*finding.Finding {
+	local := make([]*finding.Finding, len(findings))
 	for i, finding := range findings {
 		scoped := *finding
 		if scoped.SuppressionOrigin == nil {

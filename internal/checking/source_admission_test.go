@@ -8,25 +8,25 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type unrelatedPathAnalyzer struct{ path string }
 
 func (unrelatedPathAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Path: a.path, Message: "foreign observation", Start: sourcepos.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Path: a.path, Message: "foreign observation", Start: sourcetext.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {
@@ -44,7 +44,7 @@ func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
 	root := t.TempDir()
 	store, fixture := capturefixture.NewCapturedSources(t, root)
 	path := filepath.Join(root, "ci.yml")
-	entry, err := fixture.Capture(path, []byte(commandGoodWorkflow), sourcepos.YAML)
+	entry, err := fixture.Capture(path, []byte(commandGoodWorkflow), sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,9 +55,9 @@ func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	retained := &findingmodel.Finding{Path: "ci.yml", Message: "entry"}
-	entryReference := sourcepos.Reference{Document: entry.Revision().Document(), Revision: entry.Revision().Digest()}
-	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*findingmodel.Finding{
+	retained := &finding.Finding{Path: "ci.yml", Message: "entry"}
+	entryReference := sourcetext.Reference{Document: entry.Revision().Document(), Revision: entry.Revision().Digest()}
+	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*finding.Finding{
 		{Path: filepath.Join(root, "foreign.sh"), Message: "unmarked foreign"},
 		{Path: filepath.Join(root, "another.sh"), Message: "false entry claim", Reference: &entryReference},
 		retained,
@@ -77,11 +77,11 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			root := t.TempDir()
 			entryPath, reportedPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "library.sh")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			previous, err := fixture.Capture(reportedPath, []byte("previous bytes\n"), sourcepos.RawLF)
+			previous, err := fixture.Capture(reportedPath, []byte("previous bytes\n"), sourcetext.RawLF)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -89,10 +89,10 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			if failed {
 				content = []byte{}
 			}
-			finding := &findingmodel.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 1}, Source: results.DiagnosticSource{Content: content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", reportedPath, failed)}}
+			item := &finding.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: sourcetext.Position{Line: 1, Column: 1}, Source: results.DiagnosticSource{Content: content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", reportedPath, failed)}}
 			session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-			accepted, err := session.admitReportedSources([]*findingmodel.Finding{finding}, "ci.yml", entryPath, composites.Composition{}, nil)
-			if err != nil || len(accepted) != 1 || finding.Source.Unavailable.Document() != previous.Revision().Document() {
+			accepted, err := session.admitReportedSources([]*finding.Finding{item}, "ci.yml", entryPath, composites.Composition{}, nil)
+			if err != nil || len(accepted) != 1 || item.Source.Unavailable.Document() != previous.Revision().Document() {
 				t.Fatalf("reported alias admission failed: %v %v", accepted, err)
 			}
 			if err := store.Close(t.Context()); err != nil {
@@ -107,7 +107,7 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 				t.Fatal(err)
 			}
 			publishTestDiagnostics(t, &result)
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || len(result.Diagnostics[0].Fixes) != 0 || result.Diagnostics[0].End != finding.Start {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || len(result.Diagnostics[0].Fixes) != 0 || result.Diagnostics[0].End != item.Start {
 				t.Fatalf("unavailable source promoted another consumer's capture: %+v", result.Diagnostics)
 			}
 			encoded, err := json.Marshal(result.Diagnostics)
@@ -131,8 +131,8 @@ func TestReportedSourceAdmissionRejectsUnmarkedForeignSourcesExactly(t *testing.
 	root := t.TempDir()
 	store, _ := capturefixture.NewCapturedSources(t, root)
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-	retained := &findingmodel.Finding{Message: "entry observation"}
-	findings := []*findingmodel.Finding{
+	retained := &finding.Finding{Message: "entry observation"}
+	findings := []*finding.Finding{
 		{Path: filepath.Join(root, "foreign.yml"), Source: results.DiagnosticSource{Content: []byte("foreign yaml")}},
 		{Path: filepath.Join(root, "foreign.sh"), Source: results.DiagnosticSource{Content: []byte("foreign script"), RawScript: true}},
 		retained,
@@ -149,17 +149,17 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 	root := t.TempDir()
 	entryPath, dependencyPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "dependency.yml")
 	store, fixture := capturefixture.NewCapturedSources(t, root)
-	entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
+	entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency, err := fixture.Capture(dependencyPath, []byte("name: dependency\n"), sourcepos.YAML)
+	dependency, err := fixture.Capture(dependencyPath, []byte("name: dependency\n"), sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unavailable := &findingmodel.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: []byte("unverified"), RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", dependencyPath, false)}}
+	unavailable := &finding.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: []byte("unverified"), RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", dependencyPath, false)}}
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-	accepted, err := session.admitReportedSources([]*findingmodel.Finding{unavailable}, "ci.yml", entryPath, composites.Composition{}, nil)
+	accepted, err := session.admitReportedSources([]*finding.Finding{unavailable}, "ci.yml", entryPath, composites.Composition{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,8 +174,8 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	retained := &findingmodel.Finding{Message: "entry observation"}
-	accepted = append(accepted, &findingmodel.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}, Message: "reference-less dependency"}, retained)
+	retained := &finding.Finding{Message: "entry observation"}
+	accepted = append(accepted, &finding.Finding{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}, Message: "reference-less dependency"}, retained)
 	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 	err = result.revalidateCaptures(store, rows, root, nil)
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
@@ -189,7 +189,7 @@ func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
 	root := t.TempDir()
 	dependencyPath := filepath.Join(root, "dependency.yml")
 	store, fixture := capturefixture.NewCapturedSources(t, root)
-	dependency, err := fixture.Capture(dependencyPath, []byte("captured"), sourcepos.YAML)
+	dependency, err := fixture.Capture(dependencyPath, []byte("captured"), sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,9 +198,9 @@ func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
 	}
 	rejected := map[string]bool{}
 	sourceRejected(rejected, dependencyPath, dependency)
-	retained := &findingmodel.Finding{Message: "entry observation"}
+	retained := &finding.Finding{Message: "entry observation"}
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-	accepted, err := session.admitReportedSources([]*findingmodel.Finding{{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}}, retained}, "ci.yml", filepath.Join(root, "ci.yml"), composites.Composition{}, rejected)
+	accepted, err := session.admitReportedSources([]*finding.Finding{{Path: dependencyPath, Source: results.DiagnosticSource{Content: dependency.Bytes()}}, retained}, "ci.yml", filepath.Join(root, "ci.yml"), composites.Composition{}, rejected)
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || len(accepted) != 1 || accepted[0] != retained {
 		t.Fatalf("failed dependency admitted findings: %v %v", accepted, err)
@@ -215,19 +215,19 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcepos.YAML)
+			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := workspaceactions.NewCache(t.Context(), root, nil)
-			cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
+			cache := localactions.NewCache(t.Context(), root, nil)
+			cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
-			if !exists || lookup.Status() != workspaceactions.MetadataParseFailed {
+			if !exists || lookup.Status() != localactions.MetadataParseFailed {
 				t.Fatal("fixture metadata lost its captured parse failure")
 			}
 			composed := composites.Composition{
@@ -240,7 +240,7 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			case "rejected":
 				sourceRejected(rejected, metadataPath, metadata)
 			case "stale":
-				target, err = sourcepos.NewRevision(target.Document(), strings.Repeat("a", 64))
+				target, err = sourcetext.NewRevision(target.Document(), strings.Repeat("a", 64))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -249,16 +249,16 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 					t.Fatal("metadata was not quarantined")
 				}
 			case "foreign captured":
-				foreign, err := fixture.Capture(filepath.Join(root, "unconsulted.yml"), []byte("name: [\n"), sourcepos.YAML)
+				foreign, err := fixture.Capture(filepath.Join(root, "unconsulted.yml"), []byte("name: [\n"), sourcetext.YAML)
 				if err != nil {
 					t.Fatal(err)
 				}
 				target = foreign.Revision()
 			}
-			parse := &findingmodel.Finding{Rule: "action", Message: "cannot parse action metadata", MetadataParseSource: target}
-			retained := &findingmodel.Finding{Message: "entry observation"}
+			parse := &finding.Finding{Rule: "action", Message: "cannot parse action metadata", MetadataParseSource: target}
+			retained := &finding.Finding{Message: "entry observation"}
 			session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
-			accepted, admissionErr := session.admitReportedSources([]*findingmodel.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
+			accepted, admissionErr := session.admitReportedSources([]*finding.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
 			if parse.MetadataParseSource != target {
 				t.Fatal("admission rewrote producer provenance")
 			}

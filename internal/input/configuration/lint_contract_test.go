@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 func TestRuleGroupConfigErrors(t *testing.T) {
@@ -46,7 +47,7 @@ func TestStableSuspiciousRuleSelection(t *testing.T) {
 		for _, tc := range []struct {
 			rules   string
 			presets configuration.Presets
-			want    configuration.Level
+			want    ruleconfig.Level
 		}{
 			{"{}", configuration.Presets{}, "off"},
 			{"{preset: recommended}", configuration.Presets{}, "off"},

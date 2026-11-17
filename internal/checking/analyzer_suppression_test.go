@@ -8,23 +8,23 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
-	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 type suppressionAnalyzer struct{ name string }
 
 func (a suppressionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
 func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -63,13 +63,13 @@ func TestRegisteredAnalyzerSuppressions(t *testing.T) {
 				content = strings.Replace(content, "      - run:", tc.before+"      - run:", 1)
 			}
 			path := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", content)
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: suppressionAnalyzer{"no-sudo"}}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: suppressionAnalyzer{"no-sudo"}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			var got []string
-			for _, finding := range result.Diagnostics {
-				got = append(got, finding.Rule)
+			for _, item := range result.Diagnostics {
+				got = append(got, item.Rule)
 			}
 			slices.Sort(got)
 			if !slices.Equal(got, tc.want) {
@@ -87,12 +87,12 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 			root := t.TempDir()
 			path := writeSuppressionFixture(t, root, "config.yaml", "lint: {rules: {disable: ["+name+"]}}\n")
 			opts := Options{WorkingDir: root, ConfigFile: path, Analyzers: []checkinputs.Registration{{Checker: suppressionAnalyzer{name}}}}
-			_, err := Check(t.Context(), opts, inputmodel.Request{Kind: inputmodel.Files})
+			_, err := Check(t.Context(), opts, checkrequest.Request{Kind: checkrequest.Files})
 			if err != nil {
 				t.Fatal(err)
 			}
 			opts.Analyzers = nil
-			_, err = Check(t.Context(), opts, inputmodel.Request{Kind: inputmodel.Files})
+			_, err = Check(t.Context(), opts, checkrequest.Request{Kind: checkrequest.Files})
 			if err == nil {
 				t.Fatal("an unregistered rule leaked into another session")
 			}
@@ -119,7 +119,7 @@ func TestAnalyzerNameIsNotATool(t *testing.T) {
 		writeSuppressionFixture(t, root, ".github/actionlint.yaml", config)
 		path := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
 		opts := Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: suppressionAnalyzer{"no-sudo"}}}}
-		if _, err := Check(t.Context(), opts, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
+		if _, err := Check(t.Context(), opts, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
 			t.Fatalf("%s: analyzer accepted as a tool: %v", config, err)
 		}
 		if _, err := RequiredTools(t.Context(), opts, []string{path}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
@@ -132,20 +132,20 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	t.Parallel()
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
-	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
+	item := &finding.Finding{Rule: "no-sudo", Start: sourcetext.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
 	rules := ConfigurationRules()
 	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(nil, nil, nil)
-	finding.Binding = scope.Rule(finding.Rule).ID()
+	item.Binding = scope.Rule(item.Rule).ID()
 	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
 	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
-	snapshot, err := fixture.Capture(path, source, sourcepos.YAML)
+	snapshot, err := fixture.Capture(path, source, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 	revision := snapshot.Revision()
-	refs := map[string]facts.SourceIndex{path: {Document: sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}}}
-	got, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}, Sources: map[string][]byte{path: source}, References: refs}}, nil)
+	refs := map[string]facts.SourceIndex{path: {Document: sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()}}}
+	got, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, InputPath: "workflow.yml", Findings: []*finding.Finding{item}, Sources: map[string][]byte{path: source}, References: refs}}, nil)
 	if err != nil || len(got.Findings[0]) != 0 {
 		t.Fatalf("registered plugin finding escaped composite suppression: %+v %v", got.Findings, err)
 	}

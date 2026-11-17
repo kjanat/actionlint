@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -20,12 +20,12 @@ func TestFinalPublicationCannotAuditConflictedSource(t *testing.T) {
 			root := t.TempDir()
 			store, fixture := capturefixture.NewCapturedSources(t, root)
 			entryPath, foreignPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "action.yml")
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
 			content := []byte("run: echo ok # actionlint-ignore shellcheck -- unused\n")
-			foreign, err := fixture.Capture(foreignPath, content, sourcepos.YAML)
+			foreign, err := fixture.Capture(foreignPath, content, sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -36,7 +36,7 @@ func TestFinalPublicationCannotAuditConflictedSource(t *testing.T) {
 				Processor:  policy.Processor{RuleSet: rules},
 				Policy:     policy.Policy{Path: entryPath, ConfigPath: entryPath, WorkingDir: root, Content: entry.Bytes(), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{foreignPath: scope}},
 				Sources:    map[string][]byte{foreignPath: content},
-				References: map[string]workflowfacts.SourceIndex{foreignPath: {Document: sourcepos.Reference{Document: foreign.Revision().Document(), Revision: foreign.Revision().Digest()}}},
+				References: map[string]facts.SourceIndex{foreignPath: {Document: sourcetext.Reference{Document: foreign.Revision().Document(), Revision: foreign.Revision().Digest()}}},
 			}
 			var conflict error
 			if conflicted {

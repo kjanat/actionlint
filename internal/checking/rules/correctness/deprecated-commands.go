@@ -6,9 +6,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -39,7 +39,7 @@ func checkDeprecatedCommands(ctx context.Context, input checkinputs.AnalyzerInpu
 			start, startOK := script.OffsetPosition(command.Start, false)
 			end, endOK := script.OffsetPosition(command.End, true)
 			if !startOK || !endOK {
-				start, end = script.Start, sourcepos.Position{}
+				start, end = script.Start, sourcetext.Position{}
 			}
 			findings = append(findings, results.Diagnostic{
 				Message: fmt.Sprintf("workflow command %q was deprecated. use `%s` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions", command.Command, command.Replacement),

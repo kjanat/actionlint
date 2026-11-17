@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/gitwire"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	gitcommand "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {

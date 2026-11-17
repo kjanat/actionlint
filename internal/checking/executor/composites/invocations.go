@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot parsing.SourceSnapshot) error {
@@ -57,43 +57,43 @@ func (analysis *compositeAnalyzer) interrupt(err error) error {
 	return errors.Join(err, interruptionErr)
 }
 
-func metadataOutcome(result workspaceactions.MetadataResult) (invocation.Outcome, error) {
+func metadataOutcome(result localactions.MetadataResult) (invocation.Outcome, error) {
 	detail := ""
 	if result.Err() != nil {
 		detail = result.Err().Error()
 	}
 	switch result.Status() {
-	case workspaceactions.MetadataDockerfileOnly:
+	case localactions.MetadataDockerfileOnly:
 		return invocation.Opaque(invocation.ReasonDockerfileOnly, detail)
-	case workspaceactions.MetadataLookupDisabled:
+	case localactions.MetadataLookupDisabled:
 		return invocation.Unavailable(invocation.ReasonLookupDisabled, detail)
-	case workspaceactions.MetadataNonLocal:
+	case localactions.MetadataNonLocal:
 		return invocation.Unavailable(invocation.ReasonNonLocal, detail)
-	case workspaceactions.MetadataNotFetched:
+	case localactions.MetadataNotFetched:
 		return invocation.Unavailable(invocation.ReasonNotFetched, detail)
-	case workspaceactions.MetadataPlacementUncertain:
+	case localactions.MetadataPlacementUncertain:
 		return invocation.Unavailable(invocation.ReasonPlacementUncertain, detail)
-	case workspaceactions.MetadataMissingManifest:
+	case localactions.MetadataMissingManifest:
 		return invocation.Unresolved(invocation.ReasonMissingManifest, detail)
-	case workspaceactions.MetadataReadFailed:
+	case localactions.MetadataReadFailed:
 		return invocation.Unresolved(invocation.ReasonReadFailed, detail)
-	case workspaceactions.MetadataParseFailed:
+	case localactions.MetadataParseFailed:
 		return invocation.Unresolved(invocation.ReasonParseFailed, detail)
-	case workspaceactions.MetadataMappingFailed:
+	case localactions.MetadataMappingFailed:
 		return invocation.Unresolved(invocation.ReasonMappingFailed, detail)
-	case workspaceactions.MetadataInvalid, workspaceactions.MetadataResolved:
+	case localactions.MetadataInvalid, localactions.MetadataResolved:
 	}
 	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
+func (analysis *compositeAnalyzer) resolveAction(action *definition.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
 	uses := action.Uses
 	if uses == nil || uses.Value == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
 		return nil, "", outcome, err
 	}
 	spec := uses.Value
-	if exprsyntax.ContainsExpression(spec) {
+	if syntax.ContainsExpression(spec) {
 		outcome, err := invocation.Dynamic(spec)
 		return nil, "", outcome, err
 	}
@@ -103,7 +103,7 @@ func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction
 		return nil, "", outcome, err
 	}
 	lookup, _ := analysis.actions.Prepared().LookupMetadata(spec)
-	if lookup.Status() == workspaceactions.MetadataNonLocal && analysis.remoteActions != nil {
+	if lookup.Status() == localactions.MetadataNonLocal && analysis.remoteActions != nil {
 		return analysis.resolveRemoteAction(spec)
 	}
 	if errors.Is(lookup.Err(), context.Canceled) || errors.Is(lookup.Err(), context.DeadlineExceeded) {
@@ -121,7 +121,7 @@ func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction
 		}
 		snapshot = admitted
 	}
-	if lookup.Status() != workspaceactions.MetadataResolved {
+	if lookup.Status() != localactions.MetadataResolved {
 		outcome, err := metadataOutcome(lookup)
 		return nil, sourceDocument.Address(), outcome, err
 	}
@@ -145,6 +145,6 @@ func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction
 	return meta, sourceDocument.Address(), outcome, err
 }
 
-func invalidActionReference(spec string, position source.Position, hasPosition bool) bool {
+func invalidActionReference(spec string, position sourcetext.Position, hasPosition bool) bool {
 	return actioncheck.InvalidActionReference(spec, position, hasPosition)
 }

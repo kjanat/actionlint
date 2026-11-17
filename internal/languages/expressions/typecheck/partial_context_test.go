@@ -3,9 +3,9 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestPartialContextLookup(t *testing.T) {
@@ -23,15 +23,15 @@ func TestPartialContextLookup(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, known := expreval.ExpressionValueWithLookup(node, lookup)
+			got, known := evaluate.ExpressionValueWithLookup(node, lookup)
 			if known != tc.known || got != tc.value {
 				t.Fatalf("got %v/%v, want %v/%v", got, known, tc.value, tc.known)
 			}
-			if _, known := expreval.ExpressionValue(node, lookup); known {
+			if _, known := evaluate.ExpressionValue(node, lookup); known {
 				t.Fatal("legacy root lookup unexpectedly consumed a property path")
 			}
 		})

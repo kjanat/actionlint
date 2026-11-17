@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // CacheCallUnrestrictedRule is the single definition of the cache-call-unrestricted rule.
@@ -26,10 +26,10 @@ var CacheCallUnrestrictedRule = &define.Rule{
 
 // CacheCallUnrestrictedChecks requires an explicit cache ceiling on low-trust
 // reusable calls, using the supplied workflow's triggering events.
-func CacheCallUnrestrictedChecks(workflow workflowdecl.Workflow) define.Checks {
+func CacheCallUnrestrictedChecks(workflow workflows.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckCall(job))
 		},
 	}

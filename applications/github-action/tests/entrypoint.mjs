@@ -47,7 +47,7 @@ async function installManagedShell(environment) {
 	const packageFixture = spawnSync('go', [
 		'run',
 		'./internal/development/tests/integration/plugins/package-fixture',
-		join(source, 'internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm'),
+		join(source, 'internal/plugins/pluginexecution/component/testdata/plugins/managed-no-sudo.wasm'),
 		metadataFile,
 		moduleFile,
 	], { cwd: source, env: process.env, encoding: 'utf8' });

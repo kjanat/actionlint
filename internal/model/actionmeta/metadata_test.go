@@ -205,7 +205,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			testDiffActionMetadata(t, &tc.want, have, cmpopts.IgnoreFields(Step{}, "Shell", "ContinueOnError", "WithExpression", "EnvExpression", "ID", "Node"))
+			testDiffActionMetadata(t, &tc.want, have, cmpopts.IgnoreFields(CompositeStep{}, "Shell", "ContinueOnError", "WithExpression", "EnvExpression", "ID", "Node"))
 		})
 	}
 }

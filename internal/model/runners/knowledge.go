@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // Traits are the execution guarantees shared by every alternative of a job.
@@ -75,7 +75,7 @@ func (r jobRecord) knowledge() JobKnowledge {
 
 // Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs   map[workflowdecl.Job]jobRecord
+	jobs   map[workflows.Job]jobRecord
 	report runnerapi.Report
 	target string
 }
@@ -89,7 +89,7 @@ func (k *Knowledge) Target() string {
 	return k.target
 }
 
-func (k *Knowledge) Job(job workflowdecl.Job) JobKnowledge {
+func (k *Knowledge) Job(job workflows.Job) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
@@ -167,7 +167,7 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job workflowdecl.Job, answers []runnerapi.Answer) (jobRecord, error) {
+func joinAnswers(job workflows.Job, answers []runnerapi.Answer) (jobRecord, error) {
 	record := jobRecord{answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
@@ -246,11 +246,11 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 	return Any
 }
 
-func builtinJob(job workflowdecl.Job) JobKnowledge {
+func builtinJob(job workflows.Job) JobKnowledge {
 	if !job.Present() {
 		return JobKnowledge{}
 	}
-	selection := workflowdecl.RunnerSelection(job.RunsOn)
+	selection := workflows.RunnerSelection(job.RunsOn)
 	return JobKnowledge{Traits: builtinTraits(selection, Labels(selection))}
 }
 

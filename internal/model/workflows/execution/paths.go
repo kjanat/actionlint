@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
 type DirectoryKind uint8
@@ -26,7 +26,7 @@ type Directory struct {
 // Paths relates runner checkout paths to local analysis paths for one execution
 // scope. Input acquisition resolves these paths against the filesystem separately.
 type Paths struct {
-	Platform          runnerlang.Platform
+	Platform          runners.Platform
 	Workspace         string
 	Analysis          string
 	Checkout          string
@@ -180,7 +180,7 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 	return filepath.Join(paths.Workspace, relativePath), true
 }
 
-func RunnerRelativePath(value string, platform runnerlang.Platform) (string, bool) {
+func RunnerRelativePath(value string, platform runners.Platform) (string, bool) {
 	value, known := RunnerDirectoryPath(value, platform)
 	// Resolve only paths relative to the checkout on the runner.
 	return value, known && !filepath.IsAbs(value) && !strings.HasPrefix(value, "/") && !strings.ContainsRune(value, '\x00')

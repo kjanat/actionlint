@@ -13,22 +13,22 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
@@ -48,7 +48,7 @@ func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
 		capturefixture.CloseCaptures(t, store)
 		returned := make(chan error, 1)
 		go func() {
-			_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), source.YAML)
+			_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), sourcetext.YAML)
 			returned <- err
 		}()
 		<-started
@@ -85,7 +85,7 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 	capturefixture.CloseCaptures(t, store)
 	returned := make(chan error, 1)
 	path := filepath.Join(t.TempDir(), "pending.yml")
-	go func() { _, err := store.Read(t.Context(), path, source.YAML); returned <- err }()
+	go func() { _, err := store.Read(t.Context(), path, sourcetext.YAML); returned <- err }()
 	<-started
 	sealed, err := joinSourceCaptures(t.Context(), store, cancel, 5*time.Millisecond, false)
 	var attempts interface{ Unwrap() []error }
@@ -112,10 +112,10 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 type capturedTraversal struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	workflows *[]workflowdecl.Step
+	workflows *[]workflows.Step
 }
 
-func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.Workflow) error {
+func (r *capturedTraversal) VisitWorkflowPre(workflow workflows.Workflow) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, job := range workflow.Jobs() {
@@ -130,13 +130,13 @@ func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.Workflow) err
 func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
-	var workflows []workflowdecl.Step
+	var workflows []workflows.Step
 	content := []byte(commandGoodWorkflow)
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: t.TempDir(),
 		Sources:    []sourceUnit{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
-		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -159,7 +159,7 @@ type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
 	snapshots *[]parsing.SourceSnapshot
-	steps     *[]workflowdecl.Step
+	steps     *[]workflows.Step
 }
 
 func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation) error {
@@ -169,14 +169,14 @@ func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation
 	return nil
 }
 
-func (r *sharedCompositeObserver) VisitInvocationStep(step workflowdecl.Step) error {
+func (r *sharedCompositeObserver) VisitInvocationStep(step workflows.Step) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.steps = append(*r.steps, step)
 	return nil
 }
-func (*sharedCompositeObserver) VisitOpaqueAction(workflowdecl.Step) error { return nil }
-func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error  { return nil }
+func (*sharedCompositeObserver) VisitOpaqueAction(workflows.Step) error   { return nil }
+func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error { return nil }
 
 func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	t.Parallel()
@@ -191,12 +191,12 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
 	var snapshots []parsing.SourceSnapshot
-	var steps []workflowdecl.Step
+	var steps []workflows.Step
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
 		Sources:    []sourceUnit{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
-		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
+		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -213,8 +213,8 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	if toolCalls.Load() != 2 {
 		t.Fatalf("script tools did not analyze both composite invocations: %d", toolCalls.Load())
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(finding results.PublishedDiagnostic) bool {
-		return finding.Rule == "action" && filepath.ToSlash(finding.Path) == "local/action.yml" && strings.Contains(finding.Message, `uses context "missing"`)
+	if !slices.ContainsFunc(result.Diagnostics, func(item results.PublishedDiagnostic) bool {
+		return item.Rule == "action" && filepath.ToSlash(item.Path) == "local/action.yml" && strings.Contains(item.Message, `uses context "missing"`)
 	}) {
 		t.Fatalf("default metadata context check was bypassed: %+v", result.Diagnostics)
 	}
@@ -226,24 +226,24 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	badPath, goodPath := filepath.Join(directory, "bad.yml"), filepath.Join(directory, "good.yml")
 	content := []byte(commandGoodWorkflow)
 	store, fixture := capturefixture.NewCapturedSources(t, directory)
-	bad, err := fixture.Capture(badPath, content, source.YAML)
+	bad, err := fixture.Capture(badPath, content, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	good, err := fixture.Capture(goodPath, content, source.YAML)
+	good, err := fixture.Capture(goodPath, content, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := func(snapshot capture.CapturedDocument, message string) *findingmodel.Finding {
-		reference := source.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
-		return &findingmodel.Finding{Reference: &reference, Rule: "test", Message: message}
+	item := func(snapshot capture.CapturedDocument, message string) *finding.Finding {
+		reference := sourcetext.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
+		return &finding.Finding{Reference: &reference, Rule: "test", Message: message}
 	}
-	retained := finding(good, "unrelated finding")
+	retained := item(good, "unrelated finding")
 	result := analysisResult{files: []analyzedFile{
-		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.Workflow{Path: badPath}},
-		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.Workflow{Path: goodPath}},
+		{captured: bad, errors: []*finding.Finding{item(bad, "old accepted entry")}, outline: outline.WorkflowOutline{Path: badPath}},
+		{captured: good, errors: []*finding.Finding{item(bad, "old accepted dependency"), retained}, outline: outline.WorkflowOutline{Path: goodPath}},
 	}}
-	_, err = store.Read(t.Context(), badPath, source.RawLF)
+	_, err = store.Read(t.Context(), badPath, sourcetext.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)
 	if !conflicted {
 		t.Fatalf("model disagreement accepted: %v", err)
@@ -332,9 +332,9 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			address := filepath.Join(t.TempDir(), "action.yml")
-			model := source.YAML
+			model := sourcetext.YAML
 			if test.raw {
-				model = source.RawLF
+				model = sourcetext.RawLF
 			}
 			content := []byte("name: captured\ndescription: outline\nruns: {using: composite, steps: [{uses: $/must-not-read}]}\n")
 			overlays := []capture.Overlay{{Path: address, Content: content, Coordinates: model}}
@@ -353,7 +353,7 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 				t.Fatal(err)
 			}
 			capturefixture.CloseCaptures(t, store)
-			documents := &actionDocuments{byPath: make(map[string]documentmodel.Action)}
+			documents := &actionDocuments{byPath: make(map[string]outline.Action)}
 			if test.requested {
 				documents.request(address)
 			}
@@ -387,16 +387,16 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	t.Parallel()
 	address := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: captured\ndescription: outline\nruns: {using: composite, steps: []}\n")
-	store, err := capture.New(t.Context(), []capture.Overlay{{Path: address, Content: content, Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+	store, err := capture.New(t.Context(), []capture.Overlay{{Path: address, Content: content, Coordinates: sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 		return nil, os.ErrNotExist
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	documents := &actionDocuments{byPath: make(map[string]documentmodel.Action)}
+	documents := &actionDocuments{byPath: make(map[string]outline.Action)}
 	documents.request(address)
-	captured, err := store.Read(t.Context(), address, source.YAML)
+	captured, err := store.Read(t.Context(), address, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}

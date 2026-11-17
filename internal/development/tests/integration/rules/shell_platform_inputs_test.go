@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestShellPlatformsDoNotDependOnTraversalOrder(t *testing.T) {
@@ -42,7 +42,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	knowledge, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "test")
+	knowledge, err := runneracquisition.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

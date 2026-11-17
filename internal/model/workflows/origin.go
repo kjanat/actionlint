@@ -1,25 +1,25 @@
-package declaration
+package workflows
 
 import (
 	"iter"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Origin is a detached, pointer-free suppression selector projection.
 type Origin struct {
-	Position                    source.Position
+	Position                    sourcetext.Position
 	HasPosition                 bool
 	Job, StepID, StepName, Uses string
 }
 
-func originSelector(s *workflowlang.String) string {
+func originSelector(s *definition.String) string {
 	if s == nil {
 		return ""
 	}
-	if literal := exprsyntax.LiteralExpressionValue(s.Value); literal != nil {
+	if literal := syntax.LiteralExpressionValue(s.Value); literal != nil {
 		return *literal
 	}
 	return s.Value
@@ -49,28 +49,28 @@ func (s Step) Origin(job string) Origin {
 }
 
 // Position returns the step's source position.
-func (s Step) Position() (source.Position, bool) {
+func (s Step) Position() (sourcetext.Position, bool) {
 	if !s.Present() || s.Pos == nil {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	return *s.Pos, true
 }
 
 type inputSource struct {
-	input  *workflowlang.ActionArgument
+	input  *definition.ActionArgument
 	unique bool
 }
 
 // InputNames yields the resolved with: keys of an action step and the input
 // declaring each key, or nil when insertions make the declaring input ambiguous.
 // It reports whether the key set is complete.
-func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlang.ActionArgument], bool) {
+func InputNames(action *definition.ExecAction) (iter.Seq2[string, *definition.ActionArgument], bool) {
 	resolved := ResolvedInputs(action)
-	var sources map[source.Position]inputSource
+	var sources map[sourcetext.Position]inputSource
 	if action != nil {
 		sources = actionInputSourceIndex(action)
 	}
-	return func(yield func(string, *workflowlang.ActionArgument) bool) {
+	return func(yield func(string, *definition.ActionArgument) bool) {
 		for key := range resolved.KeyedEntries() {
 			name, known := key.ScalarString()
 			if !known {
@@ -78,7 +78,7 @@ func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlan
 			}
 			position := key.Origin().Span.Start
 			source, ok := sources[position]
-			var input *workflowlang.ActionArgument
+			var input *definition.ActionArgument
 			if ok && source.unique {
 				input = source.input
 			}
@@ -89,9 +89,9 @@ func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlan
 	}, resolved.Complete()
 }
 
-func actionInputSourceIndex(action *workflowlang.ExecAction) map[source.Position]inputSource {
-	index := map[source.Position]inputSource{}
-	add := func(input *workflowlang.ActionArgument) {
+func actionInputSourceIndex(action *definition.ExecAction) map[sourcetext.Position]inputSource {
+	index := map[sourcetext.Position]inputSource{}
+	add := func(input *definition.ActionArgument) {
 		if input == nil || input.Name == nil || input.Name.Pos == nil {
 			return
 		}
@@ -104,8 +104,8 @@ func actionInputSourceIndex(action *workflowlang.ExecAction) map[source.Position
 		}
 		index[position] = entry
 	}
-	var collect func(*workflowlang.ActionInputMapping)
-	collect = func(mapping *workflowlang.ActionInputMapping) {
+	var collect func(*definition.ActionInputMapping)
+	collect = func(mapping *definition.ActionInputMapping) {
 		if mapping == nil {
 			return
 		}
@@ -126,23 +126,23 @@ func actionInputSourceIndex(action *workflowlang.ExecAction) map[source.Position
 }
 
 // Position returns the job's source position.
-func (j Job) Position() (source.Position, bool) {
+func (j Job) Position() (sourcetext.Position, bool) {
 	if !j.Present() || j.Pos == nil {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	return *j.Pos, true
 }
 
 // Position returns the position of the workflow's first mapping key.
-func (w Workflow) Position() (source.Position, bool) {
+func (w Workflow) Position() (sourcetext.Position, bool) {
 	if !w.Present() || w.Pos == nil {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	return *w.Pos, true
 }
 
 // Kind reports the step's execution kind; it reports false when the step has no execution.
-func (s Step) Kind() (workflowlang.ExecKind, bool) {
+func (s Step) Kind() (definition.ExecKind, bool) {
 	if !s.Present() || s.Exec == nil {
 		return 0, false
 	}
@@ -150,7 +150,7 @@ func (s Step) Kind() (workflowlang.ExecKind, bool) {
 }
 
 // ExpressionSources maps decoded action scalars to their captured YAML.
-func (a ActionBody) ExpressionSources() map[source.Position]*workflowlang.ScriptSource {
+func (a ActionBody) ExpressionSources() map[sourcetext.Position]*definition.ScriptSource {
 	if !a.Present() {
 		return nil
 	}

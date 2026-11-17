@@ -7,8 +7,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	cachemanagement "actionlint.kjanat.dev/v2/internal/integrations/cache"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +63,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	directory := network.Settings(ctx).CacheDirectory
 	if r.Operation == operationCacheDir {
 		if r.JSON {
-			return 0, commandstreams.WriteJSON(streams.Stdout, struct {
+			return 0, commandio.WriteJSON(streams.Stdout, struct {
 				Directory string `json:"directory"`
 			}{directory})
 		}
@@ -71,12 +71,12 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	if r.Operation == operationCacheList {
-		inventory, err := cachemanagement.Inspect(ctx, directory)
+		inventory, err := dependencycache.Inspect(ctx, directory)
 		if err != nil {
 			return 0, err
 		}
 		if r.JSON {
-			return 0, commandstreams.WriteJSON(streams.Stdout, inventory)
+			return 0, commandio.WriteJSON(streams.Stdout, inventory)
 		}
 		return 0, writeCacheInventory(streams.Stdout, inventory)
 	}
@@ -84,7 +84,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	if r.Operation == operationCachePrune {
 		cutoff = time.Now().Add(-r.OlderThan)
 	}
-	result, err := cachemanagement.Clean(ctx, directory, cutoff, r.DryRun)
+	result, err := dependencycache.Clean(ctx, directory, cutoff, r.DryRun)
 	if err != nil {
 		if r.DryRun {
 			return 0, fmt.Errorf("cache preview failed: %w", err)
@@ -92,7 +92,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, fmt.Errorf("cache cleanup stopped after removing %d files (%d bytes): %w", result.Files, result.Bytes, err)
 	}
 	if r.JSON {
-		return 0, commandstreams.WriteJSON(streams.Stdout, result)
+		return 0, commandio.WriteJSON(streams.Stdout, result)
 	}
 	if r.DryRun {
 		if err := writeCacheInventory(streams.Stdout, result.Inventory); err != nil {
@@ -105,7 +105,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	return 0, err
 }
 
-func writeCacheInventory(out io.Writer, inventory cachemanagement.Inventory) error {
+func writeCacheInventory(out io.Writer, inventory dependencycache.Inventory) error {
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	if _, err := fmt.Fprintln(w, "TYPE\tBYTES\tMODIFIED\tFILE"); err != nil {
 		return err

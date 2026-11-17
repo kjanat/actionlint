@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
@@ -65,7 +65,7 @@ runs:
 				session := checking.Options{WorkingDir: root}
 				var err error
 
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -111,14 +111,14 @@ jobs:
       - uses: actions/checkout@v6
         with: {path: source}
       - uses: `+tc.spec+"\n")
-				session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+				session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 				var err error
 
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 				if err != nil {
 					t.Fatal(err)
 				}
-				var findings []diagmodel.Diagnostic
+				var findings []results.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
 						findings = append(findings, d.Diagnostic)

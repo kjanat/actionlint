@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 )
 
@@ -18,7 +18,7 @@ func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
 
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			return []workflowvisit.Rule{&failAfterScheduling{Base: workflowvisit.NewBase("fail", ""), failure: failure}}
-		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+		}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 			completed.Store(true)
 			return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"reported finding"}]}`), nil
 		}}}),

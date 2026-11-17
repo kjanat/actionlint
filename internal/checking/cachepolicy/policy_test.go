@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -25,10 +25,10 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 
 func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	t.Helper()
-	parsed, syntaxErrors := workflowparser.ParseWorkflow([]byte(source))
+	parsed, syntaxErrors := parser.ParseWorkflow([]byte(source))
 	findings := make([]results.Diagnostic, 0, len(syntaxErrors))
 	for _, issue := range syntaxErrors {
-		finding := findingmodel.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
+		finding := finding.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: issue.Position}
 		findings = append(findings, finding.Publish([]byte(source)).Diagnostic)
 	}
 	if parsed == nil {
@@ -36,17 +36,17 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	}
 	w := policyWorkflowView(parsed)
 	trust := NewTrust(w)
-	jobs := []declaration.Job{}
+	jobs := []workflows.Job{}
 	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.Job) int {
-		return sourcepos.ZeroIfNil(a.Pos).Line - sourcepos.ZeroIfNil(b.Pos).Line
+	slices.SortFunc(jobs, func(a, b workflows.Job) int {
+		return sourcetext.ZeroIfNil(a.Pos).Line - sourcetext.ZeroIfNil(b.Pos).Line
 	})
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)
-		mode := cachemodel.EffectiveMode(w.CacheMode, j.CacheMode)
+		mode := cache.EffectiveMode(w.CacheMode, j.CacheMode)
 		for step := range j.Steps() {
 			findings = append(findings, CheckStep(step, mode)...)
 		}
@@ -69,8 +69,8 @@ func TestCachePolicyTriggers(t *testing.T) {
 			t.Run(event, func(t *testing.T) {
 				t.Parallel()
 				// Exercise each event independently of event-specific required fields.
-				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &sourcepos.Position{Line: 2, Column: 13}}}
-				w.Jobs = map[string]*workflowlang.Job{"test": {}}
+				w := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Hook: &definition.String{Value: event}}}, CacheMode: &definition.CacheMode{Kind: definition.CacheModeWrite, Pos: &sourcetext.Position{Line: 2, Column: 13}}}
+				w.Jobs = map[string]*definition.Job{"test": {}}
 				view := policyWorkflowView(w)
 				job, _ := view.Job("test")
 				findings := NewTrust(view).CheckWrites(job)
@@ -364,7 +364,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
-			findings := checkStandaloneStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &sourcepos.Position{Line: 7, Column: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
+			findings := checkStandaloneStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: tc.uses, Pos: &sourcetext.Position{Line: 7, Column: 15}}}}, &definition.CacheMode{Kind: definition.CacheModeNone})
 			if tc.warn {
 				if errs := findings; len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {
 					t.Fatalf("expected one cache-operation finding on the action, got %v", errs)
@@ -376,12 +376,12 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	}
 }
 
-func policyWorkflowView(workflow *workflowlang.Workflow) declaration.Workflow {
-	return declaration.Bind("policy-fixture", "", workflow, false, "").Workflow()
+func policyWorkflowView(workflow *definition.Workflow) workflows.Workflow {
+	return workflows.Bind("policy-fixture", "", workflow, false, "").Workflow()
 }
 
-func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []results.Diagnostic {
-	view := policyWorkflowView(&workflowlang.Workflow{CacheMode: mode, Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}})
+func checkStandaloneStep(step *definition.Step, mode *definition.CacheMode) []results.Diagnostic {
+	view := policyWorkflowView(&definition.Workflow{CacheMode: mode, Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{step}}}})
 	job, _ := view.Job("test")
 	for step := range job.Steps() {
 		return CheckStep(step, view.CacheMode)

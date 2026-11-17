@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
@@ -26,11 +26,11 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			text := "on:\n  workflow_run:\n    workflows: " + tc.filters + "\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-			parsed, errors := workflowparser.ParseWorkflow([]byte(text))
+			parsed, errors := parser.ParseWorkflow([]byte(text))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			workflow := declaration.Bind("consumer", text, parsed, false, "").Workflow()
+			workflow := workflows.Bind("consumer", text, parsed, false, "").Workflow()
 			inventory := names.NewInventory([]string{"Build docs"}, tc.complete)
 			findings := workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow))
 			if tc.message == "" {

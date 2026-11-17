@@ -1,18 +1,18 @@
-package workflow
+package definition
 
-import mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+import "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
-func EnvMappingView(env *Env) *mapping.DeclaredMapping {
+func EnvMappingView(env *Env) *mappings.DeclaredMapping {
 	if env == nil {
 		return nil
 	}
-	result := &mapping.DeclaredMapping{
+	result := &mappings.DeclaredMapping{
 		Expression: semanticMappingValue(env.Expression),
-		Values:     make(map[string]mapping.DeclaredEntry, len(env.Vars)),
+		Values:     make(map[string]mappings.DeclaredEntry, len(env.Vars)),
 	}
 	for name, variable := range env.Vars {
 		if variable != nil {
-			result.Values[name] = mapping.DeclaredEntry{
+			result.Values[name] = mappings.DeclaredEntry{
 				Name: SemanticValue(variable.Name), Value: semanticMappingValue(variable.Value),
 				Source: mappingSourceText(variable.Name),
 			}

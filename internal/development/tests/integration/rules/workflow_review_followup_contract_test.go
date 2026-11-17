@@ -9,12 +9,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
@@ -24,14 +24,14 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if strings.HasPrefix(pattern, "${{") {
 			reference = pattern
 		}
-		workflow, errs := workflowparser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
+		workflow, errs := parser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `))
 		if workflow == nil || len(errs) != 0 {
 			t.Fatalf("parse %q: %v", reference, errs)
 		}
 		rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
+		if err := rule.VisitWorkflowPre(declarations.Workflow(workflow)); err != nil {
 			t.Fatal(err)
 		}
 		want := pattern == "Build [" || pattern == "?Build" || pattern == "!Build*"
@@ -39,7 +39,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			t.Fatalf("literal pattern %q: %v", pattern, rule.Errs())
 		}
 		if want {
-			pos := workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
+			pos := workflow.On[0].(*definition.WebhookEvent).Workflows[0].Pos
 			if rule.Errs()[0].Start.Line != pos.Line || rule.Errs()[0].Start.Column != pos.Column {
 				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
 			}

@@ -10,8 +10,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // ProviderSelection identifies the selected implementation without holding it.
@@ -22,7 +22,7 @@ type ProviderSelection struct {
 }
 
 type jobRange struct {
-	job        workflowdecl.Job
+	job        workflows.Job
 	start, end int
 }
 
@@ -200,7 +200,7 @@ func (plan *ResolutionPlan) Complete(response runnerapi.Response) (*Knowledge, e
 	cacheKeyHash.Write(plan.dependency)
 	cacheKeyHash.Write(encodedAnswers)
 	k.report.CacheKey = hex.EncodeToString(cacheKeyHash.Sum(nil))
-	jobs := make(map[workflowdecl.Job]jobRecord, len(plan.ranges))
+	jobs := make(map[workflows.Job]jobRecord, len(plan.ranges))
 	for _, span := range plan.ranges {
 		record, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {

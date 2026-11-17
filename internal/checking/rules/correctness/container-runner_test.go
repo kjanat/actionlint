@@ -3,21 +3,21 @@ package correctness
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
 func TestContainerRuleConsumesPreparedUses(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		limitation runnerlang.ContainerLimitation
+		limitation runners.ContainerLimitation
 		severity   string
 	}{
-		{runnerlang.ContainerUnknown, ""},
-		{runnerlang.ContainerRequiresLinux, "error"},
-		{runnerlang.ContainerMissingDaemon, "warning"},
+		{runners.ContainerUnknown, ""},
+		{runners.ContainerRequiresLinux, "error"},
+		{runners.ContainerMissingDaemon, "warning"},
 	} {
-		uses := []runnerlang.ContainerUse{{Target: runnerlang.ContainerTarget{Limitation: tc.limitation, Runner: "selected"}, Kind: runnerlang.DockerAction, Name: "docker://alpine", Position: sourcepos.Position{Line: 8, Column: 11}}}
+		uses := []runners.ContainerUse{{Target: runners.ContainerTarget{Limitation: tc.limitation, Runner: "selected"}, Kind: runners.DockerAction, Name: "docker://alpine", Position: sourcetext.Position{Line: 8, Column: 11}}}
 		for range 2 {
 			findings := ContainerRunnerFindings(uses)
 			if tc.severity == "" {

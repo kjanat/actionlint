@@ -4,12 +4,12 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -19,7 +19,7 @@ type ceilingCheck struct {
 	findings []results.Diagnostic
 }
 
-func (r *ceilingCheck) Errorf(pos source.Position, format string, args ...any) {
+func (r *ceilingCheck) Errorf(pos sourcetext.Position, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "workflow-call", format, args...))
 }
 
@@ -31,20 +31,20 @@ func (r *ceilingCheck) Debug(format string, args ...any) {
 
 // CheckCeiling verifies that callee jobs cannot exceed the caller's cache grant.
 // It follows nested local calls and reports failures at the original call site.
-func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, metadata *calls.Metadata, lookup ReusableWorkflowMetadataLookup, debug func(string, ...any)) []results.Diagnostic {
+func CheckCeiling(call *definition.WorkflowCall, granted *definition.CacheMode, metadata *calls.Metadata, lookup ReusableWorkflowMetadataLookup, debug func(string, ...any)) []results.Diagnostic {
 	if call == nil || call.Uses == nil || metadata == nil {
 		return nil
 	}
-	spec, local := references.LocalWorkflow(call.Uses.Value)
+	spec, local := callreferences.LocalWorkflow(call.Uses.Value)
 	if !local {
 		return nil
 	}
 	r := ceilingCheck{cache: lookup, debug: debug}
-	r.check(source.ZeroIfNil(call.Uses.Pos), spec, call.Uses.Value, cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
+	r.check(sourcetext.ZeroIfNil(call.Uses.Pos), spec, call.Uses.Value, cache.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
 	return r.findings
 }
 
-func (r *ceilingCheck) check(pos source.Position, spec, sourceSpec string, granted cachemodel.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
+func (r *ceilingCheck) check(pos sourcetext.Position, spec, sourceSpec string, granted cache.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
 	have, known := granted.Capabilities()
 	if granted.Present() && !known {
 		return
@@ -60,7 +60,7 @@ func (r *ceilingCheck) check(pos source.Position, spec, sourceSpec string, grant
 
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		access := m.JobCacheAccess[id]
-		mode := granted.Override(cachemodel.FromMetadata(access.Mode))
+		mode := granted.Override(cache.FromMetadata(access.Mode))
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid {
 			continue

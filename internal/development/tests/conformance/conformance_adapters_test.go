@@ -10,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 type upstreamBlock struct{ Name, Body string }
@@ -136,25 +136,25 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
 	t.Parallel()
-	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
-	checker.SetContextTypes(contexts)
+	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+	knownContexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
+	checker.SetContextTypes(knownContexts)
 	checker.SetContextAvailability([]string{"custom"})
-	delete(contexts, "CUSTOM")
-	parser := exprsyntax.Parser{}
-	custom, err := parser.ParseExpression(exprsyntax.NewLexer("custom}}"))
+	delete(knownContexts, "CUSTOM")
+	parser := syntax.Parser{}
+	custom, err := parser.ParseExpression(syntax.NewLexer("custom}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, errs := checker.Check(expreval.EvaluateSubexpressions(custom)); len(errs) != 0 {
+	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(custom)); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
-	other := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	if _, errs := other.Check(expreval.EvaluateSubexpressions(custom)); len(errs) == 0 {
+	other := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+	if _, errs := other.Check(evaluate.EvaluateSubexpressions(custom)); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}
 	checker.SetContextTypes(nil)
-	if _, errs := checker.Check(expreval.EvaluateSubexpressions(custom)); len(errs) == 0 {
+	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(custom)); len(errs) == 0 {
 		t.Fatal("empty scope reused an old context")
 	}
 }

@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // Reference identifies the requested action, before a mutable ref is resolved.
@@ -45,8 +45,8 @@ func ParseReference(host, spec string) (Reference, error) {
 // isLocalForm reports whether spec spells a workspace or self-repository path,
 // which has no owner.
 func isLocalForm(spec string) bool {
-	form := references.FormOf(spec)
-	return form == references.FormWorkspace || form == references.FormSelfRepository
+	form := callreferences.FormOf(spec)
+	return form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository
 }
 
 func (r Reference) Host() string       { return r.host }
@@ -58,10 +58,10 @@ func (r Reference) Ref() string        { return r.ref }
 // This identifies fetched content; it does not describe how a ref selected it.
 type Identity struct {
 	host, repository, commit, directory string
-	repositoryID                        repofacts.ID
+	repositoryID                        repository.ID
 }
 
-func NewIdentity(host, repository string, repositoryID repofacts.ID, commit, directory string) (Identity, error) {
+func NewIdentity(host, repository string, repositoryID repository.ID, commit, directory string) (Identity, error) {
 	location := repository
 	if directory != "" {
 		location += "/" + directory
@@ -82,11 +82,11 @@ func NewIdentity(host, repository string, repositoryID repofacts.ID, commit, dir
 	return Identity{host: reference.host, repository: reference.repository, repositoryID: repositoryID, commit: strings.ToLower(commit), directory: reference.directory}, nil
 }
 
-func (i Identity) Host() string               { return i.host }
-func (i Identity) Repository() string         { return i.repository }
-func (i Identity) RepositoryID() repofacts.ID { return i.repositoryID }
-func (i Identity) Commit() string             { return i.commit }
-func (i Identity) Directory() string          { return i.directory }
+func (i Identity) Host() string                { return i.host }
+func (i Identity) Repository() string          { return i.repository }
+func (i Identity) RepositoryID() repository.ID { return i.repositoryID }
+func (i Identity) Commit() string              { return i.commit }
+func (i Identity) Directory() string           { return i.directory }
 
 // Route records whether selection used a raw object ID or an exact lookup key.
 type Route struct {
@@ -104,11 +104,11 @@ func RefRoute(reference string) (Route, error) {
 func (r Route) Object() bool      { return r.object }
 func (r Route) Reference() string { return r.reference }
 
-// Selection records provider evidence for one action request. The original
+// ReferenceSelection records provider evidence for one action request. The original
 // selected object survives tag peeling; Identity identifies terminal content.
 // Observation labels are not freshness guarantees. Construction validates shape
 // and consistency, not the authenticity or completeness of supplied evidence.
-type Selection struct {
+type ReferenceSelection struct {
 	request    Reference
 	identity   Identity
 	object     string
@@ -116,48 +116,48 @@ type Selection struct {
 	observedAt string
 }
 
-func NewSelection(request Reference, identity Identity, object string, route Route, observedAt string) (Selection, error) {
+func NewReferenceSelection(request Reference, identity Identity, object string, route Route, observedAt string) (ReferenceSelection, error) {
 	if request.host == "" || request.ref == "" || identity.commit == "" || request.host != identity.host || !strings.EqualFold(request.repository, identity.repository) || request.directory != identity.directory {
-		return Selection{}, errors.New("action selection does not belong to its request")
+		return ReferenceSelection{}, errors.New("action selection does not belong to its request")
 	}
 	if len(object) != 40 && len(object) != 64 {
-		return Selection{}, errors.New("selected action object must be a full object ID")
+		return ReferenceSelection{}, errors.New("selected action object must be a full object ID")
 	}
 	if _, err := hex.DecodeString(object); err != nil {
-		return Selection{}, fmt.Errorf("invalid selected action object: %w", err)
+		return ReferenceSelection{}, fmt.Errorf("invalid selected action object: %w", err)
 	}
 	if !route.object && route.reference == "" {
-		return Selection{}, errors.New("action selection route is missing")
+		return ReferenceSelection{}, errors.New("action selection route is missing")
 	}
 	if route.object && !strings.EqualFold(request.ref, object) {
-		return Selection{}, errors.New("selected object does not match the raw object request")
+		return ReferenceSelection{}, errors.New("selected object does not match the raw object request")
 	}
-	return Selection{request: request, identity: identity, object: strings.ToLower(object), route: route, observedAt: observedAt}, nil
+	return ReferenceSelection{request: request, identity: identity, object: strings.ToLower(object), route: route, observedAt: observedAt}, nil
 }
 
-func (s Selection) Request() Reference { return s.request }
-func (s Selection) Identity() Identity { return s.identity }
-func (s Selection) Object() string     { return s.object }
-func (s Selection) Route() Route       { return s.route }
-func (s Selection) ObservedAt() string { return s.observedAt }
+func (s ReferenceSelection) Request() Reference { return s.request }
+func (s ReferenceSelection) Identity() Identity { return s.identity }
+func (s ReferenceSelection) Object() string     { return s.object }
+func (s ReferenceSelection) Route() Route       { return s.route }
+func (s ReferenceSelection) ObservedAt() string { return s.observedAt }
 
 // Manifest owns bytes obtained for a provider selection. Analysis parses the
 // same manifest for input, runtime and output checks. This is not proof that a
 // runner executed these bytes or that their transitive dependencies are pinned.
 type Manifest struct {
-	selection Selection
+	selection ReferenceSelection
 	content   string
 	filename  string
 	missing   availability.Unavailability
 }
 
-func NewManifest(selection Selection, content []byte) (Manifest, error) {
+func NewManifest(selection ReferenceSelection, content []byte) (Manifest, error) {
 	return NewManifestFile(selection, "action.yml", content)
 }
 
 // NewManifestFile records the selected metadata filename and contents,
 // including empty files. Analysis classifies empty metadata files as invalid.
-func NewManifestFile(selection Selection, filename string, content []byte) (Manifest, error) {
+func NewManifestFile(selection ReferenceSelection, filename string, content []byte) (Manifest, error) {
 	if selection.identity.commit == "" {
 		return Manifest{}, errors.New("action manifest has no provider selection")
 	}
@@ -175,11 +175,11 @@ func (m Manifest) URL() string {
 	u := url.URL{Scheme: "https", Host: i.Host(), Path: path.Join(i.Repository(), "blob", i.Commit(), i.Directory(), m.Filename())}
 	return u.String()
 }
-func (m Manifest) Identity() Identity      { return m.selection.identity }
-func (m Manifest) Selection() Selection    { return m.selection }
-func (m Manifest) Content() string         { return m.content }
-func (m Manifest) Available() bool         { return m.selection.identity.commit != "" }
-func (m Manifest) Value() (Manifest, bool) { return m, m.Available() }
+func (m Manifest) Identity() Identity            { return m.selection.identity }
+func (m Manifest) Selection() ReferenceSelection { return m.selection }
+func (m Manifest) Content() string               { return m.content }
+func (m Manifest) Available() bool               { return m.selection.identity.commit != "" }
+func (m Manifest) Value() (Manifest, bool)       { return m, m.Available() }
 func (m Manifest) Unavailability() (availability.Unavailability, bool) {
 	return m.missing, !m.Available()
 }

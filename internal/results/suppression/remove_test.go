@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
 func TestRemoveSuppressionSelectors(t *testing.T) {
@@ -44,7 +44,7 @@ func TestRemoveSuppressionSelectors(t *testing.T) {
 				if !ok {
 					t.Fatal("no removal edit")
 				}
-				first, last, err := sourceposition.Range(content, sourcemodel.YAML, edit.Start, edit.End)
+				first, last, err := byteoffset.Range(content, sourcetext.YAML, edit.Start, edit.End)
 				if err != nil {
 					t.Fatal(err)
 				}

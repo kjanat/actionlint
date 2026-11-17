@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 // Item describes a property replacement in expression source byte offsets.
@@ -26,7 +26,7 @@ var (
 
 // completeExpression suggests names from the checker's scope for unfinished dot/bracket
 // access. The offset and returned edit positions count UTF-8 bytes.
-func completeExpression(sema *exprcheck.Checker, source string, offset int) []Item {
+func completeExpression(sema *typecheck.Checker, source string, offset int) []Item {
 	if offset < 0 || offset > len(source) {
 		return nil
 	}
@@ -48,11 +48,11 @@ func completeExpression(sema *exprcheck.Checker, source string, offset int) []It
 		}
 		start = at
 		prefix = before[at:]
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(receiver + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(receiver + "}}"))
 		if err != nil {
 			return nil
 		}
-		ty, errs := sema.Check(expreval.EvaluateSubexpressions(node))
+		ty, errs := sema.Check(evaluate.EvaluateSubexpressions(node))
 		if len(errs) != 0 {
 			return nil
 		}

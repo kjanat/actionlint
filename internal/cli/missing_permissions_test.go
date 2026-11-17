@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
@@ -60,7 +60,7 @@ func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
 			if status != wantStatus {
 				t.Fatalf("status=%d want=%d stderr=%s stdout=%s", status, wantStatus, log.String(), out.String())
 			}
-			var report resultreport.CheckResult
+			var report report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 				t.Fatal(err)
 			}

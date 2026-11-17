@@ -8,22 +8,22 @@ import (
 	"fmt"
 	"io"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -39,15 +39,15 @@ type Options struct {
 	OnRemoteActionDocument func(capture.CapturedDocument, parsing.Document)
 	// PrepareSource acquires only the supplied references before checks observe the source.
 	PrepareSource func(parsing.SourceSnapshot, []string) error
-	Runners       *runnerlang.Knowledge
+	Runners       *runners.Knowledge
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
 	// ScriptInputsForScope loads lazily once per immutable config, including nil.
 	ScriptInputsForScope func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
 	Context              context.Context
-	Actions              *workspaceactions.Resolver
+	Actions              *localactions.Resolver
 	Rules                []workflowvisit.Rule
-	Scripts              scriptexecution.Service
+	Scripts              scriptanalysis.Service
 	Paths                execution.Paths
 	Reader               *files.Reader // records reads made while resolving script paths
 
@@ -64,9 +64,9 @@ type Options struct {
 // its own; CheckInput validates its batch against the entry snapshot.
 type Composition struct {
 	IncompleteChecks []report.IncompleteCheck
-	Findings         []*findingmodel.Finding
+	Findings         []*finding.Finding
 	EntrySnapshot    parsing.SourceSnapshot
-	Batch            scriptexecution.Batch
+	Batch            scriptanalysis.Batch
 	// Invocations is available after graph publication even if batch preparation fails.
 	Invocations      invocation.Graph
 	ResolveExecution bool
@@ -105,7 +105,7 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, er
 
 // Action runs one standalone action composition with the caller's collaborators.
 // Options.Join runs exactly once per call.
-func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
+func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptanalysis.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot.Kind() != parsing.KindAction {
 			return errors.New("action source snapshot is unavailable")
@@ -163,7 +163,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Comp
 			remoteActions:        options.RemoteActions,
 			onRemoteDocument:     options.OnRemoteActionDocument,
 			remoteDocuments:      map[string]remoteDocument{},
-			metadataCopies:       findingmodel.NewCopier(),
+			metadataCopies:       finding.NewCopier(),
 			remoteLookups:        map[actions.Reference]struct{}{},
 			prepareSource:        options.PrepareSource,
 		},
@@ -180,11 +180,11 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Comp
 		graph, publishErr = c.invocations.Publish()
 		err = errors.Join(err, publishErr)
 	}
-	var batch scriptexecution.Batch
-	var findings []*findingmodel.Finding
+	var batch scriptanalysis.Batch
+	var findings []*finding.Finding
 	if graph.Has(graph.RootID()) {
 		var prepareErr error
-		batch, prepareErr = scriptexecution.NewBatch(graph, scriptexecution.Collection{
+		batch, prepareErr = scriptanalysis.NewBatch(graph, scriptanalysis.Collection{
 			Declarations: c.sourceSnapshots, Scopes: c.scriptScopes, Scripts: c.scripts, Collected: c.collectScripts,
 		})
 		err = errors.Join(err, prepareErr)

@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestShellcheckCommandFindingsWithExpressionError(t *testing.T) {
@@ -45,7 +45,7 @@ permissions: {}
 			if status != 1 || stderr.Len() != 0 {
 				t.Fatalf("exit=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 				t.Fatalf("decode findings: %v: %s", err, &stdout)
 			}

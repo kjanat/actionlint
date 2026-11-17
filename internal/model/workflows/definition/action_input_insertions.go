@@ -1,12 +1,12 @@
-package workflow
+package definition
 
 import (
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func SemanticValue(node *String) value.Value {
@@ -36,7 +36,7 @@ func MappingScalar(text string, source SourceScalar, origin value.Origin) value.
 		origin.FromExpression = true
 		return value.FromJSON(text, origin)
 	}
-	if exprsyntax.ContainsExpression(text) {
+	if syntax.ContainsExpression(text) {
 		origin.FromExpression = true
 		return value.Template(text, origin)
 	}
@@ -57,7 +57,7 @@ func semanticMappingValue(node *String) value.Value {
 	return MappingScalar(node.Value, node.SourceScalar, origin)
 }
 
-func InputMapping(action *ExecAction) *mapping.DeclaredMapping {
+func InputMapping(action *ExecAction) *mappings.DeclaredMapping {
 	if action == nil {
 		return nil
 	}
@@ -72,17 +72,17 @@ func mappingSourceText(source *String) string {
 	return source.Value
 }
 
-func actionMappingValues(source *ActionInputMapping) *mapping.DeclaredMapping {
+func actionMappingValues(source *ActionInputMapping) *mappings.DeclaredMapping {
 	if source == nil {
 		return nil
 	}
-	result := &mapping.DeclaredMapping{
+	result := &mappings.DeclaredMapping{
 		Expression: semanticMappingValue(source.Expression),
-		Values:     make(map[string]mapping.DeclaredEntry, len(source.Inputs)),
+		Values:     make(map[string]mappings.DeclaredEntry, len(source.Inputs)),
 	}
 	for name, input := range source.Inputs {
 		if input != nil {
-			result.Values[name] = mapping.DeclaredEntry{
+			result.Values[name] = mappings.DeclaredEntry{
 				Name: SemanticValue(input.Name), Value: semanticMappingValue(input.Value),
 				Source: mappingSourceText(input.Name),
 			}
@@ -95,10 +95,10 @@ func actionMappingValues(source *ActionInputMapping) *mapping.DeclaredMapping {
 }
 
 func ActionInputValue(action *ExecAction, name string) (string, bool) {
-	resolved := mapping.Resolve(InputMapping(action)).Lookup(name)
+	resolved := mappings.Resolve(InputMapping(action)).Lookup(name)
 	return resolved.ScalarString()
 }
 
-func ResolvedActionInputs(action *ExecAction) mapping.Mapping {
-	return mapping.Resolve(InputMapping(action))
+func ResolvedActionInputs(action *ExecAction) mappings.Mapping {
+	return mappings.Resolve(InputMapping(action))
 }

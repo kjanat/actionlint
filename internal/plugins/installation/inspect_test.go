@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -25,7 +25,7 @@ func TestPinSourceLeavesLocalAndPinnedSourcesUnchanged(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			got, err := PinSource(t.Context(), source, pluginacquisition.Settings{})
+			got, err := PinSource(t.Context(), source, pluginacquisition.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -44,7 +44,7 @@ func TestInspectGrantsExplicitPrivateArtifactAccess(t *testing.T) {
 	source := "oci://127.0.0.1:8443/private/plugin@sha256:" + hex.EncodeToString(digest[:])
 	dials := 0
 	stopped := errors.New("test stopped the authorized connection")
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		dials++
 		return nil, stopped
 	}}}}

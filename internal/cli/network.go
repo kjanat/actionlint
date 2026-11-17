@@ -4,26 +4,26 @@ import (
 	"errors"
 	"fmt"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 )
 
 func (a *commandApp) prepareNetwork() error {
 	if a.set["online"] && a.set["offline"] {
-		return commandargs.UsageError{Cause: errors.New("--online and --offline cannot be combined")}
+		return arguments.UsageError{Cause: errors.New("--online and --offline cannot be combined")}
 	}
 	if a.set["online"] {
 		a.inv.Check.Offline = !a.opts.online
 	}
 	if a.inv.Check.WarmCache && a.inv.Check.Offline {
-		return commandargs.UsageError{Cause: errors.New("cache warm requires network access; omit --offline")}
+		return arguments.UsageError{Cause: errors.New("cache warm requires network access; omit --offline")}
 	}
 	return nil
 }
 
 func (a *commandApp) reportWarning(message string) {
 	if a.errorJSON || a.jsonOutput() {
-		_ = commandstreams.WriteJSON(a.streams.Stderr, struct {
+		_ = commandio.WriteJSON(a.streams.Stderr, struct {
 			Warning string `json:"warning"`
 		}{message})
 		return

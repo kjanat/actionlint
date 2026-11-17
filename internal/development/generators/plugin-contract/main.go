@@ -19,7 +19,7 @@ import (
 
 const (
 	contractPath = "../../../../plugins/protocol/wit/analyzer.wit"
-	outputPath   = "../../../../internal/plugins/execution/component/contract.gen.go"
+	outputPath   = "../../../../internal/plugins/pluginexecution/component/contract.gen.go"
 )
 
 func main() {

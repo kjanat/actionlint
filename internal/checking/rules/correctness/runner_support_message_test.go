@@ -3,8 +3,8 @@ package correctness
 import (
 	"testing"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerSupportMessagesDescribeTheNextState(t *testing.T) {
@@ -21,7 +21,7 @@ func TestRunnerSupportMessagesDescribeTheNextState(t *testing.T) {
 		{runnerapi.Deprecated, runnerapi.Supported, "Support for this runner is deprecated."},
 		{runnerapi.Unsupported, runnerapi.Supported, "Support for this runner is scheduled to start on 2027-01-01."},
 	} {
-		problem := runnerlang.SupportProblem{Policy: runnerapi.SupportPolicy{Description: "this runner"}, State: tc.state, Next: &runnerapi.SupportChange{On: date, State: tc.next}}
+		problem := runners.SupportProblem{Policy: runnerapi.SupportPolicy{Description: "this runner"}, State: tc.state, Next: &runnerapi.SupportChange{On: date, State: tc.next}}
 		if got := supportMessage(problem); got != tc.want {
 			t.Errorf("support message = %q, want %q", got, tc.want)
 		}

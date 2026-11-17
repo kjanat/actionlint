@@ -3,21 +3,21 @@ package correctness
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestScriptSafeScalarReferences(t *testing.T) {
 	t.Parallel()
-	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
+	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+	contexts.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
 	for _, tc := range []struct {
 		input string
 		safe  bool
@@ -36,11 +36,11 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 		{"toJSON(!inputs.text)", true},
 		{"toJSON(toJSON(inputs.enabled))", false},
 	} {
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if safe := IsScalarInterpolation(node, checker.CheckResult(expreval.EvaluateSubexpressions(node)).Types); safe != tc.safe {
+		if safe := IsScalarInterpolation(node, checker.CheckResult(evaluate.EvaluateSubexpressions(node)).Types); safe != tc.safe {
 			t.Errorf("%s: safe=%t, want %t", tc.input, safe, tc.safe)
 		}
 	}
@@ -105,12 +105,12 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := ScriptInterpolation(node, tc.typeOf, exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, func(ref exprsyntax.Node) bool {
-				name := exprsyntax.StaticReference(ref)
+			findings := ScriptInterpolation(node, tc.typeOf, typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, func(ref syntax.Node) bool {
+				name := syntax.StaticReference(ref)
 				return name == "matrix.target" || name == "steps.test" || name == "needs.build"
 			})
 			if (len(findings) != 0) != tc.finding {
@@ -140,12 +140,12 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellWordInsertion, func(ref exprsyntax.Node) bool {
-				name := exprsyntax.StaticReference(ref)
+			findings := ScriptInterpolation(node, exprtypes.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellWordInsertion, func(ref syntax.Node) bool {
+				name := syntax.StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
 			if (len(findings) == 0) != tc.known {
@@ -154,11 +154,11 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		})
 	}
 	for _, expression := range []string{"steps[inputs.id].outcome", "steps['missing'].outcome"} {
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expression + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(expression + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, nil)
+		findings := ScriptInterpolation(node, exprtypes.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestRuleInputRequirementsReachConfigurationAndCatalogue(t *testing.T) {

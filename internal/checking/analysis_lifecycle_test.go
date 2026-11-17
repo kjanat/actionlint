@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 type failAfterScheduling struct {
@@ -17,7 +17,7 @@ type failAfterScheduling struct {
 	failure error
 }
 
-func (r *failAfterScheduling) VisitStep(workflowdecl.Step) error { return r.failure }
+func (r *failAfterScheduling) VisitStep(workflows.Step) error { return r.failure }
 
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
@@ -44,11 +44,11 @@ type scheduledResourceRule struct {
 	completed *atomic.Bool
 }
 
-func (rule *scheduledResourceRule) attachScope(scope *process.Scope) {
+func (rule *scheduledResourceRule) attachScope(scope *hostprocess.Scope) {
 	scope.Register(func() error { rule.workers.Wait(); return nil })
 }
 
-func (rule *scheduledResourceRule) VisitStep(workflowdecl.Step) error {
+func (rule *scheduledResourceRule) VisitStep(workflows.Step) error {
 	rule.workers.Go(func() { rule.completed.Store(true) })
 	return nil
 }
@@ -58,7 +58,7 @@ type failingResourceRule struct {
 	failure error
 }
 
-func (r *failingResourceRule) attachScope(scope *process.Scope) {
+func (r *failingResourceRule) attachScope(scope *hostprocess.Scope) {
 	scope.Register(func() error { return r.failure })
 }
 

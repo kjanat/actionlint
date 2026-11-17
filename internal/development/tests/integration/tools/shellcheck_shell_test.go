@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestShellcheckResolvedDiagnostics(t *testing.T) {
@@ -56,7 +56,7 @@ jobs:
     steps:
       - run: '[[ -n "$HOME" ]]'
 `
-			request := checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			request := checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var requestSources []workspace.InputFile
 			var err error
 			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
@@ -64,7 +64,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var shellFindings []diagmodel.Diagnostic
+			var shellFindings []results.Diagnostic
 			for _, finding := range findings {
 				if finding.Rule == "shellcheck" {
 					shellFindings = append(shellFindings, finding)

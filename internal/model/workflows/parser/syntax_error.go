@@ -1,17 +1,21 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+)
 
 // SyntaxError describes a syntax failure independently of lint rule state.
 type SyntaxError struct {
 	Message string
-	Line    int
-	Column  int
-	Kind    string
+	// Position is where the failure starts in the workflow or action file.
+	Position sourcetext.Position
+	Kind     string
 	// Code names why GitHub rejects the document; empty outside the workflow parser.
 	Code Code
 }
 
 func (e *SyntaxError) Error() string {
-	return fmt.Sprintf("%d:%d: %s [%s]", e.Line, e.Column, e.Message, e.Kind)
+	return fmt.Sprintf("%d:%d: %s [%s]", e.Position.Line, e.Position.Column, e.Message, e.Kind)
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -36,7 +36,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 				session := checking.Options{WorkingDir: parent}
 				var err error
 
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("session %s: %+v, %v", path, result, err)
 				}

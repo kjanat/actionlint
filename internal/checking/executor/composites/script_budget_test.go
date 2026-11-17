@@ -8,9 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
@@ -172,7 +172,7 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 				if !admitted {
 					t.Fatal("fixture call was not admitted")
 				}
-				ref := source.Reference{Document: "child", Revision: "revision", Node: "root"}
+				ref := sourcetext.Reference{Document: "child", Revision: "revision", Node: "root"}
 				expanded, err := invocation.Expanded(ref)
 				if err != nil {
 					return err

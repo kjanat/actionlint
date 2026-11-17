@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestPluginTestUsesHostPipelineAndReportsAssertions(t *testing.T) {
@@ -186,9 +186,9 @@ func TestPluginTestAcceptsExpectationWithoutTemplateEffect(t *testing.T) {
 	}
 }
 
-func authoringTestManifest(t *testing.T) pluginmanifests.Manifest {
+func authoringTestManifest(t *testing.T) toolmanifest.Manifest {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,16 +200,16 @@ func authoringTestManifest(t *testing.T) pluginmanifests.Manifest {
 		manifest.ConfigSchema = nil
 		manifest.ConfigShorthands = nil
 		manifest.Process.ConfigSchema = nil
-		manifest.Process.Config.Transform = &pluginmanifests.Transform{
-			Language: pluginmanifests.LanguageJQ,
+		manifest.Process.Config.Transform = &toolmanifest.Transform{
+			Language: toolmanifest.LanguageJQ,
 			Inline:   `{config: (. + {defaulted:true}), vars:{added:"yes"}}`,
 		}
 		manifest.Process.Config.Forbidden = nil
-		manifest.Process.Output = pluginmanifests.Output{Format: pluginmanifests.FormatEnvelope}
+		manifest.Process.Output = toolmanifest.Output{Format: toolmanifest.FormatEnvelope}
 		return manifest
 	}
 	t.Fatal("bundled Ruff provider missing")
-	return pluginmanifests.Manifest{}
+	return toolmanifest.Manifest{}
 }
 
 func mustAbs(t *testing.T, path string) string {

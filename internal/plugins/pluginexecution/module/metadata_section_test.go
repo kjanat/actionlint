@@ -1,0 +1,46 @@
+package module_test
+
+import (
+	"encoding/binary"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
+)
+
+func TestCustomMetadataMustMatchRuntime(t *testing.T) {
+	t.Parallel()
+	raw, err := os.ReadFile(enginePath("echo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fixtures use the runtime export for metadata discovery.
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
+	metadata := engine.Metadata()
+	metadata.Engine.Name = "spoofed"
+	declared, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
+	payload = append(payload, artifacts.MetadataSection...)
+	payload = append(payload, declared...)
+	section := binary.AppendUvarint([]byte{0}, uint64(len(payload)))
+	section = append(section, payload...)
+	path := filepath.Join(t.TempDir(), "spoofed.wasm")
+	if err := os.WriteFile(path, append(raw, section...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := module.LoadModuleEngine(t.Context(), path, module.Options{})
+	if loaded != nil {
+		_ = loaded.Close(t.Context())
+		t.Fatal("spoofed metadata loaded")
+	}
+	if err == nil || !strings.Contains(err.Error(), "does not match runtime metadata") {
+		t.Fatal(err)
+	}
+}

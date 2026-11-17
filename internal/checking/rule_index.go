@@ -5,16 +5,16 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 var builtins = registration.Declarations()
 
 // bundledManifests returns the bundled provider manifests.
 // Invalid embedded metadata causes a panic.
-func bundledManifests() []pluginmanifests.Manifest {
-	manifests, err := pluginmanifests.Bundled()
+func bundledManifests() []toolmanifest.Manifest {
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(err)
 	}

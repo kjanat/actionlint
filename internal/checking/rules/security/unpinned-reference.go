@@ -6,11 +6,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // UnpinnedReferenceRule is the single definition of the unpinned-reference rule.
@@ -23,15 +23,15 @@ var UnpinnedReferenceRule = &define.Rule{
 	LegacyGroup: "policy",
 	Policy:      "require-commit-hash",
 	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
-	Options:     define.Options[lintconfig.CommitHashOptions](),
+	Options:     define.Options[ruleconfig.CommitHashOptions](),
 	Checks: func(c define.RuleInputs) define.Checks {
-		options := new(lintconfig.CommitHashOptions)
+		options := new(ruleconfig.CommitHashOptions)
 		if c.Config != nil {
 			// Parsing and ValidateRuleNames reject options that do not load
 			// here; without that check they leave no exclusions.
 			setting, _ := c.Config.Lint.Rules.Policy.Rule("unpinned-reference")
 			if _, err := setting.LoadOptions(options); err != nil {
-				options = new(lintconfig.CommitHashOptions)
+				options = new(ruleconfig.CommitHashOptions)
 			}
 		}
 		return UnpinnedReferenceChecks(options.Excludes)
@@ -42,8 +42,8 @@ var UnpinnedReferenceRule = &define.Rule{
 // UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
 func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
 	return define.Checks{
-		Job:  func(job declaration.Job) []reporting.StepFinding { return CommitHashJob(job, excluded) },
-		Step: func(step declaration.Step) []reporting.StepFinding { return CommitHashStep(step, excluded) },
+		Job:  func(job workflows.Job) []reporting.StepFinding { return CommitHashJob(job, excluded) },
+		Step: func(step workflows.Step) []reporting.StepFinding { return CommitHashStep(step, excluded) },
 	}
 }
 
@@ -61,25 +61,25 @@ type commitHashCheck struct {
 	excluded func(string) bool
 }
 
-func CommitHashStep(step declaration.Step, excluded func(string) bool) []reporting.StepFinding {
+func CommitHashStep(step workflows.Step, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{excluded: excluded}
 	rule.checkStep(step)
 	return rule.Findings
 }
 
-func CommitHashJob(job declaration.Job, excluded func(string) bool) []reporting.StepFinding {
+func CommitHashJob(job workflows.Job, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{excluded: excluded}
 	rule.checkJob(job)
 	return rule.Findings
 }
 
-func (rule *commitHashCheck) checkStep(n declaration.Step) {
+func (rule *commitHashCheck) checkStep(n workflows.Step) {
 	e, ok := n.Action()
 	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses.Value)) {
 		return
 	}
 
-	if image, ok := references.ContainerImage(e.Uses.Value); ok {
+	if image, ok := callreferences.ContainerImage(e.Uses.Value); ok {
 		rule.checkImageDigest(image, e.Uses)
 		return
 	}
@@ -97,7 +97,7 @@ func (rule *commitHashCheck) checkStep(n declaration.Step) {
 	)
 }
 
-func (rule *commitHashCheck) checkImageDigest(image string, uses *workflowlang.String) {
+func (rule *commitHashCheck) checkImageDigest(image string, uses *definition.String) {
 	if strings.HasSuffix(image, ":") {
 		return
 	}
@@ -114,7 +114,7 @@ func (rule *commitHashCheck) checkImageDigest(image string, uses *workflowlang.S
 	)
 }
 
-func (rule *commitHashCheck) checkJob(n declaration.Job) {
+func (rule *commitHashCheck) checkJob(n workflows.Job) {
 	if !n.Present() || n.WorkflowCall == nil {
 		return
 	}
@@ -124,7 +124,7 @@ func (rule *commitHashCheck) checkJob(n declaration.Job) {
 		return
 	}
 
-	ref, ok := references.WorkflowRef(u.Value)
+	ref, ok := callreferences.WorkflowRef(u.Value)
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
@@ -141,10 +141,10 @@ func (rule *commitHashCheck) checkJob(n declaration.Job) {
 // second return value is false when the specification has another form. The "action" rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
-	if form := references.FormOf(spec); form == references.FormWorkspace || form == references.FormSelfRepository {
+	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository {
 		return "", false
 	}
-	owner, repo, ref, problem := references.SplitAction(spec)
+	owner, repo, ref, problem := callreferences.SplitAction(spec)
 	if problem != "" || owner == "" || repo == "" || ref == "" {
 		return "", false
 	}

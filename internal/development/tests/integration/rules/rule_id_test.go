@@ -7,12 +7,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestCheckInvalidJobNames(t *testing.T) {
@@ -29,31 +29,31 @@ func TestCheckInvalidJobNames(t *testing.T) {
 	for _, input := range inputs {
 		tests := []struct {
 			where    string
-			job      *workflowlang.Job
+			job      *definition.Job
 			expected string
 		}{
 			{
 				"jobs.<job_id>",
-				&workflowlang.Job{
-					ID: &workflowlang.String{Value: input, Pos: &source.Position{}},
+				&definition.Job{
+					ID: &definition.String{Value: input, Pos: &sourcetext.Position{}},
 				},
 				"invalid job ID",
 			},
 			{
 				"jobs.<job_id>.needs",
-				&workflowlang.Job{
-					ID: &workflowlang.String{Value: "test", Pos: &source.Position{}},
-					Needs: []*workflowlang.String{
-						{Value: input, Pos: &source.Position{}},
+				&definition.Job{
+					ID: &definition.String{Value: "test", Pos: &sourcetext.Position{}},
+					Needs: []*definition.String{
+						{Value: input, Pos: &sourcetext.Position{}},
 					},
 				},
 				"invalid job ID",
 			},
 			{
 				"steps.*.id",
-				&workflowlang.Job{
-					Steps: []*workflowlang.Step{
-						{ID: &workflowlang.String{Value: input, Pos: &source.Position{}}},
+				&definition.Job{
+					Steps: []*definition.Step{
+						{ID: &definition.String{Value: input, Pos: &sourcetext.Position{}}},
 					},
 				},
 				"invalid step ID",
@@ -64,11 +64,11 @@ func TestCheckInvalidJobNames(t *testing.T) {
 			t.Run(input+"/"+tc.where, func(t *testing.T) {
 				t.Parallel()
 				r := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-				if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
+				if err := r.VisitJobPre(declarations.Job(tc.job)); err != nil {
 					t.Fatal(err)
 				}
 				for _, s := range tc.job.Steps {
-					if err := r.VisitStep(fixturedecl.Step(s)); err != nil {
+					if err := r.VisitStep(declarations.Step(s)); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -105,21 +105,21 @@ func TestCheckValidJobNames(t *testing.T) {
 			if strings.HasPrefix(stepID, "__") {
 				stepID = "step" + stepID
 			}
-			job := &workflowlang.Job{
-				ID: &workflowlang.String{Value: input, Pos: &source.Position{}},
-				Needs: []*workflowlang.String{
-					{Value: input, Pos: &source.Position{}},
+			job := &definition.Job{
+				ID: &definition.String{Value: input, Pos: &sourcetext.Position{}},
+				Needs: []*definition.String{
+					{Value: input, Pos: &sourcetext.Position{}},
 				},
-				Steps: []*workflowlang.Step{
-					{ID: &workflowlang.String{Value: stepID, Pos: &source.Position{}}},
+				Steps: []*definition.Step{
+					{ID: &definition.String{Value: stepID, Pos: &sourcetext.Position{}}},
 				},
 			}
 			r := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := r.VisitJobPre(fixturedecl.Job(job)); err != nil {
+			if err := r.VisitJobPre(declarations.Job(job)); err != nil {
 				t.Fatal(err)
 			}
 			for _, s := range job.Steps {
-				if err := r.VisitStep(fixturedecl.Step(s)); err != nil {
+				if err := r.VisitStep(declarations.Step(s)); err != nil {
 					t.Fatal(err)
 				}
 			}

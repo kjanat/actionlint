@@ -4,9 +4,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 const (
@@ -64,17 +64,17 @@ type SupportProblem struct {
 }
 
 // Support reports policy effects established for every candidate of a selector.
-func (k *Knowledge) Support(job workflowdecl.Job, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) Support(job workflows.Job, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, false)
 }
 
 // UpcomingSupport reports future events that one policy establishes for every candidate.
 // These observations do not establish a current support problem.
-func (k *Knowledge) UpcomingSupport(job workflowdecl.Job, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) UpcomingSupport(job workflows.Job, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, true)
 }
 
-func (k *Knowledge) supportProblems(job workflowdecl.Job, capability runnerapi.Capability, upcoming bool) []SupportProblem {
+func (k *Knowledge) supportProblems(job workflows.Job, capability runnerapi.Capability, upcoming bool) []SupportProblem {
 	if k == nil || k.report.AsOf.IsZero() {
 		return nil
 	}
@@ -83,7 +83,7 @@ func (k *Knowledge) supportProblems(job workflowdecl.Job, capability runnerapi.C
 		return nil
 	}
 	if job.Strategy != nil && job.Strategy.Matrix != nil {
-		if rows, complete := workflowdecl.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
+		if rows, complete := workflows.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
 			return nil
 		}
 	}

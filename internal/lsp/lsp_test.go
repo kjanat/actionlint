@@ -10,8 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
@@ -88,7 +88,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 		t.Fatalf("excluded open dependency was not analyzed through its caller: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != source.ContentDigest([]byte(unsaved)) {
+	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != sourcetext.ContentDigest([]byte(unsaved)) {
 		t.Fatalf("dependency diagnostic used different bytes or coordinates: %+v", finding)
 	}
 	if result.Sources[actionPath].Text != unsaved || actionReads.Load() != 0 {

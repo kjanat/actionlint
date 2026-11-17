@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -25,8 +25,8 @@ func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, filepath.Join(root, ".github", "actionlint.yaml"), declaration)
-			input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "a.yml"), filepath.Join(other, "b.yml")}}
-			selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
+			input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "a.yml"), filepath.Join(other, "b.yml")}}
+			selected, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
 			if err != nil || len(selected.Paths) != 0 {
 				t.Fatalf("empty selection: %+v, %v", selected, err)
 			}
@@ -58,17 +58,17 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 			if err := os.Symlink(target, link); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			for _, selection := range []pluginselection.Selection{{}, {ConfigFile: path}} {
-				selected, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+			for _, selection := range []pluginselection.PluginSelection{{}, {ConfigFile: path}} {
+				selected, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 				if err != nil || len(selected.Paths) != 0 {
 					t.Fatalf("plugin-free linked config: %+v, %v", selected, err)
 				}
 			}
-			if _, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, ""); err == nil {
+			if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, ""); err == nil {
 				t.Fatal("mutation accepted linked configuration")
 			}
 			fixturefiles.WriteText(t, target, "plugins: [publisher/plugin]\n")
-			if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+			if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 				t.Fatalf("plugin activation accepted linked configuration: %v", err)
 			}
 		})

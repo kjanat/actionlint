@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type budgetManifestProvider struct {
@@ -30,7 +30,7 @@ func (p budgetManifestProvider) Lookup(_ context.Context, ref actions.Reference)
 	if !found {
 		p.t.Fatalf("unexpected manifest request: %s", key)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, strings.Repeat("a", 40), ref.Directory())
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, strings.Repeat("a", 40), ref.Directory())
 	if err != nil {
 		return actions.Manifest{}, err
 	}
@@ -38,7 +38,7 @@ func (p budgetManifestProvider) Lookup(_ context.Context, ref actions.Reference)
 	if err != nil {
 		return actions.Manifest{}, err
 	}
-	selection, err := actions.NewSelection(ref, identity, identity.Commit(), route, "test")
+	selection, err := actions.NewReferenceSelection(ref, identity, identity.Commit(), route, "test")
 	if err != nil {
 		return actions.Manifest{}, err
 	}

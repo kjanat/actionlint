@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
@@ -56,15 +56,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + tc.value + "\n" + "\npermissions: {}\n")
-			workflow, syntaxErrors := workflowparser.ParseWorkflow(source)
+			workflow, syntaxErrors := parser.ParseWorkflow(source)
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}
-			uses := workflow.Jobs["check"].Steps[0].Exec.(*workflowlang.ExecAction).Uses
+			uses := workflow.Jobs["check"].Steps[0].Exec.(*definition.ExecAction).Uses
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.InputFile
 			var err error
 			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
@@ -88,7 +88,7 @@ func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 	for _, value := range []string{"${{ ... }}", "${{ fromJSON( }}", "${{ 'unfinished }}"} {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.InputFile
 			var err error
 
@@ -124,7 +124,7 @@ jobs:
     steps:
       - run: echo ok
 ` + "\npermissions: {}\n"
-	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 	sources := []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))
 	if err != nil {

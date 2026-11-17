@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestRuntimeLifecycleSetupNode(t *testing.T) {
@@ -43,11 +43,11 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 		t.Run(tc.uses+"/"+tc.version, func(t *testing.T) {
 			t.Parallel()
 			text := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with:\n          node-version: '%s'\n", tc.uses, tc.version)
-			parsed, errs := workflowparser.ParseWorkflow([]byte(text))
+			parsed, errs := parser.ParseWorkflow([]byte(text))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
+			workflow := workflows.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 			job, ok := workflow.Job("test")
 			if !ok {
 				t.Fatal("missing job")
@@ -76,11 +76,11 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: |\n            16\n"
-	parsed, errs := workflowparser.ParseWorkflow([]byte(text))
+	parsed, errs := parser.ParseWorkflow([]byte(text))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
+	workflow := workflows.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 	job, ok := workflow.Job("test")
 	if !ok {
 		t.Fatal("missing job")
@@ -102,11 +102,11 @@ func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, errs := workflowparser.ParseWorkflow(content)
+	parsed, errs := parser.ParseWorkflow(content)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Bind("release-workflow", string(content), parsed, false, "").Workflow()
+	workflow := workflows.Bind("release-workflow", string(content), parsed, false, "").Workflow()
 	job, ok := workflow.Job("verify")
 	if !ok {
 		t.Fatal("missing release verification job")

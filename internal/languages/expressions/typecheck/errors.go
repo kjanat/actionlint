@@ -3,7 +3,9 @@ package typecheck
 import (
 	"fmt"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Error is a syntax or semantic finding in an expression. Rule and Code identify
@@ -15,10 +17,8 @@ type Error struct {
 	Offset int
 	// EndOffset is the exclusive byte end of the diagnostic's intended range.
 	EndOffset int
-	// Line is the one-based line where the finding starts.
-	Line int
-	// Column is the one-based column where the finding starts.
-	Column int
+	// Position is where the finding starts in the expression.
+	Position sourcetext.Position
 	// Rule identifies the configurable check; Code identifies its diagnostic kind.
 	Rule string
 	Code string
@@ -27,7 +27,7 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("%d:%d:%d: %s", e.Line, e.Column, e.Offset, e.Message)
+	return fmt.Sprintf("%d:%d:%d: %s", e.Position.Line, e.Position.Column, e.Offset, e.Message)
 }
 
 func (e *Error) String() string {
@@ -54,13 +54,12 @@ func detachErrors(errs []*Error) []*Error {
 	return out
 }
 
-func errorAtToken(kind findingKind, t exprsyntax.Token, msg string) *Error {
+func errorAtToken(kind findingKind, t syntax.Token, msg string) *Error {
 	return &Error{
 		Message: msg,
 		Rule:    kind.rule, Code: kind.code,
 		Offset:    t.Offset,
 		EndOffset: t.Offset + len(t.Value),
-		Line:      t.Line,
-		Column:    t.Column,
+		Position:  t.Position,
 	}
 }

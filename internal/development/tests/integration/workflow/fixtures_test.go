@@ -11,12 +11,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"golang.org/x/sys/execabs"
 )
@@ -112,7 +112,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
 
-			request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
+			request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})})
 			requestSources := testutil.FixtureSources(t, []string{f}, proj, &configuration.Config{})
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
@@ -147,7 +147,7 @@ func testFindAllWorkflowsInDir(subdir string) (string, []string, error) {
 	return dir, fs, nil
 }
 
-func checkErrors(t *testing.T, outfile string, errs []diagmodel.Diagnostic) {
+func checkErrors(t *testing.T, outfile string, errs []results.Diagnostic) {
 	t.Helper()
 	t.Logf("Checking %d errors with %q", len(errs), outfile)
 	for i, err := range errs {
@@ -169,8 +169,8 @@ func checkErrors(t *testing.T, outfile string, errs []diagmodel.Diagnostic) {
 		}
 	}
 
-	slices.SortFunc(errs, func(a, b diagmodel.Diagnostic) int {
-		return findingmodel.Compare(findingmodel.FromDiagnostic(a), findingmodel.FromDiagnostic(b))
+	slices.SortFunc(errs, func(a, b results.Diagnostic) int {
+		return finding.Compare(finding.FromDiagnostic(a), finding.FromDiagnostic(b))
 	})
 
 	if len(errs) != len(expected) {
@@ -232,7 +232,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					}
 					tool = shellcheck
 				}
-				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})})
+				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: tool}})})
 				requestSources := []workspace.InputFile{{Path: "test.yaml", Content: b, Project: proj, Config: &configuration.Config{}}}
 				errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
@@ -266,7 +266,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 	}
 	files = append(files, fs...)
 
-	request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
+	request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})})
 	requestSources := testutil.FixtureSources(t, files, proj, &configuration.Config{})
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {
@@ -339,6 +339,6 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 	}
 }
 
-func formatDiagnostic(d diagmodel.Diagnostic) string {
+func formatDiagnostic(d results.Diagnostic) string {
 	return fmt.Sprintf("%s:%d:%d: %s [%s]", d.Path, d.Start.Line, d.Start.Column, d.Message, d.Rule)
 }

@@ -5,16 +5,16 @@ import (
 	"slices"
 	"testing"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func newTestChecker() *Checker { return New(Dependencies{}, Options{UnsoundTernary: true}) }
 
-func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdecl.Workflow) {
+func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.Workflow) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -30,7 +30,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdec
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
-	runners, err := runnerinput.Prepare(context.Background(), snapshot, nil, runnerapi.Options{}, "test.yml")
+	runners, err := runneracquisition.Prepare(context.Background(), snapshot, nil, runnerapi.Options{}, "test.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdec
 	return checker, workflow
 }
 
-func testJob(tb testing.TB, workflow workflowdecl.Workflow, key string) workflowdecl.Job {
+func testJob(tb testing.TB, workflow workflows.Workflow, key string) workflows.Job {
 	tb.Helper()
 	job, present := workflow.Job(key)
 	if !present {
@@ -47,7 +47,7 @@ func testJob(tb testing.TB, workflow workflowdecl.Workflow, key string) workflow
 	return job
 }
 
-func testStep(tb testing.TB, job workflowdecl.Job, index int) workflowdecl.Step {
+func testStep(tb testing.TB, job workflows.Job, index int) workflows.Step {
 	tb.Helper()
 	steps := slices.Collect(job.Steps())
 	if index < 0 || index >= len(steps) {
@@ -58,24 +58,24 @@ func testStep(tb testing.TB, job workflowdecl.Job, index int) workflowdecl.Step 
 
 // Pure checker fixtures freeze synthetic typed models; they do not admit bytes
 // to a SourceSnapshots registry or claim captured parse provenance.
-func ownedWorkflowFixture(workflow *workflowlang.Workflow) workflowdecl.Workflow {
-	return workflowdecl.Bind("unit-expression", "", workflow, false, "").Workflow()
+func ownedWorkflowFixture(workflow *definition.Workflow) workflows.Workflow {
+	return workflows.Bind("unit-expression", "", workflow, false, "").Workflow()
 }
 
-func ownedStringFixture(value *workflowlang.String) *workflowlang.String {
+func ownedStringFixture(value *definition.String) *definition.String {
 	return value
 }
 
-func ownedMatrixFixture(matrix *workflowlang.Matrix) *workflowlang.Matrix {
-	workflow := ownedWorkflowFixture(&workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Strategy: &workflowlang.Strategy{Matrix: matrix}}}})
+func ownedMatrixFixture(matrix *definition.Matrix) *definition.Matrix {
+	workflow := ownedWorkflowFixture(&definition.Workflow{Jobs: map[string]*definition.Job{"test": {Strategy: &definition.Strategy{Matrix: matrix}}}})
 	job, _ := workflow.Job("test")
 	return job.Strategy.Matrix
 }
 
-func ownedRawStringFixture(value *workflowlang.RawYAMLString) *workflowlang.RawYAMLString {
+func ownedRawStringFixture(value *definition.RawYAMLString) *definition.RawYAMLString {
 	return value
 }
 
-func ownedMatrixRowFixture(row *workflowlang.MatrixRow) *workflowlang.MatrixRow {
+func ownedMatrixRowFixture(row *definition.MatrixRow) *definition.MatrixRow {
 	return row
 }

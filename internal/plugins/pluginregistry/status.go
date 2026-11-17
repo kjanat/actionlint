@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -57,7 +57,7 @@ type StatusOptions struct {
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir    string
 	Warning     func(string)
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 }
 
 func (o StatusOptions) warn(message string) {

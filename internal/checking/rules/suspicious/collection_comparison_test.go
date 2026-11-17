@@ -3,11 +3,11 @@ package suspicious
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 func TestCollectionComparison(t *testing.T) {
@@ -42,13 +42,13 @@ func TestCollectionComparison(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			evaluation := expreval.EvaluateSubexpressions(node)
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+			evaluation := evaluate.EvaluateSubexpressions(node)
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 			checker.SetContextType("inputs", exprtypes.NewMapObjectType(exprtypes.StringType()).Type())
 			object := exprtypes.NewEmptyObjectType().Type()
 			checker.SetContextType("matrix", exprtypes.NewObjectType(map[string]exprtypes.Type{

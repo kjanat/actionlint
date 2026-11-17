@@ -4,13 +4,13 @@ import (
 	"slices"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 func TestScriptInjectionCombinesIndependentValueSources(t *testing.T) {
@@ -26,10 +26,10 @@ func TestScriptInjectionCombinesIndependentValueSources(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			node := syntax.ParseAssignedExpression("${{ " + tc.source + " }}")
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if len(result.Findings) != tc.semanticErrors {
 				t.Fatalf("unexpected semantic findings: %v", result.Findings)
 			}

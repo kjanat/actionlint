@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 
 	"github.com/invopop/jsonschema"
 )
@@ -22,25 +22,25 @@ import (
 // panics. Providers installed by plugins are not known when generating, so
 // any other name gets the host-owned shape only.
 func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(err)
 	}
-	tools := &jsonschema.Schema{Type: "object", Properties: jsonschema.NewProperties(), AdditionalProperties: unknownToolSchema(), Extras: map[string]any{"x-tombi-additional-key-label": "tool_name"}}
+	toolsObject := &jsonschema.Schema{Type: "object", Properties: jsonschema.NewProperties(), AdditionalProperties: unknownToolSchema(), Extras: map[string]any{"x-tombi-additional-key-label": "tool_name"}}
 	for _, manifest := range manifests {
 		tool, err := toolSchema(manifest, reflectMapping)
 		if err != nil {
 			panic(fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err))
 		}
-		tools.Properties.Set(manifest.Rule.Name, tool)
+		toolsObject.Properties.Set(manifest.Rule.Name, tool)
 	}
-	return tools
+	return toolsObject
 }
 
-func toolSchema(manifest pluginmanifests.Manifest, reflectMapping func(any) *jsonschema.Schema) (*jsonschema.Schema, error) {
+func toolSchema(manifest toolmanifest.Manifest, reflectMapping func(any) *jsonschema.Schema) (*jsonschema.Schema, error) {
 	mapping := reflectMapping(struct {
-		Backend *toolconfig.Backend `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
-		Enabled *bool               `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable this tool. Omission or null keeps it enabled."`
+		Backend *tools.Backend `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
+		Enabled *bool          `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable this tool. Omission or null keeps it enabled."`
 	}{})
 	mapping.Version, mapping.ID = "", ""
 	mapping.Description = manifest.Rule.Description + "."
@@ -149,7 +149,7 @@ func publishedSchema(name string, document map[string]any) (string, error) {
 
 // configSchema describes tools.<name>.config: inline settings, and a path
 // when the provider reads configuration files.
-func configSchema(manifest pluginmanifests.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
+func configSchema(manifest toolmanifest.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
 	markdown := "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
 	alternatives := []*jsonschema.Schema{
 		{Type: "object", AdditionalProperties: jsonschema.TrueSchema, Extras: map[string]any{"defaultSnippets": []any{map[string]string{"label": "Inline settings", "bodyText": "{}"}}}},

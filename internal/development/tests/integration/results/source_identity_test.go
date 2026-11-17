@@ -5,22 +5,22 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type identityCapture struct{ input checkinputs.AnalyzerInput }
 
 func (*identityCapture) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Mappings, rulemeta.Dependencies}}
+	return checkinputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Mappings, rule.Dependencies}}
 }
 
-func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]diagmodel.Diagnostic, error) {
+func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	c.input = input
 	return nil, nil
 }
@@ -100,13 +100,13 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 			}
 			type manifestFinding struct {
 				message string
-				start   sourcepos.Position
+				start   sourcetext.Position
 			}
 			var expected []manifestFinding
 			if kind == "action" {
 				expected = []manifestFinding{
-					{`YAML anchors are not supported in action metadata; remove anchor "command"`, sourcepos.Position{Line: 9, Column: 12}},
-					{`YAML aliases are not supported in action metadata; replace alias "command"`, sourcepos.Position{Line: 13, Column: 12}},
+					{`YAML anchors are not supported in action metadata; remove anchor "command"`, sourcetext.Position{Line: 9, Column: 12}},
+					{`YAML aliases are not supported in action metadata; replace alias "command"`, sourcetext.Position{Line: 13, Column: 12}},
 				}
 			}
 			if len(result.Diagnostics) != len(expected) {

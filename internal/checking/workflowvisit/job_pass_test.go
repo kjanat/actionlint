@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type jobPhasePass struct {
@@ -14,12 +14,12 @@ type jobPhasePass struct {
 	events []string
 }
 
-func (p *jobPhasePass) VisitJobPre(job declaration.Job) error {
+func (p *jobPhasePass) VisitJobPre(job workflows.Job) error {
 	p.events = append(p.events, "pre "+job.Key())
 	return nil
 }
 
-func (p *jobPhasePass) VisitJobPost(job declaration.Job) error {
+func (p *jobPhasePass) VisitJobPost(job workflows.Job) error {
 	p.events = append(p.events, "post "+job.Key())
 	return nil
 }
@@ -27,10 +27,10 @@ func (p *jobPhasePass) VisitJobPost(job declaration.Job) error {
 func TestVisitJobPassWrapsEveryJobPhase(t *testing.T) {
 	t.Parallel()
 	pass := &jobPhasePass{}
-	workflow := declaration.Bind("phases", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {}}}, false, "").Workflow()
+	workflow := workflows.Bind("phases", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": {}}}, false, "").Workflow()
 	err := Visit(workflow, Options{
 		Passes: []Pass{pass},
-		Hooks: Hooks{JobPass: func(wrapped Pass, job declaration.Job, visit func() error) error {
+		Hooks: Hooks{JobPass: func(wrapped Pass, job workflows.Job, visit func() error) error {
 			if wrapped != Pass(pass) {
 				t.Fatalf("hook received pass %v, want %v", wrapped, pass)
 			}

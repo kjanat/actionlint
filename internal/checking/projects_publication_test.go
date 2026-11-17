@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -16,8 +16,8 @@ import (
 func TestCombinedProjectsPreserveIncompleteChecks(t *testing.T) {
 	t.Parallel()
 	checks := []report.IncompleteCheck{
-		{Source: source.Reference{Document: "first/ci.yml", Revision: "first"}, Rule: "shellcheck", Reason: "tool unavailable"},
-		{Source: source.Reference{Document: "second/ci.yml", Revision: "second"}, Reason: "policy evaluation failed"},
+		{Source: sourcetext.Reference{Document: "first/ci.yml", Revision: "first"}, Rule: "shellcheck", Reason: "tool unavailable"},
+		{Source: sourcetext.Reference{Document: "second/ci.yml", Revision: "second"}, Reason: "policy evaluation failed"},
 	}
 	var combined report.Analysis
 	for _, check := range checks {
@@ -50,13 +50,13 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 			t.Fatal(err)
 		}
 		for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
-			if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+			if output, err := gitcommand.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 				t.Fatalf("prepare repository: %v: %s", err, output)
 			}
 		}
 		paths = append(paths, consumer)
 	}
-	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.Selection{Disabled: true, DisableTools: true})
+	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths}, pluginselection.PluginSelection{Disabled: true, DisableTools: true})
 	if err != nil || result == nil {
 		t.Fatalf("check projects: result=%+v error=%v", result, err)
 	}

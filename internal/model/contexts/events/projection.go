@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // Trigger identifies a possible event and optional activity filters. Unknown

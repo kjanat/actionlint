@@ -6,25 +6,25 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 type expressionShellProvider struct{ shell string }
 
-func (expressionShellProvider) RunnerDescriptor() runner.Descriptor {
-	return runner.Descriptor{Name: "expression-shell", Version: "1", Targets: []string{"github"}}
+func (expressionShellProvider) RunnerDescriptor() runnerapi.Descriptor {
+	return runnerapi.Descriptor{Name: "expression-shell", Version: "1", Targets: []string{"github"}}
 }
 
-func (p expressionShellProvider) ResolveRunners(_ context.Context, request runner.Request) (runner.Response, error) {
-	answers := make([]runner.Answer, len(request.Selectors))
+func (p expressionShellProvider) ResolveRunners(_ context.Context, request runnerapi.Request) (runnerapi.Response, error) {
+	answers := make([]runnerapi.Answer, len(request.Selectors))
 	for i := range answers {
-		var resolution runner.Resolution = runner.Unknown{Reason: "shell unavailable"}
+		var resolution runnerapi.Resolution = runnerapi.Unknown{Reason: "shell unavailable"}
 		if p.shell != "" {
-			resolution = runner.Resolved{Candidates: []runner.Candidate{{Name: "test", OS: runner.Linux, DefaultShell: p.shell}}}
+			resolution = runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "test", OS: runnerapi.Linux, DefaultShell: p.shell}}}
 		}
-		answers[i] = runner.Answer{Resolution: resolution, DatasetStatus: runner.DatasetStatus{DatasetID: "test", Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}
+		answers[i] = runnerapi.Answer{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "test", Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}
 	}
-	return runner.Response{Answers: answers}, nil
+	return runnerapi.Response{Answers: answers}, nil
 }
 
 func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
@@ -59,10 +59,10 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{Runners: runner.Options{
+			options := checking.Options{Runners: runnerapi.Options{
 				Target: "github", Provider: "expression-shell", Scope: "test",
-				Snapshot:  runner.Snapshot{Scope: "test", Freshness: runner.Fresh, Complete: true},
-				Providers: []runner.Registration{{ImplementationID: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
+				Snapshot:  runnerapi.Snapshot{Scope: "test", Freshness: runnerapi.Fresh, Complete: true},
+				Providers: []runnerapi.Registration{{ImplementationID: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
 			}}
 			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
 			if err != nil {

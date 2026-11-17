@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestVendorLockInCompositeSources(t *testing.T) {
@@ -21,7 +21,7 @@ func TestVendorLockInCompositeSources(t *testing.T) {
 	for _, entry := range []string{action, workflow} {
 		t.Run(entry, func(t *testing.T) {
 			t.Parallel()
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{entry}})
 			if err != nil {
 				t.Fatal(err)
 			}

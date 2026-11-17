@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -160,18 +160,18 @@ func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T)
 			t.Parallel()
 			root := t.TempDir()
 			path, text := filepath.Join(root, "workflow.yml"), "first\rsecond\nbad"
-			model := sourcepos.YAML
+			model := sourcetext.YAML
 			unavailable, raw := false, true
 			switch name {
 			case "unavailable matching captured row":
 				unavailable, raw = true, false
 			case "non YAML captured row":
-				model, text = sourcepos.RawLF, "first\nbad"
+				model, text = sourcetext.RawLF, "first\nbad"
 			case "invalid UTF8 captured row":
 				text, raw = string([]byte{0xff}), false
 			}
 			captured := reportfixture.CapturedSource(t, path, []byte(text), model)
-			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Start: sourcepos.Position{Line: 2, Column: 1}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: []byte(text), RawScript: raw, Unavailable: reportedSourceIf(unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Start: sourcetext.Position{Line: 2, Column: 1}, Reference: &sourcetext.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: []byte(text), RawScript: raw, Unavailable: reportedSourceIf(unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			publication, logs := firstEditorPublication(t, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 				return FromReport(result, root, documents)
 			}, FileURI(path), text)

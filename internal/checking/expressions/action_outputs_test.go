@@ -3,22 +3,22 @@ package expressions
 import (
 	"testing"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 	t.Parallel()
-	definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
+	metadata := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
 	for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
 		checker := New(Dependencies{Action: func(got string) (actionmeta.Definition, error) {
 			if got != reference {
 				t.Fatalf("reference rewritten by expression inference: %q", got)
 			}
-			return definition, nil
+			return metadata, nil
 		}}, Options{})
-		outputs := checker.getActionOutputsType(ownedStringFixture(&workflowlang.String{Value: reference}))
+		outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: reference}))
 		if result, exists := outputs.Property("result"); !exists || result.Kind() != exprtypes.KindString {
 			t.Fatalf("%s: missing result output: %v", reference, outputs)
 		}
@@ -31,7 +31,7 @@ func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
 	t.Parallel()
 	checker := New(Dependencies{}, Options{})
-	outputs := checker.getActionOutputsType(ownedStringFixture(&workflowlang.String{Value: "./missing"}))
+	outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: "./missing"}))
 	if mapped, known := outputs.Mapped(); !known || mapped.Kind() != exprtypes.KindString {
 		t.Fatalf("unavailable metadata was treated as no outputs: %v", outputs)
 	}
@@ -50,10 +50,10 @@ func TestActionOutputDeclarationCompleteness(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\n" + tc.source))
+			metadata := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\n" + tc.source))
 			for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
-				checker := New(Dependencies{Action: func(string) (actionmeta.Definition, error) { return definition, nil }}, Options{})
-				outputs := checker.getActionOutputsType(ownedStringFixture(&workflowlang.String{Value: reference}))
+				checker := New(Dependencies{Action: func(string) (actionmeta.Definition, error) { return metadata, nil }}, Options{})
+				outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: reference}))
 				if outputs.IsStrict() != tc.strict {
 					t.Fatalf("%s: strict=%t, want %t", reference, outputs.IsStrict(), tc.strict)
 				}

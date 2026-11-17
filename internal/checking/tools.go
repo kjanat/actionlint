@@ -3,10 +3,10 @@ package checking
 import (
 	"context"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 type ToolRequirements = workspace.ExternalToolRequirements

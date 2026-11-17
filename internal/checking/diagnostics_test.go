@@ -5,19 +5,19 @@ import (
 	"reflect"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type detailedAnalyzer struct{ findings []results.Diagnostic }
 
 func (a detailedAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "detailed-check", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "detailed-check", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a detailedAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -27,11 +27,11 @@ func (a detailedAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInp
 func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 	t.Parallel()
 	const content = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: 'echo ok'}]\npermissions: {}\n"
-	base := results.Diagnostic{Rule: "detailed-check", Path: "ci.yml", Message: "same location and message", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 3}, Code: "A", Severity: "warning", Help: "help", Explanation: "explanation", DocumentationURL: "https://example.invalid/rule", Related: []results.Related{{Path: "ci.yml", Message: "related", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}}, Fixes: []results.Fix{{Applicability: results.FixSafe, Description: "replace", Edits: []results.Edit{{Path: "ci.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 3}, Replacement: "on"}}}}}
+	base := results.Diagnostic{Rule: "detailed-check", Path: "ci.yml", Message: "same location and message", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Code: "A", Severity: "warning", Help: "help", Explanation: "explanation", DocumentationURL: "https://example.invalid/rule", Related: []results.Related{{Path: "ci.yml", Message: "related", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 1}}}, Fixes: []results.Fix{{Applicability: results.FixSafe, Description: "replace", Edits: []results.Edit{{Path: "ci.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Replacement: "on"}}}}}
 	second := base
 	second.Code = "B"
 	third := base
-	third.End = sourcepos.Position{Line: 2, Column: 1}
+	third.End = sourcetext.Position{Line: 2, Column: 1}
 	input := []results.Diagnostic{base, second, third}
 	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
 	if err != nil {
@@ -41,11 +41,11 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 		t.Fatalf("distinct diagnostics lost: %+v", result)
 	}
 	for _, d := range result.Diagnostics {
-		if d.Help != base.Help || d.Explanation != base.Explanation || d.DocumentationURL != base.DocumentationURL || len(d.Related) != 1 || d.Related[0].Revision.Document() != d.Reference.Document || d.Related[0].Revision.Digest() != d.Reference.Revision || d.Related[0].Coordinates != sourcepos.YAML || len(d.Fixes) != 1 || d.Fixes[0].Applicability != results.FixSafe {
+		if d.Help != base.Help || d.Explanation != base.Explanation || d.DocumentationURL != base.DocumentationURL || len(d.Related) != 1 || d.Related[0].Revision.Document() != d.Reference.Document || d.Related[0].Revision.Digest() != d.Reference.Revision || d.Related[0].Coordinates != sourcetext.YAML || len(d.Fixes) != 1 || d.Fixes[0].Applicability != results.FixSafe {
 			t.Fatalf("metadata lost: %+v", d)
 		}
 		unbound := d.Related[0]
-		unbound.Revision = sourcepos.Revision{}
+		unbound.Revision = sourcetext.Revision{}
 		unbound.Coordinates = ""
 		if !reflect.DeepEqual(unbound, base.Related[0]) {
 			t.Fatal("related metadata changed while binding")

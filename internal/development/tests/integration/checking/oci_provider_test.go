@@ -11,17 +11,17 @@ import (
 	"strings"
 	"testing"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -57,7 +57,7 @@ func publishOCIProvider(t *testing.T) ociProvider {
 	manifest, err := json.Marshal(map[string]any{
 		"schema_version": 1, "id": "example.com/oci-tool", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
 		"rule":         map[string]any{"name": "oci-tool", "description": "A tool from an OCI registry", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "oci-tool"},
-		"artifacts":    []map[string]any{{"platform": pluginartifact.HostPlatform(), "digest": "sha256:" + hex.EncodeToString(sum[:]), "filename": "oci-tool", "size": len(binary)}},
+		"artifacts":    []map[string]any{{"platform": artifacts.HostPlatform(), "digest": "sha256:" + hex.EncodeToString(sum[:]), "filename": "oci-tool", "size": len(binary)}},
 		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
 		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
 		"capabilities": map[string]any{"fixes": false, "reported_sources": false, "message_template": "oci: {code}: {message}"},
@@ -72,8 +72,8 @@ func publishOCIProvider(t *testing.T) ociProvider {
 	if err != nil {
 		t.Fatal(err)
 	}
-	layers := []ocitest.Descriptor{registry.Blob(pluginartifact.MediaTypeProviderManifest, manifest), transform, executable}
-	index := registry.Index(t, map[string]ocitest.Descriptor{pluginartifact.HostPlatform(): registry.Manifest(t, layers...)})
+	layers := []ocitest.Descriptor{registry.Blob(artifacts.MediaTypeProviderManifest, manifest), transform, executable}
+	index := registry.Index(t, map[string]ocitest.Descriptor{artifacts.HostPlatform(): registry.Manifest(t, layers...)})
 	return ociProvider{registry: registry, reference: registry.Reference(index), executable: executable}
 }
 
@@ -88,11 +88,11 @@ func ociFindings(t *testing.T, result *report.Analysis) []results.Diagnostic {
 // the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	check := func() *report.Analysis {
 		t.Helper()
-		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
+		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
 			t.Parallel()
-			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 			pkg := publishOCIProvider(t)
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -133,14 +133,14 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, path, "plugins: ['"+pkg.reference+"']\n")
-			selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
 			if explicit {
 				selection.ConfigFile = path
 			}
-			input := func() inputmodel.Request {
-				return inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}
+			input := func() checkrequest.Request {
+				return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 			}
-			sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+			sources, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -165,14 +165,14 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
 	sources.DisabledTools, sources.NamedTools = []string{"oci-tool"}, []string{"oci-tool"}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
+	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 // OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
 	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)
@@ -211,11 +211,11 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant, err := pluginartifact.ExplicitSource(pkg.reference)
+	grant, err := artifacts.ExplicitSource(pkg.reference)
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
+	project := installation.Project{Manifest: &plugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"slices"
 
-	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	"actionlint.kjanat.dev/v2/internal/checking/executor"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -41,7 +41,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		}
 		descriptor := integrator.ToolIntegration()
 		if len(registration.Options) != 0 {
-			if err := checkexecutor.ValidateOptions(registration.Checker.Descriptor().OptionsSchema, registration.Options); err != nil {
+			if err := executor.ValidateOptions(registration.Checker.Descriptor().OptionsSchema, registration.Options); err != nil {
 				return options, fmt.Errorf("analyzer %q options: %w", descriptor.Tool, err)
 			}
 		}
@@ -94,7 +94,7 @@ func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured
 		effective = b.options
 	}
 	if len(effective) != 0 {
-		if err := checkexecutor.ValidateOptions(b.Checker.Descriptor().OptionsSchema, effective); err != nil {
+		if err := executor.ValidateOptions(b.Checker.Descriptor().OptionsSchema, effective); err != nil {
 			return nil, fmt.Errorf("analyzer %q options: %w", b.Checker.Descriptor().Name, err)
 		}
 	}

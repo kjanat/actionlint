@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type manifestProvider func(context.Context, actions.Reference) (actions.Manifest, error)
@@ -19,7 +19,7 @@ func (p manifestProvider) Lookup(ctx context.Context, reference actions.Referenc
 
 func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 	t.Parallel()
-	identity, err := actions.NewIdentity("github.com", "example/action", repofacts.ID{}, strings.Repeat("a", 40), "")
+	identity, err := actions.NewIdentity("github.com", "example/action", repository.ID{}, strings.Repeat("a", 40), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, strings.Repeat("a", 40), route, "test-observation")
+	selection, err := actions.NewReferenceSelection(reference, identity, strings.Repeat("a", 40), route, "test-observation")
 	if err != nil {
 		t.Fatal(err)
 	}

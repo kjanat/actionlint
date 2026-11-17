@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
-	component, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
+	component, err := filepath.Abs("internal/plugins/pluginexecution/component/testdata/plugins/managed-no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/ruff-script-engine.wasm")
+	engine, err := filepath.Abs("internal/plugins/pluginexecution/component/testdata/plugins/ruff-script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,19 +33,19 @@ func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, command := range []string{"validate", "show"} {
-				pluginCommandTest(t, pluginacquisition.Settings{}, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
+				pluginCommandTest(t, pluginacquisition.Options{}, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
 			}
 		})
 	}
 }
 
 func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", wasm)
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")

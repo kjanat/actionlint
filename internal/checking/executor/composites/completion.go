@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -13,7 +13,7 @@ import (
 
 // recordUncheckedFiles records only the metadata checks that consume these
 // facts. Other checks of the same source can finish and report their findings.
-func (analysis *compositeAnalyzer) recordUncheckedFiles(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, source source.Reference, context invocation.Context) error {
+func (analysis *compositeAnalyzer) recordUncheckedFiles(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, source sourcetext.Reference, context invocation.Context) error {
 	if meta == nil {
 		return nil
 	}

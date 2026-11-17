@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -15,24 +15,24 @@ import (
 // referenceFinding sets every reference field of a finding.
 func referenceFinding() *Finding {
 	return &Finding{
-		Reference: &source.Reference{Document: "doc", Node: "node"},
-		Related:   []diagmodel.Related{{Message: "related"}},
-		Fixes: []diagmodel.Fix{{
+		Reference: &sourcetext.Reference{Document: "doc", Node: "node"},
+		Related:   []results.Related{{Message: "related"}},
+		Fixes: []results.Fix{{
 			Revisions: map[string]string{"doc": "rev"},
-			Edits:     []diagmodel.Edit{{Replacement: "fixed"}},
+			Edits:     []results.Edit{{Replacement: "fixed"}},
 		}},
 		Rule:              "rule",
 		Message:           "message",
-		End:               source.Position{Line: 1, Column: 2},
-		Source:            diagmodel.DiagnosticSource{Content: []byte("source"), Suppression: &diagmodel.SuppressionOrigin{Path: "target", First: 1, Last: 2}},
-		SuppressionOrigin: &diagmodel.SuppressionOrigin{Path: "path"},
-		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &source.Position{Line: 3}, Job: "job"},
-		Owner:             &Owner{Job: "job", Step: &source.Position{Line: 4}},
+		End:               sourcetext.Position{Line: 1, Column: 2},
+		Source:            results.DiagnosticSource{Content: []byte("source"), Suppression: &results.SuppressionOrigin{Path: "target", First: 1, Last: 2}},
+		SuppressionOrigin: &results.SuppressionOrigin{Path: "path"},
+		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &sourcetext.Position{Line: 3}, Job: "job"},
+		Owner:             &Owner{Job: "job", Step: &sourcetext.Position{Line: 4}},
 		MetadataIdentity:  &MetadataIdentity{Visit: 5},
 	}
 }
 
-var cloneComparison = cmp.AllowUnexported(diagmodel.UnavailableSource{}, source.Revision{})
+var cloneComparison = cmp.AllowUnexported(results.UnavailableSource{}, sourcetext.Revision{})
 
 func TestCloneDetachesEveryReference(t *testing.T) {
 	t.Parallel()
@@ -59,7 +59,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 
 func TestClonePreservesAbsentReferences(t *testing.T) {
 	t.Parallel()
-	original := At(&source.Position{Line: 1, Column: 1}, "rule", "message")
+	original := At(&sourcetext.Position{Line: 1, Column: 1}, "rule", "message")
 	if diff := cmp.Diff(original, original.Clone(), cloneComparison); diff != "" {
 		t.Fatalf("clone of a plain finding differs:\n%s", diff)
 	}
@@ -67,10 +67,10 @@ func TestClonePreservesAbsentReferences(t *testing.T) {
 
 func TestCloneDetachesLifecycleAndKeepsBindingIdentity(t *testing.T) {
 	t.Parallel()
-	namespace := bindingmodel.NewNamespace()
+	namespace := binding.NewNamespace()
 	original := &Finding{
 		Binding:           namespace.ID(1),
-		Lifecycle:         &diagmodel.LifecycleReport{Policies: []diagmodel.LifecyclePolicyReport{{ID: "original"}}},
+		Lifecycle:         &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 		LifecycleEvidence: &lifecycle.Evidence{AllOf: []lifecycle.Evidence{{Name: "outer", AnyOf: []lifecycle.Evidence{{Name: "inner"}}}}},
 	}
 	clone := original.Clone()
@@ -88,7 +88,7 @@ func TestCloneDetachesLifecycleAndKeepsBindingIdentity(t *testing.T) {
 func TestClonePreservesLifecycleSlicePresence(t *testing.T) {
 	t.Parallel()
 	original := &Finding{
-		Lifecycle:         &diagmodel.LifecycleReport{Policies: []diagmodel.LifecyclePolicyReport{}},
+		Lifecycle:         &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{}},
 		LifecycleEvidence: &lifecycle.Evidence{AllOf: []lifecycle.Evidence{}},
 	}
 	clone := original.Clone()
@@ -101,9 +101,9 @@ func TestCopierSharesDetachedSourceButNotFindingMetadata(t *testing.T) {
 	t.Parallel()
 	buffer := bytes.Repeat([]byte("x"), 64<<10)
 	original := &Finding{
-		Source:    diagmodel.DiagnosticSource{Content: buffer},
-		Reference: &source.Reference{Document: "original"},
-		Lifecycle: &diagmodel.LifecycleReport{Policies: []diagmodel.LifecyclePolicyReport{{ID: "original"}}},
+		Source:    results.DiagnosticSource{Content: buffer},
+		Reference: &sourcetext.Reference{Document: "original"},
+		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 	}
 	copier := NewCopier()
 	copies := make([]*Finding, 100)

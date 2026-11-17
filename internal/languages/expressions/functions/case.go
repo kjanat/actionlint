@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
@@ -20,10 +20,10 @@ func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
 	}
 }
 
-func evaluateCase(context EvaluationContext) exprvalues.EvaluationResult {
+func evaluateCase(context EvaluationContext) values.EvaluationResult {
 	for index := 0; index < context.ArgumentCount()-1; index += 2 {
 		predicate := context.Argument(index)
-		if predicate.State != exprvalues.EvaluationKnown {
+		if predicate.State != values.EvaluationKnown {
 			return predicate
 		}
 		value, boolean := predicate.Value.(bool)

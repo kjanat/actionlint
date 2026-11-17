@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestWorkflowRunPathsUntrusted(t *testing.T) {
@@ -96,11 +96,11 @@ func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 permissions: {}
 `
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if workflow == nil || reference != "" && len(errs) != 0 {
 				t.Fatalf("parse: %v", errs)
 			}
-			pos := *workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
+			pos := *workflow.On[0].(*definition.WebhookEvent).Workflows[0].Pos
 			wantRule, wantMessage := "glob", "glob pattern cannot be empty"
 			if reference == "" {
 				wantRule, wantMessage = "syntax-check", "string should not be empty"

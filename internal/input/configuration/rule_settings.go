@@ -3,36 +3,12 @@ package configuration
 import (
 	"fmt"
 
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
-
-// Level controls the severity of a diagnostic.
-type Level = lintconfig.Level
-
-// Preset selects a rule baseline.
-type Preset = lintconfig.Preset
-
-// Setting provides a level and typed per-rule options.
-type Setting = lintconfig.Setting
-
-// Group selects rules within a concern.
-type Group = lintconfig.Group
-
-// NewSetting returns a rule setting with a level and options. An empty level
-// selects the rule's default. See [lintconfig.NewSetting] for the accepted
-// options values. ValidateRuleNames checks the options against the rule.
-func NewSetting(level Level, options any) (Setting, error) {
-	return lintconfig.NewSetting(level, options)
-}
-
-// NewGroup returns a rule group with a preset, a group level and per-rule settings.
-func NewGroup(preset Preset, level Level, rules map[string]Setting) Group {
-	return lintconfig.NewGroup(preset, level, rules)
-}
 
 // loadOptions decodes the options of s into dst and reports whether it did.
 // ResolveRules validates options before policy projection calls this helper.
-func loadOptions(s Setting, dst any) bool {
+func loadOptions(s ruleconfig.Setting, dst any) bool {
 	loaded, err := s.LoadOptions(dst)
 	return loaded && err == nil
 }
@@ -64,7 +40,7 @@ func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
 	return options, nil
 }
 
-func (ruleSet RuleSet) canonicalSetting(group Group, name string) (Setting, bool) {
+func (ruleSet RuleSet) canonicalSetting(group ruleconfig.Group, name string) (ruleconfig.Setting, bool) {
 	if setting, found := group.Rule(name); found {
 		return setting, true
 	}
@@ -73,16 +49,16 @@ func (ruleSet RuleSet) canonicalSetting(group Group, name string) (Setting, bool
 			return setting, true
 		}
 	}
-	return Setting{}, false
+	return ruleconfig.Setting{}, false
 }
 
-func (c *LintRulesConfig) Groups() map[string]Group {
-	return map[string]Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "conventions": c.Conventions}
+func (c *LintRulesConfig) Groups() map[string]ruleconfig.Group {
+	return map[string]ruleconfig.Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "conventions": c.Conventions}
 }
 
 // LegacyGroups exposes decode-only controls needed for metadata-aware migration.
-func (c *LintRulesConfig) LegacyGroups() map[string]Group {
-	return map[string]Group{"style": c.Style, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
+func (c *LintRulesConfig) LegacyGroups() map[string]ruleconfig.Group {
+	return map[string]ruleconfig.Group{"style": c.Style, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
 }
 
 // LegacyGroup identifies a built-in rule's configuration group before semantic

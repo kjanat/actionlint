@@ -6,15 +6,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestLocalActionSuppressionSourcesStayWorkflowScoped(t *testing.T) {
@@ -44,13 +44,13 @@ jobs:
 permissions: {}
 `)
 	project := workspace.Identity(root)
-	actions := workspaceactions.NewCache(t.Context(), projectRoot(project), nil)
-	workflows := workflowinputs.NewCache(project.RootDir(), nil)
+	actions := localactions.NewCache(t.Context(), projectRoot(project), nil)
+	workflows := reusableworkflows.NewCache(project.RootDir(), nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	var declarations *capturedSnapshots
 	session.snapshots, session.captures, declarations = newCapturedSnapshots(t, root)
-	actions.Configure(workspaceactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
+	actions.Configure(localactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)
@@ -58,7 +58,7 @@ permissions: {}
 			t.Fatal(err)
 		}
 		var rules []rule.Descriptor
-		captured, err := declarations.Capture(workflow, source, sourcemodel.YAML)
+		captured, err := declarations.Capture(workflow, source, sourcetext.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}

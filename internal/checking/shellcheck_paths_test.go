@@ -10,11 +10,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
@@ -64,10 +64,10 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -123,7 +123,7 @@ jobs:
 permissions: {}
 `)
 			options := checking.Options{WorkingDir: root}
-			optionsTools := registry.Selections{"shellcheck": {Command: command}}
+			optionsTools := registry.ToolSelections{"shellcheck": {Command: command}}
 			if tc.explicit {
 				options.ConfigFile = config
 			}
@@ -138,7 +138,7 @@ permissions: {}
 			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -221,14 +221,14 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.stepDir + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: analyzer, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: analyzer, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic.Diagnostic)
@@ -308,14 +308,14 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic.Diagnostic)
@@ -364,14 +364,14 @@ jobs:
           . ./value.sh
           echo $VALUE
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && d.Code == "SC2086"
 			})
 			if found != tc.wantFinding {
@@ -416,10 +416,10 @@ jobs:
           echo $VALUE
 permissions: {}
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -455,8 +455,8 @@ jobs:
 `)
 			options := checking.Options{ConfigFile: config, WorkingDir: root}
 			session := options
-			session.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: command}})
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			session.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err == nil {
 				t.Fatalf("invalid selected config silently accepted: %+v", result.Diagnostics)
 			}
@@ -492,9 +492,9 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}

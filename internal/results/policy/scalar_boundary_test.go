@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
@@ -58,14 +58,14 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				if _, err := codec.ParseYAML(source); err != nil {
 					t.Fatalf("invalid YAML fixture: %v", err)
 				}
-				var findings []*findingmodel.Finding
+				var findings []*finding.Finding
 				if bodyLine != 0 {
-					findings = append(findings, &findingmodel.Finding{Start: sourcepos.Position{Line: bodyLine}, Rule: "expression-reference"})
+					findings = append(findings, &finding.Finding{Start: sourcetext.Position{Line: bodyLine}, Rule: "expression-reference"})
 				}
 				if bodyCommentLine != 0 {
-					findings = append(findings, &findingmodel.Finding{Start: sourcepos.Position{Line: bodyCommentLine}, Rule: "expression-reference"})
+					findings = append(findings, &finding.Finding{Start: sourcetext.Position{Line: bodyCommentLine}, Rule: "expression-reference"})
 				}
-				sibling := &findingmodel.Finding{Start: sourcepos.Position{Line: siblingLine}, Rule: "expression-reference"}
+				sibling := &finding.Finding{Start: sourcetext.Position{Line: siblingLine}, Rule: "expression-reference"}
 				findings = append(findings, sibling)
 				got := fixtureInline(t, source, findings, nil)
 				if len(got) != 2 || got[0].Rule != sibling.Rule || got[0].Start != sibling.Start || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {

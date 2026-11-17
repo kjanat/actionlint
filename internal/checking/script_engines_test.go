@@ -11,13 +11,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 type recordingEngine struct {
@@ -42,15 +42,15 @@ jobs:
         run: echo missing
 `)
 	engine := &recordingEngine{code: "SC2086"}
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: engine}})}
-	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}); err != nil {
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: engine}})}
+	if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(engine.requests) != 1 || len(engine.requests[0].Environment) != 1 {
 		t.Fatalf("script requests lost environment alternatives: %+v", engine.requests)
 	}
 	environment := engine.requests[0].Environment[0]
-	if environment.OperatingSystem != runnerapi.Windows || environment.MergeComparison != scriptmodel.NameInsensitive || environment.LookupComparison != scriptmodel.NameSensitive {
+	if environment.OperatingSystem != runnerapi.Windows || environment.MergeComparison != scripts.NameInsensitive || environment.LookupComparison != scripts.NameSensitive {
 		t.Fatalf("runner merging and Bash lookup were conflated: %+v", environment)
 	}
 	if len(environment.Names) < 4 || environment.Names[0].Name != "lowercase" || environment.Names[3].Name != "step_name" {
@@ -122,9 +122,9 @@ func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
 	session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 		paths = append(paths, path)
 		return engine, nil
-	}, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
+	}, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}}})}
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 		var loadedMu sync.Mutex
 		options := checking.Options{
 			WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
-			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
+			Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}}}),
 			LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 				loadedMu.Lock()
 				loaded[path] = true
@@ -163,7 +163,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 				return &recordingEngine{}, nil
 			},
 		}
-		result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows})
+		result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,15 +176,15 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}}})}
 
-	if _, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "tools.ruff.backend.wasm selects "+filepath.Join(root, ".github", "engines", "ruff.wasm")+", and this host has no WebAssembly engine loader") {
+	if _, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "tools.ruff.backend.wasm selects "+filepath.Join(root, ".github", "engines", "ruff.wasm")+", and this host has no WebAssembly engine loader") {
 		t.Fatalf("err=%v", err)
 	}
 	failing := errors.New("module is broken")
-	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
+	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}}})}
 
-	if _, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize ruff: module is broken") {
+	if _, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize ruff: module is broken") {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -194,10 +194,10 @@ func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	options := checking.Options{
 		WorkingDir:       root,
-		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
+		Tools:            registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}}}),
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, nil },
 	}
-	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize ruff") || !strings.Contains(err.Error(), "nil backend") {
+	if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize ruff") || !strings.Contains(err.Error(), "nil backend") {
 		t.Fatalf("configured Wasm analysis silently fell back: %v", err)
 	}
 }
@@ -210,15 +210,15 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 		loads++
 		return &recordingEngine{}, nil
 	}
-	disabled := checking.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.Selections{"ruff": {Command: ""}})}
+	disabled := checking.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: ""}})}
 
-	if result, err := checking.Check(t.Context(), disabled, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 0 || loads != 0 {
+	if result, err := checking.Check(t.Context(), disabled, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 0 || loads != 0 {
 		t.Fatalf("disabled: result=%+v err=%v loads=%d", result, err, loads)
 	}
 	injected := &recordingEngine{}
-	explicit := checking.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.Selections{"ruff": {Backend: injected}})}
+	explicit := checking.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: injected}})}
 
-	if result, err := checking.Check(t.Context(), explicit, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 1 || loads != 0 || len(injected.requests) != 1 {
+	if result, err := checking.Check(t.Context(), explicit, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 1 || loads != 0 || len(injected.requests) != 1 {
 		t.Fatalf("explicit: result=%+v err=%v loads=%d", result, err, loads)
 	}
 }
@@ -251,10 +251,10 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
 		session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			return namedShellEngine(filepath.Base(path)), nil
-		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}})}
+		}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}}})}
 		var err error
 
-		result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, filepath.FromSlash(input))}})
+		result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, filepath.FromSlash(input))}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -290,7 +290,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 	var mu sync.Mutex
 	loaded := map[string]*recordingEngine{}
 	options := checking.Options{
-		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
+		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}}}),
 		LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			mu.Lock()
 			defer mu.Unlock()
@@ -299,7 +299,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 			return backend, nil
 		},
 	}
-	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: workflows})
 	if err != nil {
 		t.Fatal(err)
 	}

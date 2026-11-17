@@ -5,16 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	for _, descriptor := range checking.ConfigurationRules().Rules() {
-		if descriptor.Scope != rulescope.SourceConfiguration {
+		if descriptor.Scope != rule.SourceConfiguration {
 			continue
 		}
 		groups := []string{descriptor.Category}

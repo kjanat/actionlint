@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"golang.org/x/sys/execabs"
 )
@@ -168,16 +168,16 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
+				result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
 				if err != nil {
 					b.Fatal(err)
 				}
 
-				renderer, err := render.New("", bm.format, false, func() string { return "test" }, nil)
+				renderer, err := output.New("", bm.format, false, func() string { return "test" }, nil)
 				if err != nil {
 					b.Fatal(err)
 				}
-				if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
+				if err := renderer.Render(io.Discard, output.FromAnalysis(*result)); err != nil {
 					b.Fatal(err)
 				}
 				if len(result.Diagnostics) > 0 {
@@ -221,16 +221,16 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
+		result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		renderer, err := render.New("", "", false, func() string { return "test" }, nil)
+		renderer, err := output.New("", "", false, func() string { return "test" }, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
-		if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
+		if err := renderer.Render(io.Discard, output.FromAnalysis(*result)); err != nil {
 			b.Fatal(err)
 		}
 		if len(result.Diagnostics) == 0 {
@@ -246,7 +246,7 @@ func BenchmarkLintRepository(b *testing.B) {
 	}
 
 	for b.Loop() {
-		result, err := checking.Check(b.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Repository})
+		result, err := checking.Check(b.Context(), checking.Options{WorkingDir: root}, checkrequest.Request{Kind: checkrequest.Repository})
 		if err != nil {
 			b.Fatal(err)
 		}

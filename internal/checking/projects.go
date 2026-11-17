@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -18,7 +18,7 @@ import (
 // CheckProjects discovers inputs once, then loads each repository's plugins in
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
-func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*report.Analysis, error) {
+func CheckProjects(ctx context.Context, options Options, input checkrequest.Request, selection pluginselection.PluginSelection) (*report.Analysis, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		return nil, err
 	}
 	options.ExecutionEnvironment = options.captureDate(time.Now)
-	if input.Kind == inputmodel.Repository && input.Selection == nil {
+	if input.Kind == checkrequest.Repository && input.Selection == nil {
 		directory := input.Directory
 		if directory == "" {
 			directory = options.WorkingDir
@@ -50,7 +50,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 			selection.DefaultTools = nil
 		}
 	}
-	check := func(input inputmodel.Request) (*report.Analysis, error) {
+	check := func(input checkrequest.Request) (*report.Analysis, error) {
 		selection, options := selection, options
 		// Plugin selection reads configuration from disk. The session shares
 		// those files only when it would read the same bytes.
@@ -65,7 +65,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		result, err := CheckWithPlugins(ctx, options, input, sources)
 		return result, err
 	}
-	if input.Kind != inputmodel.Files || len(input.Paths) == 0 {
+	if input.Kind != checkrequest.Files || len(input.Paths) == 0 {
 		return check(input)
 	}
 	found, err := workspace.FindFiles(ctx, input.Paths, options.NoIgnore)
@@ -74,7 +74,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 	}
 	batches := workspace.PartitionFiles(found)
 	if len(batches) == 1 {
-		result, err := check(inputmodel.FromFiles(batches[0]))
+		result, err := check(checkrequest.FromFiles(batches[0]))
 		if result != nil {
 			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, found.Inputs...))))
 		}
@@ -86,7 +86,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		if err := ctx.Err(); err != nil {
 			return combined, errors.Join(append(failures, err)...)
 		}
-		result, err := check(inputmodel.FromFiles(batch))
+		result, err := check(checkrequest.FromFiles(batch))
 		if err != nil {
 			failures = append(failures, err)
 		}

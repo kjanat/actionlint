@@ -1,12 +1,12 @@
 package runners
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
 
 type ContainerUseKind uint8
@@ -23,25 +23,25 @@ type ContainerUse struct {
 	Target   ContainerTarget
 	Kind     ContainerUseKind
 	Name     string
-	Position sourcepos.Position
+	Position sourcetext.Position
 }
 
 // MayRun excludes an alternative only when a condition is provably false.
 // Invalid conditions and unknown runtime values cannot establish exclusion.
-func (target ContainerTarget) MayRun(conditions ...string) bool {
-	for _, condition := range conditions {
+func (target ContainerTarget) MayRun(conditionList ...string) bool {
+	for _, condition := range conditionList {
 		if condition == "" {
 			continue
 		}
-		node, err, _ := exprsyntax.ParseConditionExpression(condition)
-		if err == nil && workflowconditions.NeverRunsWithVariables(node, target.LookupExpressionVariable) {
+		node, err, _ := syntax.ParseConditionExpression(condition)
+		if err == nil && conditions.NeverRunsWithVariables(node, target.LookupExpressionVariable) {
 			return false
 		}
 	}
 	return true
 }
 
-func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *sourcepos.Position) ContainerUse {
+func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *sourcetext.Position) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
 	if pos != nil {
 		use.Position = *pos
@@ -51,15 +51,15 @@ func containerUse(target ContainerTarget, kind ContainerUseKind, name string, po
 
 // JobContainerUses evaluates job containers and services using established
 // runner and matrix facts. It does not read action metadata or acquire sources.
-func (k *Knowledge) JobContainerUses(job workflowdecl.Job) []ContainerUse {
+func (k *Knowledge) JobContainerUses(job workflows.Job) []ContainerUse {
 	targets := k.ContainerLimitations(job)
 	var uses []ContainerUse
-	add := func(container *workflowlang.Container, kind ContainerUseKind, name string) {
+	add := func(container *definition.Container, kind ContainerUseKind, name string) {
 		if container == nil {
 			return
 		}
 		for _, target := range targets {
-			image := workflowdecl.Scalar(container.Image)
+			image := workflows.Scalar(container.Image)
 			if container.Expression != nil {
 				image = target.Evaluate(container.Expression.Value)
 				if objectImage, ok := image.Prop("image"); ok {
@@ -98,7 +98,7 @@ func (k *Knowledge) JobContainerUses(job workflowdecl.Job) []ContainerUse {
 
 // DockerActionUses supplies execution alternatives after the caller has
 // established that the action uses Docker. Guards belong to its enclosing calls.
-func DockerActionUses(step workflowdecl.Step, targets []ContainerTarget, guards []string) []ContainerUse {
+func DockerActionUses(step workflows.Step, targets []ContainerTarget, guards []string) []ContainerUse {
 	action, present := step.Action()
 	if !present {
 		return nil
@@ -106,7 +106,7 @@ func DockerActionUses(step workflowdecl.Step, targets []ContainerTarget, guards 
 	var uses []ContainerUse
 	for _, target := range targets {
 		if target.MayRun(guards...) && target.MayRun(step.If.Text()) {
-			var pos *sourcepos.Position
+			var pos *sourcetext.Position
 			if action.Uses != nil {
 				pos = action.Uses.Pos
 			}

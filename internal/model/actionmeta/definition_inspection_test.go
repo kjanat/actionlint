@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
@@ -33,7 +33,7 @@ func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
 			if problems[0].Code == "" || problems[0].Path != "action.yml" {
 				t.Fatalf("problem lost manifest identity: %+v", problems[0])
 			}
-			if tc.line != 0 && problems[0].Start != (sourcepos.Position{Line: tc.line, Column: tc.column}) {
+			if tc.line != 0 && problems[0].Start != (sourcetext.Position{Line: tc.line, Column: tc.column}) {
 				t.Fatalf("problem position = %+v, want %d:%d", problems[0].Start, tc.line, tc.column)
 			}
 			// Returned problem storage must not alias the inspection result.

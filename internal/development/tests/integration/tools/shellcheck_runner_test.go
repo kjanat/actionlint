@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func TestEmbeddedShellcheckRunner(t *testing.T) {
 	t.Setenv("SHELLCHECK_OPTS", "--shell=sh")
 	var called bool
-	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func(args []string, script string) ([]byte, error) {
+	request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func(args []string, script string) ([]byte, error) {
 		called = true
 		if !slices.Contains(args, "--norc") || slices.Contains(args, "-x") || !slices.Contains(args, "bash") {
 			t.Errorf("embedded runner must disable filesystem reads and ignore host SHELLCHECK_OPTS: %q", args)
@@ -42,7 +42,7 @@ func TestEmbeddedShellcheckFailure(t *testing.T) {
 	for _, output := range []string{"invalid json", ""} {
 		t.Run(output, func(t *testing.T) {
 			t.Parallel()
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 				if output == "" {
 					return nil, errors.New("worker timed out")
 				}

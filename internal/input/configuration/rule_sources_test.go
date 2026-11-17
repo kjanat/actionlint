@@ -7,7 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
@@ -15,7 +16,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		base, leaf string
-		want       configuration.Level
+		want       ruleconfig.Level
 	}{
 		{"same layer", "", "lint: {rules: {external: {shellcheck: off}, plugins: {shellcheck: on}}}", "on"},
 		{"inherited native", "lint: {rules: {external: {shellcheck: off}}}", "extends: [base.yml]\nlint: {rules: {plugins: {shellcheck: on}}}", "on"},

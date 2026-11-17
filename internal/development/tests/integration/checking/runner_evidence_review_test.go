@@ -8,12 +8,12 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,20 +22,20 @@ type orderedEvidenceProvider struct {
 	release <-chan struct{}
 }
 
-func (*orderedEvidenceProvider) RunnerDescriptor() runner.Descriptor {
-	return runner.Descriptor{Name: "order", Version: "1", Targets: []string{"order"}}
+func (*orderedEvidenceProvider) RunnerDescriptor() runnerapi.Descriptor {
+	return runnerapi.Descriptor{Name: "order", Version: "1", Targets: []string{"order"}}
 }
 
-func (p *orderedEvidenceProvider) ResolveRunners(ctx context.Context, request runner.Request) (runner.Response, error) {
+func (p *orderedEvidenceProvider) ResolveRunners(ctx context.Context, request runnerapi.Request) (runnerapi.Response, error) {
 	label := fmt.Sprint(request.Selectors[0].Labels[0].Value)
 	if label == p.waitFor && p.release != nil {
 		select {
 		case <-p.release:
 		case <-ctx.Done():
-			return runner.Response{}, ctx.Err()
+			return runnerapi.Response{}, ctx.Err()
 		}
 	}
-	return runner.Response{Answers: []runner.Answer{{Resolution: runner.Unknown{Reason: label}, DatasetStatus: runner.DatasetStatus{DatasetID: label, Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}}}, nil
+	return runnerapi.Response{Answers: []runnerapi.Answer{{Resolution: runnerapi.Unknown{Reason: label}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: label, Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}}}, nil
 }
 
 type evidenceCompletionObserver struct {
@@ -45,7 +45,7 @@ type evidenceCompletionObserver struct {
 }
 
 func (*evidenceCompletionObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -71,7 +71,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 		observer := &evidenceCompletionObserver{label: fast, release: release}
 		settings := checking.Options{
 			WorkingDir: root,
-			Runners:    runner.Options{Target: "order", Providers: []runner.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
+			Runners:    runnerapi.Options{Target: "order", Providers: []runnerapi.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
 			Analyzers:  []checkinputs.Registration{{Checker: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.

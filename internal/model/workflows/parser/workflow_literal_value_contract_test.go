@@ -3,9 +3,9 @@ package parser_test
 import (
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestWorkflowLiteralStaticValues(t *testing.T) {
@@ -21,15 +21,15 @@ jobs:
       - uses: ${{ 'docker://alpine:3' }}
         with: {entrypoint: sh, args: -c}
 `)
-	w, errs := workflowparser.ParseWorkflow(source)
+	w, errs := parser.ParseWorkflow(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	steps := w.Jobs["test"].Steps
-	if steps[0].ID.Value != "build" || steps[0].ID.Pos.Line != 6 || steps[0].Exec.(*workflowlang.ExecRun).Shell.Value != "bash" {
+	if steps[0].ID.Value != "build" || steps[0].ID.Pos.Line != 6 || steps[0].Exec.(*definition.ExecRun).Shell.Value != "bash" {
 		t.Fatal("static values or positions changed")
 	}
-	action := steps[1].Exec.(*workflowlang.ExecAction)
+	action := steps[1].Exec.(*definition.ExecAction)
 	if action.Uses.Value != "docker://alpine:3" || action.Entrypoint == nil || action.Args == nil || len(action.Inputs) != 0 {
 		t.Fatalf("Docker input dispatch lost: %#v", action)
 	}

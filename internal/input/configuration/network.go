@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
@@ -29,13 +29,13 @@ type MetadataMirrorServices []string
 func (c *MetadataMirrorsConfig) DecodeConfig(value any) error {
 	type plain MetadataMirrorsConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	if next.Services != nil {
 		for i, service := range *next.Services {
 			if service != "jsdelivr" {
-				return binding.At("services", binding.At(strconv.Itoa(i), fmt.Errorf("unknown metadata mirror %q; supported service: jsdelivr", service)))
+				return configdecode.At("services", configdecode.At(strconv.Itoa(i), fmt.Errorf("unknown metadata mirror %q; supported service: jsdelivr", service)))
 			}
 		}
 	}

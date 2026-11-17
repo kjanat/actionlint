@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -13,7 +14,7 @@ import (
 func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
 	t.Parallel()
 	for _, diagnostics := range [][]results.Diagnostic{nil, {{Rule: "test", Message: "partial finding", Path: "workflow.yml"}}} {
-		for _, format := range []Format{FormatJSON, FormatJSONL} {
+		for _, format := range []outputformat.Format{outputformat.JSON, outputformat.JSONL} {
 			renderer, err := New(format, "", false, func() string { return "test" }, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -23,7 +24,7 @@ func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
 			if err := renderer.Render(&output, RenderedReport{CheckResult: given}); err != nil {
 				t.Fatal(err)
 			}
-			if format == FormatJSON {
+			if format == outputformat.JSON {
 				var actual report.CheckResult
 				if err := json.Unmarshal(output.Bytes(), &actual); err != nil {
 					t.Fatal(err)
@@ -40,7 +41,7 @@ func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
 
 func TestJSONRendererRequiresSuppliedCompletion(t *testing.T) {
 	t.Parallel()
-	for _, format := range []Format{FormatJSON, FormatJSONL} {
+	for _, format := range []outputformat.Format{outputformat.JSON, outputformat.JSONL} {
 		renderer, err := New(format, "", false, func() string { return "test" }, nil)
 		if err != nil {
 			t.Fatal(err)

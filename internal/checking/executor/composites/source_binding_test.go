@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -68,7 +68,7 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: firstRegistry, Actions: workspaceactions.NewResolver(nil, nil)}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: firstRegistry, Actions: localactions.NewResolver(nil, nil)}
 	if _, err := Workflow(options, secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+			options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: localactions.NewResolver(nil, nil), CollectScripts: true}
 			result, err := Workflow(options, snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -278,7 +278,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	}
 	foreign := *meta
 	foreign.Directory = "foreign"
-	deployment, err := scriptexecution.NewDeployment(registry, snapshot, fixture.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	deployment, err := scriptanalysis.NewDeployment(registry, snapshot, fixture.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,8 +291,8 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: registry, Scopes: analysis.scriptScopes})
-	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes) != 0 {
+	batch, batchErr := scriptanalysis.NewBatch(graph, scriptanalysis.Collection{Declarations: registry, Scopes: analysis.scriptScopes})
+	if !errors.Is(returnedErr, scriptanalysis.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes) != 0 {
 		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes)
 	}
 }
@@ -328,7 +328,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if !exists || unit.Origin.Job != "Build" || fact.JobID != "Build" {
 		t.Fatalf("prepared output trusted mutable collector job state: unit=%+v fact=%+v", unit, fact)
 	}
-	if unit.Reference == (source.Reference{}) {
+	if unit.Reference == (sourcetext.Reference{}) {
 		t.Fatal("prepared root script lost its source reference")
 	}
 }
@@ -346,7 +346,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: localactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)

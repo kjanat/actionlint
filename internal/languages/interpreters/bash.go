@@ -42,7 +42,7 @@ func BashDefinition() commands.Definition {
 // BashSetup describes the script's initial options rather than every earlier flag.
 // Changes with side effects preserve their order: POSIX mode changes shopt
 // settings, and selecting an editing mode disables the other editing mode.
-func BashSetup(settings []commands.Setting) string {
+func BashSetup(settings []commands.OptionSetting) string {
 	settings = initialSettings(settings)
 	aliases := map[string]string{"allexport": "a", "notify": "b", "braceexpand": "B", "noclobber": "C", "errexit": "e", "errtrace": "E", "noglob": "f", "hashall": "h", "histexpand": "H", "keyword": "k", "monitor": "m", "noexec": "n", "privileged": "p", "onecmd": "t", "functrace": "T", "nounset": "u", "verbose": "v", "xtrace": "x", "physical": "P"}
 	var lines []string
@@ -86,10 +86,10 @@ func BashSetup(settings []commands.Setting) string {
 	return strings.Join(lines, "; ")
 }
 
-func initialSettings(settings []commands.Setting) []commands.Setting {
+func initialSettings(settings []commands.OptionSetting) []commands.OptionSetting {
 	last := make(map[string]int)
 	editing := -1
-	independent := func(setting commands.Setting) bool {
+	independent := func(setting commands.OptionSetting) bool {
 		if setting.Group != "set" {
 			return false
 		}
@@ -112,7 +112,7 @@ func initialSettings(settings []commands.Setting) []commands.Setting {
 			editing = i
 		}
 	}
-	result := make([]commands.Setting, 0, len(settings))
+	result := make([]commands.OptionSetting, 0, len(settings))
 	for i, setting := range settings {
 		if setting.Group == "set" && (setting.Name == "emacs" || setting.Name == "vi") {
 			// Bash's invocation parser stores one editing mode. +o emacs and +o vi

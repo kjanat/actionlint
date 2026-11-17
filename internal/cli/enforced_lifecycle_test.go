@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 const requiredRunnerPolicy = `lint:
@@ -50,7 +50,7 @@ func TestCLIEnforcedLifecycleCannotBeSuppressed(t *testing.T) {
 		if status != 1 {
 			t.Fatalf("%s: status %d, stdout %s, stderr %s", tc.name, status, &out, &log)
 		}
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func TestCLIEnforcedLifecycleCannotBeSuppressed(t *testing.T) {
 func TestCLIEnforcedLifecycleFailsClosed(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	for _, path := range []string{filepath.Join(t.TempDir(), "missing.yml"), "https://config.example/uncached-policy.yml"} {
 		status, out, log := runOfflineCommand(t, acquisition, arm32Workflow, "--offline", "check", "--no-config", "--no-tools", "--enforce-policy", path, "-")
 		if status != 3 {
@@ -88,7 +88,7 @@ func TestCLIEnforcedLifecycleFailsClosed(t *testing.T) {
 
 func TestCLILifecycleAsOfConflict(t *testing.T) {
 	t.Parallel()
-	status, _, log := runOfflineCommand(t, pluginacquisition.Settings{}, arm32Workflow, "check", "--no-config", "--no-tools", "--as-of", "2026-01-01", "--runner-as-of", "2026-01-02", "-")
+	status, _, log := runOfflineCommand(t, pluginacquisition.Options{}, arm32Workflow, "check", "--no-config", "--no-tools", "--as-of", "2026-01-01", "--runner-as-of", "2026-01-02", "-")
 	if status == 0 || !strings.Contains(log, "--as-of and --runner-as-of") {
 		t.Fatalf("status %d, stderr %s", status, log)
 	}
@@ -97,7 +97,7 @@ func TestCLILifecycleAsOfConflict(t *testing.T) {
 func TestCLIEnforcedLifecycleWarmAndOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	const policy = "https://config.example/required.yml"
 	registry.SetFile(policy, []byte(requiredRunnerPolicy))
 	args := []string{"--no-config", "--no-tools", "--enforce-policy", policy, "--runner-service", "github.com", "--as-of", "2026-12-08", "-"}

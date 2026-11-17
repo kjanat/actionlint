@@ -3,7 +3,7 @@ package typecheck_test
 import (
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestParserOwnedExpressionSpans(t *testing.T) {
@@ -22,11 +22,11 @@ func TestParserOwnedExpressionSpans(t *testing.T) {
 	} {
 		t.Run(tc.text, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.text + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.text + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			span := exprsyntax.ExpressionSpan(node)
+			span := syntax.ExpressionSpan(node)
 			if got := tc.text[span.Start:span.End]; got != tc.want {
 				t.Fatalf("range %q, want %q", got, tc.want)
 			}

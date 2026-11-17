@@ -3,23 +3,23 @@ package expressions
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 	t.Parallel()
-	workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB: safe}\n    strategy:\n      matrix: {os: [ubuntu-latest]}\n    steps:\n      - uses: actions/github-script@v8\n        env: {STEP: safe}\n        with:\n          script: ${{ github.event.issue.title }}\n"))
+	workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB: safe}\n    strategy:\n      matrix: {os: [ubuntu-latest]}\n    steps:\n      - uses: actions/github-script@v8\n        env: {STEP: safe}\n        with:\n          script: ${{ github.event.issue.title }}\n"))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
 	rule := newTestChecker()
 	view := ownedWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
-	rule.BeginComposite(workflowdecl.ActionBody{})
-	rule.Error(&source.Position{Line: 1, Column: 1}, "existing finding")
+	rule.BeginComposite(workflows.ActionBody{})
+	rule.Error(&sourcetext.Position{Line: 1, Column: 1}, "existing finding")
 	originalFinding := rule.errs[0]
 	if err := rule.CheckCompositeStep(testStep(t, job, 0)); err != nil {
 		t.Fatal(err)

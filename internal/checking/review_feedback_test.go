@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 func writeReviewFixture(t *testing.T, root, path, content string) {
@@ -70,7 +70,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	}
 	backend := &reviewShellcheckBackend{}
 	_, err = runTestAnalysis(t.Context(), analysisRequest{
-		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: backend}}),
+		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: backend}}),
 		Sources: []sourceUnit{{
 			Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"),
@@ -115,15 +115,15 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			marker := filepath.Join(root, "executed")
-			command, err := toolconfig.NewCommand(executable,
+			command, err := tools.NewCommand(executable,
 				[]string{"-test.run=^TestRepositoryProcessHelper$", "--"},
 				map[string]string{"ACTIONLINT_REPOSITORY_PROCESS": "1", "ACTIONLINT_REPOSITORY_PROCESS_MARKER": marker, "ACTIONLINT_REPOSITORY_TOOL": tool})
 			if err != nil {
 				t.Fatal(err)
 			}
-			backend := toolconfig.ProcessBackend(command)
+			backend := tools.ProcessBackend(command)
 			cfg := &configuration.Config{Tools: configuration.ToolsConfig{tool: {Backend: backend}}}
-			options := registry.Selections{tool: {Command: tool}}
+			options := registry.ToolSelections{tool: {Command: tool}}
 			shell := "python"
 			if tool == "shellcheck" {
 				shell = "bash"

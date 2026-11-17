@@ -6,12 +6,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -31,22 +31,22 @@ var UncancellableConditionRule = &define.Rule{
 }
 
 // UncancellableCondition reports a condition of w that keeps running after cancellation.
-func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) []reporting.StepFinding {
+func UncancellableCondition(w workflows.Workflow, value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
-	expr, err, offset := exprsyntax.ParseConditionExpression(value.Value)
-	if err != nil || expr == nil || !workflowconditions.AlwaysIgnoresCancellation(expr) {
+	expr, err, offset := syntax.ParseConditionExpression(value.Value)
+	if err != nil || expr == nil || !conditions.AlwaysIgnoresCancellation(expr) {
 		return nil
 	}
 	finding := reporting.Warning("uncancellable-condition", "", value.Pos,
 		"this job can continue after workflow cancellation. Review whether it must finish cancellation cleanup or reporting")
 	// Fix only a standalone call. Compound conditions can deliberately select
 	// cancellation-only work or have branches needing different cancellation behavior.
-	call, standalone := expr.(*exprsyntax.FuncCallNode)
+	call, standalone := expr.(*syntax.FuncCallNode)
 	source := w.ScalarSource(value)
-	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source != nil && exprsyntax.ConditionSource(value.Value) == value.Value {
-		span := exprsyntax.ExpressionSpan(expr)
+	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source != nil && syntax.ConditionSource(value.Value) == value.Value {
+		span := syntax.ExpressionSpan(expr)
 		startOffset, endOffset := offset+span.Start, offset+span.End
 		startLine, startColumn := decodedConditionPosition(value.Value, startOffset)
 		endLine, endColumn := decodedConditionPosition(value.Value, endOffset)
@@ -61,7 +61,7 @@ func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) 
 			finding.Fixes = []results.Fix{{
 				Description: "Skip this job when cancelled (changes behavior)", Applicability: results.FixUnsafe,
 				Edits: []results.Edit{{
-					Start: sourcepos.ZeroIfNil(start), End: sourcepos.ZeroIfNil(end), Replacement: replacement,
+					Start: sourcetext.ZeroIfNil(start), End: sourcetext.ZeroIfNil(end), Replacement: replacement,
 				}},
 			}}
 		}
@@ -74,6 +74,6 @@ func decodedConditionPosition(value string, offset int) (line, column int) {
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 }
 
-func checkJobCancellationCondition(job declaration.Job) []reporting.StepFinding {
+func checkJobCancellationCondition(job workflows.Job) []reporting.StepFinding {
 	return UncancellableCondition(job.Workflow(), job.If)
 }

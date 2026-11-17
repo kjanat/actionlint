@@ -6,15 +6,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -31,14 +31,14 @@ var IfCondRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Job: checkJobConditions, Step: checkStepCondition}),
 }
 
-func checkCondition(value *workflowlang.String) []reporting.StepFinding {
+func checkCondition(value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
-	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcepos.ZeroIfNil(value.Pos)))
+	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcetext.ZeroIfNil(value.Pos)))
 }
 
-func checkJobConditions(job declaration.Job) []reporting.StepFinding {
+func checkJobConditions(job workflows.Job) []reporting.StepFinding {
 	out := checkCondition(job.If)
 	if job.Snapshot != nil {
 		out = append(out, checkCondition(job.Snapshot.If)...)
@@ -46,13 +46,13 @@ func checkJobConditions(job declaration.Job) []reporting.StepFinding {
 	return out
 }
 
-func checkStepCondition(step declaration.Step) []reporting.StepFinding {
+func checkStepCondition(step workflows.Step) []reporting.StepFinding {
 	return checkCondition(step.If)
 }
 
 // conditionDiagnostics reports explicit if: conditions that are constant or have text around ${{ }}.
-func conditionDiagnostics(value string, start sourcepos.Position) []results.Diagnostic {
-	expr, err, _ := exprsyntax.ParseConditionExpression(value)
+func conditionDiagnostics(value string, start sourcetext.Position) []results.Diagnostic {
+	expr, err, _ := syntax.ParseConditionExpression(value)
 	if err != nil {
 		return nil
 	}
@@ -62,19 +62,19 @@ func conditionDiagnostics(value string, start sourcepos.Position) []results.Diag
 	if expr == nil {
 		return report(fmt.Sprintf("if: condition %q is always evaluated to true because extra characters are around ${{ }}", value))
 	}
-	checker := exprcheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 	if !checker.IsConstant(expr) {
 		return nil
 	}
-	if _, errs := checker.Check(expreval.EvaluateSubexpressions(expr)); len(errs) != 0 {
+	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(expr)); len(errs) != 0 {
 		return nil
 	}
-	if constant, known := expreval.ConditionConstantValue(expr); known {
-		text := strings.TrimSpace(exprsyntax.ConditionSource(value))
+	if constant, known := evaluate.ConditionConstantValue(expr); known {
+		text := strings.TrimSpace(syntax.ConditionSource(value))
 		if strings.HasPrefix(text, "${{") {
 			text = strings.TrimSpace(text[3 : len(text)-2])
 		}
-		if exprvalues.ExpressionTruthy(constant) {
+		if values.ExpressionTruthy(constant) {
 			return report(fmt.Sprintf("constant expression %q in condition is always truthy. remove the if: section", text))
 		}
 		return report(fmt.Sprintf("constant expression %q in condition is always falsy. this step or job will be skipped", text))

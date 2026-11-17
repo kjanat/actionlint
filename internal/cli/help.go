@@ -8,10 +8,10 @@ import (
 	"runtime/debug"
 	"strings"
 
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -46,11 +46,11 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 	force := a.opts.color
 	if !a.anySet("color", "modern-color", "no-color") {
 		switch a.inv.Render.Color {
-		case render.ColorAlways:
+		case output.ColorAlways:
 			force = true
-		case render.ColorNever:
+		case output.ColorNever:
 			return false
-		case render.ColorAuto:
+		case output.ColorAuto:
 			// Fall back to terminal detection.
 		}
 	}
@@ -106,7 +106,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		if a.inv.Render.PrettyJSON {
 			out = &prettyJSONOutput{Writer: out, ctx: a.ctx, color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
-		if err := commandstreams.WriteJSON(out, describeCommand(c)); err != nil {
+		if err := commandio.WriteJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
 		}
 		return

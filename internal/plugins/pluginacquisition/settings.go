@@ -6,19 +6,19 @@ import (
 	"os"
 	"path/filepath"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// Settings selects the user cache directory and network connections for
+// Options selects the user cache directory and network connections for
 // acquiring plugin artifacts and registry records.
-type Settings struct {
+type Options struct {
 	UserCacheDir string
 	Connections  acquisitionhttp.Connections
 }
 
-func (s Settings) userCacheDir() (string, error) {
+func (s Options) userCacheDir() (string, error) {
 	if s.UserCacheDir != "" {
 		return s.UserCacheDir, nil
 	}
@@ -26,7 +26,7 @@ func (s Settings) userCacheDir() (string, error) {
 }
 
 // ArtifactCacheDir returns the directory that stores verified plugin artifacts.
-func (s Settings) ArtifactCacheDir() (string, error) {
+func (s Options) ArtifactCacheDir() (string, error) {
 	base, err := s.userCacheDir()
 	if err != nil {
 		return "", err
@@ -36,7 +36,7 @@ func (s Settings) ArtifactCacheDir() (string, error) {
 
 // RegistryCacheDir returns the directory that stores verified registry
 // releases, selections and release statuses.
-func (s Settings) RegistryCacheDir() (string, error) {
+func (s Options) RegistryCacheDir() (string, error) {
 	base, err := s.userCacheDir()
 	if err != nil {
 		return "", err
@@ -46,8 +46,8 @@ func (s Settings) RegistryCacheDir() (string, error) {
 
 // ArtifactOptions caches artifacts in the user cache directory and pulls
 // oci:// sources.
-func (s Settings) ArtifactOptions() pluginartifact.Options {
-	options := pluginartifact.Options{PullOCI: oci.Pull, Connections: s.Connections}
+func (s Options) ArtifactOptions() artifacts.Options {
+	options := artifacts.Options{PullOCI: oci.Pull, Connections: s.Connections}
 	if directory, err := s.ArtifactCacheDir(); err == nil {
 		options.CacheDir = directory
 	}
@@ -55,7 +55,7 @@ func (s Settings) ArtifactOptions() pluginartifact.Options {
 }
 
 // CompiledModuleCacheDir creates the user cache directory for compiled modules, or returns empty on failure.
-func (s Settings) CompiledModuleCacheDir() string {
+func (s Options) CompiledModuleCacheDir() string {
 	base, err := s.userCacheDir()
 	if err != nil {
 		return ""

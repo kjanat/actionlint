@@ -8,23 +8,23 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	t.Parallel()
-	cwd := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
+	cwd := filepath.Join("..", "..", "..", "..", "input", "references", "reusableworkflows", "testdata", "reusable-workflows")
 	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
 		// workflow0.yaml
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "optional_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
-				"required_input": {Name: "required_input", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"optional_input": {Name: "optional_input", Required: false, Type: definition.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "required_input", Required: true, Type: definition.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "output"},
@@ -37,8 +37,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
-				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: definition.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: definition.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "OUTPUT"},
@@ -180,22 +180,22 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c := &workflowlang.WorkflowCall{
-				Uses:           &workflowlang.String{Value: tc.uses, Pos: &source.Position{}},
-				Inputs:         map[string]*workflowlang.WorkflowCallInput{},
-				Secrets:        map[string]*workflowlang.WorkflowCallSecret{},
+			c := &definition.WorkflowCall{
+				Uses:           &definition.String{Value: tc.uses, Pos: &sourcetext.Position{}},
+				Inputs:         map[string]*definition.WorkflowCallInput{},
+				Secrets:        map[string]*definition.WorkflowCallSecret{},
 				InheritSecrets: tc.inheritSecrets,
 			}
 			for _, i := range tc.inputs {
-				c.Inputs[strings.ToLower(i)] = &workflowlang.WorkflowCallInput{
-					Name:  &workflowlang.String{Value: i, Pos: &source.Position{}},
-					Value: &workflowlang.String{Value: "", Pos: &source.Position{}},
+				c.Inputs[strings.ToLower(i)] = &definition.WorkflowCallInput{
+					Name:  &definition.String{Value: i, Pos: &sourcetext.Position{}},
+					Value: &definition.String{Value: "", Pos: &sourcetext.Position{}},
 				}
 			}
 			for _, s := range tc.secrets {
-				c.Secrets[strings.ToLower(s)] = &workflowlang.WorkflowCallSecret{
-					Name:  &workflowlang.String{Value: s, Pos: &source.Position{}},
-					Value: &workflowlang.String{Value: "", Pos: &source.Position{}},
+				c.Secrets[strings.ToLower(s)] = &definition.WorkflowCallSecret{
+					Name:  &definition.String{Value: s, Pos: &sourcetext.Position{}},
+					Value: &definition.String{Value: "", Pos: &sourcetext.Position{}},
 				}
 			}
 
@@ -206,7 +206,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				}
 				return
 			}
-			view := declaration.Bind("call-fixture", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Workflow()
+			view := workflows.Bind("call-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"test": {WorkflowCall: c}}}, false, "").Workflow()
 			job, _ := view.Job("test")
 			findings := workflowcall.CheckArguments(job.WorkflowCall, metadata)
 

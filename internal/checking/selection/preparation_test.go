@@ -9,19 +9,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	fixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	nameinput "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
-func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (namemodel.Declared, error)) define.RuleInputs {
+func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (names.Declared, error)) define.RuleInputs {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, ".github", "workflows", "consumer.yml")
@@ -30,7 +30,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		trigger = "{workflow_run: {workflows: [Missing], types: [completed]}}"
 	}
 	source := "on: " + trigger + "\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
-	_, _, snapshots := fixture.NewCapturedSnapshots(t, root)
+	_, _, snapshots := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		Bindings: rulebinding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
-		WorkflowNames: nameinput.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
+		WorkflowNames: nameindex.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
 	}
 }
 
@@ -62,12 +62,12 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			loads := 0
-			inputs := workflowNameInputs(t, tc.level, tc.workflowRun, func(string) (namemodel.Declared, error) {
+			inputs := workflowNameInputs(t, tc.level, tc.workflowRun, func(string) (names.Declared, error) {
 				loads++
-				return namemodel.Declare(&workflowlang.String{Value: "Build"}), nil
+				return names.Declare(&definition.String{Value: "Build"}), nil
 			})
 			found := false
-			for _, registration := range ruleexec.Registrations(inputs.Rules) {
+			for _, registration := range registration.Registrations(inputs.Rules) {
 				if registration.Name != "workflow-run-names" {
 					continue
 				}
@@ -106,16 +106,16 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 	t.Parallel()
 	loads := 0
-	inputs := workflowNameInputs(t, "on", true, func(string) (namemodel.Declared, error) {
+	inputs := workflowNameInputs(t, "on", true, func(string) (names.Declared, error) {
 		loads++
-		return namemodel.Unknown(), context.Canceled
+		return names.Unknown(), context.Canceled
 	})
 	selected, err := selection.CreateRules(inputs.Rules, inputs, false)
 	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "prepare workflow-run-names inputs") || loads != 1 {
 		t.Fatalf("preparation failure lost its cause or operation: error=%v loads=%d", err, loads)
 	}
 	earlier := map[string]bool{}
-	for _, registration := range ruleexec.Registrations(inputs.Rules) {
+	for _, registration := range registration.Registrations(inputs.Rules) {
 		if registration.Name == "workflow-run-names" {
 			break
 		}
@@ -135,8 +135,8 @@ func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 
 func TestWorkflowNamePreparationReportsUnavailableKnowledge(t *testing.T) {
 	t.Parallel()
-	inputs := workflowNameInputs(t, "on", true, func(string) (namemodel.Declared, error) {
-		return namemodel.Unknown(), nil
+	inputs := workflowNameInputs(t, "on", true, func(string) (names.Declared, error) {
+		return names.Unknown(), nil
 	})
 	selected, err := selection.CreateRules(inputs.Rules, inputs, false)
 	if err != nil {

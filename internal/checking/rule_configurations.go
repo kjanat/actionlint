@@ -3,7 +3,7 @@ package checking
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // ruleConfigurations prepares each source and action scope once for this check.
@@ -56,7 +56,7 @@ func (c *ruleConfigurations) bindSource(path string) (*rulebinding.Scope, error)
 }
 
 func (c *ruleConfigurations) bindInvocation(parent *rulebinding.Scope, path string) (*rulebinding.Scope, error) {
-	if !source.RemoteAddress(path) {
+	if !sourcetext.RemoteAddress(path) {
 		return c.bindSource(path)
 	}
 	key := remoteBinding{parent, path}

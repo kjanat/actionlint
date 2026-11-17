@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
@@ -18,7 +18,7 @@ func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
 	for _, input := range []string{"github.event_name == 'push'", "github.event.action == '0'", "format('pu{0}', 'sh') == github.event_name"} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+			node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
@@ -55,7 +55,7 @@ func TestEventTypeNarrowingDistinguishesUnknownAndUnreachable(t *testing.T) {
 		{"env.DYNAMIC", bindings, true},
 		{"github.event_name == 'issues'", modelBindings{}, true},
 	} {
-		node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
+		node := syntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 		if node == nil {
 			t.Fatal("expression did not parse")
 		}

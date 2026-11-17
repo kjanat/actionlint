@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -95,9 +95,9 @@ jobs:
 					if diff := cmp.Diff(kindCounts(tc.kinds), kindCounts(kinds)); diff != "" {
 						t.Fatal(diff)
 					}
-					wantStatus := commandstatus.ExitSuccessNoProblem
+					wantStatus := exitcode.ExitSuccessNoProblem
 					if len(tc.kinds) != 0 {
-						wantStatus = commandstatus.ExitSuccessProblemFound
+						wantStatus = exitcode.ExitSuccessProblemFound
 					}
 					if status != wantStatus || stderr.Len() != 0 {
 						t.Fatalf("status=%d, want=%d; stderr=%s", status, wantStatus, &stderr)
@@ -146,9 +146,9 @@ jobs:
 				args = append(args, "--ignore-regex", tc.cliIgnore)
 			}
 			status := cmd.Main(append(args, "-"))
-			wantStatus := commandstatus.ExitSuccessNoProblem
+			wantStatus := exitcode.ExitSuccessNoProblem
 			if len(tc.want) != 0 {
-				wantStatus = commandstatus.ExitSuccessProblemFound
+				wantStatus = exitcode.ExitSuccessProblemFound
 			}
 			if status != wantStatus || stderr.Len() != 0 {
 				t.Fatalf("status=%d, want=%d; stderr=%s", status, wantStatus, &stderr)

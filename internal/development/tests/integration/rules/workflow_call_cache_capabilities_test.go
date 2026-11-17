@@ -7,19 +7,19 @@ import (
 	"strings"
 	"testing"
 
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
+func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*finding.Finding {
 	t.Helper()
 	root := t.TempDir()
 	cache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
@@ -28,11 +28,11 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			t.Fatal(err)
 		}
 		if fromAST {
-			w, errs := workflowparser.ParseWorkflow([]byte(src))
+			w, errs := parser.ParseWorkflow([]byte(src))
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
-			_, ok := workflowlang.FindWorkflowCallEvent(w)
+			_, ok := definition.FindWorkflowCallEvent(w)
 			if !ok {
 				t.Fatalf("%s has no workflow_call event", name)
 			}
@@ -46,16 +46,16 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			}
 		}
 	}
-	w, errs := workflowparser.ParseWorkflow([]byte(caller))
+	w, errs := parser.ParseWorkflow([]byte(caller))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, repofacts.Snapshot{})
-	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	rule := workflowCallVisitor(t, declarations.Workflow(w), cache, repository.Snapshot{})
+	if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	for _, j := range w.Jobs {
-		if err := rule.VisitJobPre(fixturedecl.Job(j)); err != nil {
+		if err := rule.VisitJobPre(declarations.Job(j)); err != nil {
 			t.Fatal(err)
 		}
 	}

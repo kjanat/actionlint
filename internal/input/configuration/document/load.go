@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 )
 
 // Loaded is a configuration file merged over the files it extends.
@@ -96,12 +96,12 @@ func LoadConfigDocument(path string, files *Files, read func(string) ([]byte, er
 	var load func(string, int) (Loaded, error)
 	load = func(path string, depth int) (Loaded, error) {
 		readPath := path
-		path, err := source.NormalizeAddress(path)
+		path, err := configsource.NormalizeAddress(path)
 		if err != nil {
 			return Loaded{}, err
 		}
 		identity := path
-		if !source.IsRemoteAddress(path) {
+		if !configsource.IsRemoteAddress(path) {
 			if actual, e := filepath.EvalSymlinks(path); e == nil {
 				identity = actual
 			}
@@ -152,7 +152,7 @@ func LoadConfigDocument(path string, files *Files, read func(string) ([]byte, er
 		}
 		var result Loaded
 		for _, name := range bases {
-			resolved, err := source.ResolveAddress(path, name)
+			resolved, err := configsource.ResolveAddress(path, name)
 			if err != nil {
 				return Loaded{}, fmt.Errorf("extends in %q: %w", path, err)
 			}

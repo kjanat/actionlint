@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Errors returned for programming or input misuse.
@@ -52,7 +52,7 @@ func (k EntryKind) Valid() bool { return k == EntryWorkflow || k == EntryAction 
 // Entry is the analysis root. It has no incoming call.
 type Entry struct {
 	Kind      EntryKind
-	Reference source.Reference
+	Reference sourcetext.Reference
 }
 
 // ID is a deterministic occurrence identifier (lowercase hex SHA-256).
@@ -137,7 +137,7 @@ func digest(domain string, fields ...string) ID {
 	return ID(hex.EncodeToString(sum[:]))
 }
 
-func validateRef(name string, ref source.Reference) error {
+func validateRef(name string, ref sourcetext.Reference) error {
 	if ref.Document == "" || ref.Node == "" {
 		return fmt.Errorf("%w: %s needs document and node", ErrInvalidSource, name)
 	}
@@ -150,7 +150,7 @@ func validateRef(name string, ref source.Reference) error {
 }
 
 // NewRootID returns the entry ID. Revision and address are not part of it.
-func NewRootID(kind EntryKind, ref source.Reference) (ID, error) {
+func NewRootID(kind EntryKind, ref sourcetext.Reference) (ID, error) {
 	if !kind.Valid() {
 		return "", fmt.Errorf("%w: kind %q", ErrInvalidEntry, string(kind))
 	}
@@ -161,7 +161,7 @@ func NewRootID(kind EntryKind, ref source.Reference) (ID, error) {
 }
 
 // NewCallID returns the call ID for a parent and call-site reference.
-func NewCallID(parent ID, site source.Reference) (ID, error) {
+func NewCallID(parent ID, site sourcetext.Reference) (ID, error) {
 	if !parent.valid() {
 		return "", fmt.Errorf("%w: malformed parent", ErrInvalidID)
 	}
@@ -173,7 +173,7 @@ func NewCallID(parent ID, site source.Reference) (ID, error) {
 
 // NewScriptID returns the script occurrence ID for a declaration within the
 // entry or call identified by owner. Run scripts have no input name.
-func NewScriptID(owner ID, decl source.Reference, kind ScriptKind, input string) (ID, error) {
+func NewScriptID(owner ID, decl sourcetext.Reference, kind ScriptKind, input string) (ID, error) {
 	if !owner.valid() {
 		return "", fmt.Errorf("%w: malformed owner", ErrInvalidID)
 	}
@@ -208,7 +208,7 @@ type Call struct {
 // Stop identifies the first declaration rejected by a call or script budget.
 type Stop struct {
 	Parent ID
-	Site   source.Reference
+	Site   sourcetext.Reference
 	Limit  LimitKind
 	Max    int
 }
@@ -377,7 +377,7 @@ type Builder struct {
 
 // NewBuilder starts a graph for an entry. Pass DefaultBudget for application
 // limits.
-func NewBuilder(kind EntryKind, ref source.Reference, budget Budget) (*Builder, error) {
+func NewBuilder(kind EntryKind, ref sourcetext.Reference, budget Budget) (*Builder, error) {
 	root, err := NewRootID(kind, ref)
 	if err != nil {
 		return nil, err
@@ -467,7 +467,7 @@ func (t Ticket) Err() error {
 // Begin admits a call under the entry or an open expanded call context.
 // It checks parent and site validity and duplicate traversal, then the total
 // budget, then depth, all before metadata acquisition.
-func (b *Builder) Begin(parentContext Context, site source.Reference, facts Facts) (Ticket, error) {
+func (b *Builder) Begin(parentContext Context, site sourcetext.Reference, facts Facts) (Ticket, error) {
 	if b.published {
 		return Ticket{}, ErrPublished
 	}
@@ -582,13 +582,13 @@ func callerResolvable(kind OutcomeKind) bool {
 	return false
 }
 
-func sameDeclaration(a, c source.Reference) bool {
+func sameDeclaration(a, c sourcetext.Reference) bool {
 	return a.Document == c.Document && a.Node == c.Node
 }
 
 // activeOwner finds the nearest ancestor whose expanded target declares the
 // same document/node, including the standalone action entry itself.
-func (b *Builder) activeOwner(parent ID, target source.Reference) (ID, source.Reference, bool) {
+func (b *Builder) activeOwner(parent ID, target sourcetext.Reference) (ID, sourcetext.Reference, bool) {
 	for p := parent; p != b.root; {
 		rec := b.records[b.index[p]]
 		if t, ok := rec.call.Outcome.Target(); ok && rec.call.Outcome.kind == OutcomeExpanded && sameDeclaration(t, target) {
@@ -599,7 +599,7 @@ func (b *Builder) activeOwner(parent ID, target source.Reference) (ID, source.Re
 	if b.entry.Kind == EntryAction && sameDeclaration(b.entry.Reference, target) {
 		return b.root, b.entry.Reference, true
 	}
-	return "", source.Reference{}, false
+	return "", sourcetext.Reference{}, false
 }
 
 // Close ends the body of an expanded call. Every child must be final. Closing
@@ -672,7 +672,7 @@ func (b *Builder) InterruptEntry(cause Reason, detail string) error {
 	if b.current != b.root {
 		return ErrUnfinished
 	}
-	o, err := interrupted(cause, detail, source.Reference{}, false)
+	o, err := interrupted(cause, detail, sourcetext.Reference{}, false)
 	if err != nil {
 		return err
 	}

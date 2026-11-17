@@ -3,7 +3,7 @@ package expressions
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestUnsoundTernary(t *testing.T) {
@@ -61,7 +61,7 @@ func TestUnsoundTernary(t *testing.T) {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			rule.checkExprsIn("${{ "+tc.expression+" }}", &source.Position{Line: 3, Column: 5}, false, false, "env")
+			rule.checkExprsIn("${{ "+tc.expression+" }}", &sourcetext.Position{Line: 3, Column: 5}, false, false, "env")
 			count := 0
 			for _, finding := range rule.Findings() {
 				if finding.Rule == "unsound-ternary" {

@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -80,7 +80,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				if !strings.Contains(doc.Text, "bad") {
 					continue
 				}
-				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourcepos.ContentDigest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
+				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourcetext.ContentDigest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
 			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {
@@ -123,7 +123,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	if start["character"] != float64(2) {
 		t.Fatal(start)
 	}
-	send("textDocument/codeAction", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "range": sourceRange{position{0, 0}, position{0, 9}}})
+	send("textDocument/codeAction", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "range": editorRange{editorPosition{0, 0}, editorPosition{0, 9}}})
 	actions := read()["result"].([]any)
 	if len(actions) != 1 {
 		t.Fatal(actions)
@@ -132,7 +132,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	if changes[0].(map[string]any)["textDocument"].(map[string]any)["version"] != float64(1) {
 		t.Fatal(changes)
 	}
-	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"range": sourceRange{position{0, 2}, position{0, 5}}, "text": "good"}}})
+	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"range": editorRange{editorPosition{0, 2}, editorPosition{0, 5}}, "text": "good"}}})
 	params = read()["params"].(map[string]any)
 	if params["version"] != float64(2) || len(params["diagnostics"].([]any)) != 0 {
 		t.Fatal(params)
@@ -185,10 +185,10 @@ func readRawEnvelope(r *bufio.Reader) ([]byte, error) {
 
 func TestCoordinateBoundaries(t *testing.T) {
 	t.Parallel()
-	if _, err := byteOffset("😀x", position{0, 1}); err == nil {
+	if _, err := editorByteOffset("😀x", editorPosition{0, 1}); err == nil {
 		t.Fatal("accepted middle of surrogate pair")
 	}
-	if offset, err := byteOffset("😀x", position{0, 2}); err != nil || offset != 4 {
+	if offset, err := editorByteOffset("😀x", editorPosition{0, 2}); err != nil || offset != 4 {
 		t.Fatalf("%d %v", offset, err)
 	}
 	if _, err := ReadRPCMessage(bufio.NewReader(strings.NewReader("Content-Length: 999999999\r\n\r\n"))); err == nil {
@@ -261,7 +261,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 		t.Fatal(params)
 	}
 	// An invalid ranged update is rejected without changing version 2 or killing the server.
-	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]any{"range": sourceRange{position{0, 99}, position{0, 100}}, "text": "x"}}})
+	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]any{"range": editorRange{editorPosition{0, 99}, editorPosition{0, 100}}, "text": "x"}}})
 	if receive()["method"] != "window/logMessage" {
 		t.Fatal("invalid notification was not reported")
 	}
@@ -314,7 +314,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 				if doc.Text == "uses dependency" {
 					return Analysis{
 						Sources:     map[string]Source{dependency: testSource(t, dependency, "\ufeff😀bad\n"), related: relatedSource},
-						Diagnostics: []results.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Related: []results.Related{{Revision: relatedSource.Revision, Coordinates: relatedSource.Coordinates, Path: related, Message: "related", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 9}}}}},
+						Diagnostics: []results.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Related: []results.Related{{Revision: relatedSource.Revision, Coordinates: relatedSource.Coordinates, Path: related, Message: "related", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 9}}}}},
 					}, nil
 				}
 			}

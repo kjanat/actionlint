@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
@@ -27,9 +27,9 @@ func TestDeclareSeparatesDisplayedAndMatchedNames(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
-			var name *workflowlang.String
+			var name *definition.String
 			if !tc.absent {
-				name = &workflowlang.String{Value: tc.value}
+				name = &definition.String{Value: tc.value}
 			}
 			declared := names.Declare(name)
 			explicit, hasExplicit := declared.Explicit()

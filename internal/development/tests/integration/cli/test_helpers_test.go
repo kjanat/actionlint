@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
-	return pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Options {
+	return pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }
 
 type commandTranscript struct {
@@ -30,7 +30,7 @@ func gitRepository(t *testing.T, dir string) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := gitclient.Command(t.Context(), "git", dir, "init", "--quiet").CombinedOutput(); err != nil {
+	if out, err := gitcommand.Command(t.Context(), "git", dir, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 }
@@ -83,15 +83,15 @@ func testRunCommand(input string, args ...string) commandTranscript {
 	return testRunCommandDefaults(input, append([]string{"--summary=false"}, args...)...)
 }
 
-func testRunCommandWithAcquisition(acquisition pluginacquisition.Settings, input string, args ...string) commandTranscript {
+func testRunCommandWithAcquisition(acquisition pluginacquisition.Options, input string, args ...string) commandTranscript {
 	return testRunCommandDefaultsWithAcquisition(acquisition, input, append([]string{"--summary=false"}, args...)...)
 }
 
 func testRunCommandDefaults(input string, args ...string) commandTranscript {
-	return testRunCommandDefaultsWithAcquisition(pluginacquisition.Settings{}, input, args...)
+	return testRunCommandDefaultsWithAcquisition(pluginacquisition.Options{}, input, args...)
 }
 
-func testRunCommandDefaultsWithAcquisition(acquisition pluginacquisition.Settings, input string, args ...string) commandTranscript {
+func testRunCommandDefaultsWithAcquisition(acquisition pluginacquisition.Options, input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout, Acquisition: acquisition}
 	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--no-tool=ruff", "--no-color"}, args...))

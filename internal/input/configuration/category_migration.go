@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ErrRuleMetadataRequired means a category migration needs plugin descriptors.
@@ -188,12 +188,12 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 		setField(rules, category, group)
 		return nil
 	}
-	for _, category := range append([]string{"style", "policy", "external", "nursery", "plugins"}, lintconfig.Categories()...) {
+	for _, category := range append([]string{"style", "policy", "external", "nursery", "plugins"}, ruleconfig.Categories()...) {
 		node := field(rules, category)
 		if node == nil {
 			continue
 		}
-		var group Group
+		var group ruleconfig.Group
 		if err := decodeValue(node, &group); err != nil {
 			return nil, false, err
 		}
@@ -274,7 +274,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 				if explicitSelections[name] {
 					continue
 				}
-				var target Group
+				var target ruleconfig.Group
 				if destination := field(originalRules, descriptor.Category); destination != nil {
 					if err := decodeValue(destination, &target); err != nil {
 						return nil, false, err
@@ -331,7 +331,7 @@ func migrationGroup(node any) (any, error) {
 	if node == nil || isMapping(node) {
 		return cloneMapping(node), nil
 	}
-	var group Group
+	var group ruleconfig.Group
 	if err := decodeValue(node, &group); err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
 		`[{"kind":"action","runs":[]}]`,
 		`[{"kind":"action","runs":"node24"}]`,
 	} {
-		var documents documentmodel.Outlines
+		var documents outline.Outlines
 		if err := json.Unmarshal([]byte(input), &documents); err == nil {
 			t.Fatalf("accepted unsupported document/runtime: %s", input)
 		}
@@ -36,11 +36,11 @@ func TestDocumentOutlinesAcceptMissingRuntime(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var documents documentmodel.Outlines
+			var documents outline.Outlines
 			if err := json.Unmarshal([]byte(tc.input), &documents); err != nil {
 				t.Fatal(err)
 			}
-			want := documentmodel.Outlines{documentmodel.Action{Path: "action.yml"}}
+			want := outline.Outlines{outline.Action{Path: "action.yml"}}
 			if !reflect.DeepEqual(documents, want) {
 				t.Fatalf("missing runtime changed action: got %#v, want %#v", documents, want)
 			}

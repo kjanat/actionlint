@@ -3,10 +3,10 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 func TestFromJSONCompositeConversion(t *testing.T) {
@@ -24,16 +24,16 @@ func TestFromJSONCompositeConversion(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
+			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
 			outputs := exprtypes.NewMapObjectType(exprtypes.StringType())
 			step := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"outputs": outputs.Type()})
 			checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
 			checker.SetContextType("matrix", exprtypes.NewMapObjectType(exprtypes.AnyType()).Type())
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			want := 0
 			if tc.invalid {
 				want = 1
@@ -60,13 +60,13 @@ func TestFromJSONUnknownCollectionMembers(t *testing.T) {
 		t.Run(collection.String(), func(t *testing.T) {
 			t.Parallel()
 			const source = "fromJSON(matrix.collection)"
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
+			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
 			checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"collection": collection}).Type())
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if len(result.Findings) != 1 || result.Findings[0].Rule != "expression-call" || result.Findings[0].Code != "invalid-json" {
 				t.Fatalf("expected a JSON parsing failure without a type error: %+v", result.Findings)
 			}

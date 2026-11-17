@@ -1,4 +1,4 @@
-package nosudo_test
+package tests
 
 import (
 	"bytes"

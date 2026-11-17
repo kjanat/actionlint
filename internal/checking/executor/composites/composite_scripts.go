@@ -5,31 +5,31 @@ import (
 	"fmt"
 	"slices"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, parents []workflowvisit.InvocationParticipant, validate func() error) (err error) {
+func (analysis *compositeAnalyzer) visitActionScripts(call workflows.Step, parents []workflowvisit.InvocationParticipant, validate func() error) (err error) {
 	if err := analysis.sourceSnapshot.ValidateStep(call); err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, pa
 	}
 	callFrame := *analysis
 	callFrame.context = callContext
-	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentCaller, workflowdecl.Environment(call.Env)))
+	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scripts.DeclaredEnvironment(scripts.EnvironmentCaller, workflows.Environment(call.Env)))
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)
@@ -80,7 +80,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, pa
 	}
 	if document, found := analysis.actions.SourceDocument(prepared); found {
 		revision := document.Capture().Revision()
-		if err := analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), source.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext); err != nil {
+		if err := analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext); err != nil {
 			return err
 		}
 	}
@@ -125,7 +125,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, pa
 	return callFrame.visitMetadataScripts(meta, snapshot, address, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflowdecl.Step, actionView *workflowlang.ExecAction, parents []workflowvisit.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows.Step, actionView *definition.ExecAction, parents []workflowvisit.InvocationParticipant) error {
 	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)
@@ -189,12 +189,12 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if bindings != nil {
 		scriptConfig = bindings.Composite()
 	}
-	deployment, err := scriptexecution.NewDeployment(analysis.sourceSnapshots, snapshot, address, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptanalysis.NewDeployment(analysis.sourceSnapshots, snapshot, address, meta.Path(), meta.SourceMapped)
 	if err != nil {
 		return err
 	}
 	parentScope := analysis.scriptScope
-	scope := &scriptexecution.Scope{Bindings: bindings, Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, ConfigProvenance: analysis.configProvenance, Deployment: deployment, Composite: true, Context: callContext}
+	scope := &scriptanalysis.Scope{Bindings: bindings, Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, ConfigProvenance: analysis.configProvenance, Deployment: deployment, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
@@ -250,7 +250,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.Step, participants []workflowvisit.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitInvocationStep(step workflows.Step, participants []workflowvisit.InvocationParticipant) error {
 	for _, participant := range participants {
 		compositeCheckoutPaths(participant, analysis.actions)
 		if err := invocationOutput(analysis.bindings, participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
@@ -262,7 +262,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.Step, p
 	return nil
 }
 
-func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.Step, config *configuration.Config) error {
+func (analysis *compositeAnalyzer) validateMetadataStep(step workflows.Step, config *configuration.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.Step, 
 	return nil
 }
 
-func compositeCheckoutPaths(rule workflowvisit.Pass, actions *workspaceactions.Resolver) {
+func compositeCheckoutPaths(rule workflowvisit.Pass, actions *localactions.Resolver) {
 	participant, ok := rule.(workflowvisit.CheckoutParticipant)
 	if !ok {
 		return
@@ -290,9 +290,9 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *workspaceactions.R
 	participant.ApplyCheckout(actions)
 }
 
-func (analysis *compositeAnalyzer) describeCall(step workflowdecl.Step) (source.Reference, invocation.Facts, error) {
+func (analysis *compositeAnalyzer) describeCall(step workflows.Step) (sourcetext.Reference, invocation.Facts, error) {
 	if !analysis.sourceSnapshot.Present() {
-		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
+		return sourcetext.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}
 	site := step.Reference()
 	declaration := step
@@ -300,8 +300,8 @@ func (analysis *compositeAnalyzer) describeCall(step workflowdecl.Step) (source.
 	return site, facts, err
 }
 
-func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
-	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
+func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference sourcetext.Reference, visit func() error) error {
+	defer rule.AnnotateSince(rule.FindingCount(), func(finding *finding.Finding) {
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.
 		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {

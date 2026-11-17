@@ -3,7 +3,7 @@ package mappings
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
@@ -101,8 +101,8 @@ func TestEvaluatedExpressionKeyRemainsDataAndResolutionIsDetached(t *testing.T) 
 
 func TestKeyedEntriesKeepKeyAndValueOriginsSeparate(t *testing.T) {
 	t.Parallel()
-	keyOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 4, Column: 3}}}
-	itemOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 4, Column: 10}}}
+	keyOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 4, Column: 3}}}
+	itemOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 4, Column: 10}}}
 	resolved := Resolve(&DeclaredMapping{Values: map[string]DeclaredEntry{
 		"Name": {Name: value.YAMLScalar("Name", "!!str", keyOrigin), Value: value.YAMLScalar("source", "!!str", itemOrigin)},
 	}})
@@ -123,11 +123,11 @@ func TestKeyedEntriesKeepKeyAndValueOriginsSeparate(t *testing.T) {
 
 func TestDeclarationsPreserveUnknownInvalidAndSourceKeys(t *testing.T) {
 	t.Parallel()
-	literalOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 2, Column: 7}}}
-	constantOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 3, Column: 7}}, FromExpression: true}
-	runtimeOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 4, Column: 7}}, FromExpression: true}
-	invalidOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 5, Column: 7}}}
-	objectOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 6, Column: 12}}, FromExpression: true}
+	literalOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 2, Column: 7}}}
+	constantOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 3, Column: 7}}, FromExpression: true}
+	runtimeOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 4, Column: 7}}, FromExpression: true}
+	invalidOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 5, Column: 7}}}
+	objectOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 6, Column: 12}}, FromExpression: true}
 	object := value.FromJSON(map[string]any{"derived": "data"}, objectOrigin)
 	resolved := Resolve(&DeclaredMapping{
 		Values: map[string]DeclaredEntry{

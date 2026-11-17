@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -27,7 +27,7 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 	}
 	path := filepath.Join(directory, "actionlint.yml")
 	fixturefiles.WriteText(t, path, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestPluginConfigDiscoveryPreservesLookupErrors(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	fixturefiles.WriteText(t, filepath.Join(directory, "actionlint.yml"), "plugins: []\n")
-	if _, err := configplugins.FindOrDefaultPath(directory); err == nil {
+	if _, err := plugins.FindOrDefaultPath(directory); err == nil {
 		t.Fatal("configuration symlink loop ignored")
 	}
 }

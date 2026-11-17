@@ -4,42 +4,42 @@ import (
 	"reflect"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 func TestRuntimeOutcomesThroughParentExpressions(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		state exprvalues.EvaluationState
+		state values.EvaluationState
 		value any
 	}{
-		{"fromJSON(null)", exprvalues.EvaluationInvalid, nil},
-		{"!fromJSON(null)", exprvalues.EvaluationInvalid, nil},
-		{"fromJSON(null) || true", exprvalues.EvaluationInvalid, nil},
-		{"false || fromJSON(null)", exprvalues.EvaluationInvalid, nil},
-		{"true && fromJSON(null)", exprvalues.EvaluationInvalid, nil},
-		{"true || fromJSON(null)", exprvalues.EvaluationKnown, true},
-		{"false && fromJSON(null)", exprvalues.EvaluationKnown, false},
-		{"fromJSON(null) == false", exprvalues.EvaluationInvalid, nil},
-		{"false == fromJSON(null)", exprvalues.EvaluationInvalid, nil},
-		{"fromJSON(null).value", exprvalues.EvaluationInvalid, nil},
-		{"fromJSON(null)[0]", exprvalues.EvaluationInvalid, nil},
-		{"fromJSON('[1]')[fromJSON(null)]", exprvalues.EvaluationInvalid, nil},
-		{"format('{0}', fromJSON(null))", exprvalues.EvaluationInvalid, nil},
-		{"format('{0}', true || fromJSON(null))", exprvalues.EvaluationKnown, "true"},
-		{"case(false, fromJSON(null), 'fallback')", exprvalues.EvaluationKnown, "fallback"},
-		{"case(true, fromJSON(null), 'fallback')", exprvalues.EvaluationInvalid, nil},
-		{"contains(fromJSON('[]'), fromJSON(null))", exprvalues.EvaluationKnown, false},
-		{"missing || fromJSON(null)", exprvalues.EvaluationUnknown, nil},
-		{"format('{0}', missing)", exprvalues.EvaluationUnknown, nil},
-		{"format()", exprvalues.EvaluationNotAttempted, nil},
-		{"!format()", exprvalues.EvaluationNotAttempted, nil},
+		{"fromJSON(null)", values.EvaluationInvalid, nil},
+		{"!fromJSON(null)", values.EvaluationInvalid, nil},
+		{"fromJSON(null) || true", values.EvaluationInvalid, nil},
+		{"false || fromJSON(null)", values.EvaluationInvalid, nil},
+		{"true && fromJSON(null)", values.EvaluationInvalid, nil},
+		{"true || fromJSON(null)", values.EvaluationKnown, true},
+		{"false && fromJSON(null)", values.EvaluationKnown, false},
+		{"fromJSON(null) == false", values.EvaluationInvalid, nil},
+		{"false == fromJSON(null)", values.EvaluationInvalid, nil},
+		{"fromJSON(null).value", values.EvaluationInvalid, nil},
+		{"fromJSON(null)[0]", values.EvaluationInvalid, nil},
+		{"fromJSON('[1]')[fromJSON(null)]", values.EvaluationInvalid, nil},
+		{"format('{0}', fromJSON(null))", values.EvaluationInvalid, nil},
+		{"format('{0}', true || fromJSON(null))", values.EvaluationKnown, "true"},
+		{"case(false, fromJSON(null), 'fallback')", values.EvaluationKnown, "fallback"},
+		{"case(true, fromJSON(null), 'fallback')", values.EvaluationInvalid, nil},
+		{"contains(fromJSON('[]'), fromJSON(null))", values.EvaluationKnown, false},
+		{"missing || fromJSON(null)", values.EvaluationUnknown, nil},
+		{"format('{0}', missing)", values.EvaluationUnknown, nil},
+		{"format()", values.EvaluationNotAttempted, nil},
+		{"!format()", values.EvaluationNotAttempted, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
+			node := syntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
@@ -61,7 +61,7 @@ func TestRuntimeFailureStopsLaterArguments(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+			node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
@@ -69,7 +69,7 @@ func TestRuntimeFailureStopsLaterArguments(t *testing.T) {
 				t.Errorf("evaluated variable %q after a runtime failure", name)
 				return "value", true
 			})
-			if got.State != exprvalues.EvaluationInvalid {
+			if got.State != values.EvaluationInvalid {
 				t.Fatalf("state = %v, want runtime failure", got.State)
 			}
 		})

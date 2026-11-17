@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -20,7 +20,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	fixturefiles.WriteText(t, project.Manifest.Path, "extends: [base.yml]\ntools: {shellcheck: {enabled: wrong}}\n")
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	for _, selection := range []pluginselection.Selection{{Acquisition: acquisition}, {ConfigFile: project.Manifest.Path, Acquisition: acquisition}} {
+	for _, selection := range []pluginselection.PluginSelection{{Acquisition: acquisition}, {ConfigFile: project.Manifest.Path, Acquisition: acquisition}} {
 		sources, err := selection.ResolveForRules(t.Context(), root)
 		if err != nil || len(sources.Paths) != 1 || sources.Paths[0] != pin.Source() {
 			t.Fatalf("inherited plugin lost: %+v %v", sources, err)
@@ -66,12 +66,12 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		if !found {
 			t.Fatal("inherited plugin rule missing")
 		}
-		if _, err := selection.Select(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil {
+		if _, err := selection.Select(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err == nil {
 			t.Fatal("ordinary checking ignored invalid config")
 		}
 	}
 	fixturefiles.WriteText(t, project.Manifest.Path, "extends: [base.yml]\nplugins: []\npolicy: {bad: true}\n")
-	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).ResolveForRules(t.Context(), root)
+	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).ResolveForRules(t.Context(), root)
 	if err != nil || len(sources.Paths) != 0 {
 		t.Fatalf("leaf opt-out lost: %+v %v", sources, err)
 	}
@@ -102,13 +102,13 @@ func TestRuleSelectionRejectsDependencyErrors(t *testing.T) {
 				fixturefiles.WriteText(t, filepath.Join(directory, "base.yml"), tc.base)
 			}
 			fixturefiles.WriteText(t, filepath.Join(directory, "actionlint.yaml"), tc.leaf)
-			if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).ResolveForRules(t.Context(), root); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).ResolveForRules(t.Context(), root); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("dependency error lost: %v; want %q", err, tc.want)
 			}
 		})
 	}
 	root := repositoryfixture.Directory(t)
-	selection := pluginselection.Selection{ConfigFile: filepath.Join(root, "missing.yml"), RuleSet: checking.ConfigurationRules()}
+	selection := pluginselection.PluginSelection{ConfigFile: filepath.Join(root, "missing.yml"), RuleSet: checking.ConfigurationRules()}
 	if _, err := selection.ResolveForRules(t.Context(), root); err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Fatalf("missing explicit config accepted: %v", err)
 	}

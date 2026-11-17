@@ -12,9 +12,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
@@ -25,7 +25,7 @@ func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
 
 func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		t.Errorf("disabled acquisition requested %s", r.URL)
 		return nil, errors.New("unexpected network request")
 	})}}
@@ -59,7 +59,7 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 			if code != 0 {
 				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +91,7 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var requests []string
-			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
+			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := os.WriteFile(config, []byte("plugins: []\n"+tc.settings), 0o600); err != nil {
 				t.Fatal(err)
@@ -102,7 +102,7 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 			if code != 1 {
 				t.Fatalf("status=%d stderr=%s output=%s", code, &log, &out)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}

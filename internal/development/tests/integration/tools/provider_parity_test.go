@@ -15,19 +15,19 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	gocmp "github.com/google/go-cmp/cmp"
@@ -68,14 +68,14 @@ type paritySource struct {
 // reported it, the file content it carries, the unavailable-source marker and
 // the location whose actionlint:ignore comments suppress it.
 type parityReport struct {
-	Rule        string             `json:"rule"`
-	Code        string             `json:"code,omitempty"`
-	Path        string             `json:"path"`
-	Start       sourcepos.Position `json:"start"`
-	Content     string             `json:"content,omitempty"`
-	RawScript   bool               `json:"raw_script,omitempty"`
-	Unavailable *parityUnavailable `json:"unavailable,omitempty"`
-	Suppression *paritySuppression `json:"suppression,omitempty"`
+	Rule        string              `json:"rule"`
+	Code        string              `json:"code,omitempty"`
+	Path        string              `json:"path"`
+	Start       sourcetext.Position `json:"start"`
+	Content     string              `json:"content,omitempty"`
+	RawScript   bool                `json:"raw_script,omitempty"`
+	Unavailable *parityUnavailable  `json:"unavailable,omitempty"`
+	Suppression *paritySuppression  `json:"suppression,omitempty"`
 }
 
 // parityUnavailable is a present finding.Source.Unavailable.
@@ -93,9 +93,9 @@ type paritySuppression struct {
 // parityCapture is a report.CapturedSource without its content, which the
 // revision identifies.
 type parityCapture struct {
-	Revision             sourcepos.Revision    `json:"revision"`
-	Coordinates          sourcepos.Coordinates `json:"coordinates"`
-	CoordinatesAvailable bool                  `json:"coordinates_available,omitempty"`
+	Revision             sourcetext.Revision    `json:"revision"`
+	Coordinates          sourcetext.Coordinates `json:"coordinates"`
+	CoordinatesAvailable bool                   `json:"coordinates_available,omitempty"`
 }
 
 // contentHash identifies content in a snapshot; empty content has none.
@@ -135,7 +135,7 @@ type recordingRunner struct {
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -174,11 +174,11 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		t.Fatalf("no parity snapshot for %q", key)
 	}
 	want = hostSeverities(t, want)
-	var options *process.CommandOptions
+	var options *hostprocess.CommandOptions
 	if len(arguments) != 0 {
-		options = &process.CommandOptions{Arguments: arguments}
+		options = &hostprocess.CommandOptions{Arguments: arguments}
 	}
-	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
+	got := run(registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)
 	t.Logf("%d identical findings, %d runner findings, error %q", len(got.Findings), len(got.Reported), got.Error)
 }
@@ -187,7 +187,7 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 // manifest's severities table, as the manifest route does.
 func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,7 +499,7 @@ func TestProviderParityCases(t *testing.T) {
 			run := func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
-				root = inputfiles.PhysicalPath(root)
+				root = files.PhysicalPath(root)
 				config := "tools: {shellcheck: true, ruff: true}\n"
 				if tc.config != "" {
 					config = tc.config
@@ -512,7 +512,7 @@ func TestProviderParityCases(t *testing.T) {
 					t.Fatal(err)
 				}
 				workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: python\n    steps:\n      "+strings.ReplaceAll(tc.steps, "\n", "\n      ")+"\n")
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 				return toolFindings(t, result, err, recorder, map[string]string{root: "<root>"})
 			}
 			snapshots.assertParity(t, tc.name, run, shellcheck, ruff, tc.arguments...)
@@ -523,7 +523,7 @@ func TestProviderParityCases(t *testing.T) {
 			if !ok {
 				t.Fatalf("no Ruff-alone parity snapshot for %q", tc.name)
 			}
-			compareParity(t, hostSeverities(t, alone), run(registry.Registrations(registry.Selections{"ruff": {Command: ruff}}), &parityRecorder{}))
+			compareParity(t, hostSeverities(t, alone), run(registry.Registrations(registry.ToolSelections{"ruff": {Command: ruff}}), &parityRecorder{}))
 		})
 	}
 }
@@ -531,7 +531,7 @@ func TestProviderParityCases(t *testing.T) {
 func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 	t.Parallel()
 	var args []string
-	registrations := registry.Registrations(registry.Selections{"shellcheck": scripts.Selection{Runner: func(received []string, _ string) ([]byte, error) {
+	registrations := registry.Registrations(registry.ToolSelections{"shellcheck": backends.ToolSelection{Runner: func(received []string, _ string) ([]byte, error) {
 		args = received
 		return []byte(`{"comments":[]}`), nil
 	}}})

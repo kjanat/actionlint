@@ -3,9 +3,9 @@ package policy_test
 import (
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -21,11 +21,11 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}
-	want := &findingmodel.Finding{
-		Start: sourcepos.Position{Line: 1, Column: 12}, Rule: "forbidden-suppression",
+	want := &finding.Finding{
+		Start: sourcetext.Position{Line: 1, Column: 12}, Rule: "forbidden-suppression",
 		Message: "inline suppression of cache-operation is disallowed by policy.forbidden-suppression",
 	}
-	if diff := cmp.Diff(fixtureIdentities([]*findingmodel.Finding{want}), fixtureIdentities(got)); diff != "" {
+	if diff := cmp.Diff(fixtureIdentities([]*finding.Finding{want}), fixtureIdentities(got)); diff != "" {
 		t.Fatal(diff)
 	}
 }

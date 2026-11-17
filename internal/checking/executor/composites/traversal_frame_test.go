@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 type frameObserver struct {
@@ -20,12 +20,12 @@ type frameObserver struct {
 
 func (p *frameObserver) EnterInvocation(call workflowvisit.Invocation) error { return p.enter(call) }
 func (p *frameObserver) LeaveInvocation(invocation.Context) error            { return nil }
-func (p *frameObserver) VisitStep(workflowdecl.Step) error                   { return p.step() }
-func (p *frameObserver) VisitInvocationStep(step workflowdecl.Step) error {
+func (p *frameObserver) VisitStep(workflows.Step) error                      { return p.step() }
+func (p *frameObserver) VisitInvocationStep(step workflows.Step) error {
 	return p.VisitStep(step)
 }
 
-func (p *frameObserver) VisitOpaqueAction(step workflowdecl.Step) error {
+func (p *frameObserver) VisitOpaqueAction(step workflows.Step) error {
 	return p.VisitStep(step)
 }
 

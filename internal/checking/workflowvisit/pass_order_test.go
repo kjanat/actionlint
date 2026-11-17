@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type jobOrderPass struct {
@@ -15,19 +15,19 @@ type jobOrderPass struct {
 	jobs []string
 }
 
-func (p *jobOrderPass) VisitJobPre(job declaration.Job) error {
+func (p *jobOrderPass) VisitJobPre(job workflows.Job) error {
 	p.jobs = append(p.jobs, job.Key())
 	return nil
 }
 
 func TestVisitorJobSourceOrder(t *testing.T) {
 	t.Parallel()
-	first := &workflowlang.Job{Pos: &source.Position{Line: 1, Column: 1}}
-	second := &workflowlang.Job{Pos: &source.Position{Line: 2, Column: 1}}
-	missingA, missingZ := &workflowlang.Job{}, &workflowlang.Job{}
+	first := &definition.Job{Pos: &sourcetext.Position{Line: 1, Column: 1}}
+	second := &definition.Job{Pos: &sourcetext.Position{Line: 2, Column: 1}}
+	missingA, missingZ := &definition.Job{}, &definition.Job{}
 	for range 10 {
 		pass := &jobOrderPass{}
-		workflow := declaration.Bind("order", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Workflow()
+		workflow := workflows.Bind("order", "", &definition.Workflow{Jobs: map[string]*definition.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Workflow()
 		if err := Visit(workflow, Options{Passes: []Pass{pass}}); err != nil {
 			t.Fatal(err)
 		}

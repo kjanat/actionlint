@@ -4,21 +4,22 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Rule is the single definition of the expression rule.
@@ -47,7 +48,7 @@ type ruleExpression struct {
 	frames            []expressionInvocation
 	findings          workflowvisit.Findings
 	ctx               context.Context
-	remote            *actionremote.ResolvedActions
+	remote            *remote.ResolvedActions
 }
 
 type expressionInvocation struct {
@@ -89,21 +90,21 @@ func (r *ruleExpression) collect(mark int, err error) error {
 	return err
 }
 
-func (r *ruleExpression) VisitStep(step workflowdecl.Step) error {
+func (r *ruleExpression) VisitStep(step workflows.Step) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitStep(step))
 }
 
-func (r *ruleExpression) VisitInvocationStep(step workflowdecl.Step) error {
+func (r *ruleExpression) VisitInvocationStep(step workflows.Step) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.CheckCompositeStep(step))
 }
 
-func (r *ruleExpression) VisitExpandedAction(step workflowdecl.Step) error {
+func (r *ruleExpression) VisitExpandedAction(step workflows.Step) error {
 	return r.VisitInvocationStep(step)
 }
 
-func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.Step) error {
+func (r *ruleExpression) VisitOpaqueAction(step workflows.Step) error {
 	if len(r.frames) == 0 {
 		// Workflow steps already receive the full expression pass before resolution.
 		return nil
@@ -111,28 +112,28 @@ func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.Step) error {
 	return r.VisitInvocationStep(step)
 }
 
-func (r *ruleExpression) VisitWorkflowPre(view workflowdecl.Workflow) error {
+func (r *ruleExpression) VisitWorkflowPre(view workflows.Workflow) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPre(view))
 }
 
-func (r *ruleExpression) VisitWorkflowPost(view workflowdecl.Workflow) error {
+func (r *ruleExpression) VisitWorkflowPost(view workflows.Workflow) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPost(view))
 }
 
-func (r *ruleExpression) VisitJobPre(view workflowdecl.Job) error {
+func (r *ruleExpression) VisitJobPre(view workflows.Job) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPre(view))
 }
 
-func (r *ruleExpression) VisitJobPost(view workflowdecl.Job) error {
+func (r *ruleExpression) VisitJobPost(view workflows.Job) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPost(view))
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
-func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspaceactions.ActionMetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache localactions.ActionMetadataLookup, workflowCache *reusableworkflows.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Checker = New(Dependencies{
 		Runners:  runners,
@@ -143,15 +144,15 @@ func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCach
 	return r
 }
 
-func (r *ruleExpression) Name() string                  { return r.name }
-func (r *ruleExpression) Description() string           { return r.description }
-func (r *ruleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
+func (r *ruleExpression) Name() string             { return r.name }
+func (r *ruleExpression) Description() string      { return r.description }
+func (r *ruleExpression) Errs() []*finding.Finding { return r.findings.Errs() }
 
 // FindingCount counts the findings collected by the rule. It shadows the
 // embedded checker's count, which covers only the current invocation.
 func (r *ruleExpression) FindingCount() int { return r.findings.FindingCount() }
 
-func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+func (r *ruleExpression) AnnotateSince(mark int, annotate func(*finding.Finding)) {
 	r.findings.AnnotateSince(mark, annotate)
 }
 
@@ -175,7 +176,7 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		config = scope.Composite()
 	}
 	facts := configuration.RepositoryFacts(config, host)
-	level := func(name string) configuration.Level {
+	level := func(name string) ruleconfig.Level {
 		selected := config
 		if scope != nil {
 			selected = scope.Rule(name).Config()
@@ -183,14 +184,14 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		return selected.RuleSet().DiagnosticLevel(selected, name)
 	}
 	return Options{
-		Semantics:                 exprlang.Options{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)},
+		Semantics:                 typecheck.Options{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)},
 		SuspiciousCoercion:        level("coercion") != "off",
 		CaseInsensitiveConditions: level("case-insensitive-conditions") != "off",
 		StringConditions:          level("string-conditions") != "off",
 		JoinLiteral:               level("join-literal") != "off",
 		CollectionComparison:      level("collection-comparison") != "off",
 		MixedTypeComparisons:      level("mixed-type-comparisons") != "off",
-		JobReferences:             func(job workflowdecl.Job) ReferenceNames { return jobReferenceNames(facts, job) },
+		JobReferences:             func(job workflows.Job) ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:            level("unsound-ternary") != "off",
 		ScriptInjectionDisabled:   level("script-injection") == "off",
 	}

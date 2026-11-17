@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/fatih/color"
@@ -96,7 +96,7 @@ func printPretty(out io.Writer, f results.PublishedDiagnostic, width int, hyperl
 	return err
 }
 
-func writePrettyLocation(b *strings.Builder, prefix, path string, position sourcepos.Position, width int, hyperlinks bool) {
+func writePrettyLocation(b *strings.Builder, prefix, path string, position sourcetext.Position, width int, hyperlinks bool) {
 	path = terminalText(path)
 	if links := terminalURLs(path); len(links) == 1 && links[0].start == 0 && links[0].end == len(path) {
 		writeRemoteLocation(b, prefix, path, position, hyperlinks)
@@ -108,7 +108,7 @@ func writePrettyLocation(b *strings.Builder, prefix, path string, position sourc
 // writeRemoteLocation writes a URL location on one line so the URL is never
 // split. The visible text names the line and column; the link target adds a
 // #L<line> anchor, which GitHub blob pages scroll to.
-func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcepos.Position, hyperlinks bool) {
+func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcetext.Position, hyperlinks bool) {
 	b.WriteString(prefix)
 	if hyperlinks {
 		writeTerminalLinkStart(b, remoteLocationTarget(address, position.Line))

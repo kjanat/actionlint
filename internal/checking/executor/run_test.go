@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -29,16 +29,16 @@ func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.Analy
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("incomplete")
-	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []mapping.Declaration{{Name: "original"}}}}}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Source, rule.Mappings}, Mappings: []facts.Mapping{{Entries: []mappings.Declaration{{Name: "original"}}}}}
 	changed := make(chan struct{})
 	input.SourceRoots = []checkinputs.SourceRoot{{Host: "/source", Guest: "/workspace"}}
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rule.InputKind{rule.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.Mappings[0].Entries[0].Name = "changed"
 		in.SourceRoots[0].Guest = "/changed"
 		close(changed)
 		return []results.Diagnostic{{Message: "partial"}}, failure
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rule.InputKind{rule.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		<-changed
 		if in.Mappings[0].Entries[0].Name != "original" {
 			t.Error("shared mutable facts")
@@ -62,8 +62,8 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 
 func TestRunRequirementsAndCancellation(t *testing.T) {
 	t.Parallel()
-	for _, requirement := range []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution, "future"} {
-		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rulemeta.InputKind{requirement}}, func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	for _, requirement := range []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution, "future"} {
+		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rule.InputKind{requirement}}, func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
@@ -84,11 +84,11 @@ func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("second lookup failed")
 	input := checkinputs.AnalyzerInput{
-		Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies},
-		Dependencies:         []workflowfacts.Dependency{{Uses: "original/repo@v1"}},
-		ResolvedDependencies: []workflowfacts.ResolvedDependency{{Commit: "original"}},
+		Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Dependencies},
+		Dependencies:         []facts.Dependency{{Uses: "original/repo@v1"}},
+		ResolvedDependencies: []facts.ResolvedDependency{{Commit: "original"}},
 	}
-	checker := testAnalyzer{checkinputs.Descriptor{Name: "prepared", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}, func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	checker := testAnalyzer{checkinputs.Descriptor{Name: "prepared", RequiredInputs: []rule.InputKind{rule.Dependencies}}, func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		if supplied.Dependencies[0].Uses != "prepared/repo@v1" || supplied.ResolvedDependencies[0].Commit != "resolved" {
 			t.Fatal("checker ran without prepared facts")
 		}
@@ -130,20 +130,20 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script", Input: "script"})
 	occurrence := graph.Scripts()[0]
 	declaration := occurrence.Declaration
-	input := checkinputs.AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
+	input := checkinputs.AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Scripts, rule.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
 		Reference: declaration,
 		Spans:     []sourcemap.Span{{End: 8}}, Occurrence: occurrence,
 		Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rule.InputKind{rule.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
 		in.ActionInputs[0].Occurrence.Owner = "changed"
 		close(changed)
 		return nil, nil
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rule.InputKind{rule.Scripts}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
 		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence != occurrence {

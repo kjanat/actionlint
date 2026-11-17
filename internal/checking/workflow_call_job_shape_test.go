@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -69,10 +69,10 @@ jobs:
 					}
 				}
 				project := workspace.Identity(root)
-				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 				var err error
 
-				check := func(diagnostics []*findingmodel.Finding, includeCallee bool) {
+				check := func(diagnostics []*finding.Finding, includeCallee bool) {
 					t.Helper()
 					if !includeCallee {
 						if len(diagnostics) != 0 {

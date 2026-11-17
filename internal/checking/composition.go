@@ -8,29 +8,29 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 type documentChecks struct {
-	selection.Selection
-	scripts          scriptexecution.Service
+	selection.CheckSelection
+	scripts          scriptanalysis.Service
 	resolveExecution bool
 	registeredTools  []contract.Registration
 }
 
 func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext contract.Context, action bool) (documentChecks, error) {
 	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
-	selected := documentChecks{Selection: rules}
+	selected := documentChecks{CheckSelection: rules}
 	if err != nil {
 		return selected, err
 	}
 	for _, a := range selected.Scripts {
-		execution := slices.Contains(a.Descriptor().RequiredInputs, rulemeta.Execution)
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
+		execution := slices.Contains(a.Descriptor().RequiredInputs, rule.Execution)
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptanalysis.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
 		selected.resolveExecution = selected.resolveExecution || execution
 	}
 	for _, registration := range s.tools {

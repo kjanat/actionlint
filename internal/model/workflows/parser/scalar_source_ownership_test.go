@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -26,7 +26,7 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			entries := projected.Content[0].Content
 			pristine := NewSourceParser([]byte(input))
 			pristine.IndexScalarSources(root)
-			get := func(p *Parser) *workflowlang.ScriptSource {
+			get := func(p *Parser) *definition.ScriptSource {
 				switch mode {
 				case "alias":
 					return p.ScriptSourceForDeclaration(entries[3], PosAt(entries[2]))
@@ -45,8 +45,8 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			if result == nil || len(result.Lines) == 0 || len(result.Spans) == 0 || len(result.Comments) == 0 {
 				t.Fatal("fixture must expose every mutable source field")
 			}
-			result.ContentStart = source.Position{Line: 99, Column: 99}
-			result.ScalarEnd = source.Position{Line: 99, Column: 99}
+			result.ContentStart = sourcetext.Position{Line: 99, Column: 99}
+			result.ScalarEnd = sourcetext.Position{Line: 99, Column: 99}
 			result.Value = "changed"
 			result.Literal = !result.Literal
 			result.Lines[0].Start = 99

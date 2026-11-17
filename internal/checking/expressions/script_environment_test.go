@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
 func TestScriptEnvironmentReplacements(t *testing.T) {
@@ -84,11 +84,11 @@ func TestScriptEnvironmentVariable(t *testing.T) {
 		{"runner.workspace", ""},
 		{"format('{0}', github.workspace)", ""},
 	} {
-		expression, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + " }}"))
+		expression, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + " }}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := runner.ContextEnvironmentFor(exprsyntax.StaticReference(expression)).Name(); got != tc.variable {
+		if got := runners.ContextEnvironmentFor(syntax.StaticReference(expression)).Name(); got != tc.variable {
 			t.Errorf("%s: got %q, want %q", tc.expression, got, tc.variable)
 		}
 	}

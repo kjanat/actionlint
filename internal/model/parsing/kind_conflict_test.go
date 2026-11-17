@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
@@ -20,12 +20,12 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "shared.yml")
 			content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\nname: shared\ndescription: shared\nruns: {using: composite, steps: [{shell: bash, run: echo ok}]}\n")
 			fixtures := newCapturedSnapshots(t, filepath.Dir(path))
-			captured, err := fixtures.sources.Capture(path, content, source.YAML)
+			captured, err := fixtures.sources.Capture(path, content, sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
 			alias := filepath.Dir(path) + string(filepath.Separator) + "." + string(filepath.Separator) + filepath.Base(path)
-			aliased, err := fixtures.store.Read(t.Context(), alias, source.YAML)
+			aliased, err := fixtures.store.Read(t.Context(), alias, sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -37,8 +37,8 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]SourceSnapshot
 			var failures [2]error
-			var earlierView workflowdecl.Step
-			var earlierReference source.Reference
+			var earlierView workflows.Step
+			var earlierReference sourcetext.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
 			}

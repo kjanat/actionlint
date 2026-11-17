@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestCompositeLanguageLifecycleCannotBypassRequiredPolicy(t *testing.T) {
@@ -35,7 +35,7 @@ func TestCompositeLanguageLifecycleCannotBypassRequiredPolicy(t *testing.T) {
 			if status > 1 {
 				t.Fatalf("%s %s: status=%d stdout=%s stderr=%s", input, date, status, &out, &log)
 			}
-			var report resultreport.CheckResult
+			var report report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +88,7 @@ func TestStandaloneActionLifecycleUsesCapturedContext(t *testing.T) {
 		if status > 1 {
 			t.Fatalf("%s %s: status=%d stderr=%s stdout=%s", tc.service, tc.date, status, &log, &out)
 		}
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 			t.Fatal(err)
 		}

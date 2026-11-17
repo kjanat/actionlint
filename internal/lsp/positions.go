@@ -8,28 +8,36 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
-type position struct {
+// editorPosition is a Language Server Protocol position: a zero-based line and
+// a zero-based column counted in UTF-16 code units, after any byte order mark.
+// It differs from sourcetext.Position, which counts one-based lines and Unicode
+// scalars, so the two convert only through a byte offset into the buffer.
+type editorPosition struct {
 	Line      int `json:"line"`
 	Character int `json:"character"`
 }
-type sourceRange struct {
-	Start position `json:"start"`
-	End   position `json:"end"`
+
+// editorRange is a Language Server Protocol range between two editor positions.
+type editorRange struct {
+	Start editorPosition `json:"start"`
+	End   editorPosition `json:"end"`
 }
 
-func editorPosition(content []byte, p sourcepos.Position) (position, error) {
-	offset, err := sourceposition.Offset(content, sourcepos.YAML, p)
+// editorPositionAt converts a source position in a YAML buffer to an editor position.
+func editorPositionAt(content []byte, p sourcetext.Position) (editorPosition, error) {
+	offset, err := byteoffset.Offset(content, sourcetext.YAML, p)
 	if err != nil {
-		return position{}, err
+		return editorPosition{}, err
 	}
-	return positionAtByteOffset(content, offset), nil
+	return editorPositionAtByteOffset(content, offset), nil
 }
 
-func positionAtByteOffset(content []byte, offset int) position {
+// editorPositionAtByteOffset returns the editor position of a byte offset in content.
+func editorPositionAtByteOffset(content []byte, offset int) editorPosition {
 	line, units := 0, 0
 	start := 0
 	if bytes.HasPrefix(content, []byte("\ufeff")) {
@@ -48,10 +56,12 @@ func positionAtByteOffset(content []byte, offset int) position {
 		}
 		i += n
 	}
-	return position{line, units}
+	return editorPosition{line, units}
 }
 
-func byteOffset(text string, p position) (int, error) {
+// editorByteOffset returns the byte offset of an editor position in text. It
+// rejects positions inside a surrogate pair or outside the buffer.
+func editorByteOffset(text string, p editorPosition) (int, error) {
 	if p.Line < 0 || p.Character < 0 {
 		return 0, errors.New("negative editor position")
 	}
@@ -85,27 +95,27 @@ func byteOffset(text string, p position) (int, error) {
 	return 0, errors.New("editor position outside buffer")
 }
 
-func comparePosition(a, b position) int {
+func compareEditorPositions(a, b editorPosition) int {
 	if a.Line != b.Line {
 		return a.Line - b.Line
 	}
 	return a.Character - b.Character
 }
 
-func diagnosticRange(content []byte, start, end sourcepos.Position) (sourceRange, error) {
-	first, err := editorPosition(content, start)
+func diagnosticRange(content []byte, start, end sourcetext.Position) (editorRange, error) {
+	first, err := editorPositionAt(content, start)
 	if err != nil {
-		return sourceRange{}, err
+		return editorRange{}, err
 	}
-	if end == (sourcepos.Position{}) {
-		return sourceRange{first, first}, nil
+	if end == (sourcetext.Position{}) {
+		return editorRange{first, first}, nil
 	}
-	last, err := editorPosition(content, end)
+	last, err := editorPositionAt(content, end)
 	if err != nil {
-		return sourceRange{}, err
+		return editorRange{}, err
 	}
-	if comparePosition(last, first) < 0 {
+	if compareEditorPositions(last, first) < 0 {
 		last = first
 	}
-	return sourceRange{first, last}, nil
+	return editorRange{first, last}, nil
 }

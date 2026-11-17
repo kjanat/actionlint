@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
@@ -22,7 +22,7 @@ func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			root := exprsyntax.ParseAssignedExpression("${{ " + source + " }}")
+			root := syntax.ParseAssignedExpression("${{ " + source + " }}")
 			if root == nil {
 				t.Fatal("expression did not parse")
 			}
@@ -31,7 +31,7 @@ func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
 			if !found || !reflect.DeepEqual(result, Evaluate(root, nil)) {
 				t.Fatalf("recorded root=%+v found=%t, direct=%+v", result, found, Evaluate(root, nil))
 			}
-			exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
+			syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
 				if entering {
 					return
 				}
@@ -46,29 +46,29 @@ func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
 
 func TestSubexpressionResultsSkipUnusedBranches(t *testing.T) {
 	t.Parallel()
-	root := exprsyntax.ParseAssignedExpression("${{ false && fromJSON('bad') }}")
+	root := syntax.ParseAssignedExpression("${{ false && fromJSON('bad') }}")
 	if root == nil {
 		t.Fatal("expression did not parse")
 	}
-	logical, ok := root.(*exprsyntax.LogicalOpNode)
+	logical, ok := root.(*syntax.LogicalOpNode)
 	if !ok {
 		t.Fatalf("unexpected node %T", root)
 	}
 	results := EvaluateSubexpressions(root)
 	parent, _ := results.Result(root)
 	child, found := results.Result(logical.Right)
-	if parent.State != exprvalues.EvaluationKnown || parent.Value != false || found {
+	if parent.State != values.EvaluationKnown || parent.Value != false || found {
 		t.Fatalf("parent=%+v child=%+v found=%t", parent, child, found)
 	}
 }
 
 func TestSubexpressionResultsDetachCompositeValues(t *testing.T) {
 	t.Parallel()
-	root := exprsyntax.ParseAssignedExpression("${{ fromJSON('{\"nested\":[\"original\"]}').nested }}")
+	root := syntax.ParseAssignedExpression("${{ fromJSON('{\"nested\":[\"original\"]}').nested }}")
 	if root == nil {
 		t.Fatal("expression did not parse")
 	}
-	property, ok := root.(*exprsyntax.ObjectDerefNode)
+	property, ok := root.(*syntax.ObjectDerefNode)
 	if !ok {
 		t.Fatalf("unexpected node %T", root)
 	}
@@ -90,7 +90,7 @@ func TestSubexpressionResultsDetachCompositeValues(t *testing.T) {
 	if !reflect.DeepEqual(result.Value, []any{"original"}) {
 		t.Fatalf("nested mutation changed the recorded result: %+v", result)
 	}
-	other := exprsyntax.ParseAssignedExpression("${{ null }}")
+	other := syntax.ParseAssignedExpression("${{ null }}")
 	if _, found := results.Result(other); found {
 		t.Fatal("another tree's node has a recorded result")
 	}
@@ -110,11 +110,11 @@ func TestSubexpressionResultsFollowFunctionDemand(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
+			root := syntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			if root == nil {
 				t.Fatal("expression did not parse")
 			}
-			call, ok := root.(*exprsyntax.FuncCallNode)
+			call, ok := root.(*syntax.FuncCallNode)
 			if !ok {
 				t.Fatalf("unexpected node %T", root)
 			}

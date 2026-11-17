@@ -4,19 +4,19 @@ import (
 	"strconv"
 	"strings"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 type scriptValueProof uint8
@@ -45,21 +45,21 @@ func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 	if rule.scriptEnv == nil {
 		return false
 	}
-	semantic := workflowdecl.Environment(rule.scriptEnv).Lookup(name)
+	semantic := workflows.Environment(rule.scriptEnv).Lookup(name)
 	text, known := semantic.ScalarString()
 	return known && scriptLiteralProof(text).safe(argument)
 }
 
-func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
+func (rule *Checker) safeScriptArgumentList(node syntax.Node) bool {
 	var values []string
 	var complete bool
-	if name, env := strings.CutPrefix(exprsyntax.StaticReference(node), "env."); env {
+	if name, env := strings.CutPrefix(syntax.StaticReference(node), "env."); env {
 		if rule.scriptEnv == nil {
 			return false
 		}
-		values, complete = workflowdecl.Environment(rule.scriptEnv).Lookup(name).StringAlternatives()
+		values, complete = workflows.Environment(rule.scriptEnv).Lookup(name).StringAlternatives()
 	} else {
-		values, complete = expreval.StringAlternatives(node)
+		values, complete = evaluate.StringAlternatives(node)
 	}
 	if !complete || len(values) == 0 {
 		return false
@@ -72,17 +72,17 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 	return true
 }
 
-func (rule *Checker) matrixResolution(strategy *workflowlang.Strategy) matrixcheck.Resolution {
+func (rule *Checker) matrixResolution(strategy *definition.Strategy) matrix.Resolution {
 	if strategy == nil {
-		return matrixcheck.Resolution{}
+		return matrix.Resolution{}
 	}
-	return workflowdecl.MatrixResolution(strategy)
+	return workflows.MatrixResolution(strategy)
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis
 // values and include assignments, without expanding the Cartesian product.
 // Includes apply after exclusions, so an excluded match may become a sparse job.
-func safeMatrixScriptReferences(resolution matrixcheck.Resolution) map[string]scriptValueProof {
+func safeMatrixScriptReferences(resolution matrix.Resolution) map[string]scriptValueProof {
 	result := map[string]scriptValueProof{}
 	for name := range resolution.ReachableNames() {
 		if !scriptPathName(name) {
@@ -183,7 +183,7 @@ func copyScriptPaths(prefix string, paths, destination map[string]scriptValuePro
 	}
 }
 
-func safeMatrixScriptReference(node exprsyntax.Node, proofs map[string]scriptValueProof, argument bool) bool {
+func safeMatrixScriptReference(node syntax.Node, proofs map[string]scriptValueProof, argument bool) bool {
 	path := matrixScriptReferencePath(node)
 	if path != "" {
 		if proof, exists := proofs[path]; exists {
@@ -195,33 +195,33 @@ func safeMatrixScriptReference(node exprsyntax.Node, proofs map[string]scriptVal
 	}
 	base := ""
 	switch node := node.(type) {
-	case *exprsyntax.IndexAccessNode:
+	case *syntax.IndexAccessNode:
 		base = matrixScriptReferencePath(node.Operand)
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		base = matrixScriptReferencePath(node.Receiver)
 	}
 	return base != "" && proofs[base+"[*]"].safe(true)
 }
 
-func matrixScriptReferencePath(node exprsyntax.Node) string {
+func matrixScriptReferencePath(node syntax.Node) string {
 	switch node := node.(type) {
-	case *exprsyntax.VariableNode:
+	case *syntax.VariableNode:
 		if strings.EqualFold(node.Name, "matrix") {
 			return "matrix"
 		}
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		if base := matrixScriptReferencePath(node.Receiver); base != "" && scriptPathName(node.Property) {
 			return base + "." + strings.ToLower(node.Property)
 		}
-	case *exprsyntax.IndexAccessNode:
+	case *syntax.IndexAccessNode:
 		base := matrixScriptReferencePath(node.Operand)
 		if base == "" {
 			return ""
 		}
 		switch index := node.Index.(type) {
-		case *exprsyntax.IntNode:
+		case *syntax.IntNode:
 			return base + "[" + strconv.Itoa(index.Value) + "]"
-		case *exprsyntax.StringNode:
+		case *syntax.StringNode:
 			if scriptPathName(index.Value) {
 				return base + "." + strings.ToLower(index.Value)
 			}

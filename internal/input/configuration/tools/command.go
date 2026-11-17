@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 //go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type Backend -output internal/input/configuration/tools/owned_backend.gen.go
@@ -73,21 +73,21 @@ type moduleDocument struct {
 // it as NewCommand or NewModule does.
 func (b *Backend) DecodeConfig(value any) error {
 	var document backendDocument
-	if err := binding.Decode(value, &document); err != nil {
+	if err := configdecode.Decode(value, &document); err != nil {
 		return err
 	}
 	var next Backend
 	if document.Process != nil {
 		command, err := NewCommand(document.Process.Executable, document.Process.Args, document.Process.Env)
 		if err != nil {
-			return binding.At("process", err)
+			return configdecode.At("process", err)
 		}
 		next.transport = command
 	}
 	if document.Wasm != nil {
 		module, err := NewModule(document.Wasm.Path)
 		if err != nil {
-			return binding.At("wasm", err)
+			return configdecode.At("wasm", err)
 		}
 		next.transport = module
 	}

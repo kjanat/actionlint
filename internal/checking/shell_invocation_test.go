@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -40,7 +40,7 @@ func TestShellInvocationValidationThroughSession(t *testing.T) {
 		t.Run(tc.shell, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + tc.shell + "\n        run: echo hi\n"
-			result, err := checking.Check(t.Context(), checking.Options{SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: interpreterProvider{}}}}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(source), Name: "workflow.yml"})
+			result, err := checking.Check(t.Context(), checking.Options{SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: interpreterProvider{}}}}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(source), Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)
 			}

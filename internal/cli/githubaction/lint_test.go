@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -29,8 +29,8 @@ func TestOptionalNativeShellcheckWithoutExecutable(t *testing.T) {
 	if result := runLinter(req); result.code != 0 {
 		t.Fatalf("optional native ShellCheck was required: %s", result.stderr)
 	}
-	req.processes = map[string]*process.CommandOptions{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
-	if result := runLinter(req); result.code != commandstatus.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
+	req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
+	if result := runLinter(req); result.code != exitcode.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
 		t.Fatalf("explicit missing executable was ignored: code=%d %s", result.code, result.stderr)
 	}
 }
@@ -183,7 +183,7 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 				}
 				req := buildRequest(in, workspace, workingRel)
 				got := runLinter(req)
-				if got.code != commandstatus.ExitSuccessNoProblem || got.selectedFileCount() != 1 {
+				if got.code != exitcode.ExitSuccessNoProblem || got.selectedFileCount() != 1 {
 					t.Fatalf("linked workflow failed: %#v, %s", got, got.stderr)
 				}
 			})
@@ -196,7 +196,7 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"clean.yaml"}})
-	if got.code != commandstatus.ExitSuccessNoProblem {
+	if got.code != exitcode.ExitSuccessNoProblem {
 		t.Fatalf("wanted exit code 0 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 	if len(got.report.Diagnostics) != 0 || got.stdout != "" {
@@ -215,7 +215,7 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 	})
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON})
 
-	if got.code != commandstatus.ExitFailure || !strings.Contains(got.stderr, "no workflow or action files were found") {
+	if got.code != exitcode.ExitFailure || !strings.Contains(got.stderr, "no workflow or action files were found") {
 		t.Fatalf("wanted empty discovery to fail linting; code=%d stderr=%q", got.code, got.stderr)
 	}
 	if got.report.FileCount == nil || got.selectedFileCount() != 0 {
@@ -243,7 +243,7 @@ func TestRunLinterCountsIncludedFiles(t *testing.T) {
 				"config.yml":                  "plugins: []\nfiles: {excludes: ['" + tc.excluded + "']}\n",
 			})
 			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: tc.files, configFile: filepath.Join(dir, "config.yml")})
-			if got.code != commandstatus.ExitSuccessNoProblem || got.report.FileCount == nil || got.selectedFileCount() != tc.count || len(got.report.Diagnostics) != 0 {
+			if got.code != exitcode.ExitSuccessNoProblem || got.report.FileCount == nil || got.selectedFileCount() != tc.count || len(got.report.Diagnostics) != 0 {
 				t.Fatalf("included-file count=%d known=%v exit=%d diagnostics=%+v stderr=%s", got.selectedFileCount(), (got.report.FileCount != nil), got.code, got.report.Diagnostics, got.stderr)
 			}
 		})
@@ -255,7 +255,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
-	if got.code != commandstatus.ExitSuccessProblemFound {
+	if got.code != exitcode.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 
@@ -279,7 +279,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
-	if got.code != commandstatus.ExitSuccessProblemFound {
+	if got.code != exitcode.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 	var document struct {
@@ -307,7 +307,7 @@ func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
 		ignore:     []string{`label "unknown-runner" is unknown`},
 		overlays:   []configuration.Overlay{knownRunnerOverlay(t)},
 	})
-	if got.code != commandstatus.ExitSuccessNoProblem {
+	if got.code != exitcode.ExitSuccessNoProblem {
 		t.Fatalf("wanted the problem ignored but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 }
@@ -353,7 +353,7 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 		},
 	} {
 		got := runLinter(tc.req)
-		if got.code != commandstatus.ExitFailure {
+		if got.code != exitcode.ExitFailure {
 			t.Errorf("%s: wanted exit code 3 but got %d", tc.name, got.code)
 		}
 		if !strings.Contains(got.stderr, tc.want) {
@@ -374,7 +374,7 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
-	if got.code != commandstatus.ExitSuccessProblemFound {
+	if got.code != exitcode.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 	problems := got.report.Diagnostics
@@ -406,7 +406,7 @@ self-hosted-runner:
 		files:      []string{"broken.yaml"},
 		configFile: filepath.Join(dir, "conf.yaml"),
 	})
-	if got.code != commandstatus.ExitSuccessNoProblem {
+	if got.code != exitcode.ExitSuccessNoProblem {
 		t.Fatalf("wanted the configured label accepted but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 }
@@ -488,7 +488,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 					t.Errorf("%s: wanted %q in %q", name, want, content)
 				}
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -595,7 +595,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 	if resolved(t, seen) != resolved(t, dir) {
 		t.Errorf("wanted the process directory to remain %q while linting but got %q", dir, seen)
 	}
-	if got.code != commandstatus.ExitSuccessProblemFound {
+	if got.code != exitcode.ExitSuccessProblemFound {
 		t.Fatalf("wanted the workflow in the requested directory linted but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 	problems := got.report.Diagnostics
@@ -628,7 +628,7 @@ func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
 			if req.ctx.Err() == nil {
 				t.Error("wanted the timed-out analysis context canceled")
 			}
-			return knownFiles(&lintOutcome{"late output", "late log", commandstatus.ExitSuccessNoProblem}, 1)
+			return knownFiles(&lintOutcome{"late output", "late log", exitcode.ExitSuccessNoProblem}, 1)
 		},
 	}
 	go func() {
@@ -644,7 +644,7 @@ func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
 
 	select {
 	case got := <-returned:
-		if got.code != commandstatus.ExitFailure || !strings.Contains(got.stderr, "actionlint timed out after") {
+		if got.code != exitcode.ExitFailure || !strings.Contains(got.stderr, "actionlint timed out after") {
 			t.Errorf("wanted an independent timeout result but got %#v", got)
 		}
 		if got.stdout != "" || (got.report.FileCount != nil) {
@@ -664,7 +664,7 @@ func TestActionRunLintReportsUnusableWorkingDirectory(t *testing.T) {
 	workspace := nativeWorkspaceWith(t, map[string]string{"file": "not a directory"})
 	for _, path := range []string{"missing", "file"} {
 		got := a.runLint(&lintRequest{workingDir: filepath.Join(workspace, path)})
-		if got.code != commandstatus.ExitFailure || got.stderr == "" {
+		if got.code != exitcode.ExitFailure || got.stderr == "" {
 			t.Errorf("wanted a failure for %q but got %#v", path, got)
 		}
 	}

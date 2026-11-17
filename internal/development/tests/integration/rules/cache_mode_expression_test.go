@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestWorkflowCallCacheModeLiteralExpressions(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
+	for _, kind := range []definition.CacheModeKind{definition.CacheModeRead, definition.CacheModeWrite, definition.CacheModeWriteOnly, definition.CacheModeNone} {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", kind, fromAST), func(t *testing.T) {
 				t.Parallel()
@@ -30,7 +30,7 @@ jobs:
       - run: echo ok
 `
 				diagnostics := checkCacheModeCall(t, caller, map[string]string{"callee.yaml": callee}, fromAST)
-				if kind == workflowlang.CacheModeWrite {
+				if kind == definition.CacheModeWrite {
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
 					}

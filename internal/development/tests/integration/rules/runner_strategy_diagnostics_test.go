@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestKnownStrategyRunnerLabels(t *testing.T) {
@@ -72,7 +72,7 @@ jobs:
     steps:
       - run: echo ok
 `, tc.expression, runsOn)
-			_, errs := workflowparser.ParseWorkflow([]byte(source))
+			_, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -81,7 +81,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			knowledge, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+			knowledge, err := runneracquisition.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}

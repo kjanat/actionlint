@@ -4,6 +4,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
 // ConfigCandidates enumerates tool-selection states across configuration overrides.
@@ -72,18 +74,18 @@ type toolGateState struct {
 	tool, lint, disabled, resolved bool
 	toolSet, lintSet               bool
 	backend                        backendKind
-	preset                         Preset
+	preset                         ruleconfig.Preset
 	current, legacy                ruleGroupGate
-	resolution                     Level
+	resolution                     ruleconfig.Level
 }
 
 type ruleGroupGate struct {
-	preset      Preset
-	group, rule Level
+	preset      ruleconfig.Preset
+	group, rule ruleconfig.Level
 	explicit    bool
 }
 
-func groupGate(group Group, name string) ruleGroupGate {
+func groupGate(group ruleconfig.Group, name string) ruleGroupGate {
 	setting, explicit := group.Rule(name)
 	return ruleGroupGate{preset: group.Preset(), group: group.Level(), rule: setting.Level(), explicit: explicit}
 }

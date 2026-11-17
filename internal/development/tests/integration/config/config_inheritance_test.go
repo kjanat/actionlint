@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
@@ -44,7 +44,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if len(loaded.Provenance.Sources()) != 3 {
 		t.Fatal(loaded.Provenance.Sources())
 	}
-	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

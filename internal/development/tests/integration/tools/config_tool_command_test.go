@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -62,13 +62,13 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, err := toolconfig.NewCommand(executable,
+	command, err := tools.NewCommand(executable,
 		[]string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
 		map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := toolconfig.ProcessBackend(command)
+	process := tools.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -78,10 +78,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
-				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}})
 			} else {
 				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
-				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}
 			requestSources = []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n" + "\npermissions: {}\n")}}

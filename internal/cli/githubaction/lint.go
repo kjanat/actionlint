@@ -12,23 +12,22 @@ import (
 	"strings"
 	"time"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/integrations/github"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/services"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -38,13 +37,16 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ctx           context.Context
-	remoteActions actions.Provider
+	ctx context.Context
+	// connected holds the GitHub service, action metadata provider and
+	// configuration connections that configureEnvironment read from the
+	// environment. runLinter adds the fields of each run to a copy.
+	connected checking.Options
 	// disabledTools lists the tool ids the disable-tools input turned off.
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
-	processes    map[string]*process.CommandOptions
+	processes    map[string]*hostprocess.CommandOptions
 	workingDir   string
 	workspaceDir string
 	configFile   string
@@ -54,8 +56,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
-	acquisition  pluginacquisition.Settings
-	service      services.Service
+	acquisition  pluginacquisition.Options
 }
 
 type lintOutcome struct {
@@ -66,7 +67,7 @@ type lintOutcome struct {
 
 type lintResult struct {
 	*lintOutcome
-	report  resultreport.CheckResult
+	report  report.CheckResult
 	configs []configreport.Report
 }
 
@@ -78,18 +79,11 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	service, err := services.FromGitHubServerURL(env("GITHUB_SERVER_URL"))
+	connected, err := checkoptions.ConnectGitHub(checking.Options{}, checkoptions.GitHubAccess{Getenv: env, Acquisition: req.acquisition})
 	if err != nil {
 		return inputErrorf("%s", err)
 	}
-	req.service = service
-	options := github.EnvironmentOptions(github.Online, env, req.acquisition.UserCacheDir)
-	options.Transport = req.acquisition.Connections.Transport
-	metadata, err := github.New(options)
-	if err != nil {
-		return inputErrorf("%s", err)
-	}
-	req.remoteActions = metadata
+	req.connected = connected
 	req.configureTools(env)
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
@@ -118,37 +112,35 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
-	result := &lintResult{report: commandstatus.NewCheckResult(commandstatus.ExitSuccessNoProblem)}
+	result := &lintResult{report: exitcode.NewCheckResult(exitcode.ExitSuccessNoProblem)}
 	result.report.Hints = append(result.report.Hints, req.hints...)
 	workspace := req.workspaceDir
 	if workspace == "" {
 		workspace = req.workingDir
 	}
-	opts := checking.Options{
-		Service:        req.service,
-		RemoteActions:  req.remoteActions,
-		IgnorePatterns: req.ignore,
-		ConfigFile:     req.configFile,
-		ConfigOverlays: req.overlays,
-		WorkingDir:     req.workingDir,
-		LogWriter:      &logs,
-		OnConfigLoaded: func(report configreport.Report) {
-			result.configs = append(result.configs, report)
-			result.report.AddConfiguration(report)
-		},
-		OnFilesSelected: func(files []string) {
-			result.report.FileCount = new(len(files))
-		}, Tools: registry.Registrations(req.toolSelections()),
+	opts := req.connected
+	opts.IgnorePatterns = req.ignore
+	opts.ConfigFile = req.configFile
+	opts.ConfigOverlays = req.overlays
+	opts.WorkingDir = req.workingDir
+	opts.LogWriter = &logs
+	opts.OnConfigLoaded = func(report configreport.Report) {
+		result.configs = append(result.configs, report)
+		result.report.AddConfiguration(report)
 	}
+	opts.OnFilesSelected = func(files []string) {
+		result.report.FileCount = new(len(files))
+	}
+	opts.Tools = registry.Registrations(req.toolSelections())
 
 	ctx := req.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	var analysis *resultreport.Analysis
+	var analysis *report.Analysis
 	var err error
 	inputNames := make(map[string]string, len(req.files))
-	input := inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
+	input := checkrequest.Request{Kind: checkrequest.Repository, Directory: req.workingDir}
 	if len(req.files) != 0 {
 		paths := make([]string, len(req.files))
 		for i, path := range req.files {
@@ -158,7 +150,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 			paths[i] = path
 		}
-		input = inputmodel.Request{Kind: inputmodel.Files, Paths: paths}
+		input = checkrequest.Request{Kind: checkrequest.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
 	analysis, err = checking.CheckProjects(ctx, opts, input, selection)
@@ -178,28 +170,28 @@ func runLinter(req *lintRequest) *lintResult {
 			analysis.Diagnostics[i].Diagnostic = diagnosticPaths(analysis.Diagnostics[i].Diagnostic, restorePath)
 		}
 		hints := result.report.Hints
-		result.report = resultreport.FromAnalysis(*analysis)
+		result.report = report.FromAnalysis(*analysis)
 		result.report.Hints = hints
 	}
 	if err != nil {
-		code := commandstatus.ExitFailure
+		code := exitcode.ExitFailure
 		if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
-			code = commandstatus.ExitInvalidCommandOption
+			code = exitcode.ExitInvalidCommandOption
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
-			code = commandstatus.ExitInvalidCommandOption
+			code = exitcode.ExitInvalidCommandOption
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
 	if req.format == formatSARIF || req.sarif {
 		var sarif bytes.Buffer
-		sarifRenderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
+		sarifRenderer, err := output.New(outputformat.SARIF, "", false, buildinfo.Version, nil)
 		if err == nil {
-			err = sarifRenderer.Render(&sarif, render.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
+			err = sarifRenderer.Render(&sarif, output.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
 		}
 		if err != nil {
-			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", commandstatus.ExitFailure}
+			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", exitcode.ExitFailure}
 			return result
 		}
 		result.report.SARIF = json.RawMessage(sarif.Bytes())
@@ -209,13 +201,13 @@ func runLinter(req *lintRequest) *lintResult {
 	} else if req.format != formatJSON && req.format != formatJSONLines {
 		rendered, err := renderAnalysis(req.format, analysis, req.workingDir, workspace)
 		if err != nil {
-			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", commandstatus.ExitFailure}
+			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", exitcode.ExitFailure}
 			return result
 		}
 		out.WriteString(rendered)
 	}
-	code := commandstatus.AnalysisResult(*analysis).ExitCode
-	if code == commandstatus.ExitSuccessProblemFound {
+	code := exitcode.AnalysisResult(*analysis).ExitCode
+	if code == exitcode.ExitSuccessProblemFound {
 		result.report.Hints = append(result.report.Hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
 	}
 	result.lintOutcome = &lintOutcome{out.String(), logs.String(), code}
@@ -224,7 +216,7 @@ func runLinter(req *lintRequest) *lintResult {
 
 // Rebase SARIF and GitHub reports without changing source metadata or the
 // analysis-relative paths used by persisted diagnostics and other formats.
-func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, workspace string) *resultreport.Analysis {
+func workspaceReportAnalysis(analysis *report.Analysis, workingDir, workspace string) *report.Analysis {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
@@ -236,7 +228,7 @@ func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, worksp
 }
 
 // Rewrite every diagnostic path together, preserving revision-to-edit bindings.
-func diagnosticPaths(finding results1.Diagnostic, rewrite func(string) string) results1.Diagnostic {
+func diagnosticPaths(finding results.Diagnostic, rewrite func(string) string) results.Diagnostic {
 	finding.Path = rewrite(finding.Path)
 	finding.Related = slices.Clone(finding.Related)
 	for i := range finding.Related {
@@ -286,19 +278,19 @@ func (req *lintRequest) configureTools(env func(string) string) {
 // toolSelections selects every bundled tool: disabled when the inputs
 // disabled it, otherwise its default command in the working directory,
 // which is skipped with a warning when it cannot run.
-func (req *lintRequest) toolSelections() registry.Selections {
-	selections := registry.Selections{}
+func (req *lintRequest) toolSelections() registry.ToolSelections {
+	selections := registry.ToolSelections{}
 	for _, id := range registry.IDs() {
 		if slices.Contains(req.disabledTools, id) {
-			selections[id] = scripts.Selection{}
+			selections[id] = backends.ToolSelection{}
 			continue
 		}
-		options := process.CommandOptions{Optional: true}
+		options := hostprocess.CommandOptions{Optional: true}
 		if replaced := req.processes[id]; replaced != nil {
 			options = *replaced
 		}
 		options.WorkingDir = req.workingDir
-		selections[id] = scripts.Selection{Command: id, Process: &options}
+		selections[id] = backends.ToolSelection{Command: id, Process: &options}
 	}
 	return selections
 }
@@ -317,11 +309,11 @@ func (req *lintRequest) requestedTools() []string {
 func (a *action) runLint(req *lintRequest) *lintResult {
 	info, err := os.Stat(req.workingDir)
 	if err != nil {
-		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", commandstatus.ExitFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", exitcode.ExitFailure}}
 	}
 	if !info.IsDir() {
 		msg := fmt.Sprintf("working directory %q is not a directory\n", req.workingDir)
-		return &lintResult{lintOutcome: &lintOutcome{"", msg, commandstatus.ExitFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, exitcode.ExitFailure}}
 	}
 
 	withTimeout := a.withTimeout
@@ -355,6 +347,6 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		result = &lintResult{}
 	}
 	msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-	result.lintOutcome = &lintOutcome{"", msg, commandstatus.ExitFailure}
+	result.lintOutcome = &lintOutcome{"", msg, exitcode.ExitFailure}
 	return result
 }

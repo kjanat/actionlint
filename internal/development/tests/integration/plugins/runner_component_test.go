@@ -10,24 +10,24 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func loadRunnerFixture(t *testing.T) *componenthost.Plugin {
+func loadRunnerFixture(t *testing.T) *component.Plugin {
 	t.Helper()
-	p, err := componenthost.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", componenthost.Options{ReservedRules: checking.BuiltinRuleNames()})
+	p, err := component.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm", component.Options{ReservedRules: checking.BuiltinRuleNames()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,15 +42,15 @@ func loadRunnerFixture(t *testing.T) *componenthost.Plugin {
 	return p
 }
 
-func runnerFixtureRequest(t *testing.T) runner.Request {
+func runnerFixtureRequest(t *testing.T) runnerapi.Request {
 	t.Helper()
 	data, err := os.ReadFile("../../../../../internal/model/runners/testdata/provider/snapshot.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := runner.Request{Target: "buildkite", Scope: "fixture", Snapshot: runner.Snapshot{Content: string(data), Scope: "fixture", ObtainedAt: "2026-10-19T00:00:00Z", Freshness: runner.Fresh, Complete: true}}
-	for _, term := range []runner.Term{runner.Literal("buildkite-windows"), runner.Literal("missing-queue"), runner.Expression("${{ vars.RUNNER }}")} {
-		r.Selectors = append(r.Selectors, runner.Selector{Labels: []runner.Constraint{{Value: term, Position: sourcepos.Position{Line: 4, Column: 14}}}})
+	r := runnerapi.Request{Target: "buildkite", Scope: "fixture", Snapshot: runnerapi.Snapshot{Content: string(data), Scope: "fixture", ObtainedAt: "2026-10-19T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}}
+	for _, term := range []runnerapi.Term{runnerapi.Literal("buildkite-windows"), runnerapi.Literal("missing-queue"), runnerapi.Expression("${{ vars.RUNNER }}")} {
+		r.Selectors = append(r.Selectors, runnerapi.Selector{Labels: []runnerapi.Constraint{{Value: term, Position: sourcetext.Position{Line: 4, Column: 14}}}})
 	}
 	return r
 }
@@ -66,22 +66,22 @@ func TestRunnerProviderComponent(t *testing.T) {
 	if len(response.Answers) != 3 {
 		t.Fatal(response.Answers)
 	}
-	resolved, ok := response.Answers[0].Resolution.(runner.Resolved)
-	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runner.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
+	resolved, ok := response.Answers[0].Resolution.(runnerapi.Resolved)
+	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runnerapi.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
 		t.Fatalf("%#v", response.Answers[0])
 	}
-	if _, ok := response.Answers[1].Resolution.(runner.NoMatch); !ok {
+	if _, ok := response.Answers[1].Resolution.(runnerapi.NoMatch); !ok {
 		t.Fatalf("%#v", response.Answers[1])
 	}
-	if _, ok := response.Answers[2].Resolution.(runner.Unknown); !ok {
+	if _, ok := response.Answers[2].Resolution.(runnerapi.Unknown); !ok {
 		t.Fatalf("%#v", response.Answers[2])
 	}
-	request.Snapshot.Freshness = runner.Stale
+	request.Snapshot.Freshness = runnerapi.Stale
 	response, err = p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := response.Answers[0].Resolution.(runner.Unknown); !ok {
+	if _, ok := response.Answers[0].Resolution.(runnerapi.Unknown); !ok {
 		t.Fatal("stale evidence resolved a runner")
 	}
 	request.Target = "github"
@@ -89,7 +89,7 @@ func TestRunnerProviderComponent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := response.Answers[0].Resolution.(runner.NotApplicable); !ok {
+	if _, ok := response.Answers[0].Resolution.(runnerapi.NotApplicable); !ok {
 		t.Fatal("provider took authority over another target")
 	}
 	request.Snapshot.Content = "{"
@@ -101,7 +101,7 @@ func TestRunnerProviderComponent(t *testing.T) {
 type runtimeObserver struct{ scripts []checkinputs.Script }
 
 func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Execution}}
+	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Execution}}
 }
 
 func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -114,18 +114,18 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 	p := loadRunnerFixture(t)
 	for _, tc := range []struct {
 		name, shell string
-		snapshot    runner.Snapshot
+		snapshot    runnerapi.Snapshot
 		wantShell   string
 	}{
 		{"resolved", "", runnerFixtureRequest(t).Snapshot, "pwsh"},
-		{"missing", "", runner.Snapshot{}, ""},
-		{"explicit shell survives missing evidence", "shell: bash\n        ", runner.Snapshot{}, "bash"},
+		{"missing", "", runnerapi.Snapshot{}, ""},
+		{"explicit shell survives missing evidence", "shell: bash\n        ", runnerapi.Snapshot{}, "bash"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
-				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
+				Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 				Analyzers: []checkinputs.Registration{{Checker: observer}},
 			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
@@ -183,10 +183,10 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 
 type parityAnswer struct {
 	Kind          string
-	Candidates    []runner.Candidate
-	Rejections    []runner.Rejection
+	Candidates    []runnerapi.Candidate
+	Rejections    []runnerapi.Rejection
 	Reason        string
-	DatasetStatus runner.DatasetStatus
+	DatasetStatus runnerapi.DatasetStatus
 }
 type parityOutput struct {
 	Digest, Name, Version string
@@ -211,18 +211,18 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 	for _, a := range response.Answers {
 		v := parityAnswer{DatasetStatus: a.DatasetStatus}
 		switch r := a.Resolution.(type) {
-		case runner.Resolved:
+		case runnerapi.Resolved:
 			v.Kind, v.Candidates = "resolved", r.Candidates
-		case runner.NoMatch:
+		case runnerapi.NoMatch:
 			v.Kind, v.Rejections = "no-match", r.Rejections
-		case runner.Unknown:
+		case runnerapi.Unknown:
 			v.Kind, v.Reason = "unknown", r.Reason
-		case runner.NotApplicable:
+		case runnerapi.NotApplicable:
 			v.Kind = "not-applicable"
 		}
 		want.Answers = append(want.Answers, v)
 	}
-	artifact, err := filepath.Abs("../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
+	artifact, err := filepath.Abs("../../../../../internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

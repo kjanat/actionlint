@@ -5,8 +5,8 @@ import (
 	"slices"
 	"unicode/utf16"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 func ExpressionTruthy(value any) bool {
@@ -24,7 +24,7 @@ func ExpressionTruthy(value any) bool {
 	}
 }
 
-func CompareConditionValues(kind exprsyntax.CompareOpNodeKind, left, right any) (bool, bool) {
+func CompareConditionValues(kind syntax.CompareOpNodeKind, left, right any) (bool, bool) {
 	if l, ok := left.(string); ok {
 		if r, ok := right.(string); ok {
 			order := slices.Compare(utf16.Encode([]rune(runnerjson.OrdinalIgnoreCaseKey(l))), utf16.Encode([]rune(runnerjson.OrdinalIgnoreCaseKey(r))))
@@ -47,21 +47,21 @@ func CompareConditionValues(kind exprsyntax.CompareOpNodeKind, left, right any) 
 	return compareConditionNumbers(kind, ToNumber(left), ToNumber(right)), true
 }
 
-func compareConditionNumbers(kind exprsyntax.CompareOpNodeKind, a, b float64) bool {
+func compareConditionNumbers(kind syntax.CompareOpNodeKind, a, b float64) bool {
 	switch kind {
-	case exprsyntax.CompareOpNodeKindEq:
+	case syntax.CompareOpNodeKindEq:
 		return a == b
-	case exprsyntax.CompareOpNodeKindNotEq:
+	case syntax.CompareOpNodeKindNotEq:
 		return a != b
-	case exprsyntax.CompareOpNodeKindLess:
+	case syntax.CompareOpNodeKindLess:
 		return a < b
-	case exprsyntax.CompareOpNodeKindLessEq:
+	case syntax.CompareOpNodeKindLessEq:
 		return a <= b
-	case exprsyntax.CompareOpNodeKindGreater:
+	case syntax.CompareOpNodeKindGreater:
 		return a > b
-	case exprsyntax.CompareOpNodeKindGreaterEq:
+	case syntax.CompareOpNodeKindGreaterEq:
 		return a >= b
-	case exprsyntax.CompareOpNodeKindInvalid:
+	case syntax.CompareOpNodeKindInvalid:
 		// An invalid operator never holds.
 		fallthrough
 	default:

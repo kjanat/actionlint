@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -46,11 +46,11 @@ func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name              string
-		end               sourcepos.Position
+		end               sourcetext.Position
 		column, indicator string
 	}{
-		{"single line", sourcepos.Position{Line: 4, Column: 17}, "16", "^~~~"},
-		{"multiple lines", sourcepos.Position{Line: 5, Column: 2}, "17", "^~~~~"},
+		{"single line", sourcetext.Position{Line: 4, Column: 17}, "16", "^~~~"},
+		{"multiple lines", sourcetext.Position{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -63,7 +63,7 @@ permissions: {}
 `)
 			moved := analysis.Diagnostics[0].Diagnostic
 			moved.End = tc.end
-			analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
+			analysis.Diagnostics[0] = results.Publish(moved, analysis.Diagnostics[0].Source)
 			for _, format := range []outputFormat{formatDefault, formatGitHub, formatMarkdown} {
 				got, err := renderAnalysis(format, analysis, ".", ".")
 				if err != nil {
@@ -183,7 +183,7 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 	}
 	moved := analysis.Diagnostics[0].Diagnostic
 	moved.Start.Line, moved.End.Line = 2000, 2000
-	analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
+	analysis.Diagnostics[0] = results.Publish(moved, analysis.Diagnostics[0].Source)
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || strings.Contains(got, "runs-on:") || strings.Contains(got, "^") {
@@ -210,9 +210,9 @@ func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 	t.Parallel()
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
-		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", commandstatus.ExitSuccessProblemFound}, report: commandstatus.AnalysisResult(*analysis)}
+		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", exitcode.ExitSuccessProblemFound}, report: exitcode.AnalysisResult(*analysis)}
 		o, count, rendered := renderOutcome(result)
-		if o.code != commandstatus.ExitSuccessProblemFound || count != "1" || rendered != serialized {
+		if o.code != exitcode.ExitSuccessProblemFound || count != "1" || rendered != serialized {
 			t.Fatalf("typed finding count/rendered output changed: %+v, %q, %q", o, count, rendered)
 		}
 	}
@@ -220,9 +220,9 @@ func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 
 func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
 	t.Parallel()
-	result := &lintResult{lintOutcome: &lintOutcome{"partial", "boom\n", commandstatus.ExitFailure}}
+	result := &lintResult{lintOutcome: &lintOutcome{"partial", "boom\n", exitcode.ExitFailure}}
 	o, count, rendered := renderOutcome(result)
-	if o.code != commandstatus.ExitFailure || count != "" || rendered != "boom\npartial" {
+	if o.code != exitcode.ExitFailure || count != "" || rendered != "boom\npartial" {
 		t.Fatalf("failure output changed: %+v, %q, %q", o, count, rendered)
 	}
 	result.stderr = ""

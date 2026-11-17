@@ -5,19 +5,20 @@ import (
 	"io"
 	"os"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
-func parseColorMode(mode string) (render.Color, error) {
+func parseColorMode(mode string) (output.Color, error) {
 	switch mode {
 	case "auto":
-		return render.ColorAuto, nil
+		return output.ColorAuto, nil
 	case "always":
-		return render.ColorAlways, nil
+		return output.ColorAlways, nil
 	case "never":
-		return render.ColorNever, nil
+		return output.ColorNever, nil
 	default:
 		return 0, fmt.Errorf("invalid color mode %q: choose auto, always or never", mode)
 	}
@@ -25,17 +26,17 @@ func parseColorMode(mode string) (render.Color, error) {
 
 func (a *commandApp) prepareColor() error {
 	if a.opts.color {
-		a.inv.Render.Color = render.ColorAlways
+		a.inv.Render.Color = output.ColorAlways
 	}
 	if a.set["modern-color"] {
 		color, err := parseColorMode(a.opts.colorMode)
 		if err != nil {
-			return commandargs.UsageError{Cause: err}
+			return arguments.UsageError{Cause: err}
 		}
 		a.inv.Render.Color = color
 	}
 	if a.opts.noColor {
-		a.inv.Render.Color = render.ColorNever
+		a.inv.Render.Color = output.ColorNever
 	}
 	return nil
 }
@@ -53,18 +54,18 @@ func githubActionsColor(out io.Writer) bool {
 	return true
 }
 
-func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format render.Format) {
-	if r.Color != render.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
+func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format outputformat.Format) {
+	if r.Color != output.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
 		return
 	}
-	r.Color = render.ColorNever
+	r.Color = output.ColorNever
 	if r.Template != "" || !githubActionsColor(out) {
 		return
 	}
 	switch format {
-	case "", render.FormatText, render.FormatPretty, render.FormatOneline:
-		r.Color = render.ColorAlways
-	case render.FormatGCC, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub:
+	case "", outputformat.Text, outputformat.Pretty, outputformat.Oneline:
+		r.Color = output.ColorAlways
+	case outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub:
 		// Machine-readable formats stay uncolored.
 	}
 }

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/lsp"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -15,11 +15,11 @@ func TestEditorDiagnosticsOwnTheirReportData(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
-	captured := reportfixture.CapturedSource(t, path, []byte("on: push\n"), source.YAML)
+	captured := reportfixture.CapturedSource(t, path, []byte("on: push\n"), sourcetext.YAML)
 	input := &report.Analysis{
 		Diagnostics: []results.PublishedDiagnostic{{
-			Rule: "example", Path: "workflow.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2},
-			Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()},
+			Rule: "example", Path: "workflow.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2},
+			Reference: &sourcetext.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()},
 			Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original", Origin: "required.toml", Enforced: true}}},
 			Fixes: []results.Fix{{
 				Description: "Example edit", Revisions: map[string]string{"workflow.yml": captured.Revision.Digest()},

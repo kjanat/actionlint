@@ -10,25 +10,25 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
-	manifest := manifests.Manifest{
-		SchemaVersion: 1, ID: "migration-fixture", Version: "1.0.0", Role: manifests.RoleDocument,
-		Scope: manifests.ScopeSource, Transport: manifests.TransportProcess, Preparation: "generic",
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
+	manifest := toolmanifest.Manifest{
+		SchemaVersion: 1, ID: "migration-fixture", Version: "1.0.0", Role: toolmanifest.RoleDocument,
+		Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess, Preparation: "generic",
 		Rule:      rule.Descriptor{Name: "migration-fixture", Description: "Cached migration fixture", Category: "security", Subcategory: "workflow", Maturity: "stable", Provider: "migration-fixture", DocumentationURL: "https://example.invalid/migration-fixture"},
-		Selectors: manifests.Selectors{Documents: []string{"workflow"}},
-		Process:   &manifests.ProcessSpec{Entry: "must-not-execute-during-migration", Args: []string{}, Stdin: manifests.StdinRequest, Config: manifests.ConfigRendering{Render: manifests.RenderNone}, Output: manifests.Output{Format: manifests.FormatEnvelope}},
+		Selectors: toolmanifest.Selectors{Documents: []string{"workflow"}},
+		Process:   &toolmanifest.ProcessSpec{Entry: "must-not-execute-during-migration", Args: []string{}, Stdin: toolmanifest.StdinRequest, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
 	}
 	data, err := json.Marshal(manifest)
 	if err != nil {

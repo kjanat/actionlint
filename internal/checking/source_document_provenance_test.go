@@ -5,23 +5,23 @@ import (
 	"path/filepath"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type actionSourceReferenceProbe struct{ path string }
 
 func (actionSourceReferenceProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (p actionSourceReferenceProbe) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
@@ -43,7 +43,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 			result, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
 				Analyzers:  []checkinputs.Registration{{Checker: actionSourceReferenceProbe{path: actionPath}}},
-			}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflowPath}})
+			}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflowPath}})
 			if err != nil {
 				t.Fatal(err)
 			}

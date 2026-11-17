@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeActionRuleSelection(t *testing.T) {
@@ -49,7 +49,7 @@ runs:
 					return rules
 				}
 			}})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "action" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "action" })
 			if found != (selection == "enabled") {
 				t.Fatalf("action rule selection %q: %+v", selection, result.Diagnostics)
 			}
@@ -130,12 +130,12 @@ runs: {using: composite, steps: []}
 						t.Fatalf("wrong metadata validated: %+v", finding)
 					}
 				}
-				if removed != "executable-bit" && !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+				if removed != "executable-bit" && !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 					return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == outer
 				}) {
 					t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
 				}
-				if removed != "action" && !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+				if removed != "action" && !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 					return d.Rule == "action" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell")
 				}) {
 					t.Fatalf("nested metadata validation lost: %+v", result.Diagnostics)
@@ -165,8 +165,8 @@ runs:
   with: {path: source}
 - uses: ./source/local`, analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 		return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-	}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+	}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
 		t.Fatalf("composite ShellCheck read wrong source: %+v", result.Diagnostics)
@@ -207,7 +207,7 @@ runs:
 			root, metadata := fixture(t)
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-			}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("best-effort metadata validation lost: %v", result.Inputs)
 			}

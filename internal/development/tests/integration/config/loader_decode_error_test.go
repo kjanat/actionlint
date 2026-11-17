@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
@@ -27,11 +27,11 @@ func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
 	if err == nil {
 		t.Fatal("invalid boolean accepted")
 	}
-	if _, ok := errors.AsType[*binding.Error](err); !ok {
+	if _, ok := errors.AsType[*configdecode.Error](err); !ok {
 		t.Fatalf("decoder's typed failure lost: %T: %v", err, err)
 	}
-	failure, _ := errors.AsType[*binding.Error](err)
-	original, _ := errors.AsType[*binding.Error](raw)
+	failure, _ := errors.AsType[*configdecode.Error](err)
+	original, _ := errors.AsType[*configdecode.Error](raw)
 	if strings.Contains(err.Error(), "\n") || failure.Path != original.Path || failure.Cause.Error() != original.Cause.Error() {
 		t.Fatalf("typed single-line failure changed: got %q; raw %q", err.Error(), raw.Error())
 	}

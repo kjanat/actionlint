@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // matrixAxis is one declared matrix row. Complete is false when a value or the
@@ -37,11 +37,11 @@ func (c Combination) Get(name string) (value.Value, bool) {
 
 // Values yields combination fields in stable key order.
 func (c Combination) Values() iter.Seq2[string, value.Value] {
-	values := maps.Clone(c.values)
-	keys := slices.Sorted(maps.Keys(values))
+	combinationValues := maps.Clone(c.values)
+	keys := slices.Sorted(maps.Keys(combinationValues))
 	return func(yield func(string, value.Value) bool) {
 		for _, name := range keys {
-			if !yield(name, values[name]) {
+			if !yield(name, combinationValues[name]) {
 				return
 			}
 		}
@@ -50,9 +50,9 @@ func (c Combination) Values() iter.Seq2[string, value.Value] {
 
 func (c Combination) With(name string, item value.Value) Combination {
 	name = strings.ToLower(name)
-	values := maps.Clone(c.values)
-	if values == nil {
-		values = map[string]value.Value{}
+	combinationValues := maps.Clone(c.values)
+	if combinationValues == nil {
+		combinationValues = map[string]value.Value{}
 	}
 	keyOrigins := maps.Clone(c.keyOrigins)
 	if keyOrigins == nil {
@@ -61,17 +61,17 @@ func (c Combination) With(name string, item value.Value) Combination {
 	if _, declared := keyOrigins[name]; !declared {
 		keyOrigins[name] = item.Origin()
 	}
-	values[name] = item
-	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+	combinationValues[name] = item
+	return Combination{values: combinationValues, keyOrigins: keyOrigins, origin: c.origin}
 }
 
 // merge returns a copy of c with every key of inclusion that is not a base
 // axis. Base axis keys are left alone: inclusion only merges into c when its
 // base axis values already match.
 func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination {
-	values := maps.Clone(c.values)
-	if values == nil {
-		values = map[string]value.Value{}
+	combinationValues := maps.Clone(c.values)
+	if combinationValues == nil {
+		combinationValues = map[string]value.Value{}
 	}
 	keyOrigins := maps.Clone(c.keyOrigins)
 	if keyOrigins == nil {
@@ -79,11 +79,11 @@ func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination
 	}
 	for name, item := range inclusion.values {
 		if axisIndex(axes, name) < 0 {
-			values[name] = item
+			combinationValues[name] = item
 			keyOrigins[name] = inclusion.KeyOrigin(name)
 		}
 	}
-	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+	return Combination{values: combinationValues, keyOrigins: keyOrigins, origin: c.origin}
 }
 
 // KeyOrigin returns the declaration location of a field, falling back to its value origin.
@@ -205,7 +205,7 @@ func (r Resolution) ReachableNames() iter.Seq[string] {
 	return slices.Values(names)
 }
 
-func Resolve(strategy *workflowlang.Strategy) Resolution {
+func Resolve(strategy *definition.Strategy) Resolution {
 	if strategy == nil {
 		return Resolution{state: value.Missing, filterKnown: true, includeKnown: true, excludeKnown: true}
 	}
@@ -223,22 +223,22 @@ func Resolve(strategy *workflowlang.Strategy) Resolution {
 	return resolveDeclaration(strategy.Matrix)
 }
 
-func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
+func resolveDeclaration(matrix *definition.Matrix) Resolution {
 	if matrix.Expression != nil {
 		return resolveSemanticMatrix(expression(matrix.Expression))
 	}
 	r := Resolution{state: value.Literal, filterKnown: true, includeKnown: true, excludeKnown: true, origin: origin(matrix.Pos, false)}
 	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
 		row := matrix.Rows[name]
-		key := value.YAMLScalar(name, workflowlang.YamlTagStr, value.Origin{})
+		key := value.YAMLScalar(name, definition.YamlTagStr, value.Origin{})
 		if row.Name != nil {
-			key = workflowlang.SemanticValue(row.Name)
+			key = definition.SemanticValue(row.Name)
 			if row.Evaluated {
-				key = value.YAMLScalar(row.Name.Value, workflowlang.YamlTagStr, key.Origin())
+				key = value.YAMLScalar(row.Name.Value, definition.YamlTagStr, key.Origin())
 			}
 		}
-		axisName, keyState := mapping.ResolveKey(key)
-		if keyState != mapping.KnownKey {
+		axisName, keyState := mappings.ResolveKey(key)
+		if keyState != mappings.KnownKey {
 			r.unknownKeys = true
 			continue
 		}
@@ -256,7 +256,7 @@ func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
 			}
 		} else {
 			for _, raw := range row.Values {
-				scalar, isScalar := raw.(*workflowlang.RawYAMLString)
+				scalar, isScalar := raw.(*definition.RawYAMLString)
 				isExpression := isScalar && !row.Evaluated && strings.Contains(scalar.Value, "${{")
 				v := rawValue(raw, !row.Evaluated)
 				if dynamic(v) {
@@ -767,7 +767,7 @@ func looseEqual(left, right value.Value) bool {
 			return item.Number()
 		case value.String:
 			text, _ := item.Text()
-			return exprvalues.ToNumber(text), true
+			return values.ToNumber(text), true
 		case value.KindUnknown, value.Array, value.Object:
 		}
 		return 0, false
@@ -777,7 +777,7 @@ func looseEqual(left, right value.Value) bool {
 	return aok && bok && a == b
 }
 
-func declarationCombinations(filters *workflowlang.MatrixCombinations, complete bool) ([]Combination, bool) {
+func declarationCombinations(filters *definition.MatrixCombinations, complete bool) ([]Combination, bool) {
 	if filters.Expression != nil {
 		v := expression(filters.Expression)
 		result, ok := semanticCombinations(v, false)
@@ -801,15 +801,15 @@ func declarationCombinations(filters *workflowlang.MatrixCombinations, complete 
 		}
 		for key, assign := range filter.Assigns {
 			if assign != nil {
-				name := value.YAMLScalar(key, workflowlang.YamlTagStr, value.Origin{})
+				name := value.YAMLScalar(key, definition.YamlTagStr, value.Origin{})
 				if assign.Key != nil {
-					name = workflowlang.SemanticValue(assign.Key)
+					name = definition.SemanticValue(assign.Key)
 					if filter.Evaluated {
-						name = value.YAMLScalar(assign.Key.Value, workflowlang.YamlTagStr, name.Origin())
+						name = value.YAMLScalar(assign.Key.Value, definition.YamlTagStr, name.Origin())
 					}
 				}
-				resolved, state := mapping.ResolveKey(name)
-				if state != mapping.KnownKey {
+				resolved, state := mappings.ResolveKey(name)
+				if state != mappings.KnownKey {
 					complete = false
 					continue
 				}
@@ -849,18 +849,18 @@ func semanticCombinations(v value.Value, allowObject bool) ([]Combination, bool)
 	return result, true
 }
 
-func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
+func rawValue(raw definition.RawYAMLValue, expressions bool) value.Value {
 	switch node := raw.(type) {
-	case *workflowlang.RawYAMLString:
+	case *definition.RawYAMLString:
 		origin := origin(node.Pos(), expressions)
 		if expressions && strings.Contains(node.Value, "${{") {
 			return value.Template(node.Value, origin)
 		}
 		return value.YAMLScalar(node.Value, node.Tag, origin)
-	case *workflowlang.RawYAMLArray:
+	case *definition.RawYAMLArray:
 		items := make([]value.Value, 0, len(node.Elems))
 		for _, child := range node.Elems {
-			scalar, isScalar := child.(*workflowlang.RawYAMLString)
+			scalar, isScalar := child.(*definition.RawYAMLString)
 			isExpression := expressions && isScalar && strings.Contains(scalar.Value, "${{")
 			item := rawValue(child, expressions)
 			if isExpression && item.Known() && item.Kind() == value.Array {
@@ -872,7 +872,7 @@ func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
 			}
 		}
 		return value.Seq(origin(node.Pos(), false), items...)
-	case *workflowlang.RawYAMLObject:
+	case *definition.RawYAMLObject:
 		props := make([]value.Prop, 0, len(node.Props))
 		for _, name := range slices.Sorted(maps.Keys(node.Props)) {
 			props = append(props, value.Prop{Name: name, Value: rawValue(node.Props[name], expressions)})
@@ -883,14 +883,14 @@ func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
 	}
 }
 
-func expression(text *workflowlang.String) value.Value {
+func expression(text *definition.String) value.Value {
 	if text == nil {
 		return value.Value{}
 	}
 	return value.Template(text.Value, origin(text.Pos, true))
 }
 
-func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
+func origin(pos *sourcetext.Position, fromExpression bool) value.Origin {
 	o := value.Origin{FromExpression: fromExpression}
 	if pos != nil {
 		o.Span.Start = *pos
@@ -898,7 +898,7 @@ func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
 	return o
 }
 
-func rowPosition(row *workflowlang.MatrixRow) *sourcepos.Position {
+func rowPosition(row *definition.MatrixRow) *sourcetext.Position {
 	if row.Expression != nil {
 		return row.Expression.Pos
 	}
@@ -920,13 +920,13 @@ func axisIndex(axes []matrixAxis, name string) int {
 	return -1
 }
 
-func appendUnique(values *[]value.Value, candidate value.Value) {
-	for _, existing := range *values {
+func appendUnique(combinationValues *[]value.Value, candidate value.Value) {
+	for _, existing := range *combinationValues {
 		if existing.Equal(candidate) {
 			return
 		}
 	}
-	*values = append(*values, candidate)
+	*combinationValues = append(*combinationValues, candidate)
 }
 
 // exclusionCandidates lists the values key name can take when an exclusion is

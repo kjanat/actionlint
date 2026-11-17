@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 type SuppressionReport uint8
@@ -39,7 +39,7 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
-	names     rulemeta.Names `clone:"shared"`
+	names     rule.Names `clone:"shared"`
 	report    SuppressionReport
 	rules     []string
 	locations map[string]int
@@ -117,24 +117,24 @@ func (p *SuppressionsPolicy) DecodeConfig(value any) error {
 			case "report":
 				name, ok := value.(string)
 				if !ok {
-					return binding.At(key, errors.New("report must be suppression, violation, or all"))
+					return configdecode.At(key, errors.New("report must be suppression, violation, or all"))
 				}
 				mode, ok := parseSuppressionReport(name)
 				if !ok {
-					return binding.At(key, fmt.Errorf("unknown report %q; expected suppression, violation, or all", name))
+					return configdecode.At(key, fmt.Errorf("unknown report %q; expected suppression, violation, or all", name))
 				}
 				next.report = mode
 			case "rules":
 				var rules []string
-				if err := binding.Decode(value, &rules); err != nil {
-					return binding.At(key, err)
+				if err := configdecode.Decode(value, &rules); err != nil {
+					return configdecode.At(key, err)
 				}
 				if len(rules) == 0 {
-					return binding.At(key, errors.New("rules must be a nonempty list of suppressible rule IDs"))
+					return configdecode.At(key, errors.New("rules must be a nonempty list of suppressible rule IDs"))
 				}
 				for i, rule := range rules {
 					if strings.TrimSpace(rule) == "" {
-						return binding.At(key, binding.At(strconv.Itoa(i), fmt.Errorf("unknown suppressible rule %q", rule)))
+						return configdecode.At(key, configdecode.At(strconv.Itoa(i), fmt.Errorf("unknown suppressible rule %q", rule)))
 					}
 					if !slices.Contains(next.rules, rule) {
 						next.rules = append(next.rules, rule)
@@ -142,7 +142,7 @@ func (p *SuppressionsPolicy) DecodeConfig(value any) error {
 					}
 				}
 			default:
-				return binding.At(key, fmt.Errorf("unknown suppression policy key %q", key))
+				return configdecode.At(key, fmt.Errorf("unknown suppression policy key %q", key))
 			}
 		}
 	default:

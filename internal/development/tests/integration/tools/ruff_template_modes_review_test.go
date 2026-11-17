@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
@@ -50,12 +50,12 @@ jobs:
 `
 				}
 				source += "permissions: {}\n"
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: command}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
 				}
 				var codes []string
-				var ruff []diagmodel.Diagnostic
+				var ruff []results.Diagnostic
 				interpolations := 0
 				for _, diagnostic := range result.Diagnostics {
 					switch diagnostic.Rule {
@@ -84,14 +84,14 @@ jobs:
 						t.Fatalf("opaque statement affected other steps: %+v", result.Diagnostics)
 					}
 					finding := ruff[0]
-					if finding.Start != (sourcepos.Position{Line: 12 + offset, Column: 20}) || finding.End != (sourcepos.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
+					if finding.Start != (sourcetext.Position{Line: 12 + offset, Column: 20}) || finding.End != (sourcetext.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
 						t.Fatalf("independent step finding moved: %+v", finding)
 					}
 					return
 				}
 				if !slices.Equal(codes, []string{"B018", "F821"}) ||
-					ruff[0].Start != (sourcepos.Position{Line: 9 + offset, Column: 11}) || ruff[0].End != (sourcepos.Position{Line: 9 + offset, Column: 13}) ||
-					ruff[1].Start != (sourcepos.Position{Line: 10 + offset, Column: 17}) || ruff[1].End != (sourcepos.Position{Line: 10 + offset, Column: 24}) {
+					ruff[0].Start != (sourcetext.Position{Line: 9 + offset, Column: 11}) || ruff[0].End != (sourcetext.Position{Line: 9 + offset, Column: 13}) ||
+					ruff[1].Start != (sourcetext.Position{Line: 10 + offset, Column: 17}) || ruff[1].End != (sourcetext.Position{Line: 10 + offset, Column: 24}) {
 					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
 				}
 			})
@@ -135,7 +135,7 @@ jobs:
       - shell: python
         run: print(missing)
 ` + "\npermissions: {}\n"
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: command}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -161,7 +161,7 @@ jobs:
 permissions: {}
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
-		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{flag}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &command, Arguments: []string{flag}}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
 			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
 		}

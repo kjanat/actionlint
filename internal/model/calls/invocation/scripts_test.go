@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
@@ -95,7 +95,7 @@ func TestInvalidScriptAttemptsDoNotConsumeBudget(t *testing.T) {
 	}
 	for _, attempt := range []struct {
 		owner invocation.ID
-		ref   source.Reference
+		ref   sourcetext.Reference
 		want  error
 	}{
 		{b.RootID(), first, invocation.ErrDuplicateScript},
@@ -207,12 +207,12 @@ func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
 
 func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
 	t.Parallel()
-	entry := source.Reference{Document: "workflow.yml", Revision: "workflow-revision", Node: "root"}
+	entry := sourcetext.Reference{Document: "workflow.yml", Revision: "workflow-revision", Node: "root"}
 	declaration := entry
 	declaration.Node = "steps[0]"
 	callSite := entry
 	callSite.Node = "steps[1]"
-	child := source.Reference{Document: "action.yml", Revision: "action-revision", Node: "root"}
+	child := sourcetext.Reference{Document: "action.yml", Revision: "action-revision", Node: "root"}
 	childDeclaration := child
 	childDeclaration.Node = "steps[0]"
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
@@ -288,7 +288,7 @@ func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
 
 func TestInterruptedBuilderRejectsFurtherScripts(t *testing.T) {
 	t.Parallel()
-	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "root"}
+	entry := sourcetext.Reference{Document: "workflow.yml", Revision: "revision", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)

@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/remotecontent"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type (
@@ -31,11 +31,11 @@ type Service struct {
 	// mu guards the repository names and IDs seen during this request.
 	mu         sync.Mutex
 	names      map[repositoryKey]string
-	identities map[location]repofacts.ID
+	identities map[location]repository.ID
 }
 
 func New(provider actions.Provider) *Service {
-	return &Service{provider: provider, store: remotecontent.New[actions.Reference, ActionInspection](actionmeta.InspectDefinition), names: make(map[repositoryKey]string), identities: make(map[location]repofacts.ID)}
+	return &Service{provider: provider, store: remotecontent.New[actions.Reference, ActionInspection](actionmeta.InspectDefinition), names: make(map[repositoryKey]string), identities: make(map[location]repository.ID)}
 }
 
 // ActionInspection keeps validated call-site facts beside their complete availability.
@@ -68,7 +68,7 @@ func (s *Service) Inspect(ctx context.Context, spec string) (ActionInspection, e
 		return ActionInspection{}, ctx.Err()
 	}
 	if s == nil {
-		return ActionInspection{availability: actions.MissingMetadata(factavailability.LookupDisabled())}, nil
+		return ActionInspection{availability: actions.MissingMetadata(availability.LookupDisabled())}, nil
 	}
 	return s.store.Acquire(ctx, reference, func(ctx context.Context) (ActionInspection, error) {
 		return s.fetch(ctx, reference)
@@ -77,7 +77,7 @@ func (s *Service) Inspect(ctx context.Context, spec string) (ActionInspection, e
 
 func (s *Service) fetch(ctx context.Context, reference actions.Reference) (ActionInspection, error) {
 	if s.provider == nil {
-		return ActionInspection{availability: actions.MissingMetadata(factavailability.LookupDisabled())}, nil
+		return ActionInspection{availability: actions.MissingMetadata(availability.LookupDisabled())}, nil
 	}
 	result, err := s.provider.Lookup(ctx, reference)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Actio
 		}
 		// Provider failures are metadata unavailability. Cancellation of the
 		// analysis remains fatal, including cancellation during that lookup.
-		return ActionInspection{availability: actions.MissingMetadata(factavailability.Failed())}, ctx.Err()
+		return ActionInspection{availability: actions.MissingMetadata(availability.Failed())}, ctx.Err()
 	}
 	if err := ctx.Err(); err != nil {
 		return ActionInspection{}, err

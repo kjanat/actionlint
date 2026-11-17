@@ -3,17 +3,17 @@ package composites
 import (
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	t.Parallel()
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{{Name: "metadata-files", Category: "correctness", Scope: rulemeta.CompositeConfiguration}})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "metadata-files", Category: "correctness", Scope: rule.CompositeConfiguration}})
 	if err != nil {
 		t.Fatal(err)
 	}

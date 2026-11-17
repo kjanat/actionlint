@@ -1,6 +1,6 @@
 # Component contract generation
 
-`go generate ./internal/plugins/execution/component` reads the interfaces in `plugins/protocol/wit` and generates the
+`go generate ./internal/plugins/pluginexecution/component` reads the interfaces in `plugins/protocol/wit` and generates the
 types and enum ordering that the loader expects. Go adapters translate internal models using that enum order.
 Before creating a plugin instance, the loader checks its complete interface types against the generated definitions.
 Loading a plugin does not run a WIT compiler.

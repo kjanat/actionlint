@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	execution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 func TestExecutableBitCaseFoldedPaths(t *testing.T) {

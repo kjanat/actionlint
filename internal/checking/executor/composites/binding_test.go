@@ -3,7 +3,7 @@ package composites
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func testBindings(settings *configuration.Config) *rulebinding.Scope {
@@ -14,7 +14,7 @@ func testBindings(settings *configuration.Config) *rulebinding.Scope {
 func testSourceBindings(load func(string) (*configuration.Config, error)) func(*rulebinding.Scope, string) (*rulebinding.Scope, error) {
 	prepared := make(map[string]*rulebinding.Scope)
 	return func(parent *rulebinding.Scope, path string) (*rulebinding.Scope, error) {
-		if source.RemoteAddress(path) {
+		if sourcetext.RemoteAddress(path) {
 			return parent, nil
 		}
 		if scope, exists := prepared[path]; exists {

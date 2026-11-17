@@ -15,13 +15,13 @@ import (
 	"slices"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -66,7 +66,7 @@ func (pats *IgnorePatterns) DecodeConfig(value any) error {
 		}
 		compiled, err := regexp.Compile(pattern)
 		if err != nil {
-			return binding.At(strconv.Itoa(i), fmt.Errorf("invalid regular expression %q: %w", pattern, err))
+			return configdecode.At(strconv.Itoa(i), fmt.Errorf("invalid regular expression %q: %w", pattern, err))
 		}
 		next = append(next, compiled)
 	}
@@ -88,7 +88,7 @@ type PathConfig struct {
 func (p *PathConfig) DecodeConfig(value any) error {
 	type plain PathConfig
 	var next plain
-	if err := binding.DecodeKnown(value, &next); err != nil {
+	if err := configdecode.DecodeKnown(value, &next); err != nil {
 		return err
 	}
 	*p = PathConfig(next)
@@ -149,7 +149,7 @@ type Policy struct {
 func (p *policyWire) DecodeConfig(value any) error {
 	type plain policyWire
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	*p = policyWire(next)
@@ -216,26 +216,26 @@ func (p *JobTimeoutPolicy) DecodeConfig(value any) error {
 		next.enabled = true
 		for key, value := range selected {
 			if key != "min-minutes" && key != "max-minutes" {
-				return binding.At(key, fmt.Errorf("unknown key %q in job timeout policy: %w", key, binding.ErrUnknownKey))
+				return configdecode.At(key, fmt.Errorf("unknown key %q in job timeout policy: %w", key, configdecode.ErrUnknownKey))
 			}
 			var bound float64
 			if value == nil {
-				return binding.At(key, errors.New("job timeout bound must be a number"))
+				return configdecode.At(key, errors.New("job timeout bound must be a number"))
 			}
 			var err error
 			if scalar, ok := value.(string); ok {
 				bound, err = strconv.ParseFloat(scalar, 64)
 			} else {
-				err = binding.Decode(value, &bound)
+				err = configdecode.Decode(value, &bound)
 			}
 			if err != nil {
-				return binding.At(key, errors.New("job timeout bound must be a number"))
+				return configdecode.At(key, errors.New("job timeout bound must be a number"))
 			}
 			if math.IsNaN(bound) || math.IsInf(bound, 0) {
-				return binding.At(key, errors.New("job timeout bound must be finite"))
+				return configdecode.At(key, errors.New("job timeout bound must be finite"))
 			}
 			if bound <= 0 {
-				return binding.At(key, errors.New("job timeout bound must be greater than zero"))
+				return configdecode.At(key, errors.New("job timeout bound must be greater than zero"))
 			}
 			if key == "min-minutes" {
 				next.minMinutes = bound
@@ -244,7 +244,7 @@ func (p *JobTimeoutPolicy) DecodeConfig(value any) error {
 			}
 		}
 		if next.maxMinutes > 0 && next.minMinutes > next.maxMinutes {
-			return binding.At("min-minutes", errors.New("min-minutes must not exceed max-minutes"))
+			return configdecode.At("min-minutes", errors.New("min-minutes must not exceed max-minutes"))
 		}
 	default:
 		return errors.New("require-job-timeout must be a boolean or a mapping")
@@ -290,11 +290,11 @@ func (p *PermissionsPolicy) DecodeConfig(value any) error {
 		next.enabled = true
 		for key, value := range selected {
 			if key != "scope" {
-				return binding.At(key, fmt.Errorf("unknown permissions policy key %q: %w", key, binding.ErrUnknownKey))
+				return configdecode.At(key, fmt.Errorf("unknown permissions policy key %q: %w", key, configdecode.ErrUnknownKey))
 			}
 			scope, ok := value.(string)
 			if !ok || (scope != "workflow" && scope != "job") {
-				return binding.At(key, errors.New("scope must be workflow or job"))
+				return configdecode.At(key, errors.New("scope must be workflow or job"))
 			}
 			next.scope = scope
 		}
@@ -322,7 +322,7 @@ type Config struct {
 	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
-	Files selection.Selection `yaml:"files,omitempty" jsonschema:"nullable"`
+	Files selection.PathSelection `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Output configures defaults for CLI reporting.
 	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
 	// Network controls fallback services for remote metadata.

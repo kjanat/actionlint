@@ -3,8 +3,8 @@ package suspicious
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // EmptyRunRule is the single definition of the empty-run rule.
@@ -23,7 +23,7 @@ var EmptyRunRule = &define.Rule{
 }
 
 // EmptyRun reports a run step whose script is empty.
-func EmptyRun(step declaration.Step) []reporting.StepFinding {
+func EmptyRun(step workflows.Step) []reporting.StepFinding {
 	run, ok := step.Run()
 	// Only a string run value carries a source scalar; other kinds already
 	// have a syntax-check finding.

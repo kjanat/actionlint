@@ -7,9 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"}
@@ -158,7 +159,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 		group := cloneMapping(field(rules, descriptor.Category))
 		if !isMapping(group) {
 			// Expand a valid group shorthand without dropping its baseline.
-			var decoded Group
+			var decoded ruleconfig.Group
 			if err := decodeValue(group, &decoded); err != nil {
 				return err
 			}
@@ -250,7 +251,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 			}
 		}
 		if err != nil {
-			return nil, false, binding.At(key, err)
+			return nil, false, configdecode.At(key, err)
 		}
 		removeField(next, key)
 	}
@@ -287,7 +288,7 @@ func mergeMigration(current, legacy any, path, origin string) (any, error) {
 		current = wrapped
 	}
 	if strings.HasSuffix(path, ".level") {
-		var a, b Level
+		var a, b ruleconfig.Level
 		if err := decodeValue(current, &a); err != nil {
 			return nil, err
 		}

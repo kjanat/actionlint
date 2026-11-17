@@ -7,12 +7,12 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -27,7 +27,7 @@ type invocationObservation struct {
 }
 
 func (*invocationCollector) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
+	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
 func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -51,7 +51,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root,
 		Analyzers:  []checkinputs.Registration{{Checker: collector}},
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{outer}})
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ jobs:
 			_, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
 				Analyzers:  []checkinputs.Registration{{Checker: collector}},
-			}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
+			}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)
 			}

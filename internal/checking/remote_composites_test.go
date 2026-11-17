@@ -12,9 +12,9 @@ import (
 	"sync"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -22,7 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifestProvider, func() map[string]int) {
@@ -50,7 +50,7 @@ func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[strin
 		if commit == "" {
 			commit = strings.Repeat("a", 40)
 		}
-		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, ref.Directory())
+		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, commit, ref.Directory())
 		if err != nil {
 			return actions.Manifest{}, err
 		}
@@ -58,7 +58,7 @@ func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[strin
 		if err != nil {
 			return actions.Manifest{}, err
 		}
-		selection, err := actions.NewSelection(ref, identity, identity.Commit(), route, "test")
+		selection, err := actions.NewReferenceSelection(ref, identity, identity.Commit(), route, "test")
 		if err != nil {
 			return actions.Manifest{}, err
 		}
@@ -126,7 +126,7 @@ type remoteGraphChecker struct {
 }
 
 func (remoteGraphChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
 }
 
 func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

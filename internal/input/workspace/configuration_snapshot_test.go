@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -50,9 +50,9 @@ tools:
 					}
 					opts.ConfigOverlays = []configuration.Overlay{value}
 				}
-				selectInput := func(session *workspace.InputPreparer) *workspace.Selection {
+				selectInput := func(session *workspace.InputPreparer) *workspace.PreparedBatch {
 					t.Helper()
-					var result *workspace.Selection
+					var result *workspace.PreparedBatch
 					var err error
 					if empty {
 						result, err = session.Empty()

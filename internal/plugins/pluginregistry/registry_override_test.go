@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -71,7 +71,7 @@ func TestResolvedRegistryOverride(t *testing.T) {
 func TestRegistryURLRequiresHostname(t *testing.T) {
 	t.Parallel()
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
-		if _, err := pluginregistry.New(registry, pluginacquisition.Settings{}); err == nil {
+		if _, err := pluginregistry.New(registry, pluginacquisition.Options{}); err == nil {
 			t.Errorf("accepted hostname-less endpoint %q", registry)
 		}
 	}

@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/mattn/go-shellwords"
 )
@@ -48,7 +48,7 @@ func (a *commandApp) envBool(name string, target *bool, flags ...string) error {
 	}
 	b, err := strconv.ParseBool(value)
 	if err != nil {
-		return commandargs.UsageError{Cause: fmt.Errorf("%s must be true or false", name)}
+		return arguments.UsageError{Cause: fmt.Errorf("%s must be true or false", name)}
 	}
 	*target = b
 	return nil
@@ -111,10 +111,10 @@ func (a *commandApp) presentationEnvironment() error {
 		if mode := os.Getenv("ACTIONLINT_COLOR"); mode != "" {
 			color, err := parseColorMode(mode)
 			if err != nil {
-				return commandargs.UsageError{Cause: fmt.Errorf("ACTIONLINT_COLOR: %w", err)}
+				return arguments.UsageError{Cause: fmt.Errorf("ACTIONLINT_COLOR: %w", err)}
 			}
 			if os.Getenv("NO_COLOR") != "" {
-				color = render.ColorNever
+				color = output.ColorNever
 			}
 			a.inv.Render.Color = color
 		}
@@ -122,7 +122,7 @@ func (a *commandApp) presentationEnvironment() error {
 	if !a.set["hyperlinks"] {
 		if mode := os.Getenv("ACTIONLINT_HYPERLINKS"); mode != "" {
 			if err := a.inv.Render.Hyperlinks.Set(mode); err != nil {
-				return commandargs.UsageError{Cause: fmt.Errorf("ACTIONLINT_HYPERLINKS: %w", err)}
+				return arguments.UsageError{Cause: fmt.Errorf("ACTIONLINT_HYPERLINKS: %w", err)}
 			}
 			if os.Getenv("NO_HYPERLINKS") != "" {
 				a.inv.Render.Hyperlinks = "never"
@@ -163,7 +163,7 @@ func (a *commandApp) checkEnvironment() error {
 		if value := os.Getenv("ACTIONLINT_IGNORE_REGEX"); value != "" {
 			patterns, err := environmentStringArray(value)
 			if err != nil {
-				return commandargs.UsageError{Cause: errors.New("ACTIONLINT_IGNORE_REGEX must be a JSON array of strings")}
+				return arguments.UsageError{Cause: errors.New("ACTIONLINT_IGNORE_REGEX must be a JSON array of strings")}
 			}
 			i.Check.IgnoreRegex = patterns
 		}
@@ -174,11 +174,11 @@ func (a *commandApp) checkEnvironment() error {
 // externalToolEnvironment reads a tool's _BIN, _FLAGS and _ENV variables
 // through lookup, which returns the name and value of the variable that
 // holds a suffix. It returns nil when none is set.
-func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*process.CommandOptions, error) {
-	options := &process.CommandOptions{}
+func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*hostprocess.CommandOptions, error) {
+	options := &hostprocess.CommandOptions{}
 	if name, bin, ok := lookup("_BIN"); ok {
 		if strings.ContainsRune(bin, 0) {
-			return nil, commandargs.UsageError{Cause: fmt.Errorf("%s cannot contain NUL", name)}
+			return nil, arguments.UsageError{Cause: fmt.Errorf("%s cannot contain NUL", name)}
 		}
 		options.Executable = &bin
 		if bin == "" {
@@ -189,14 +189,14 @@ func externalToolEnvironment(lookup func(suffix string) (name, value string, ok 
 		var err error
 		options.Arguments, err = parseEnvironmentWords(flags)
 		if err != nil {
-			return nil, commandargs.UsageError{Cause: fmt.Errorf("%s must be a JSON string array or a quoted argument list", name)}
+			return nil, arguments.UsageError{Cause: fmt.Errorf("%s must be a JSON string array or a quoted argument list", name)}
 		}
 	}
 	if name, value, _ := lookup("_ENV"); value != "" {
 		var err error
 		options.Environment, err = parseChildEnvironment(value)
 		if err != nil {
-			return nil, commandargs.UsageError{Cause: fmt.Errorf("%s: %w", name, err)}
+			return nil, arguments.UsageError{Cause: fmt.Errorf("%s: %w", name, err)}
 		}
 	}
 	if options.Executable == nil && len(options.Arguments) == 0 && len(options.Environment) == 0 {

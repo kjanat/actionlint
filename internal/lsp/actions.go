@@ -8,12 +8,12 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
-	sourceedits "actionlint.kjanat.dev/v2/internal/results/edits"
+	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
 
-func codeActions(ctx context.Context, path string, selection sourceRange, findings []results.Diagnostic, sources, documents map[string]Document) []any {
+func codeActions(ctx context.Context, path string, selection editorRange, findings []results.Diagnostic, sources, documents map[string]Document) []any {
 	actions := []any{}
 	var offered []results.Fix
 	for _, d := range findings {
@@ -25,14 +25,14 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 		if err != nil {
 			continue
 		}
-		if comparePosition(location.End, selection.Start) < 0 || comparePosition(location.Start, selection.End) > 0 {
+		if compareEditorPositions(location.End, selection.Start) < 0 || compareEditorPositions(location.Start, selection.End) > 0 {
 			continue
 		}
 		for _, f := range d.Fixes {
 			if slices.ContainsFunc(offered, func(previous results.Fix) bool { return reflect.DeepEqual(previous, f) }) {
 				continue
 			}
-			_, validationErr := sourceedits.Build(ctx, []results.Diagnostic{{Fixes: []results.Fix{f}}}, files.New(ctx, func(p string) ([]byte, error) {
+			_, validationErr := edits.Build(ctx, []results.Diagnostic{{Fixes: []results.Fix{f}}}, files.New(ctx, func(p string) ([]byte, error) {
 				doc, ok := documents[p]
 				if !ok {
 					return nil, errors.New("document is not open")
@@ -46,7 +46,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 			valid := len(f.Edits) > 0
 			for _, e := range f.Edits {
 				target, ok := documents[e.Path]
-				if !ok || f.Revisions[e.Path] != source.ContentDigest([]byte(target.Text)) {
+				if !ok || f.Revisions[e.Path] != sourcetext.ContentDigest([]byte(target.Text)) {
 					valid = false
 					break
 				}

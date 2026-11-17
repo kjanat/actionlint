@@ -6,9 +6,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // ParallelStepsRule is the single definition of the parallel-steps rule.
@@ -36,12 +36,12 @@ type parallelCheck struct {
 	// inParallel identifies direct children of a 'parallel' group.
 	// Only run and uses steps are allowed there. Invalid wait and cancel steps
 	// receive that finding, and their references are excluded from validation.
-	inParallel map[source.Reference]struct{}
+	inParallel map[sourcetext.Reference]struct{}
 }
 
 // ParallelSteps analyzes one complete job independently of visitor order.
-func ParallelSteps(job declaration.Job) []reporting.StepFinding {
-	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[source.Reference]struct{}{}}
+func ParallelSteps(job workflows.Job) []reporting.StepFinding {
+	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[sourcetext.Reference]struct{}{}}
 	for step := range job.AllSteps() {
 		rule.Step = step
 		rule.checkStep(step)
@@ -49,7 +49,7 @@ func ParallelSteps(job declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *parallelCheck) checkStep(n declaration.Step) {
+func (rule *parallelCheck) checkStep(n workflows.Step) {
 	// A step that is itself inside a 'parallel' group is already reported by checkParallelChildren as
 	// not allowed there, so skip its reference check to avoid a second, redundant error.
 	_, insideParallel := rule.inParallel[n.Reference()]
@@ -77,7 +77,7 @@ func (rule *parallelCheck) checkStep(n declaration.Step) {
 // checkParallelChildren checks the steps inside a 'parallel' group. Only 'run' and 'uses' steps are
 // allowed there: 'background', 'wait', 'wait-all', 'cancel', and nested 'parallel' steps are not,
 // because steps in a 'parallel' group already run in the background with an implicit wait at the end.
-func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[declaration.Step]) {
+func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[workflows.Step]) {
 	for s := range steps {
 		rule.inParallel[s.Reference()] = struct{}{}
 		if s.Background != nil {
@@ -97,7 +97,7 @@ func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[declaration.Step
 	}
 }
 
-func (rule *parallelCheck) checkRef(ref *workflowlang.String) {
+func (rule *parallelCheck) checkRef(ref *definition.String) {
 	if ref == nil || ref.Value == "" || ref.ContainsExpression() {
 		// Empty values come from an already-reported parse error; expression step IDs can't be
 		// resolved statically. Skip both.
@@ -115,6 +115,6 @@ func (rule *parallelCheck) checkRef(ref *workflowlang.String) {
 // isBackgroundStep reports whether the step runs (or may run) in the background. When 'background' is
 // an expression, whether the step runs in the background can't be known statically, so it's treated
 // as a possible background step to avoid false positives.
-func isBackgroundStep(s declaration.Step) bool {
+func isBackgroundStep(s workflows.Step) bool {
 	return s.Background != nil && (s.Background.Expression != nil || s.Background.Value)
 }

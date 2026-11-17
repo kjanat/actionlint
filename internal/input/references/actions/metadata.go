@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // MetadataState distinguishes usable, unavailable and invalid manifest evidence.
@@ -21,7 +21,7 @@ const (
 // run. Its zero value is unavailable/not-fetched; unavailable is never invalid.
 type MetadataAvailability struct {
 	state     MetadataState
-	selection Selection
+	selection ReferenceSelection
 	filename  string
 	missing   availability.Unavailability
 	problems  []actionmeta.MetadataProblem
@@ -58,7 +58,7 @@ func (m MetadataAvailability) Reason() availability.Reason {
 	}
 	return m.missing.Reason()
 }
-func (m MetadataAvailability) Selection() Selection { return m.selection }
+func (m MetadataAvailability) Selection() ReferenceSelection { return m.selection }
 func (m MetadataAvailability) Problems() []actionmeta.MetadataProblem {
 	return slices.Clone(m.problems)
 }
@@ -88,7 +88,7 @@ type MetadataReport struct {
 	Reason         availability.Reason          `json:"reason,omitempty"`
 	Host           string                       `json:"host,omitempty"`
 	Repository     string                       `json:"repository,omitempty"`
-	RepositoryID   repofacts.ID                 `json:"repository_id,omitzero"`
+	RepositoryID   repository.ID                `json:"repository_id,omitzero"`
 	Commit         string                       `json:"commit,omitempty"`
 	Directory      string                       `json:"directory,omitempty"`
 	ObservedAt     string                       `json:"observed_at,omitempty"`

@@ -3,8 +3,8 @@ package suspicious
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // EmptyTriggersRule is the single definition of the empty-triggers rule.
@@ -26,7 +26,7 @@ var EmptyTriggersRule = &define.Rule{
 }
 
 // EmptyTriggers reports an "on" section that declares no events.
-func EmptyTriggers(w declaration.Workflow) []reporting.StepFinding {
+func EmptyTriggers(w workflows.Workflow) []reporting.StepFinding {
 	if !w.Present() || w.OnPos == nil || w.On == nil || len(w.On) > 0 {
 		return nil
 	}

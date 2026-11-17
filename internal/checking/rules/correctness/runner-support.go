@@ -6,11 +6,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // RunnerSupportRule is the single definition of the runner-support rule.
@@ -27,9 +27,9 @@ var RunnerSupportRule = &define.Rule{
 }
 
 // RunnerSupportChecks reports support facts without changing which runners match.
-func RunnerSupportChecks(runners *runnerlang.Knowledge) define.Checks {
+func RunnerSupportChecks(runners *runners.Knowledge) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			var findings []reporting.StepFinding
 			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
 			for _, problem := range problems {
@@ -50,7 +50,7 @@ func RunnerSupportChecks(runners *runnerlang.Knowledge) define.Checks {
 	}
 }
 
-func supportPosition(job workflowdecl.Job, selector runnerapi.Selector) sourcepos.Position {
+func supportPosition(job workflows.Job, selector runnerapi.Selector) sourcetext.Position {
 	for _, label := range selector.Labels {
 		if label.Position.Line > 0 {
 			return label.Position
@@ -63,7 +63,7 @@ func supportPosition(job workflowdecl.Job, selector runnerapi.Selector) sourcepo
 	return position
 }
 
-func supportMessage(problem runnerlang.SupportProblem) string {
+func supportMessage(problem runners.SupportProblem) string {
 	if problem.Evidence != nil && !problem.Evidence.Current {
 		if problem.Evidence.Kind == lifecycle.SupportStarts {
 			return fmt.Sprintf("Support for %s is scheduled to start on %s.", problem.Policy.Description, problem.Evidence.Effective)

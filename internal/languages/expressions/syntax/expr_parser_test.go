@@ -974,11 +974,11 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 				t.Error("Offset of token of parsed node was not 2:", got)
 			}
 			// Line is 1-based
-			if got.Line != 1 {
+			if got.Position.Line != 1 {
 				t.Error("Line of token of parsed node was not 0:", got)
 			}
 			// Column is 1-based
-			if got.Column != offset+1 {
+			if got.Position.Column != offset+1 {
 				t.Error("Column of token of parsed node was not 2:", got)
 			}
 		})

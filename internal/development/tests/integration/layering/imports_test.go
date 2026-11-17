@@ -12,22 +12,31 @@ import (
 
 const module = "actionlint.kjanat.dev/v2/internal/"
 
-// higherLayers lists, for each lower layer, the layers its production code
-// must not depend on, directly or through any other package. Lower layers
-// describe documents, read inputs and publish results. Rule implementations
-// and the executor in internal/checking, and the plugin hosts, registries and
-// manifests in internal/plugins, build on them.
+// higherLayers lists, for each layer, the layers its production code must not
+// depend on, directly or through any other package. Lower layers describe
+// documents and languages, read inputs, reach external services and publish
+// results. Plugin loaders and runtimes in internal/plugins build on them.
+// Rule implementations and the executor in internal/checking build on both and
+// host plugins, so internal/plugins must not import internal/checking.
+// Rendering in internal/output and the entry points in internal/cli and
+// internal/lsp sit on top.
 var higherLayers = map[string][]string{
-	"model":   {"checking", "plugins"},
-	"input":   {"checking", "plugins"},
-	"results": {"checking", "plugins"},
+	"model":        {"checking", "plugins", "output", "cli", "lsp"},
+	"input":        {"checking", "plugins", "output", "cli", "lsp"},
+	"results":      {"checking", "plugins", "output", "cli", "lsp"},
+	"languages":    {"checking", "plugins", "output", "cli", "lsp"},
+	"integrations": {"checking", "plugins", "output", "cli", "lsp"},
+	"plugins":      {"checking", "output", "cli", "lsp"},
+	"output":       {"checking", "plugins", "cli", "lsp"},
+	"checking":     {"output", "cli", "lsp"},
 }
 
 // TestLowerLayersDoNotDependOnHigherLayers keeps rule identity, tool
-// settings, plugin references and other shared declarations below the
-// checks and plugin hosts that use them. Tests may still import
-// internal/checking or internal/plugins to exercise a lower package through
-// the engine, so only production imports are followed.
+// settings, plugin references, the checker contract and other shared
+// declarations below the checks and plugin hosts that use them, and keeps
+// plugins below the checks that host them. Tests may still import higher
+// layers to exercise a lower package through the engine, so only production
+// imports are followed.
 func TestLowerLayersDoNotDependOnHigherLayers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("lists every internal package and its dependencies")
@@ -64,25 +73,32 @@ func TestHigherLayerDependenciesFollowTransitiveImports(t *testing.T) {
 	node(module + "checking/rules/security")
 	node(module + "checking")
 	node(module + "checkingtools")
+	node(module + "output")
 	node(module + "plugins/artifacts")
-	node(module+"plugins/manifests", module+"checking")
-	node(module+"model/rules", module+"checkingtools")
-	node(module+"input/configuration/schema", module+"plugins/manifests")
+	node(module+"plugins/loader", module+"checking")
+	node(module+"model/rule", module+"checkingtools")
+	node(module+"input/configuration/schema", module+"plugins/loader")
 	node(module + "input/files")
 	node(module+"inputs", module+"checking")
+	node(module+"languages/messages", module+"output")
+	node(module+"checking/scripts", module+"plugins/artifacts")
 	loaded := []*packages.Package{
-		node(module+"input/configuration", module+"model/rules", module+"checking/rules/security", module+"input/configuration/schema"),
+		node(module+"input/configuration", module+"model/rule", module+"checking/rules/security", module+"input/configuration/schema"),
 		node(module+"input/workspace", module+"input/files", module+"plugins/artifacts"),
 		node(module+"results", module+"checking"),
-		graph[module+"model/rules"],
-		graph[module+"plugins/manifests"],
+		graph[module+"model/rule"],
+		graph[module+"plugins/loader"],
 		graph[module+"inputs"],
+		graph[module+"languages/messages"],
+		graph[module+"checking/scripts"],
 	}
 	got := higherLayerDependencies(loaded)
 	want := []string{
 		module + "input/configuration depends on " + module + "checking/rules/security",
-		module + "input/configuration depends on " + module + "plugins/manifests through " + module + "input/configuration/schema",
+		module + "input/configuration depends on " + module + "plugins/loader through " + module + "input/configuration/schema",
 		module + "input/workspace depends on " + module + "plugins/artifacts",
+		module + "languages/messages depends on " + module + "output",
+		module + "plugins/loader depends on " + module + "checking",
 		module + "results depends on " + module + "checking",
 	}
 	if !slices.Equal(got, want) {

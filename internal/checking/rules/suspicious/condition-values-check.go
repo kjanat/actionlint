@@ -1,27 +1,27 @@
 package suspicious
 
 import (
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 // StringConditions reports a bare string reference used as a condition.
-func StringConditions(root exprsyntax.Node, types exprlang.InferredTypes) []*exprlang.Error {
+func StringConditions(root syntax.Node, types typecheck.InferredTypes) []*typecheck.Error {
 	if ty, known := types.TypeOf(root); known && conditionStringReference(root, ty) {
-		return []*exprlang.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; compare the string explicitly or use fromJSON() to parse a boolean value")}
+		return []*typecheck.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; compare the string explicitly or use fromJSON() to parse a boolean value")}
 	}
 	return nil
 }
 
 // MixedTypeComparisons reports string references compared with numeric or boolean literals.
-func MixedTypeComparisons(root exprsyntax.Node, types exprlang.InferredTypes) []*exprlang.Error {
-	var findings []*exprlang.Error
-	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
+func MixedTypeComparisons(root syntax.Node, types typecheck.InferredTypes) []*typecheck.Error {
+	var findings []*typecheck.Error
+	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
 		if !entering {
 			return
 		}
-		comparison, ok := node.(*exprsyntax.CompareOpNode)
+		comparison, ok := node.(*syntax.CompareOpNode)
 		if !ok {
 			return
 		}
@@ -37,8 +37,8 @@ func MixedTypeComparisons(root exprsyntax.Node, types exprlang.InferredTypes) []
 	return findings
 }
 
-func conditionStringReference(expr exprsyntax.Node, ty exprtypes.Type) bool {
-	path := exprsyntax.StaticReference(expr)
+func conditionStringReference(expr syntax.Node, ty exprtypes.Type) bool {
+	path := syntax.StaticReference(expr)
 	if path == "" {
 		return false
 	}
@@ -56,9 +56,9 @@ func conditionStringReference(expr exprsyntax.Node, ty exprtypes.Type) bool {
 	return false
 }
 
-func numericOrBooleanLiteral(expr exprsyntax.Node) bool {
+func numericOrBooleanLiteral(expr syntax.Node) bool {
 	switch expr.(type) {
-	case *exprsyntax.BoolNode, *exprsyntax.IntNode, *exprsyntax.FloatNode:
+	case *syntax.BoolNode, *syntax.IntNode, *syntax.FloatNode:
 		return true
 	default:
 		return false

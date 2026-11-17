@@ -6,10 +6,10 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
@@ -68,7 +68,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			metadata := "name: inner\ndescription: test\n" + tc.body
 			fixturefiles.Write(t, root, "inner/action.yml", metadata)
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
-			var matched []diagmodel.Diagnostic
+			var matched []results.Diagnostic
 			for _, d := range result.Diagnostics {
 				if strings.Contains(d.Message, tc.message) {
 					matched = append(matched, d.Diagnostic)
@@ -83,10 +83,10 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 					t.Fatalf("syntax message includes raw coordinates or lacks detail: %s", matched[0].Message)
 				}
 			}
-			var want sourcepos.Position
+			var want sourcetext.Position
 			for i, line := range strings.Split(metadata, "\n") {
 				if col := strings.Index(line, tc.token); col >= 0 {
-					want = sourcepos.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+					want = sourcetext.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
 					if strings.HasPrefix(tc.name, "syntax-eof") {
 						want.Column = utf8.RuneCountInString(line) + 1
 					}
@@ -96,7 +96,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			if matched[0].Start != want {
 				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
 			}
-			if tc.name == "syntax-delimiter" && matched[0].End != (sourcepos.Position{Line: want.Line, Column: want.Column + 2}) {
+			if tc.name == "syntax-delimiter" && matched[0].End != (sourcetext.Position{Line: want.Line, Column: want.Column + 2}) {
 				t.Fatalf("closing delimiter must retain its two-character range: %+v", matched[0])
 			}
 			if strings.HasPrefix(tc.name, "syntax-eof") && matched[0].End != want {

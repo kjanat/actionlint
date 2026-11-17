@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -38,7 +38,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 				want = append(want, ".github/workflows/action.yml")
 			}
 			options := checking.Options{WorkingDir: filepath.Join(root, "packages", "build")}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,7 +86,7 @@ overrides:
       rules:
         external: {shellcheck: on, ruff: on}
 `)
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
 	for _, paths := range [][]string{nil, {"."}, {root}} {
 		got, err := checking.RequiredTools(t.Context(), options, paths)
 		if err != nil || !got["shellcheck"] || !got["ruff"] {

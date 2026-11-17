@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -98,7 +98,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow, syntaxErrors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, syntaxErrors := parser.ParseWorkflow([]byte(source))
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}
@@ -236,7 +236,7 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 					contents = "{'${{ insert }}': " + contents + "}"
 				}
 				source := insertionSectionWorkflow(tc.section, contents)
-				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+				workflow, errs := parser.ParseWorkflow([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -250,8 +250,8 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 						t.Fatalf("insertion lost: %+v", env)
 					}
 				case "with":
-					action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-					inputs := workflowlang.ResolvedActionInputs(action)
+					action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
+					inputs := definition.ResolvedActionInputs(action)
 					second := false
 					for name := range inputs.KeyedEntries() {
 						text, ok := name.ScalarString()
@@ -299,7 +299,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 		} {
 			t.Run(section+mapping, func(t *testing.T) {
 				t.Parallel()
-				_, errs := workflowparser.ParseWorkflow([]byte(insertionSectionWorkflow(section, mapping)))
+				_, errs := parser.ParseWorkflow([]byte(insertionSectionWorkflow(section, mapping)))
 				found := false
 				for _, err := range errs {
 					found = found || strings.Contains(err.Message, "is duplicated")
@@ -310,7 +310,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			})
 		}
 	}
-	_, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
+	_, errs := parser.ParseWorkflow([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
 	found := false
 	for _, err := range errs {
 		found = found || strings.Contains(err.Message, "is duplicated")
@@ -331,7 +331,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 					mapping = "{'${{ insert }}': " + mapping + "}"
 				}
 				source := strings.Replace(insertionSectionWorkflow("with", "{'${{ insert }}': "+mapping+"}"), "example/action@v1", "docker://alpine:3", 1)
-				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+				workflow, errs := parser.ParseWorkflow([]byte(source))
 				if entrypoint == "" {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "empty") {
 						t.Fatalf("empty entrypoint accepted: %v", errs)
@@ -341,7 +341,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != "bash" || action.Args == nil || action.Args.Value != "hello" {
 					t.Fatalf("reserved inputs lost: %+v", action)
 				}

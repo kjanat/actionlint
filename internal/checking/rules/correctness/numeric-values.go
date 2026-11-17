@@ -3,8 +3,8 @@ package correctness
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // NumericValuesRule is the single definition of the numeric-values rule.
@@ -22,7 +22,7 @@ var NumericValuesRule = &define.Rule{
 }
 
 // NumericValues reports a max-parallel GitHub truncates or that cannot take effect.
-func NumericValues(job declaration.Job) []reporting.StepFinding {
+func NumericValues(job workflows.Job) []reporting.StepFinding {
 	if !job.Present() || job.Strategy == nil {
 		return nil
 	}

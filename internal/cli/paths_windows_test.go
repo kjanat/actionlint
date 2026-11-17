@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func windowsPathSpellings(path string) map[string]string {
@@ -31,13 +31,13 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 	}
 	for spelling, path := range windowsPathSpellings(tool) {
 		t.Run(spelling, func(t *testing.T) {
-			resolved, arguments, err := process.ResolveExecutable(path)
+			resolved, arguments, err := hostprocess.ResolveExecutable(path)
 			if err != nil || !sameCommandFile(resolved, tool) || len(arguments) != 0 {
 				t.Fatalf("literal tool: %q, %v, %v", resolved, arguments, err)
 			}
 			// Forward slashes also survive command-line parsing with quoted spaces.
 			command := `"` + filepath.ToSlash(tool) + `" --example`
-			resolved, arguments, err = process.ResolveExecutable(command)
+			resolved, arguments, err = hostprocess.ResolveExecutable(command)
 			if err != nil || !sameCommandFile(resolved, tool) || !slices.Equal(arguments, []string{"--example"}) {
 				t.Fatalf("tool command: %q, %v, %v", resolved, arguments, err)
 			}
@@ -46,12 +46,12 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, _, err = process.ResolveCommandOptions("", options)
+			resolved, _, err = hostprocess.ResolveCommandOptions("", options)
 			if err != nil || !sameCommandFile(resolved, tool) {
 				t.Fatalf("environment tool: %q, %v", resolved, err)
 			}
 			relative := windowsPathSpellings(filepath.Join("tools with spaces", "checker.exe"))[spelling]
-			resolved, _, err = process.ResolveCommandOptions("", &process.CommandOptions{
+			resolved, _, err = hostprocess.ResolveCommandOptions("", &hostprocess.CommandOptions{
 				Executable: &relative, WorkingDir: filepath.ToSlash(root),
 			})
 			if err != nil || !sameCommandFile(resolved, tool) {

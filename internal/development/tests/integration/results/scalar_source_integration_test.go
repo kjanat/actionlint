@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: dir,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
 			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
 		}}}),
 	}, []workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")}},
@@ -40,12 +40,12 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 		t.Fatalf("diagnostics: %+v", result.Diagnostics)
 	}
 	for _, template := range []string{"", "{{range .}}{{.Snippet}}{{end}}"} {
-		renderer, err := render.New("", template, false, buildinfo.Version, nil)
+		renderer, err := output.New("", template, false, buildinfo.Version, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+		if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "echo $VALUE") || strings.Contains(out.String(), "still-first") {
@@ -64,17 +64,17 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, finding := range result.Diagnostics {
-				if !strings.Contains(finding.Message, "undefined variable") {
+			for _, item := range result.Diagnostics {
+				if !strings.Contains(item.Message, "undefined variable") {
 					continue
 				}
-				t.Logf("diagnostic: %+v", finding)
-				if !strings.Contains(finding.Snippet, "${{ unknown }}") {
-					t.Errorf("physical YAML source line missing from snippet: %q", finding.Snippet)
+				t.Logf("diagnostic: %+v", item)
+				if !strings.Contains(item.Snippet, "${{ unknown }}") {
+					t.Errorf("physical YAML source line missing from snippet: %q", item.Snippet)
 				}
 				var rendered bytes.Buffer
-				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				render.PrettyPrint(&rendered, failure.Publish([]byte(src)))
+				failure := &finding.Finding{Start: item.Start, Message: item.Message, Rule: item.Rule, Path: "ci.yml"}
+				output.PrettyPrint(&rendered, failure.Publish([]byte(src)))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}
@@ -103,7 +103,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 			b.SetBytes(int64(len(content)))
 			b.ResetTimer()
 			for b.Loop() {
-				p := workflowparser.NewSourceParser(content)
+				p := parser.NewSourceParser(content)
 				p.IndexScalarSources(root)
 				for i := 1; i < len(mapping.Content); i += 2 {
 					if p.ScriptSource(mapping.Content[i]) == nil {

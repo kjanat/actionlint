@@ -11,22 +11,22 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 // Project edits exact plugin declarations in configuration.
 // Resolved registry metadata is stored only in the user cache.
 type Project struct {
-	Manifest      *configplugins.File
+	Manifest      *plugins.File
 	Releases      pluginregistry.ResolvedPlugins
 	StatusOptions pluginregistry.StatusOptions
 	// DefaultPlugins marks Manifest.References as the registry defaults chosen
@@ -70,18 +70,18 @@ func projectConfigPath(directory, selected string) (string, error) {
 		return "", errors.New("no repository found; select configuration with --config")
 	}
 	directory = filepath.Join(repository, ".github")
-	if err := configplugins.ValidateLocalPath(filepath.Join(discovery.PhysicalRepositoryRoot(repository), ".github")); err != nil {
+	if err := plugins.ValidateLocalPath(filepath.Join(discovery.PhysicalRepositoryRoot(repository), ".github")); err != nil {
 		return "", err
 	}
-	return configplugins.FindOrDefaultPath(directory)
+	return plugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := configplugins.Open(ctx, rules, path, acquisition.Connections)
+	manifest, err := plugins.Open(ctx, rules, path, acquisition.Connections)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			if manifests.IsLocalManifest(source) {
+			if toolmanifest.IsLocalManifest(source) {
 				if err := process.ValidateLocalProvider(ctx, source); err != nil {
 					return err
 				}

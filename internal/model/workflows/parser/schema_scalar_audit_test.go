@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestSchemaAuditScalarDecoding(t *testing.T) {
@@ -12,7 +12,7 @@ func TestSchemaAuditScalarDecoding(t *testing.T) {
 	for _, spelling := range []string{"true", "True", "TRUE"} {
 		t.Run(spelling, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.ParseWorkflow([]byte(`on: push
+			workflow, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
 	}{{"0x1e", 30}, {"0o36", 30}, {"030", 30}, {"3e1", 30}} {
 		t.Run(tc.spelling, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.ParseWorkflow(fmt.Appendf(nil, `on: push
+			workflow, errs := parser.ParseWorkflow(fmt.Appendf(nil, `on: push
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -72,7 +72,7 @@ func TestSchemaAuditRequiredFlagsAreStatic(t *testing.T) {
 	} {
 		t.Run(event, func(t *testing.T) {
 			t.Parallel()
-			_, errs := workflowparser.ParseWorkflow([]byte("on:\n  " + event + `
+			_, errs := parser.ParseWorkflow([]byte("on:\n  " + event + `
 jobs:
   build:
     runs-on: ubuntu-latest

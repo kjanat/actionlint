@@ -1,8 +1,8 @@
 package matrix
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // ContextType derives the matrix context from reachable values. rowElementTypes
@@ -10,7 +10,7 @@ import (
 // It may be nil. Unknown includes can add values and names, so they prevent this
 // fallback from narrowing the context. Unknown excludes only remove rows.
 // No expressions are parsed or evaluated and no findings are produced here.
-func (r Resolution) ContextType(rowElementTypes map[sourcepos.Position]exprtypes.Type) exprtypes.ObjectType {
+func (r Resolution) ContextType(rowElementTypes map[sourcetext.Position]exprtypes.Type) exprtypes.ObjectType {
 	if !r.IncludesComplete() || r.Open() {
 		rowElementTypes = nil
 	}

@@ -7,13 +7,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
 	t.Parallel()
-	base := finding.Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: sourcepos.Position{Line: 1, Column: 1}}
+	base := finding.Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: sourcetext.Position{Line: 1, Column: 1}}
 	for _, change := range []struct {
 		name string
 		edit func(*finding.Finding)
@@ -21,7 +21,7 @@ func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
 		{"rule", func(e *finding.Finding) { e.Rule = "second" }},
 		{"code", func(e *finding.Finding) { e.Code = "E001" }},
 		{"inclusive end", func(e *finding.Finding) { e.End.Column = 6 }},
-		{"end", func(e *finding.Finding) { e.End = sourcepos.Position{Line: 2, Column: 1} }},
+		{"end", func(e *finding.Finding) { e.End = sourcetext.Position{Line: 2, Column: 1} }},
 		{"fix", func(e *finding.Finding) { e.Fixes = []results.Fix{{Description: "fix"}} }},
 	} {
 		t.Run(change.name, func(t *testing.T) {

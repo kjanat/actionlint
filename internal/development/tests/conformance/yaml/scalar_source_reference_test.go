@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -76,7 +76,7 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 			if want.Kind != "string" || node.Value != want.Value || node.Line != want.Line || node.Column != want.Col {
 				t.Fatalf("reference scalar = %+v; local = %q at %d:%d", want, node.Value, node.Line, node.Column)
 			}
-			p := workflowparser.NewSourceParser([]byte(request.Input))
+			p := parser.NewSourceParser([]byte(request.Input))
 			if p.ScriptSource(node) == nil {
 				t.Fatal("reference-compatible scalar has no source mapping")
 			}

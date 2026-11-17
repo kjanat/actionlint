@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/kjanat/go-yaml/v4"
+
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // setYAMLList replaces or appends the top-level member key. A flow-style root
@@ -132,7 +134,7 @@ func rewriteYAML(original []byte, value any, origins map[string]Location) ([]byt
 		return nil, err
 	}
 	type pair struct{ key, value *yaml.Node }
-	positions := map[position]pair{}
+	positions := map[sourcetext.Position]pair{}
 	var collect func(*yaml.Node)
 	collect = func(node *yaml.Node) {
 		if node == nil {
@@ -142,8 +144,8 @@ func rewriteYAML(original []byte, value any, origins map[string]Location) ([]byt
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, val := node.Content[i], node.Content[i+1]
 				p := pair{key, val}
-				positions[position{key.Line, key.Column}] = p
-				positions[position{val.Line, val.Column}] = p
+				positions[sourcetext.Position{Line: key.Line, Column: key.Column}] = p
+				positions[sourcetext.Position{Line: val.Line, Column: val.Column}] = p
 				collect(val)
 			}
 		} else {
@@ -171,11 +173,11 @@ func rewriteYAML(original []byte, value any, origins map[string]Location) ([]byt
 				key, val := node.Content[i], node.Content[i+1]
 				child := Path(path, key.Value)
 				if origin, ok := origins[child]; ok {
-					line, column := origin.KeyLine, origin.KeyColumn
-					if line == 0 {
-						line, column = origin.Line, origin.Column
+					at := origin.Key
+					if at.Line == 0 {
+						at = origin.Value
 					}
-					p := positions[position{line, column}]
+					p := positions[at]
 					copyComments(key, p.key)
 					copyComments(val, p.value)
 					if val.LineComment != "" && (val.Kind == yaml.MappingNode || val.Kind == yaml.SequenceNode) {

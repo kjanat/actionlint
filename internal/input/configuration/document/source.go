@@ -1,7 +1,6 @@
 package document
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,26 +9,24 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/pelletier/go-toml/v2"
-)
 
-// position is a 1-based line and column in one source file.
-type position struct{ line, column int }
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+)
 
 // parsedSource collects a decoded value and the positions of its keys and
 // values while one file is parsed. Parse turns it into a Node.
 type parsedSource struct {
 	file   string
 	value  any
-	keys   map[string]position
-	values map[string]position
+	keys   map[string]sourcetext.Position
+	values map[string]sourcetext.Position
 }
 
 func newParsedSource(file string) *parsedSource {
-	start := position{1, 1}
-	return &parsedSource{file: file, keys: map[string]position{"": start}, values: map[string]position{"": start}}
+	start := sourcetext.Position{Line: 1, Column: 1}
+	return &parsedSource{file: file, keys: map[string]sourcetext.Position{"": start}, values: map[string]sourcetext.Position{"": start}}
 }
 
 // node locates every pointer that has a value position. Key positions without
@@ -38,20 +35,9 @@ func (p *parsedSource) node() *Node {
 	locations := make(map[string]Location, len(p.values))
 	for pointer, value := range p.values {
 		key := p.keys[pointer]
-		locations[pointer] = Location{File: p.file, Line: value.line, Column: value.column, KeyLine: key.line, KeyColumn: key.column}
+		locations[pointer] = Location{File: p.file, Value: value, Key: key}
 	}
 	return Capture(p.value, locations)
-}
-
-func offsetPosition(data []byte, offset int) position {
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > len(data) {
-		offset = len(data)
-	}
-	prefix := data[:offset]
-	return position{1 + bytes.Count(prefix, []byte{'\n'}), 1 + utf8.RuneCount(prefix[bytes.LastIndexByte(prefix, '\n')+1:])}
 }
 
 // normalize keeps the same scalar and container types across formats.

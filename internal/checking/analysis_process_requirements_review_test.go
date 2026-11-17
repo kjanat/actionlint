@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 )
 
 func TestRequiredToolsIncludesProcessBackendOverrides(t *testing.T) {
@@ -31,7 +31,7 @@ func TestRequiredToolsIncludesProcessBackendOverrides(t *testing.T) {
 			}
 			writeFixture(t, root, ".github/actionlint.yaml", config)
 			for _, command := range []string{"ruff", ""} {
-				options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}
+				options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: command}})}
 				needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 				if err != nil || needed["ruff"] != (tc.want && command != "") {
 					t.Fatalf("command %q: needed=%+v, error=%v", command, needed, err)

@@ -3,12 +3,12 @@ package cache
 
 import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // EffectiveMode returns the job declaration when present, otherwise the workflow
 // declaration. It preserves the selected declaration's source location.
-func EffectiveMode(workflow, job *workflowlang.CacheMode) *workflowlang.CacheMode {
+func EffectiveMode(workflow, job *definition.CacheMode) *definition.CacheMode {
 	if job != nil {
 		return job
 	}
@@ -19,10 +19,10 @@ func EffectiveMode(workflow, job *workflowlang.CacheMode) *workflowlang.CacheMod
 // fields are private so callers cannot construct a partly declared grant.
 type Grant struct {
 	present bool
-	kind    workflowlang.CacheModeKind
+	kind    definition.CacheModeKind
 }
 
-func FromDeclaration(mode *workflowlang.CacheMode) Grant {
+func FromDeclaration(mode *definition.CacheMode) Grant {
 	if mode == nil {
 		return Grant{}
 	}
@@ -36,7 +36,7 @@ func FromMetadata(mode calls.CacheModeDeclaration) Grant {
 
 func (g Grant) Present() bool { return g.present }
 
-func (g Grant) Kind() workflowlang.CacheModeKind { return g.kind }
+func (g Grant) Kind() definition.CacheModeKind { return g.kind }
 
 // Override selects an explicit child grant, including an invalid declaration.
 // A missing child inherits g; validity is checked separately from inheritance.

@@ -3,19 +3,19 @@ package typecheck
 import (
 	"testing"
 
-	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // Predicate and join behavior follows actions/runner at 1ba885c2065fd9be317808ab3fd406f392635cf7.
@@ -25,43 +25,43 @@ func TestFunctionCallFacts(t *testing.T) {
 		input string
 		kind  exprtypes.TypeKind
 		valid bool
-		state exprvalues.EvaluationState
+		state values.EvaluationState
 		value any
 	}{
-		{"startsWith(true, 'TR')", exprtypes.KindBool, true, exprvalues.EvaluationKnown, true},
-		{"contains(null, '')", exprtypes.KindBool, true, exprvalues.EvaluationKnown, true},
-		{"startsWith(fromJSON('{}'), 'x')", exprtypes.KindBool, true, exprvalues.EvaluationKnown, false},
-		{"contains('foo', fromJSON('{}'))", exprtypes.KindBool, true, exprvalues.EvaluationKnown, false},
-		{"startsWith(fromJSON('{}'), fromJSON(null))", exprtypes.KindBool, true, exprvalues.EvaluationKnown, false},
-		{"contains(fromJSON('[]'), fromJSON(null))", exprtypes.KindBool, true, exprvalues.EvaluationKnown, false},
-		{"startsWith(fromJSON('{}'), startsWith(true))", exprtypes.KindBool, false, exprvalues.EvaluationNotAttempted, nil},
-		{"startsWith('x', fromJSON(null))", exprtypes.KindBool, false, exprvalues.EvaluationInvalid, nil},
-		{"join(fromJSON('{}'))", exprtypes.KindString, true, exprvalues.EvaluationKnown, ""},
-		{"format(true)", exprtypes.KindString, true, exprvalues.EvaluationKnown, "true"},
-		{"format(fromJSON('{}'))", exprtypes.KindString, true, exprvalues.EvaluationKnown, "Object"},
-		{"format(fromJSON('[]'))", exprtypes.KindString, true, exprvalues.EvaluationKnown, "Array"},
-		{"fromJSON(fromJSON('{}'))", exprtypes.KindAny, false, exprvalues.EvaluationInvalid, nil},
-		{"format('plain text', 1)", exprtypes.KindString, true, exprvalues.EvaluationKnown, "plain text"},
-		{"fromJSON(true)", exprtypes.KindBool, true, exprvalues.EvaluationKnown, true},
-		{"fromJSON(null)", exprtypes.KindAny, false, exprvalues.EvaluationInvalid, nil},
-		{"startsWith(true)", exprtypes.KindBool, false, exprvalues.EvaluationNotAttempted, nil},
-		{"hashFiles(fromJSON('{}'))", exprtypes.KindString, true, exprvalues.EvaluationUnknown, nil},
-		{"startsWith(github.event.unknown, 'x')", exprtypes.KindBool, true, exprvalues.EvaluationUnknown, nil},
+		{"startsWith(true, 'TR')", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"contains(null, '')", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"startsWith(fromJSON('{}'), 'x')", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"contains('foo', fromJSON('{}'))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"startsWith(fromJSON('{}'), fromJSON(null))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"contains(fromJSON('[]'), fromJSON(null))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"startsWith(fromJSON('{}'), startsWith(true))", exprtypes.KindBool, false, values.EvaluationNotAttempted, nil},
+		{"startsWith('x', fromJSON(null))", exprtypes.KindBool, false, values.EvaluationInvalid, nil},
+		{"join(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationKnown, ""},
+		{"format(true)", exprtypes.KindString, true, values.EvaluationKnown, "true"},
+		{"format(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationKnown, "Object"},
+		{"format(fromJSON('[]'))", exprtypes.KindString, true, values.EvaluationKnown, "Array"},
+		{"fromJSON(fromJSON('{}'))", exprtypes.KindAny, false, values.EvaluationInvalid, nil},
+		{"format('plain text', 1)", exprtypes.KindString, true, values.EvaluationKnown, "plain text"},
+		{"fromJSON(true)", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"fromJSON(null)", exprtypes.KindAny, false, values.EvaluationInvalid, nil},
+		{"startsWith(true)", exprtypes.KindBool, false, values.EvaluationNotAttempted, nil},
+		{"hashFiles(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationUnknown, nil},
+		{"startsWith(github.event.unknown, 'x')", exprtypes.KindBool, true, values.EvaluationUnknown, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+			got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if got.Type.Kind() != tc.kind || got.Valid != tc.valid || got.Evaluation.State != tc.state || got.Evaluation.Value != tc.value {
 				t.Fatalf("got type %s, valid %v, evaluation %+v, findings %v; want %s, %v, %v, %v", got.Type, got.Valid, got.Evaluation, got.Findings, tc.kind, tc.valid, tc.state, tc.value)
 			}
-			if tc.valid && tc.state == exprvalues.EvaluationKnown {
-				runnerreference.CheckValue(t, tc.input, nil, tc.value)
+			if tc.valid && tc.state == values.EvaluationKnown {
+				expressions.CheckValue(t, tc.input, nil, tc.value)
 			}
 		})
 	}
@@ -71,23 +71,23 @@ func TestFunctionContractFacts(t *testing.T) {
 	t.Parallel()
 	check := func(input string) ExpressionCheckResult {
 		t.Helper()
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-		checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-		return checker.CheckResult(expreval.EvaluateSubexpressions(node))
+		checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+		checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+		return checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 	}
 	got := check("fromJSON(true)")
 	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool {
 		t.Fatalf("fromJSON facts: %+v", got.Call)
 	}
-	if got.Call.ReturnDomain != exprfunctions.ReturnDomainContainsValue {
+	if got.Call.ReturnDomain != functions.ReturnDomainContainsValue {
 		t.Fatalf("fromJSON return domain: %+v", got.Call)
 	}
 	arg := got.Call.Arguments[0]
-	if arg.Source.Kind() != exprtypes.KindBool || arg.Parameter.Kind() != exprtypes.KindString || arg.Converted.Kind() != exprtypes.KindString || arg.Conversion != exprfunctions.ConversionString || arg.SourceValue.Value != true || arg.Value.Value != "true" || !arg.Accepted {
+	if arg.Source.Kind() != exprtypes.KindBool || arg.Parameter.Kind() != exprtypes.KindString || arg.Converted.Kind() != exprtypes.KindString || arg.Conversion != functions.ConversionString || arg.SourceValue.Value != true || arg.Value.Value != "true" || !arg.Accepted {
 		t.Fatalf("conversion facts: %+v", arg)
 	}
 	got = check("hashFiles(fromJSON('{}'))")
@@ -106,12 +106,12 @@ func TestFunctionContractFacts(t *testing.T) {
 
 func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 	t.Parallel()
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith(true).foo}}"))
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("startsWith(true).foo}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 	if len(got.Findings) != 2 || got.Findings[0].Code != "argument-count" || got.Findings[1].Code != "operand-type" {
 		t.Fatalf("findings: %v", got.Findings)
 	}
@@ -119,16 +119,16 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 
 func TestOverloadDeclaredAlternatives(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.funcs = map[string][]*exprfunctions.FuncSignature{"test": {
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.funcs = map[string][]*functions.FuncSignature{"test": {
 		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "test", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
 	}}
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("test(github.event.unknown)}}"))
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("test(github.event.unknown)}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+	got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 	if got.Call == nil || len(got.Call.DeclaredReturns) != 2 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || got.Call.DeclaredReturns[1].Kind() != exprtypes.KindBool || got.Type.Kind() != exprtypes.KindAny {
 		t.Fatalf("result: %+v", got)
 	}
@@ -136,30 +136,30 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 
 func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
-	if got.Call == nil || got.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindNumber || got.Evaluation.Value != true {
+	got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
+	if got.Call == nil || got.Call.ReturnDomain != functions.ReturnDomainExcludesValue || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindNumber || got.Evaluation.Value != true {
 		t.Fatalf("result: %+v", got)
 	}
 }
 
 func TestValidationStateIndependentOfFindings(t *testing.T) {
 	t.Parallel()
-	parse := func(input string) exprsyntax.Node {
+	parse := func(input string) syntax.Node {
 		t.Helper()
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		return node
 	}
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.CheckResult(expreval.EvaluateSubexpressions(parse("startsWith(true)")))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.CheckResult(evaluate.EvaluateSubexpressions(parse("startsWith(true)")))
 	if !checker.validationFailed || len(checker.errs) == 0 {
 		t.Fatalf("missing validation failure: %+v", checker.errs)
 	}
@@ -168,13 +168,13 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		t.Fatal("filtering findings changed validation")
 	}
 
-	checker = NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	result := checker.CheckResult(expreval.EvaluateSubexpressions(parse("startsWith(true, github.event.issue.title)")))
+	checker = NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+	result := checker.CheckResult(evaluate.EvaluateSubexpressions(parse("startsWith(true, github.event.issue.title)")))
 	if !result.Valid || len(result.Findings) != 0 {
 		t.Fatalf("type checking emitted a coercion policy finding: %+v", result)
 	}
-	result = checker.CheckResult(expreval.EvaluateSubexpressions(parse("github.event.issue.title")))
+	result = checker.CheckResult(evaluate.EvaluateSubexpressions(parse("github.event.issue.title")))
 	if !result.Valid || len(result.Findings) != 0 {
 		t.Fatalf("type checking emitted a script security policy finding: %+v", result)
 	}
@@ -199,22 +199,22 @@ func TestReturnDomainUsesNamedPropertyBeforeFallback(t *testing.T) {
 
 func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 	t.Parallel()
-	match := exprfunctions.MatchParameter(exprtypes.StringType(), exprfunctions.CallArgument{Source: exprtypes.AnyType(), State: exprfunctions.ArgumentKnown, Value: true}, false)
-	if match.Argument.Source.Kind() != exprtypes.KindAny || match.Converted.Kind() != exprtypes.KindString || match.Conversion != exprfunctions.ConversionString || match.Value != "true" {
+	match := functions.MatchParameter(exprtypes.StringType(), functions.CallArgument{Source: exprtypes.AnyType(), State: functions.ArgumentKnown, Value: true}, false)
+	if match.Argument.Source.Kind() != exprtypes.KindAny || match.Converted.Kind() != exprtypes.KindString || match.Conversion != functions.ConversionString || match.Value != "true" {
 		t.Fatalf("match: %+v", match)
 	}
 }
 
 func TestKnownResultRefinesDeclaredAny(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
-	if result.Call == nil || result.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(result.Call.RefinedAlternatives) != 1 || result.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool || result.Call.ReturnDomain != exprfunctions.ReturnDomainContainsValue {
+	result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
+	if result.Call == nil || result.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(result.Call.RefinedAlternatives) != 1 || result.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool || result.Call.ReturnDomain != functions.ReturnDomainContainsValue {
 		t.Fatalf("result: %+v", result)
 	}
 }

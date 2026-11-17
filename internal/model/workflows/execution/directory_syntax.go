@@ -5,12 +5,12 @@ import (
 	"runtime"
 	"strings"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
 // RunnerDirectoryPath interprets runner path syntax before local filesystem operations.
-func RunnerDirectoryPath(path string, platform runnerlang.Platform) (string, bool) {
-	if strings.ContainsRune(path, ':') && (platform != runnerlang.MacOrLinux || runtime.GOOS == "windows") {
+func RunnerDirectoryPath(path string, platform runners.Platform) (string, bool) {
+	if strings.ContainsRune(path, ':') && (platform != runners.MacOrLinux || runtime.GOOS == "windows") {
 		return "", false
 	}
 	drivePrefix := len(path) >= 2 && path[1] == ':' &&
@@ -24,21 +24,21 @@ func RunnerDirectoryPath(path string, platform runnerlang.Platform) (string, boo
 		return path, true
 	}
 	switch platform {
-	case runnerlang.Windows:
+	case runners.Windows:
 		return strings.ReplaceAll(path, `\`, "/"), true
-	case runnerlang.MacOrLinux:
+	case runners.MacOrLinux:
 		return path, runtime.GOOS != "windows"
-	case runnerlang.Any:
+	case runners.Any:
 	}
 	return "", false
 }
 
 // LocalDirectoryPath resolves runner paths whose syntax matches the analysis host.
-func LocalDirectoryPath(path string, platform runnerlang.Platform) (string, bool) {
+func LocalDirectoryPath(path string, platform runners.Platform) (string, bool) {
 	if filepath.IsAbs(path) {
-		compatible := platform == runnerlang.Any ||
-			platform == runnerlang.Windows && runtime.GOOS == "windows" ||
-			platform == runnerlang.MacOrLinux && runtime.GOOS != "windows"
+		compatible := platform == runners.Any ||
+			platform == runners.Windows && runtime.GOOS == "windows" ||
+			platform == runners.MacOrLinux && runtime.GOOS != "windows"
 		if !compatible {
 			return "", false
 		}
@@ -46,7 +46,7 @@ func LocalDirectoryPath(path string, platform runnerlang.Platform) (string, bool
 	}
 	// Validate complete paths here; runnerDirectoryPath also normalizes
 	// suffixes appended to resolved contexts, such as github.action_path.
-	if platform == runnerlang.Windows && strings.HasPrefix(path, `\`) {
+	if platform == runners.Windows && strings.HasPrefix(path, `\`) {
 		return "", false
 	}
 	return RunnerDirectoryPath(path, platform)

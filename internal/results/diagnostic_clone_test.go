@@ -3,13 +3,13 @@ package results
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestDiagnosticCloneDetachesMutableFields(t *testing.T) {
 	t.Parallel()
 	original := Diagnostic{
-		Rule: "example", Reference: &source.Reference{Document: "original"},
+		Rule: "example", Reference: &sourcetext.Reference{Document: "original"},
 		Related:   []Related{{Message: "related"}},
 		Lifecycle: &LifecycleReport{Policies: []LifecyclePolicyReport{{ID: "policy"}}},
 		Fixes:     []Fix{{Revisions: map[string]string{"file": "revision"}, Edits: []Edit{{Replacement: "original"}}}},

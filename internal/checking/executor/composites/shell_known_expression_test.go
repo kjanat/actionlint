@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 )
 
 func TestKnownShellStateReset(t *testing.T) {
@@ -30,7 +30,7 @@ jobs:
 	}
 	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
 	workflow := workflowView(t, snapshot)
-	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: workspaceactions.NewResolver(nil, nil)}
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: localactions.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, registry, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)

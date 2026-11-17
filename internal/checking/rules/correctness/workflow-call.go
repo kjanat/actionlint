@@ -6,14 +6,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // WorkflowCallRule is the single definition of the workflow-call rule.
@@ -37,25 +37,25 @@ var WorkflowCallRule = &define.Rule{
 type workflowCallCheck struct {
 	reporting.Collector
 	defaultPermissions  calls.ResolvedPermissions
-	workflowPermissions *workflowlang.Permissions
-	workflowCacheMode   *workflowlang.CacheMode
-	cache               *workflowinputs.ResolvedWorkflows
+	workflowPermissions *definition.Permissions
+	workflowCacheMode   *definition.CacheMode
+	cache               *reusableworkflows.ResolvedWorkflows
 	log                 func(string, ...any)
 }
 
 // WorkflowCallChecks validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallChecks(workflow workflowdecl.Workflow, cache *workflowinputs.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
+func WorkflowCallChecks(workflow workflows.Workflow, resolvedWorkflows *reusableworkflows.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {
 		defaults = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
 	}
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			check := workflowCallCheck{
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
-				cache: cache, defaultPermissions: defaults, log: log,
+				cache: resolvedWorkflows, defaultPermissions: defaults, log: log,
 			}
 			check.checkJob(job)
 			return check.Findings
@@ -69,7 +69,7 @@ func (rule *workflowCallCheck) debug(format string, args ...any) {
 	}
 }
 
-func (rule *workflowCallCheck) checkJob(n workflowdecl.Job) {
+func (rule *workflowCallCheck) checkJob(n workflows.Job) {
 	if n.WorkflowCall == nil {
 		return
 	}
@@ -78,16 +78,16 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.Job) {
 	if u == nil || u.Value == "" || u.ContainsExpression() {
 		return
 	}
-	if _, hosted := references.ParseRepositoryURL(u.Value); hosted {
+	if _, hosted := callreferences.ParseRepositoryURL(u.Value); hosted {
 		return // vendor-lock-in reports URL-form uses declarations.
 	}
 
-	if _, ok := references.LocalWorkflow(u.Value); ok {
+	if _, ok := callreferences.LocalWorkflow(u.Value); ok {
 		rule.checkWorkflowCall(n.WorkflowCall, n.Permissions, n.CacheMode)
 		return
 	}
 
-	if _, ok := references.WorkflowRef(u.Value); ok {
+	if _, ok := callreferences.WorkflowRef(u.Value); ok {
 		rule.checkWorkflowCall(n.WorkflowCall, n.Permissions, n.CacheMode)
 		return
 	}
@@ -99,7 +99,7 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.Job) {
 	)
 }
 
-func (rule *workflowCallCheck) checkWorkflowCall(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, jobCacheMode *workflowlang.CacheMode) {
+func (rule *workflowCallCheck) checkWorkflowCall(call *definition.WorkflowCall, jobPerms *definition.Permissions, jobCacheMode *definition.CacheMode) {
 	u := call.Uses
 	m, err := rule.cache.LookupForCall(u.Value)
 	if err != nil {
@@ -115,12 +115,12 @@ func (rule *workflowCallCheck) checkWorkflowCall(call *workflowlang.WorkflowCall
 	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(workflowcall.CheckArguments(call, m))...)
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
-	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(cachepolicy.CheckCeiling(call, cachemodel.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.debug))...)
+	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(cachepolicy.CheckCeiling(call, cache.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.debug))...)
 
 	rule.debug("Validated reusable workflow %q", u.Value)
 }
 
-func (rule *workflowCallCheck) checkWorkflowCallPermissions(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, m *calls.Metadata) {
+func (rule *workflowCallCheck) checkWorkflowCallPermissions(call *definition.WorkflowCall, jobPerms *definition.Permissions, m *calls.Metadata) {
 	granted := calls.EffectivePermissions(rule.workflowPermissions, jobPerms, rule.defaultPermissions)
 
 	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(workflowcall.CheckPermissions(call, granted, m))...)

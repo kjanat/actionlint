@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestFunctionArgumentEvaluationOrder(t *testing.T) {
@@ -27,7 +27,7 @@ func TestFunctionArgumentEvaluationOrder(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
+			node := syntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}

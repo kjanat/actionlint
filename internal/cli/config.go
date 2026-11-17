@@ -7,16 +7,16 @@ import (
 	"os"
 	"path/filepath"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyConfigInitRequest) error {
@@ -39,7 +39,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 		return err
 	}
 	if options.Template != "" {
-		if _, err := render.NewFormatter(options.Template, buildinfo.Version, nil); err != nil {
+		if _, err := output.NewFormatter(options.Template, buildinfo.Version, nil); err != nil {
 			return err
 		}
 	}
@@ -55,17 +55,17 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, configuration.FormatYAML, streams.Acquisition)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Settings) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition pluginacquisition.Options) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), acquisition, discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
+	path, err := installation.InitializeConfiguration(ctx, checking.ConfigurationRules(), acquisition, discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
 	if err != nil {
 		return err
 	}
 	if asJSON {
-		return commandstreams.WriteJSON(out, map[string]string{"path": path})
+		return commandio.WriteJSON(out, map[string]string{"path": path})
 	}
 	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)

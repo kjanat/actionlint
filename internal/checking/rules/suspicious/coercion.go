@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // CoercionRule is the single definition of the coercion rule.
@@ -30,30 +30,30 @@ var CoercionRule = &define.Rule{
 
 // SuspiciousCoercion reports accepted conversions that can hide mistaken operand types.
 // Calls use the checker's selected signature and demand; this rule does not evaluate them.
-func SuspiciousCoercion(root exprsyntax.Node, types exprlang.InferredTypes, calls exprlang.CheckedCalls) []*exprlang.Error {
-	var findings []*exprlang.Error
-	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
+func SuspiciousCoercion(root syntax.Node, types typecheck.InferredTypes, calls typecheck.CheckedCalls) []*typecheck.Error {
+	var findings []*typecheck.Error
+	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
 		if entering {
 			return
 		}
 		switch node := node.(type) {
-		case *exprsyntax.CompareOpNode:
+		case *syntax.CompareOpNode:
 			left, leftKnown := types.TypeOf(node.Left)
 			right, rightKnown := types.TypeOf(node.Right)
 			if leftKnown && rightKnown && suspiciousComparison(node.Kind, left, right) {
 				findings = append(findings, expressionFinding(node, "coercion", fmt.Sprintf("comparison of %s and %s with %s uses Actions coercion or NaN; check whether these operand types were intended", left, right, node.Kind)))
 			}
-		case *exprsyntax.FuncCallNode:
+		case *syntax.FuncCallNode:
 			facts, known := calls.CallOf(node)
-			if !known || !facts.SignatureMatched || facts.Demand == exprfunctions.DemandSkipped {
+			if !known || !facts.SignatureMatched || facts.Demand == functions.DemandSkipped {
 				return
 			}
 			for index, arg := range facts.Arguments {
-				if arg.Demand == exprfunctions.DemandSkipped || arg.Conversion != exprfunctions.ConversionString || (arg.Source.Kind() != exprtypes.KindBool && arg.Source.Kind() != exprtypes.KindNull) {
+				if arg.Demand == functions.DemandSkipped || arg.Conversion != functions.ConversionString || (arg.Source.Kind() != exprtypes.KindBool && arg.Source.Kind() != exprtypes.KindNull) {
 					continue
 				}
 				operation := "converts"
-				if facts.Demand == exprfunctions.DemandConditional || arg.Demand == exprfunctions.DemandConditional {
+				if facts.Demand == functions.DemandConditional || arg.Demand == functions.DemandConditional {
 					operation = "may convert"
 				}
 				findings = append(findings, expressionFinding(node.Args[index], "coercion", fmt.Sprintf("%s argument of %s() %s %s to a string; check whether a string value was intended", messages.Ordinal(index+1), node.Callee, operation, arg.Source)))
@@ -65,7 +65,7 @@ func SuspiciousCoercion(root exprsyntax.Node, types exprlang.InferredTypes, call
 
 // suspiciousComparison identifies supported comparisons whose conversion can hide
 // a mistaken operand. Unknown types provide no evidence for this warning.
-func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes.Type) bool {
+func suspiciousComparison(op syntax.CompareOpNodeKind, left, right exprtypes.Type) bool {
 	l, r := left.Kind(), right.Kind()
 	if l == exprtypes.KindAny || r == exprtypes.KindAny {
 		return false

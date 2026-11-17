@@ -1,8 +1,8 @@
 package names
 
 import (
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type declaredKind uint8
@@ -31,11 +31,11 @@ func Unknown() Declared { return Declared{} }
 
 // Declare classifies a parsed workflow's top-level name. Nil or an empty
 // name means the workflow declares no name.
-func Declare(name *workflowlang.String) Declared {
+func Declare(name *definition.String) Declared {
 	if name == nil || name.Value == "" {
 		return Declared{kind: unnamed}
 	}
-	if literal := exprsyntax.LiteralExpressionValue(name.Value); literal != nil {
+	if literal := syntax.LiteralExpressionValue(name.Value); literal != nil {
 		if *literal == "" {
 			return Declared{kind: unnamed}
 		}

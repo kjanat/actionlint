@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestRuffProjectCatchAllOverrides(t *testing.T) {
@@ -61,12 +61,12 @@ runs:
 			if !tc.enabled {
 				command = filepath.Join(root, "missing-ruff")
 			}
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, LauncherArguments: []string{"-test.run=^TestRuffPlanningHelper$", "--"}, Environment: []string{"ACTIONLINT_RUFF_PLANNING_HELPER=1"}}}})}
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &command, LauncherArguments: []string{"-test.run=^TestRuffPlanningHelper$", "--"}, Environment: []string{"ACTIONLINT_RUFF_PLANNING_HELPER=1"}}}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 			if err != nil || needed["ruff"] != tc.enabled {
 				t.Fatalf("needed=%+v, error=%v", needed, err)
 			}
-			if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}); err != nil {
+			if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}); err != nil {
 				t.Fatalf("checker initialization: %v", err)
 			}
 		})
@@ -98,7 +98,7 @@ overrides:
   - includes: [action.yml]
     `+tc.override+"\n")
 			for _, executable := range []string{"ruff", ""} {
-				options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.Selections{"ruff": {Command: executable}})}
+				options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: executable}})}
 				tools, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 				if err != nil || tools["ruff"] != (tc.want && executable != "") {
 					t.Fatalf("tools=%+v, error=%v", tools, err)
@@ -139,7 +139,7 @@ lint: {rules: {external: {ruff: off}}}
 			t.Parallel()
 			root := t.TempDir()
 			config := writeFixture(t, root, "actionlint.yml", tc.base+"overrides:\n"+unrelated+tc.final)
-			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})}
+			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["ruff"] != tc.want {
 				t.Fatalf("needed=%+v, error=%v, want=%v", needed, err, tc.want)
@@ -186,7 +186,7 @@ overrides:
 			t.Parallel()
 			root := t.TempDir()
 			config := writeFixture(t, root, "actionlint.yml", tc.config)
-			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})}
+			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["ruff"] != tc.want {
 				t.Fatalf("needed=%+v, error=%v, want=%v", needed, err, tc.want)
@@ -204,7 +204,7 @@ overrides:
   - includes: [disabled.yml]
     lint: {rules: {external: {ruff: off}}}
 `)
-	options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}, "shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}, "shellcheck": {Command: "shellcheck"}})}
 	for _, tc := range []struct {
 		path string
 		want bool
@@ -249,7 +249,7 @@ runs:
   - includes: ['.github/workflows/**']
     tools: {ruff: false}
 `)
-		options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})}
+		options := checking.Options{WorkingDir: root, ConfigFile: path, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}})}
 		tools, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 		if err != nil || tools["ruff"] != enabled {
 			t.Fatalf("enabled=%v: tools=%+v error=%v", enabled, tools, err)

@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -32,7 +32,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 				t.Fatal(err)
 			}
 			processor := policy.Processor{RuleSet: rules}
-			input := []*findingmodel.Finding{{Rule: "example", Severity: test.reported, Message: "example"}}
+			input := []*finding.Finding{{Rule: "example", Severity: test.reported, Message: "example"}}
 			p := preparePolicy(rules, cfg, policy.Policy{Path: "workflow.yml"}, nil, input)
 			findings, err := publishFindings(processor, p, input, nil)
 			if err != nil || len(findings) != 1 || findings[0].Severity != test.severity {

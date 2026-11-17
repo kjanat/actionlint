@@ -3,14 +3,14 @@ package expressions
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 func TestDiagnosticIdentities(t *testing.T) {
@@ -31,14 +31,14 @@ func TestDiagnosticIdentities(t *testing.T) {
 	} {
 		t.Run(tc.rule+"/"+tc.code, func(t *testing.T) {
 			t.Parallel()
-			node, parseError := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
-			var findings []*exprlang.Error
+			node, parseError := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
+			var findings []*typecheck.Error
 			if parseError != nil {
 				t.Fatalf("invalid diagnostic fixture: %v", parseError)
 			} else {
-				checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+				checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 				checker.SetContextAvailability([]string{"github"})
-				_, findings = checker.Check(expreval.EvaluateSubexpressions(node))
+				_, findings = checker.Check(evaluate.EvaluateSubexpressions(node))
 				if tc.script {
 					findings = append(findings, security.ScriptInjection(node, findings)...)
 				}

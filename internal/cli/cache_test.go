@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	cachemanagement "actionlint.kjanat.dev/v2/internal/integrations/cache"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -16,7 +16,7 @@ func TestCacheManagementCommands(t *testing.T) {
 	t.Parallel()
 	base := t.TempDir()
 	directory := filepath.Join(base, "actionlint")
-	acquisition := pluginacquisition.Settings{UserCacheDir: base}
+	acquisition := pluginacquisition.Options{UserCacheDir: base}
 	code, output, log := runOfflineCommand(t, acquisition, "", "cache", "dir")
 	if code != 0 || strings.TrimSpace(output) != directory || log != "" {
 		t.Fatalf("cache dir: status=%d output=%q log=%s", code, output, log)
@@ -25,7 +25,7 @@ func TestCacheManagementCommands(t *testing.T) {
 		t.Fatalf("cache dir created a directory: %v", err)
 	}
 	code, output, log = runOfflineCommand(t, acquisition, "", "cache", "list", "--json")
-	var inventory cachemanagement.Inventory
+	var inventory dependencycache.Inventory
 	if err := json.Unmarshal([]byte(output), &inventory); err != nil || code != 0 || inventory.Exists || inventory.Files != 0 {
 		t.Fatalf("empty list: status=%d output=%s log=%s error=%v", code, output, log, err)
 	}
@@ -41,7 +41,7 @@ func TestCacheManagementCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, output, log = runOfflineCommand(t, acquisition, "", "cache", "prune", "--older-than", "24h", "--dry-run", "--json", "--offline")
-	var preview cachemanagement.Cleanup
+	var preview dependencycache.Cleanup
 	if err := json.Unmarshal([]byte(output), &preview); err != nil || code != 0 || preview.Files != 1 || !preview.DryRun || preview.Entries[0].Path != "configs/example" {
 		t.Fatalf("prune preview: status=%d output=%s log=%s error=%v", code, output, log, err)
 	}
@@ -49,7 +49,7 @@ func TestCacheManagementCommands(t *testing.T) {
 		t.Fatalf("preview removed file: %v", err)
 	}
 	code, output, log = runOfflineCommand(t, acquisition, "", "cache", "prune", "--older-than", "24h", "--json")
-	var removed cachemanagement.Cleanup
+	var removed dependencycache.Cleanup
 	if err := json.Unmarshal([]byte(output), &removed); err != nil || code != 0 || removed.Files != 1 || removed.Bytes != 13 || removed.DryRun {
 		t.Fatalf("prune: status=%d output=%s log=%s error=%v", code, output, log, err)
 	}

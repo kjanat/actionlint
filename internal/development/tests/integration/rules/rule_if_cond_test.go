@@ -7,12 +7,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestRuleIfCond(t *testing.T) {
@@ -39,13 +39,13 @@ func TestRuleIfCond(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at step", tc.cond), func(t *testing.T) {
 			t.Parallel()
-			var s workflowlang.Step
+			var s definition.Step
 			if len(tc.cond) > 0 {
-				s.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
+				s.If = &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}}
 			}
 
 			r := correctness.IfCondRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := r.VisitStep(fixturedecl.Step(&s)); err != nil {
+			if err := r.VisitStep(declarations.Step(&s)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -62,17 +62,17 @@ func TestRuleIfCond(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at job", tc.cond), func(t *testing.T) {
 			t.Parallel()
-			var j workflowlang.Job
+			var j definition.Job
 			if len(tc.cond) > 0 {
-				j.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
-				j.Snapshot = &workflowlang.Snapshot{
-					ImageName: &workflowlang.String{Value: "test", Pos: &source.Position{}},
-					If:        &workflowlang.String{Value: tc.cond, Pos: &source.Position{}},
+				j.If = &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}}
+				j.Snapshot = &definition.Snapshot{
+					ImageName: &definition.String{Value: "test", Pos: &sourcetext.Position{}},
+					If:        &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}},
 				}
 			}
 
 			r := correctness.IfCondRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := r.VisitJobPre(fixturedecl.Job(&j)); err != nil {
+			if err := r.VisitJobPre(declarations.Job(&j)); err != nil {
 				t.Fatal(err)
 			}
 

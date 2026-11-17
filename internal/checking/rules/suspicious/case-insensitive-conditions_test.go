@@ -3,13 +3,13 @@ package suspicious
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
@@ -32,13 +32,13 @@ func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			root, err, _ := exprsyntax.ParseConditionExpression(tc.source)
+			root, err, _ := syntax.ParseConditionExpression(tc.source)
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(root))
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(root))
 			if len(result.Findings) != tc.errors {
 				t.Fatalf("type findings=%v, want %d", result.Findings, tc.errors)
 			}
@@ -51,7 +51,7 @@ func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
 					t.Fatalf("invalid finding: %+v", finding)
 				}
 			}
-			if findings := CaseInsensitiveConditions(root, exprlang.InferredTypes{}, exprlang.CheckedCalls{}); len(findings) != 0 {
+			if findings := CaseInsensitiveConditions(root, typecheck.InferredTypes{}, typecheck.CheckedCalls{}); len(findings) != 0 {
 				t.Fatalf("unchecked syntax acquired findings: %v", findings)
 			}
 		})

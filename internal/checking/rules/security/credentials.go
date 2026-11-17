@@ -5,12 +5,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/knownvalues"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
 
 // CredentialsRule is the single definition of the credentials rule.
@@ -30,7 +30,7 @@ var CredentialsRule = &define.Rule{
 type credentialsCheck struct{ reporting.Collector }
 
 // Credentials checks container passwords in a complete job declaration.
-func Credentials(n declaration.Job) []reporting.StepFinding {
+func Credentials(n workflows.Job) []reporting.StepFinding {
 	rule := &credentialsCheck{}
 
 	if !n.Present() {
@@ -39,7 +39,7 @@ func Credentials(n declaration.Job) []reporting.StepFinding {
 	rule.checkContainer("\"container\" section", n.Container)
 	if n.Services != nil {
 		if expression := n.Services.Expression; expression != nil {
-			if value, known := workflowvalues.Constant(expression); known {
+			if value, known := knownvalues.Constant(expression); known {
 				if services, ok := value.(map[string]any); ok {
 					for name, container := range services {
 						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, expression.Pos)
@@ -56,12 +56,12 @@ func Credentials(n declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Container) {
+func (rule *credentialsCheck) checkContainer(where string, n *definition.Container) {
 	if n == nil {
 		return
 	}
 	if n.Expression != nil {
-		if value, known := workflowvalues.Constant(n.Expression); known {
+		if value, known := knownvalues.Constant(n.Expression); known {
 			rule.checkContainerValue(where, value, n.Expression.Pos)
 		}
 		return
@@ -71,7 +71,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Conta
 		return
 	}
 	if credentials.Expression != nil {
-		if value, known := workflowvalues.Constant(credentials.Expression); known {
+		if value, known := knownvalues.Constant(credentials.Expression); known {
 			rule.checkCredentialsValue(where, value, credentials.Expression.Pos)
 		}
 		return
@@ -80,26 +80,26 @@ func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Conta
 	if p == nil {
 		return
 	}
-	if value, known := workflowvalues.Constant(p); known {
+	if value, known := knownvalues.Constant(p); known {
 		rule.checkPasswordValue(where, value, p.Pos)
 	} else if !p.IsExpressionAssigned() {
 		rule.reportPassword(where, p.Pos)
 	}
 }
 
-func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *sourcetext.Position) {
 	if container, ok := value.(map[string]any); ok {
 		rule.checkCredentialsValue(where, schema.Property(container, "credentials"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *sourcetext.Position) {
 	if credentials, ok := value.(map[string]any); ok {
 		rule.checkPasswordValue(where, schema.Property(credentials, "password"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *sourcetext.Position) {
 	// Known strings are data, including expression delimiters inside JSON.
 	// Invalid value types are reported by expression validation.
 	switch value := value.(type) {
@@ -114,6 +114,6 @@ func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *s
 	rule.reportPassword(where, pos)
 }
 
-func (rule *credentialsCheck) reportPassword(where string, pos *sourcepos.Position) {
+func (rule *credentialsCheck) reportPassword(where string, pos *sourcetext.Position) {
 	rule.Errorf(pos, "\"password\" section in %s should be specified via secrets. do not put password value directly", where)
 }

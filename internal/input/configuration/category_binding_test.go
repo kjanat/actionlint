@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func resolveRules(t *testing.T, presets configuration.Presets, config *configuration.Config, descriptors ...rule.Descriptor) *configuration.Config {
@@ -22,19 +23,19 @@ func resolveRules(t *testing.T, presets configuration.Presets, config *configura
 
 func TestCategoryBindingProgrammaticAliases(t *testing.T) {
 	t.Parallel()
-	setting, err := configuration.NewSetting("warn", map[string]int{"max-minutes": 12})
+	setting, err := ruleconfig.NewSetting("warn", map[string]int{"max-minutes": 12})
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg := &configuration.Config{}
-	cfg.Lint.Rules.Policy = configuration.NewGroup("", "", map[string]configuration.Setting{"require-job-timeout": setting})
-	cfg.Lint.Rules.Conventions = configuration.NewGroup("", "error", nil)
+	cfg.Lint.Rules.Policy = ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"require-job-timeout": setting})
+	cfg.Lint.Rules.Conventions = ruleconfig.NewGroup("", "error", nil)
 	resolved := resolveRules(t, configuration.Presets{Strict: true}, cfg)
 	maximum, known := resolved.RequiresJobTimeout().MaxMinutes()
 	if !known || maximum != 12 || checking.ConfigurationRules().DiagnosticLevel(resolved, "job-timeout") != "warn" || checking.ConfigurationRules().DiagnosticLevel(resolved, "require-job-timeout") != "warn" {
 		t.Fatal("canonical category baseline replaced explicit legacy alias")
 	}
-	cfg.Lint.Rules.Policy = configuration.NewGroup("", "", map[string]configuration.Setting{"require-job-timeout": setting, "job-timeout": setting})
+	cfg.Lint.Rules.Policy = ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"require-job-timeout": setting, "job-timeout": setting})
 	if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg); err == nil || !strings.Contains(err.Error(), "duplicate rule aliases") {
 		t.Fatalf("duplicate aliases accepted: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestCategoryBindingNurserySelection(t *testing.T) {
 		for _, tc := range []struct {
 			rules   string
 			presets configuration.Presets
-			want    configuration.Level
+			want    ruleconfig.Level
 		}{
 			{"{}", configuration.Presets{}, "off"},
 			{"{preset: recommended}", configuration.Presets{}, "off"},

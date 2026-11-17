@@ -1,7 +1,7 @@
 package results
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
@@ -44,13 +44,13 @@ type Excerpt struct {
 func Publish(d Diagnostic, source DiagnosticSource) PublishedDiagnostic {
 	line, found := sourcemap.DiagnosticLine(source.Content, d.Start.Line, source.RawScript)
 	unavailable := source.Unavailable.Present()
-	if d.End == (sourcepos.Position{}) {
-		d.End = sourcepos.Position{Line: d.Start.Line, Column: d.Start.Column + 1}
+	if d.End == (sourcetext.Position{}) {
+		d.End = sourcetext.Position{Line: d.Start.Line, Column: d.Start.Column + 1}
 		switch {
 		case unavailable:
 			d.End = d.Start
 		case line != "":
-			d.End.Column = sourcepos.InclusiveEnd(line, d.Start.Column, 0) + 1
+			d.End.Column = sourcetext.InclusiveEnd(line, d.Start.Column, 0) + 1
 		}
 	}
 	if line != "" {
@@ -98,5 +98,5 @@ func inclusiveEndColumn(d Diagnostic, line string, unavailable bool) int {
 	if unavailable {
 		return max(d.Start.Column, explicit)
 	}
-	return sourcepos.InclusiveEnd(line, d.Start.Column, explicit)
+	return sourcetext.InclusiveEnd(line, d.Start.Column, explicit)
 }

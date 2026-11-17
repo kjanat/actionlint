@@ -4,35 +4,35 @@ import (
 	"fmt"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestCheckoutEnvironmentPlatform(t *testing.T) {
 	t.Parallel()
-	for _, platform := range []runnerlang.Platform{runnerlang.Windows, runnerlang.MacOrLinux, runnerlang.Any} {
+	for _, platform := range []runners.Platform{runners.Windows, runners.MacOrLinux, runners.Any} {
 		for _, name := range []string{"git_work_tree", "path", "Node_Options", "ssh_askpass", "git_allow_protocol"} {
 			t.Run(fmt.Sprintf("%s/%d", name, platform), func(t *testing.T) {
 				t.Parallel()
-				env := &workflowlang.Env{Vars: map[string]*workflowlang.EnvVar{name: {Name: &workflowlang.String{Value: name}, Value: &workflowlang.String{Value: "override"}}}}
-				semantic := mapping.Resolve(workflowlang.EnvMappingView(env))
-				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
+				env := &definition.Env{Vars: map[string]*definition.EnvVar{name: {Name: &definition.String{Value: name}, Value: &definition.String{Value: "override"}}}}
+				semantic := mappings.Resolve(definition.EnvMappingView(env))
+				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runners.MacOrLinux; got != want {
 					t.Fatalf("checkout uncertainty = %v, want %v", got, want)
 				}
-				expression := &workflowlang.Env{Insertions: []*workflowlang.Env{{Expression: &workflowlang.String{Value: fmt.Sprintf("${{ fromJSON('{%q:\"override\"}') }}", name)}}}}
-				semantic = mapping.Resolve(workflowlang.EnvMappingView(expression))
-				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
+				expression := &definition.Env{Insertions: []*definition.Env{{Expression: &definition.String{Value: fmt.Sprintf("${{ fromJSON('{%q:\"override\"}') }}", name)}}}}
+				semantic = mappings.Resolve(definition.EnvMappingView(expression))
+				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runners.MacOrLinux; got != want {
 					t.Fatalf("inserted checkout uncertainty = %v, want %v", got, want)
 				}
 				if name == "path" {
-					if got, want := ShellPathUnknownForPlatform(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
+					if got, want := ShellPathUnknownForPlatform(semantic, platform), platform != runners.MacOrLinux; got != want {
 						t.Fatalf("inserted PATH uncertainty = %v, want %v", got, want)
 					}
 				}
@@ -43,11 +43,11 @@ func TestCheckoutEnvironmentPlatform(t *testing.T) {
 
 func TestEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	t.Parallel()
-	workflow, errs := workflowparser.ParseWorkflow([]byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+	workflow, errs := parser.ParseWorkflow([]byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	resolved := mapping.Resolve(workflowlang.EnvMappingView(workflow.Env))
+	resolved := mappings.Resolve(definition.EnvMappingView(workflow.Env))
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("unquoted null env state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -78,7 +78,7 @@ func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("workflow view unavailable")
 	}
-	resolved := declaration.Environment(workflow.Env)
+	resolved := workflows.Environment(workflow.Env)
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}

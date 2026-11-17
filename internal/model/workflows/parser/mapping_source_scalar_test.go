@@ -3,10 +3,10 @@ package parser
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestActionInputMappingPreservesSourceScalarTags(t *testing.T) {
@@ -15,18 +15,18 @@ func TestActionInputMappingPreservesSourceScalarTags(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	action, ok := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+	action, ok := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 	if !ok {
 		t.Fatal("fixture action missing")
 	}
-	inputs := mapping.Resolve(workflowlang.InputMapping(action))
+	inputs := mappings.Resolve(definition.InputMapping(action))
 	if got := inputs.Lookup("null"); !got.Known() || got.Kind() != value.String {
 		t.Fatalf("plain null-looking key state=%v kind=%v", got.State(), got.Kind())
 	}
 	if got, ok := inputs.Lookup("null").Text(); !ok || got != "key-value" {
 		t.Fatalf("plain null-looking key value=%q known=%v", got, ok)
 	}
-	env := mapping.Resolve(workflowlang.EnvMappingView(workflow.Env)).Lookup("null")
+	env := mappings.Resolve(definition.EnvMappingView(workflow.Env)).Lookup("null")
 	if text, ok := env.Text(); !ok || text != "key-value" {
 		t.Fatalf("plain null-looking environment key value=%q known=%v", text, ok)
 	}

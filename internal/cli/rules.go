@@ -7,25 +7,25 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 
-	rulemetadata "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-func commandRules() []rulemetadata.Descriptor {
+func commandRules() []rule.Descriptor {
 	rules := checking.ConfigurationRules().RuleInfos()
-	slices.SortFunc(rules, func(a, b rulemetadata.Descriptor) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(rules, func(a, b rule.Descriptor) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
-func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.Descriptor) error {
+func writeRules(out io.Writer, name string, asJSON bool, rules []rule.Descriptor) error {
 	if name != "" {
 		for _, rule := range rules {
 			if rule.Name == name {
 				if asJSON {
-					return commandstreams.WriteJSON(out, rule)
+					return commandio.WriteJSON(out, rule)
 				}
 				_, err := fmt.Fprintf(out, "%s (%s/%s)\n\n%s\n\n%s\n\nProvider: %s; Maturity: %s\n%s\n", rule.Name, rule.Category, rule.Subcategory, rule.Explanation, rule.Help, rule.Provider, rule.Maturity, rule.DocumentationURL)
 				if err != nil {
@@ -47,13 +47,13 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.De
 				return nil
 			}
 		}
-		return commandargs.UsageError{Cause: fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
+		return arguments.UsageError{Cause: fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
 	}
 	if asJSON {
-		return commandstreams.WriteJSON(out, rules)
+		return commandio.WriteJSON(out, rules)
 	}
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	groups := map[string][]rulemetadata.Descriptor{}
+	groups := map[string][]rule.Descriptor{}
 	for _, rule := range rules {
 		category := rule.Category
 		if category == "" {
@@ -61,7 +61,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.De
 		}
 		groups[category] = append(groups[category], rule)
 	}
-	order := rulemetadata.Categories()
+	order := rule.Categories()
 	var other []string
 	for category := range groups {
 		if !slices.Contains(order, category) {

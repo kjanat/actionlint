@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -23,11 +23,11 @@ import (
 // name against executable and returns its error.
 func probeBundledVersion(t *testing.T, name, executable string) error {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index := slices.IndexFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == name })
+	index := slices.IndexFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == name })
 	if index < 0 {
 		t.Fatalf("no bundled provider %s", name)
 	}

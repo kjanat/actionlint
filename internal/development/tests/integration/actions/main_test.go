@@ -3,7 +3,7 @@ package actions_test
 import (
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 )
 
 func TestMain(m *testing.M) { testutil.Main(m) }

@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"slices"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -51,7 +52,7 @@ type checkInvocation struct {
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
 	Paths                 []string
-	Config                configuration.Selection
+	Config                configuration.ConfigFileSelection
 	StdinFilename         string
 	IgnoreRegex           []string
 	IgnoreSelectors       []string
@@ -65,7 +66,7 @@ type checkInvocation struct {
 	DeprecatedToolFlags []deprecatedToolFlag
 	// Tools selects every bundled tool. applyEnvironment sets it, and the
 	// two lists below, from the flags above and the environment.
-	Tools registry.Selections
+	Tools registry.ToolSelections
 	// DisabledTools lists the tool ids the flags disabled.
 	DisabledTools []string
 	// NamedTools lists the tool ids --tool and --no-tool named.
@@ -89,11 +90,11 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Formats            []render.Format
+	Formats            []outputformat.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
-	Color              render.Color
+	Color              output.Color
 	Width              int
 	Oneline            bool
 	Quiet              bool
@@ -153,7 +154,7 @@ func (a *commandApp) prepareInvocation() error {
 		i.Rule = i.Check.Paths[0]
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {
-		return commandargs.UsageError{Cause: errors.New("--output-file is only supported for checks")}
+		return arguments.UsageError{Cause: errors.New("--output-file is only supported for checks")}
 	}
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
@@ -162,7 +163,7 @@ func (a *commandApp) prepareInvocation() error {
 		return err
 	}
 	if i.Check.Config.Disabled && i.Check.Config.Path != "" {
-		return commandargs.UsageError{Cause: errors.New("--config cannot be combined with --no-config")}
+		return arguments.UsageError{Cause: errors.New("--config cannot be combined with --no-config")}
 	}
 	if i.Operation != "check" && !i.Legacy {
 		return nil
@@ -171,7 +172,7 @@ func (a *commandApp) prepareInvocation() error {
 	if jsonRequested && explicitOutput {
 		for _, mode := range o.output {
 			if mode != "json" {
-				return commandargs.UsageError{Cause: errors.New("--json cannot be combined with a different --output-format mode")}
+				return arguments.UsageError{Cause: errors.New("--json cannot be combined with a different --output-format mode")}
 			}
 		}
 	}
@@ -179,29 +180,29 @@ func (a *commandApp) prepareInvocation() error {
 		o.output = outputModes{"json"}
 	}
 	if i.Render.Template != "" && i.Render.TemplateFile != "" {
-		return commandargs.UsageError{Cause: errors.New("--template cannot be combined with --template-file")}
+		return arguments.UsageError{Cause: errors.New("--template cannot be combined with --template-file")}
 	}
 	if (i.Render.Template != "" || i.Render.TemplateFile != "") && (i.JSON || explicitOutput) {
-		return commandargs.UsageError{Cause: errors.New("--template/--format cannot be combined with --json or --output-format")}
+		return arguments.UsageError{Cause: errors.New("--template/--format cannot be combined with --json or --output-format")}
 	}
 	if !explicitOutput && !i.JSON && i.Render.Template == "" && i.Render.TemplateFile == "" && !i.Render.Oneline {
 		o.output = outputModes{"pretty"}
 	}
 	if a.set["diagnostic-width"] && !slices.Contains(o.output, "pretty") {
-		return commandargs.UsageError{Cause: errors.New("--diagnostic-width requires --output-format=pretty")}
+		return arguments.UsageError{Cause: errors.New("--diagnostic-width requires --output-format=pretty")}
 	}
 	if i.Render.Width < 40 || i.Render.Width > 400 {
-		return commandargs.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
+		return arguments.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
 	}
 	for _, mode := range o.output {
-		if render.ValidFormat(mode) {
+		if outputformat.Valid(mode) {
 			i.Render.Oneline = false
-			format := render.Format(mode)
+			format := outputformat.Format(mode)
 			if !slices.Contains(i.Render.Formats, format) {
 				i.Render.Formats = append(i.Render.Formats, format)
 			}
 		} else {
-			return commandargs.UsageError{Cause: fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, gcc, json, jsonl, sarif or github", mode)}
+			return arguments.UsageError{Cause: fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, gcc, json, jsonl, sarif or github", mode)}
 		}
 	}
 	if a.set["log-level"] {
@@ -213,7 +214,7 @@ func (a *commandApp) prepareInvocation() error {
 		case "debug":
 			i.Check.Verbose, i.Check.Debug = false, true
 		default:
-			return commandargs.UsageError{Cause: fmt.Errorf("invalid log level %q: choose none, info or debug", o.logLevel)}
+			return arguments.UsageError{Cause: fmt.Errorf("invalid log level %q: choose none, info or debug", o.logLevel)}
 		}
 	}
 	return nil
@@ -223,7 +224,7 @@ func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationCacheDir, operationCacheList, operationCachePrune, operationCacheClean:
 		if inv.Operation == operationCachePrune && inv.Cache.OlderThan <= 0 {
-			return nil, commandargs.UsageError{Cause: errors.New("cache prune --older-than must be positive")}
+			return nil, arguments.UsageError{Cause: errors.New("cache prune --older-than must be positive")}
 		}
 		return cacheRequest{Operation: inv.Operation, cacheInvocation: inv.Cache, JSON: inv.JSON}, nil
 	case operationPluginInspect:
@@ -261,7 +262,7 @@ func (inv invocation) request() (commandRequest, error) {
 		return configSchemaRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins}, nil
 	case operationConfigMigrate:
 		if inv.MigrationWrite && inv.MigrationCheck {
-			return nil, commandargs.UsageError{Cause: errors.New("config migrate: --write and --check cannot be combined")}
+			return nil, arguments.UsageError{Cause: errors.New("config migrate: --write and --check cannot be combined")}
 		}
 		return newStreamRequest(configcommand.MigrateOptions{Config: inv.Check.Config, JSON: inv.JSON, Write: inv.MigrationWrite, Check: inv.MigrationCheck}), nil
 	case operationConfigInit:
@@ -273,7 +274,7 @@ func (inv invocation) request() (commandRequest, error) {
 			}, nil
 		}
 		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
-			return nil, commandargs.UsageError{Cause: errors.New("config init always creates the repository config; omit --config and --no-config")}
+			return nil, arguments.UsageError{Cause: errors.New("config init always creates the repository config; omit --config and --no-config")}
 		}
 		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks, Format: inv.ConfigFormat}, nil
 	case operationCheck:
@@ -282,6 +283,6 @@ func (inv invocation) request() (commandRequest, error) {
 		// Completion output is not a command request.
 		fallthrough
 	default:
-		return nil, commandargs.UsageError{Cause: fmt.Errorf("unknown operation %q", inv.Operation)}
+		return nil, arguments.UsageError{Cause: fmt.Errorf("unknown operation %q", inv.Operation)}
 	}
 }

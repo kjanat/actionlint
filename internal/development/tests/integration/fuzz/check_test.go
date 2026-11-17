@@ -4,17 +4,17 @@ import (
 	"io/fs"
 	"testing"
 
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowmodel "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func parseWorkflowPanicFree(data []byte) *workflowmodel.Workflow {
+func parseWorkflowPanicFree(data []byte) *definition.Workflow {
 	// Avoid Parse() panicking. It panics when go-yaml panics
 	defer func() { _ = recover() }()
-	w, _ := workflowparser.ParseWorkflow(data)
+	w, _ := parser.ParseWorkflow(data)
 	return w
 }
 

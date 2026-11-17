@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // CacheWriteUntrustedRule is the single definition of the cache-write-untrusted rule.
@@ -26,10 +26,10 @@ var CacheWriteUntrustedRule = &define.Rule{
 
 // CacheWriteUntrustedChecks reports write-capable cache declarations reachable
 // from low-trust events. It prepares declaration ownership before callbacks run.
-func CacheWriteUntrustedChecks(workflow workflowdecl.Workflow) define.Checks {
+func CacheWriteUntrustedChecks(workflow workflows.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckWrites(job))
 		},
 	}

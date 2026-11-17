@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestCollectionComparisonSeverity(t *testing.T) {
@@ -52,7 +52,7 @@ func TestCollectionComparisonSeverity(t *testing.T) {
 				if status > 1 {
 					t.Fatalf("status=%d stderr=%s output=%s", status, log.String(), out.String())
 				}
-				var report resultreport.CheckResult
+				var report report.CheckResult
 				if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 					t.Fatal(err)
 				}
@@ -109,7 +109,7 @@ func TestCollectionComparisonAcceptsAutofixWorkflow(t *testing.T) {
 	if status != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", status, log.String(), out.String())
 	}
-	var report resultreport.CheckResult
+	var report report.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestCollectionComparisonWriteGate(t *testing.T) {
 	if status != 1 {
 		t.Fatalf("status=%d stderr=%s output=%s", status, log.String(), out.String())
 	}
-	var report resultreport.CheckResult
+	var report report.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}

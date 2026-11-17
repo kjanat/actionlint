@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -29,16 +29,16 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 		return path
 	}
 	sources := make(map[string]Source, len(result.CapturedSources))
-	aliases := make(map[source.Revision][]string)
+	aliases := make(map[sourcetext.Revision][]string)
 	missing := make(map[string]struct{})
 	for _, input := range result.Inputs {
 		path := address(input)
-		if captured, consumed := result.CapturedSources[path]; consumed && (captured.Coordinates != source.YAML || !captured.CoordinatesAvailable) {
+		if captured, consumed := result.CapturedSources[path]; consumed && (captured.Coordinates != sourcetext.YAML || !captured.CoordinatesAvailable) {
 			missing[path] = struct{}{}
 		}
 	}
 	for path, captured := range result.CapturedSources {
-		if captured.Coordinates == source.YAML && captured.CoordinatesAvailable && captured.Revision.Valid() {
+		if captured.Coordinates == sourcetext.YAML && captured.CoordinatesAvailable && captured.Revision.Valid() {
 			sources[path] = Source{Text: string(captured.Content), Revision: captured.Revision, Coordinates: captured.Coordinates}
 			aliases[captured.Revision] = append(aliases[captured.Revision], path)
 		}
@@ -50,7 +50,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 	for path := range documents {
 		openAliases[address(path)] = struct{}{}
 	}
-	preferredAlias := func(revision source.Revision, preferred string) (string, bool) {
+	preferredAlias := func(revision sourcetext.Revision, preferred string) (string, bool) {
 		candidates := aliases[revision]
 		if len(candidates) == 0 {
 			return "", false
@@ -91,9 +91,9 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 			missing[originalPath] = struct{}{}
 			continue
 		}
-		var revision source.Revision
+		var revision sourcetext.Revision
 		if d.Reference != nil {
-			revision, _ = source.NewRevision(d.Reference.Document, d.Reference.Revision)
+			revision, _ = sourcetext.NewRevision(d.Reference.Document, d.Reference.Revision)
 		} else if captured, exists := result.CapturedSources[originalPath]; exists && bytes.Equal(evidence.Content, captured.Content) {
 			revision = captured.Revision
 		}
@@ -112,7 +112,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 				missing[originalAddress] = struct{}{}
 				continue
 			}
-			if _, _, err := sourceposition.Range(result.CapturedSources[alias].Content, related.Coordinates, related.Start, related.End); err != nil {
+			if _, _, err := byteoffset.Range(result.CapturedSources[alias].Content, related.Coordinates, related.Start, related.End); err != nil {
 				missing[originalAddress] = struct{}{}
 				continue
 			}
@@ -152,7 +152,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 			targetPath := address(target.Path)
 			captured, exists := result.CapturedSources[targetPath]
 			alias, admitted := preferredAlias(captured.Revision, targetPath)
-			if exists && admitted && captured.Coordinates == source.YAML && captured.CoordinatesAvailable {
+			if exists && admitted && captured.Coordinates == sourcetext.YAML && captured.CoordinatesAvailable {
 				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed, checking.RuleNames()); ok {
 					edit.Path = alias
 					d.Fixes = append(d.Fixes, results.Fix{

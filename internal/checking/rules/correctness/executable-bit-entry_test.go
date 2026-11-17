@@ -3,7 +3,7 @@ package correctness
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -11,7 +11,7 @@ import (
 func TestActionEntryInitializesPathsAndPreservesCheckerFlags(t *testing.T) {
 	t.Parallel()
 	parent := NewExecutableChecker(ExecutableContext{})
-	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryAction, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}

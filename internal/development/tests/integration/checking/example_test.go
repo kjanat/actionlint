@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func ExampleAnalyze() {

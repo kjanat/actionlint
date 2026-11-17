@@ -3,13 +3,13 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestPropertyDiagnostics(t *testing.T) {
@@ -28,18 +28,18 @@ func TestPropertyDiagnostics(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 			// displayNme is equally close to two declared names: never guess.
 			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
-			gh, _ := contextspec.BuiltinGlobalVariableTypes["github"].Object()
+			gh, _ := contexts.BuiltinGlobalVariableTypes["github"].Object()
 			gh = gh.With("event", exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"author": author.Type()}).Type()).Type())
 			checker.SetContextTypes(map[string]exprtypes.Type{"github": gh.Type(), "env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type()})
 			checker.SetContextAvailability([]string{"github", "env"})
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := checker.Check(expreval.EvaluateSubexpressions(node))
+			_, findings := checker.Check(evaluate.EvaluateSubexpressions(node))
 			if tc.want == "" {
 				if len(findings) != 0 {
 					t.Fatal(findings)

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 const (
@@ -17,11 +17,11 @@ const (
 // constants and case() branches. Unknown predicates select among known outputs;
 // an unknown output, invalid predicate or exceeded budget makes the whole set
 // unknown. It never substitutes a predicate's contents into a result.
-func StringAlternatives(expr exprsyntax.Node) ([]string, bool) {
+func StringAlternatives(expr syntax.Node) ([]string, bool) {
 	return stringAlternatives(expr, 0)
 }
 
-func stringAlternatives(expr exprsyntax.Node, depth int) ([]string, bool) {
+func stringAlternatives(expr syntax.Node, depth int) ([]string, bool) {
 	if depth > maxAlternativeDepth {
 		return nil, false
 	}
@@ -32,7 +32,7 @@ func stringAlternatives(expr exprsyntax.Node, depth int) ([]string, bool) {
 		}
 		return []string{text}, true
 	}
-	call, ok := expr.(*exprsyntax.FuncCallNode)
+	call, ok := expr.(*syntax.FuncCallNode)
 	if !ok || !strings.EqualFold(call.Callee, "case") || len(call.Args) < 3 || len(call.Args)%2 != 1 {
 		return nil, false
 	}
@@ -95,8 +95,8 @@ func TemplateStringAlternatives(source string) ([]string, bool) {
 			return nil, false
 		}
 		source = source[index+3:]
-		lexer := exprsyntax.NewLexer(source)
-		expr, err := exprsyntax.NewParser().ParseExpression(lexer)
+		lexer := syntax.NewLexer(source)
+		expr, err := syntax.NewParser().ParseExpression(lexer)
 		if err != nil {
 			return nil, false
 		}

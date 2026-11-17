@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
@@ -23,7 +23,7 @@ func migrateVariableNames(node any) (any, error) {
 	for i, item := range entries {
 		name, ok := item.(string)
 		if !ok {
-			return nil, binding.At(strconv.Itoa(i), errors.New("repository names must be strings"))
+			return nil, configdecode.At(strconv.Itoa(i), errors.New("repository names must be strings"))
 		}
 		names[i] = name
 		variables[name] = nil
@@ -98,7 +98,7 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 		if legacy.key == "self-hosted-runner" {
 			if !isNull(value) {
 				if !isMapping(value) {
-					return nil, false, binding.At(legacy.key, errors.New("self-hosted-runner must be a mapping"))
+					return nil, false, configdecode.At(legacy.key, errors.New("self-hosted-runner must be a mapping"))
 				}
 				value = field(value, "labels")
 			}
@@ -106,11 +106,11 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 			value, err = migrateRepositoryValue(legacy.name, value, legacy.key)
 		}
 		if err != nil {
-			return nil, false, binding.At(legacy.key, err)
+			return nil, false, configdecode.At(legacy.key, err)
 		}
 		if value != nil {
 			if err := install(legacy.name, value, legacy.key); err != nil {
-				return nil, false, binding.At(legacy.key, err)
+				return nil, false, configdecode.At(legacy.key, err)
 			}
 		}
 		removeField(next, legacy.key)
@@ -141,10 +141,10 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 				}
 				value, err := migrateRepositoryValue(option.Repository, value, option.Option)
 				if err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Category, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
+					return nil, false, configdecode.At("lint", configdecode.At("rules", configdecode.At(descriptor.Category, configdecode.At(name, configdecode.At("options", configdecode.At(option.Option, err))))))
 				}
 				if err := install(option.Repository, value, "lint.rules."+descriptor.Category+"."+name+".options."+option.Option); err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Category, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
+					return nil, false, configdecode.At("lint", configdecode.At("rules", configdecode.At(descriptor.Category, configdecode.At(name, configdecode.At("options", configdecode.At(option.Option, err))))))
 				}
 				removeField(options, option.Option)
 			}

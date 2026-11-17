@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
@@ -43,7 +43,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				if err != nil || got != want {
 					t.Fatalf("inherited rc path = %q, %v; want %q", got, err, want)
 				}
-				inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
+				inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: leaf}, true)
 				if err != nil {
 					t.Fatal(err)
 				}

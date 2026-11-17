@@ -10,11 +10,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	registry "actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type scriptBackend func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error)
@@ -57,7 +57,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}, "shellcheck": {Backend: backend}})}, []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
+		checking.Options{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: backend}, "shellcheck": {Backend: backend}})}, []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -108,13 +108,13 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 		return nil, nil
 	})
 	for _, options := range []checking.Options{
-		{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend, Process: &process.CommandOptions{Executable: new("ruff")}}})},
-		{Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: backend, Process: &process.CommandOptions{Executable: new("shellcheck")}}})},
+		{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: backend, Process: &hostprocess.CommandOptions{Executable: new("ruff")}}})},
+		{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: backend, Process: &hostprocess.CommandOptions{Executable: new("shellcheck")}}})},
 	} {
 		if _, err := checking.Analyze(t.Context(), options, nil); err == nil {
 			t.Fatal("accepted ambiguous tool")
 		}
-		if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: nil}); err == nil {
+		if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: nil}); err == nil {
 			t.Fatal("accepted ambiguous file tool")
 		}
 	}
@@ -132,6 +132,6 @@ func TestUnknownBundledProviderIsRejected(t *testing.T) {
 			t.Fatalf("unknown tool rejection: %v", failure)
 		}
 	}()
-	registry.Registrations(registry.Selections{"missing": {}})
+	registry.Registrations(registry.ToolSelections{"missing": {}})
 	t.Fatal("unknown bundled provider accepted")
 }

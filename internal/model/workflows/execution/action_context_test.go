@@ -9,42 +9,42 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestCallPositionAdmission(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
-		pos     *source.Position
-		want    source.Position
+		pos     *sourcetext.Position
+		want    sourcetext.Position
 		invalid bool
 	}{
 		{name: "absent"},
-		{name: "unknown", pos: &source.Position{}},
-		{name: "known", pos: &source.Position{Line: 2, Column: 3}, want: source.Position{Line: 2, Column: 3}},
-		{name: "partial line", pos: &source.Position{Line: 2}, invalid: true},
-		{name: "partial column", pos: &source.Position{Column: 3}, invalid: true},
+		{name: "unknown", pos: &sourcetext.Position{}},
+		{name: "known", pos: &sourcetext.Position{Line: 2, Column: 3}, want: sourcetext.Position{Line: 2, Column: 3}},
+		{name: "partial line", pos: &sourcetext.Position{Line: 2}, invalid: true},
+		{name: "partial column", pos: &sourcetext.Position{Column: 3}, invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			position := source.Position{}
+			position := sourcetext.Position{}
 			if tc.pos != nil {
 				position = *tc.pos
 			}
 			facts := invocation.Facts{HasUses: true, Uses: "$/action", Step: position, Condition: invocation.ConditionEnabled}
-			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
 			}
-			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+			ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 			if tc.invalid {
 				if !errors.Is(err, invocation.ErrInvalidFacts) {
 					t.Fatalf("malformed position admitted: %v", err)
@@ -89,7 +89,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 					continue
 				}
 				position, present := step.Position()
-				facts, err := CallFacts(step, runnerlang.MacOrLinux)
+				facts, err := CallFacts(step, runners.MacOrLinux)
 				if err != nil || !present || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != position.Line || facts.Step.Column != position.Column {
 					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
 				}
@@ -101,15 +101,15 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		condition *workflowlang.String
+		condition *definition.String
 		want      invocation.Condition
 	}{
 		{nil, invocation.ConditionEnabled},
-		{&workflowlang.String{Value: "false"}, invocation.ConditionSkipped},
-		{&workflowlang.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
+		{&definition.String{Value: "false"}, invocation.ConditionSkipped},
+		{&definition.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
 	} {
-		call := &workflowlang.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/action"}}}
-		context, err := testCallContext(t, call, runnerlang.MacOrLinux)
+		call := &definition.Step{Pos: &sourcetext.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &definition.ExecAction{Uses: &definition.String{Value: "$/action"}}}
+		context, err := testCallContext(t, call, runners.MacOrLinux)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -165,7 +165,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("é")
 	view := slices.Collect(job.Steps())[0]
-	facts, err := CallFacts(view, runnerlang.MacOrLinux)
+	facts, err := CallFacts(view, runners.MacOrLinux)
 	prefix, _, found := strings.Cut(line, "{uses")
 	if !found {
 		t.Fatal("fixture has no call mapping")
@@ -195,7 +195,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("action view unavailable")
 	}
-	inputs := declaration.ResolvedInputs(action)
+	inputs := workflows.ResolvedInputs(action)
 	if got := inputs.Lookup("null-value"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -206,16 +206,16 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 
 func testEntryContext(t *testing.T) invocation.Context {
 	t.Helper()
-	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryAction, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}
 	return builder.RootContext()
 }
 
-func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.Platform) (invocation.Context, error) {
+func testCallContext(t *testing.T, step *definition.Step, platform runners.Platform) (invocation.Context, error) {
 	t.Helper()
-	action, ok := step.Exec.(*workflowlang.ExecAction)
+	action, ok := step.Exec.(*definition.ExecAction)
 	if !ok {
 		return invocation.Context{}, ErrInvalidActionCall
 	}
@@ -261,11 +261,11 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 
 func testFactsContext(t *testing.T, facts invocation.Facts) invocation.Context {
 	t.Helper()
-	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}
-	ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+	ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 	if err != nil {
 		t.Fatal(err)
 	}

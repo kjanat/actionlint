@@ -10,35 +10,35 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type metadataAdmissionAnalyzer struct{ inspect func() error }
 
 func (metadataAdmissionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -47,7 +47,7 @@ func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.An
 			return nil, err
 		}
 	}
-	return []results.Diagnostic{{Message: "unrelated entry observation", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Message: "unrelated entry observation", Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t *testing.T) {
@@ -87,7 +87,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 					}
 					return nil
 				}
-				processes := process.NewProcessPool(t.Context(), 1)
+				processes := hostprocess.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
 				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []checkinputs.Registration{{Checker: probe}}, Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
@@ -135,7 +135,7 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	cancel()
 	session := analysisSession{ctx: ctx, captures: store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
-	rejected, err := session.admitSourceDocuments(composites.Composition{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.SourceIndex{})
+	rejected, err := session.admitSourceDocuments(composites.Composition{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]facts.SourceIndex{})
 	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
@@ -152,27 +152,27 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcepos.YAML)
+			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := workspaceactions.NewCache(t.Context(), root, nil)
-			cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
+			cache := localactions.NewCache(t.Context(), root, nil)
+			cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
 			if !exists {
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &sourcepos.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]
-			retained := &findingmodel.Finding{Message: "entry observation"}
+			retained := &finding.Finding{Message: "entry observation"}
 			displayPath := filepath.Join("broken", "action.yml")
 			composed := composites.Composition{Sources: map[string][]byte{displayPath: []byte("different consumer bytes")}, SourceDocuments: map[string]composites.SourceDocument{displayPath: document}}
 			if missing {
@@ -184,7 +184,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal(err)
 			}
 			session := analysisSession{ctx: t.Context(), captures: store, snapshots: registry, workingDir: root}
-			references := map[string]workflowfacts.SourceIndex{}
+			references := map[string]facts.SourceIndex{}
 			rejected, sourceErr := session.admitSourceDocuments(composed, references)
 			if sourceErr == nil || !rejected[displayPath] || !rejected[metadata.Revision().Document()] || len(references) != 0 {
 				t.Fatalf("bad source retained canonical admission: rejected=%v references=%v error=%v", rejected, references, sourceErr)
@@ -197,7 +197,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 					t.Fatalf("Verify mismatch lost typed cause: %v", sourceErr)
 				}
 			}
-			accepted, admissionErr := session.admitReportedSources([]*findingmodel.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
+			accepted, admissionErr := session.admitReportedSources([]*finding.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
 			if err := store.Close(t.Context()); err != nil {
 				t.Fatal(err)
 			}

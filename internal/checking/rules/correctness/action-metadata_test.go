@@ -10,15 +10,15 @@ import (
 	"strings"
 	"testing"
 
-	actionfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/actions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/actions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
@@ -30,9 +30,9 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 				reader := files.New(t.Context(), func(string) ([]byte, error) {
 					return nil, failure
 				}, nil)
-				cache := actionfixture.NewCache(t, t.TempDir(), nil, reader)
+				cache := actions.NewCache(t, t.TempDir(), nil, reader)
 				rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
-				err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &source.Position{Line: 1, Column: 1}}}}))
+				err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcetext.Position{Line: 1, Column: 1}}}}))
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 					t.Fatalf("interruption became a lint finding: error=%v findings=%+v", err, rule.Errs())
 				}
@@ -60,7 +60,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 		}
 		t.Fatal(err)
 	}
-	_, store, registry := fixturedecl.NewCapturedSnapshots(t, root)
+	_, store, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(alias, content, parsing.Action(alias, content))
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
+	finding := &finding.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
 	document := snapshot.Reference().Document
 	before := metadataFindingKey(metadata, document, finding)
 	if err := store.Close(t.Context()); err != nil {
@@ -95,7 +95,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	}
 	path := filepath.Join(root, "action.yml")
 	content := []byte("name: source\nruns: {using: node24, main: index.js}\n")
-	_, _, registry := fixturedecl.NewCapturedSnapshots(t, root)
+	_, _, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(path, content, parsing.Action(path, content))
 	if err != nil {
 		t.Fatal(err)
@@ -129,10 +129,10 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(t.Context(), ActionRule.Base(), actionfixture.NewCache(t, root, &cacheLog), nil)
+	rule := NewRuleAction(t.Context(), ActionRule.Base(), actions.NewCache(t, root, &cacheLog), nil)
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
-		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &source.Position{Line: i, Column: 1}}}); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", &definition.ExecAction{Uses: &definition.String{Value: "./inner", Pos: &sourcetext.Position{Line: i, Column: 1}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -150,10 +150,10 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	// The missing description is positioned at each caller; the composite step
 	// without a shell is positioned in the metadata and carries an ignore origin.
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
-	cache := actionfixture.NewCache(t, root, nil)
+	cache := actions.NewCache(t, root, nil)
 	rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
 	for i := 1; i <= 3; i++ {
-		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &source.Position{Line: i, Column: 1}}}
+		action := &definition.ExecAction{Uses: &definition.String{Value: "./inner", Pos: &sourcetext.Position{Line: i, Column: 1}}}
 		if err := rule.checkLocalAction("./inner", "./inner", action); err != nil {
 			t.Fatal(err)
 		}
@@ -179,7 +179,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	}
 	// Annotation is the only write path into recorded findings; it must not
 	// reach the cached templates the next visit replays.
-	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
+	rule.AnnotateSince(0, func(finding *finding.Finding) {
 		finding.Message = "mutated caller"
 		if finding.IgnoreOrigin != nil {
 			finding.IgnoreOrigin.Job = "mutated caller"

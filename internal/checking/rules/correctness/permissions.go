@@ -7,13 +7,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // PermissionsRule is the single definition of the permissions rule.
@@ -29,31 +29,31 @@ var PermissionsRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Workflow: checkWorkflowPermissions, Job: checkJobPermissions}),
 }
 
-func checkPermissionMapping(p *workflowlang.Permissions) []reporting.StepFinding {
+func checkPermissionMapping(p *definition.Permissions) []reporting.StepFinding {
 	if p == nil {
 		return nil
 	}
 	input := permissionDeclaration{}
 	if p.All != nil {
-		input.All = &permissionValue{Text: p.All.Value, Start: sourcepos.ZeroIfNil(p.All.Pos)}
+		input.All = &permissionValue{Text: p.All.Value, Start: sourcetext.ZeroIfNil(p.All.Pos)}
 	}
 	for _, scope := range p.Scopes {
-		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
+		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: sourcetext.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: sourcetext.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
 	}
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
 
-func checkWorkflowPermissions(w declaration.Workflow) []reporting.StepFinding {
+func checkWorkflowPermissions(w workflows.Workflow) []reporting.StepFinding {
 	return checkPermissionMapping(w.Permissions)
 }
 
-func checkJobPermissions(job declaration.Job) []reporting.StepFinding {
+func checkJobPermissions(job workflows.Job) []reporting.StepFinding {
 	return checkPermissionMapping(job.Permissions)
 }
 
 type permissionValue struct {
 	Text  string
-	Start sourcepos.Position
+	Start sourcetext.Position
 }
 type (
 	permissionScope       struct{ Name, Level permissionValue }
@@ -65,9 +65,9 @@ type (
 
 // permissionDiagnostics validates explicit permission declarations against the known scopes and levels.
 func permissionDiagnostics(input permissionDeclaration) []results.Diagnostic {
-	scopes := permissionmodel.Scopes()
+	scopes := permissions.Scopes()
 	var findings []results.Diagnostic
-	report := func(start sourcepos.Position, message string) {
+	report := func(start sourcetext.Position, message string) {
 		findings = append(findings, results.Diagnostic{Start: start, Message: message})
 	}
 	if all := input.All; all != nil {

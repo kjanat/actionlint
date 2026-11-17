@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -33,12 +33,12 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+			wasm, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 			if err != nil {
 				t.Fatal(err)
 			}
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			directory := pluginCacheDirectory(registry.UserCacheDir())
 			registry.Add(t, "v1.0.0", wasm)
 			client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
@@ -114,9 +114,9 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 }
 
 func TestActionConfiguredWasm(t *testing.T) {
-	for _, fixture := range []string{"../../plugins/execution/module/testdata/engines/echo.wasm", "../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm"} {
+	for _, fixture := range []string{"../../plugins/pluginexecution/module/testdata/engines/echo.wasm", "../../plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
-			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 			module, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
@@ -183,7 +183,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			}
 			workspace := workspaceWith(t, files)
 			registry := fixtureregistry.NewPluginRegistry(t)
-			module, err := os.ReadFile("../../plugins/execution/module/testdata/engines/echo.wasm")
+			module, err := os.ReadFile("../../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -202,7 +202,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: pluginregistry.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
-			req, err := provisioningRequest(func(key string) string { return env[key] }, pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
+			req, err := provisioningRequest(func(key string) string { return env[key] }, pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -220,7 +220,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 
 func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 	directory := pluginCacheDirectory(acquisition.UserCacheDir)
 	digest := strings.Repeat("a", 64)
 	workspace := workspaceWith(t, map[string]string{
@@ -242,14 +242,14 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 
 func TestActionInlinePinnedPlugin(t *testing.T) {
 	t.Parallel()
-	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	url := "https://plugins.example/no-sudo.wasm"
 	digest := fmt.Sprintf("%x", sha256.Sum256(wasm))
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetFile(url, wasm)
 	workspace := workspaceWith(t, map[string]string{
 		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",

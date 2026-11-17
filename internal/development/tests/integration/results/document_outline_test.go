@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -26,7 +26,7 @@ func TestDocumentOutlinesRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got documentmodel.Outlines
+	var got outline.Outlines
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 )
 
 func executableFixture(t *testing.T) (string, func(...string)) {
@@ -23,7 +23,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	root := tempdir.Physical(t)
 	command := func(args ...string) {
 		t.Helper()
-		if out, err := gitclient.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+		if out, err := gitcommand.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}

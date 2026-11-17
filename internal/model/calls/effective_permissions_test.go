@@ -3,22 +3,22 @@ package calls
 import (
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 	t.Parallel()
-	view := func(permissions *workflowlang.Permissions) *workflowlang.Permissions {
-		return declaration.Bind("permissions", "", &workflowlang.Workflow{Permissions: permissions}, false, "").Workflow().Permissions
+	view := func(permissions *definition.Permissions) *definition.Permissions {
+		return workflows.Bind("permissions", "", &definition.Workflow{Permissions: permissions}, false, "").Workflow().Permissions
 	}
-	read := view(&workflowlang.Permissions{All: &workflowlang.String{Value: "read-all"}})
-	empty := view(&workflowlang.Permissions{Scopes: map[string]*workflowlang.PermissionScope{}})
-	invalid := view(&workflowlang.Permissions{All: &workflowlang.String{Value: "invalid"}})
+	read := view(&definition.Permissions{All: &definition.String{Value: "read-all"}})
+	empty := view(&definition.Permissions{Scopes: map[string]*definition.PermissionScope{}})
+	invalid := view(&definition.Permissions{All: &definition.String{Value: "invalid"}})
 	defaults := ResolvedPermissions{Kind: PermissionsDeclared, Levels: PermissionScopeLevels{"contents": PermissionLevelWrite}}
 	for _, tc := range []struct {
 		name          string
-		workflow, job *workflowlang.Permissions
+		workflow, job *definition.Permissions
 		kind          permissionsKind
 		contents      PermissionLevel
 	}{

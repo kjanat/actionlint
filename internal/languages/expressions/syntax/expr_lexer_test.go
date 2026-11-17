@@ -859,8 +859,8 @@ func TestLexExprError(t *testing.T) {
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Error message %q does not contain %q", err.Error(), tc.want)
 			}
-			if err.Column != tc.col {
-				t.Fatalf("Error occurred at column %d expecting %d", err.Column, tc.col)
+			if err.Position.Column != tc.col {
+				t.Fatalf("Error occurred at column %d expecting %d", err.Position.Column, tc.col)
 			}
 		})
 	}
@@ -884,11 +884,11 @@ func TestLexTokenPos(t *testing.T) {
 		if ts[i].Offset != want[i] {
 			t.Errorf("%dth token offsets mismatch. want=%d, have=%d", i+1, want[i], ts[i].Offset)
 		}
-		if ts[i].Line != 1 {
-			t.Errorf("%dth token line should be 1 but got %d", i+1, ts[i].Line)
+		if ts[i].Position.Line != 1 {
+			t.Errorf("%dth token line should be 1 but got %d", i+1, ts[i].Position.Line)
 		}
-		if ts[i].Column != want[i]+1 {
-			t.Errorf("%dth token column should be %d but got %d", i+1, want[i]+1, ts[i].Column)
+		if ts[i].Position.Column != want[i]+1 {
+			t.Errorf("%dth token column should be %d but got %d", i+1, want[i]+1, ts[i].Position.Column)
 		}
 	}
 }

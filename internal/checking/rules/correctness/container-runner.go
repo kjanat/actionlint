@@ -8,14 +8,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // ContainerRunnerRule is the single definition of the container-runner rule.
@@ -42,27 +42,27 @@ var ContainerRunnerRule = &define.Rule{
 
 // ContainerRunnerFindings reports established container limitations. Source
 // acquisition, condition evaluation and invocation state belong to the host.
-func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.StepFinding {
+func ContainerRunnerFindings(uses []runners.ContainerUse) []reporting.StepFinding {
 	findings := make([]reporting.StepFinding, 0, len(uses))
 	for _, use := range uses {
 		var description string
 		switch use.Kind {
-		case runnerlang.JobContainer:
+		case runners.JobContainer:
 			description = "job container"
-		case runnerlang.ServiceContainer:
+		case runners.ServiceContainer:
 			description = "service " + use.Name
-		case runnerlang.DockerAction:
+		case runners.DockerAction:
 			description = fmt.Sprintf("Docker action %q", use.Name)
 		}
 		var message, severity string
 		switch use.Target.Limitation {
-		case runnerlang.ContainerRequiresLinux:
+		case runners.ContainerRequiresLinux:
 			message = fmt.Sprintf("%s requires a Linux runner with Docker. Runner selection %q resolves to a non-Linux runner", description, use.Target.Runner)
 			severity = "error"
-		case runnerlang.ContainerMissingDaemon:
+		case runners.ContainerMissingDaemon:
 			message = fmt.Sprintf("%s requires a Docker daemon. Runner selection %q has Docker client tools but cannot run containers locally. Configure a compatible remote daemon or select a Docker-capable Linux runner", description, use.Target.Runner)
 			severity = "warning"
-		case runnerlang.ContainerUnknown:
+		case runners.ContainerUnknown:
 			continue
 		}
 		findings = append(findings, reporting.StepFinding{Message: message, Severity: severity, Start: use.Position})
@@ -78,40 +78,40 @@ type containerFrame struct {
 type containerAdapter struct {
 	workflowvisit.Base
 	ctx        context.Context
-	runners    *runnerlang.Knowledge
-	actions    *workspaceactions.PreparedActions
-	remote     *actionremote.ResolvedActions
-	targets    []runnerlang.ContainerTarget
+	runners    *runners.Knowledge
+	actions    *localactions.PreparedActions
+	remote     *remote.ResolvedActions
+	targets    []runners.ContainerTarget
 	guards     []string
 	frames     []containerFrame
-	conditions map[source.Reference]string
+	conditions map[sourcetext.Reference]string
 }
 
 // newContainerRunner supplies container facts to the rule and tracks enclosing
 // composite conditions. The composition coordinator acquires action metadata.
-func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runnerlang.Knowledge, actions *workspaceactions.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
-	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
+func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runners.Knowledge, actions *localactions.Resolver, remote *remote.ResolvedActions) workflowvisit.Rule {
+	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[sourcetext.Reference]string{}}
 }
 
-func (r *containerAdapter) VisitJobPre(job workflowdecl.Job) error {
+func (r *containerAdapter) VisitJobPre(job workflows.Job) error {
 	r.targets = r.runners.ContainerLimitations(job)
 	r.guards = []string{job.If.Text()}
 	r.reportUses(r.runners.JobContainerUses(job))
 	return nil
 }
 
-func (r *containerAdapter) reportUses(uses []runnerlang.ContainerUse) {
+func (r *containerAdapter) reportUses(uses []runners.ContainerUse) {
 	for _, finding := range ContainerRunnerFindings(uses) {
 		r.Report(new(finding.Finding))
 	}
 }
 
-func (r *containerAdapter) VisitStep(step workflowdecl.Step) error {
+func (r *containerAdapter) VisitStep(step workflows.Step) error {
 	r.conditions[step.Reference()] = step.If.Text()
 	return r.checkStep(step)
 }
 
-func (r *containerAdapter) checkStep(step workflowdecl.Step) error {
+func (r *containerAdapter) checkStep(step workflows.Step) error {
 	if len(r.targets) == 0 {
 		return nil
 	}
@@ -120,11 +120,11 @@ func (r *containerAdapter) checkStep(step workflowdecl.Step) error {
 		return nil
 	}
 	spec := action.Uses.Text()
-	form := references.FormOf(spec)
-	docker := form == references.FormContainer
-	if !docker && (form == references.FormWorkspace || form == references.FormSelfRepository) {
+	form := callreferences.FormOf(spec)
+	docker := form == callreferences.FormContainer
+	if !docker && (form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository) {
 		result, _ := r.actions.LookupMetadata(spec)
-		docker = result.Status() == workspaceactions.MetadataDockerfileOnly
+		docker = result.Status() == localactions.MetadataDockerfileOnly
 		if meta := result.Metadata(); meta != nil {
 			docker = strings.EqualFold(meta.Runs.Using, "docker")
 		}
@@ -136,12 +136,12 @@ func (r *containerAdapter) checkStep(step workflowdecl.Step) error {
 		docker = strings.EqualFold(result.Definition().Using(), "docker")
 	}
 	if docker {
-		r.reportUses(runnerlang.DockerActionUses(step, r.targets, r.guards))
+		r.reportUses(runners.DockerActionUses(step, r.targets, r.guards))
 	}
 	return nil
 }
 
-func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) {
+func (r *containerAdapter) ApplyCheckout(actions *localactions.Resolver) {
 	r.actions = actions.Prepared()
 }
 
@@ -173,9 +173,9 @@ func (r *containerAdapter) LeaveInvocation(scope invocation.Context) error {
 	return nil
 }
 
-func (r *containerAdapter) VisitInvocationStep(workflowdecl.Step) error { return nil }
+func (r *containerAdapter) VisitInvocationStep(workflows.Step) error { return nil }
 
-func (r *containerAdapter) VisitOpaqueAction(step workflowdecl.Step) error {
+func (r *containerAdapter) VisitOpaqueAction(step workflows.Step) error {
 	if len(r.frames) == 0 {
 		return nil
 	}

@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -39,8 +40,8 @@ type failingRenderWriter struct{}
 func (failingRenderWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 func TestRendererWriteErrors(t *testing.T) {
 	t.Parallel()
-	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.PublishedDiagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}}
-	for _, format := range []Format{FormatText, FormatOneline, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub} {
+	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.PublishedDiagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}}}}
+	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Oneline, outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
 			renderer, err := New(format, "", false, func() string { return "test" }, nil)
@@ -48,9 +49,9 @@ func TestRendererWriteErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 			presentation := FromAnalysis(analysis)
-			presentation.CheckResult = commandstatus.AnalysisResult(analysis)
+			presentation.CheckResult = exitcode.AnalysisResult(analysis)
 			err = renderer.Render(failingRenderWriter{}, presentation)
-			text := format == FormatText || format == FormatOneline
+			text := format == outputformat.Text || format == outputformat.Oneline
 			if (err == nil) != text {
 				t.Fatalf("write error contract changed: %v", err)
 			}

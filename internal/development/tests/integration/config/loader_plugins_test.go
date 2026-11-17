@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"github.com/google/go-cmp/cmp"
@@ -194,7 +194,7 @@ func TestSelectedPathAllFormats(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(dir)
-			got, err := configuration.SelectedPath(configuration.Selection{})
+			got, err := configuration.SelectedPath(configuration.ConfigFileSelection{})
 			if err != nil || got != want {
 				t.Fatalf("got %q, %v; want %q", got, err, want)
 			}

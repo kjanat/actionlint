@@ -147,7 +147,7 @@ sources = [
   "plugins/protocol/wit/**/*.wit",
   "internal/development/generators/plugin-contract/*.go",
   "go.{mod,sum}",
-  "internal/plugins/execution/component/generate.go"
+  "internal/plugins/pluginexecution/component/generate.go"
 ]
 
 [task_templates."manual"]
@@ -167,13 +167,13 @@ vars    = {
   artifact     = "",
   metadata     = "",
   packager     = "",
-  fixture_root = "internal/plugins/execution/component/testdata/plugins"
+  fixture_root = "internal/plugins/pluginexecution/component/testdata/plugins"
 }
 sources = [
   "Cargo.{toml,lock}",
   "rust-toolchain.toml",
   "plugins/sdk/rust/**",
-  "internal/plugins/execution/{component,module}/testdata/sources/**",
+  "internal/plugins/pluginexecution/{component,module}/testdata/sources/**",
   "plugins/examples/**/{Cargo.toml,*.rs,*.json,LICENSE*}",
   "internal/development/tests/integration/plugins/package-fixture/*.go"
 ]
@@ -195,8 +195,8 @@ mise run fixture:copy "{{ distribution }}/plugin.wasm" "{{ output }}"
 
 [task_templates."script-plugin"]
 sources = ["plugins/protocol/wit/*.wit", "plugins/examples/{{ vars.fixture }}/**"]
-outputs = ["internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm"]
-run     = "bash plugins/examples/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm\""
+outputs = ["internal/plugins/pluginexecution/component/testdata/plugins/{{ vars.fixture }}.wasm"]
+run     = "bash plugins/examples/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/pluginexecution/component/testdata/plugins/{{ vars.fixture }}.wasm\""
 
 [vars]
 exe = "{% if os() == 'windows' %}.exe{% endif %}"

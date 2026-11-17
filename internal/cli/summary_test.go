@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestEmptySummaryIsNotAllClear(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	if err := writeCheckSummary(&out, render.ColorNever, resultreport.NewCheckSummary(resultreport.Analysis{})); err != nil {
+	if err := writeCheckSummary(&out, output.ColorNever, report.NewCheckSummary(report.Analysis{})); err != nil {
 		t.Fatal(err)
 	}
 	if out.String() != "No files checked.\n" {
@@ -45,7 +45,7 @@ func TestIncompleteActionCheckIsNotAllClear(t *testing.T) {
 			}
 			if format == "json" {
 				var summary struct {
-					Summary resultreport.CheckSummary `json:"summary"`
+					Summary report.CheckSummary `json:"summary"`
 				}
 				if err := json.Unmarshal(log.Bytes(), &summary); err != nil {
 					t.Fatal(err)

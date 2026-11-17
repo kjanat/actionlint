@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	registry "actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-type ruffEchoBackend struct{ *corewasm.Engine }
+type ruffEchoBackend struct{ *module.Engine }
 
 func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	descriptor := b.Engine.ScriptDescriptor()
@@ -23,14 +23,14 @@ func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
 	t.Parallel()
-	engine, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Close(t.Context())
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: ruffEchoBackend{engine}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n")}},
+		checking.Options{Tools: registry.Registrations(registry.ToolSelections{"ruff": {Backend: ruffEchoBackend{engine}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n")}},
 	)
 	if err != nil {
 		t.Fatal(err)

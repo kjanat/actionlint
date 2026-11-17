@@ -4,10 +4,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // IdRule is the single definition of the id rule.
@@ -23,22 +23,22 @@ var IdRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Job: checkIdentifiers}),
 }
 
-func checkIdentifiers(job declaration.Job) []reporting.StepFinding {
-	name := func(value *workflowlang.String) identifier.Name {
-		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: sourcepos.ZeroIfNil(value.Pos)}
+func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
+	name := func(value *definition.String) identifier.Name {
+		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: sourcetext.ZeroIfNil(value.Pos)}
 	}
-	input := identifier.Job{}
+	input := identifier.JobIdentifiers{}
 	if job.ID != nil {
 		input.ID = new(name(job.ID))
 	}
 	for _, value := range job.Needs {
 		input.Needs = append(input.Needs, name(value))
 	}
-	owners := map[sourcepos.Position]declaration.Step{}
+	owners := map[sourcetext.Position]workflows.Step{}
 	for step := range job.AllSteps() {
 		if step.ID != nil {
 			input.Steps = append(input.Steps, name(step.ID))
-			owners[sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(step.ID.Position()))] = step
+			owners[sourcetext.ZeroIfNil(sourcetext.NilUnlessPresent(step.ID.Position()))] = step
 		}
 	}
 	out := reporting.FromDiagnostics(identifier.Check(input))

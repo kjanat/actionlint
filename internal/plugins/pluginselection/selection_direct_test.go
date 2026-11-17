@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 )
 
 func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
@@ -23,8 +23,8 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 	}
 	source := "https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32)
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
-	input := inputmodel.Request{Kind: inputmodel.Repository}
-	selected, err := (Selection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input)
+	input := checkrequest.Request{Kind: checkrequest.Repository}
+	selected, err := (PluginSelection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input)
 	if err != nil || len(selected.Paths) != 1 || selected.Paths[0] != source {
 		t.Fatalf("direct selection: %+v, %v", selected, err)
 	}
@@ -32,18 +32,18 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 	if err := selected.ValidateScope(t.Context(), configuration.RuleSet{}, foreign); err == nil {
 		t.Fatal("automatic direct plugin escaped repository scope")
 	}
-	empty, err := (Selection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), other, input)
+	empty, err := (PluginSelection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), other, input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := empty.ValidateScope(t.Context(), configuration.RuleSet{}, []string{filepath.Join(root, "workflow.yml")}); err == nil {
 		t.Fatal("plugin-free session accepted foreign direct plugin")
 	}
-	input = inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "a.yml"), foreign[0]}}
-	if _, err := (Selection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input); err == nil {
+	input = checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "a.yml"), foreign[0]}}
+	if _, err := (PluginSelection{RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input); err == nil {
 		t.Fatal("mixed repositories accepted automatic direct plugin")
 	}
-	explicit, err := (Selection{ConfigFile: path, RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input)
+	explicit, err := (PluginSelection{ConfigFile: path, RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, input)
 	if err != nil || len(explicit.Paths) != 1 {
 		t.Fatalf("explicit direct selection: %+v, %v", explicit, err)
 	}
@@ -78,8 +78,8 @@ func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := Selection{Overlays: []configuration.Overlay{overlay}, RuleSet: (configuration.RuleSet{})}
-				input := inputmodel.Request{Kind: inputmodel.Repository}
+				selection := PluginSelection{Overlays: []configuration.Overlay{overlay}, RuleSet: (configuration.RuleSet{})}
+				input := checkrequest.Request{Kind: checkrequest.Repository}
 				for _, explicit := range []string{"", path} {
 					selection.ConfigFile = explicit
 					selected, err := selection.Select(t.Context(), root, input)
@@ -96,8 +96,8 @@ func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
 					t.Fatalf("foreign scope ignored disabling overlay: %v", err)
 				}
 			}
-			for _, mode := range []configplugins.ReadMode{configplugins.CompleteConfiguration, configplugins.PluginDeclarationsOnly} {
-				if _, err := (Selection{RuleSet: (configuration.RuleSet{})}).selectSources(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, mode); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+			for _, mode := range []plugins.ReadMode{plugins.CompleteConfiguration, plugins.PluginDeclarationsOnly} {
+				if _, err := (PluginSelection{RuleSet: (configuration.RuleSet{})}).selectSources(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}, mode); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 					t.Fatalf("active direct plugin accepted linked config: %v", err)
 				}
 			}
@@ -106,7 +106,7 @@ func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := (Selection{Overlays: []configuration.Overlay{overlay}, RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+			if _, err := (PluginSelection{Overlays: []configuration.Overlay{overlay}, RuleSet: (configuration.RuleSet{})}).Select(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 				t.Fatalf("overlay activated plugin through linked config: %v", err)
 			}
 		})

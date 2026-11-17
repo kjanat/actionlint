@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/google/go-cmp/cmp"
 )
@@ -104,7 +104,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 			}
 			want := writeConfig(t, github, name, formatSources[name])
 			t.Chdir(github)
-			got, err := checking.ConfigurationRules().Inspect(configuration.Selection{}, true)
+			got, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -132,7 +132,7 @@ func TestTOMLConfigReportsPositions(t *testing.T) {
 	dir := t.TempDir()
 	_, err := checking.ConfigurationRules().LoadConfig(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
 	location, located := errors.AsType[*configuration.SourceError](err)
-	if err == nil || !located || location.Line != 4 || location.Column != 10 {
+	if err == nil || !located || location.Position.Line != 4 || location.Position.Column != 10 {
 		t.Fatalf("type error: %v", err)
 	}
 	_, err = checking.ConfigurationRules().LoadConfig(writeConfig(t, dir, "broken.toml", "config-variables = [\"A\"]\nconfig-variables = [\"B\"]\n"))

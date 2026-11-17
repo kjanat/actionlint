@@ -9,12 +9,12 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,7 +24,7 @@ type invocationAnalyzer struct {
 }
 
 func (*invocationAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
+	return checkinputs.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
 func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -74,7 +74,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: a}}, SkipProjectConfig: true,
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}},
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -108,14 +108,14 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
 	}
-	if invoked.Start != (sourcepos.Position{Line: 6, Column: 12}) {
+	if invoked.Start != (sourcetext.Position{Line: 6, Column: 12}) {
 		t.Fatalf("invoked start=%+v", invoked.Start)
 	}
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Reference == nil || *finding.Reference != invoked.Reference || finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (sourcepos.Position{Line: 6, Column: 17}) || finding.End != (sourcepos.Position{Line: 6, Column: 22}) {
+	if finding.Reference == nil || *finding.Reference != invoked.Reference || finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (sourcetext.Position{Line: 6, Column: 17}) || finding.End != (sourcetext.Position{Line: 6, Column: 22}) {
 		t.Fatalf("finding=%+v", finding)
 	}
 }
@@ -138,7 +138,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 		}
 	}
 	capture := &invocationAnalyzer{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: capture}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
 	if err != nil {
 		t.Fatal(err)
 	}

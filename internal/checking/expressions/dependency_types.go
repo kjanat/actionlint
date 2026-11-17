@@ -1,31 +1,31 @@
 package expressions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	contextoutputs "actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // Get type of `outputs.<output name>`
-func (rule *Checker) getActionOutputsType(spec *workflowlang.String) exprtypes.ObjectType {
+func (rule *Checker) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
 	if spec == nil {
-		return contextoutputs.ActionType(actionmeta.Definition{})
+		return outputs.ActionType(actionmeta.Definition{})
 	}
 
-	definition, err := rule.actionDefinition(spec.Value)
+	metadata, err := rule.actionDefinition(spec.Value)
 	if err != nil {
 		// Action validation reports lookup failures; unknown outputs stay open here.
 		rule.debug("Could not infer action outputs: %v", err)
-		return contextoutputs.ActionType(actionmeta.Definition{})
+		return outputs.ActionType(actionmeta.Definition{})
 	}
-	return contextoutputs.ActionType(definition)
+	return outputs.ActionType(metadata)
 }
 
-func (rule *Checker) workflowCallMetadata(call *workflowlang.WorkflowCall) *calls.Metadata {
+func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.Metadata {
 	if call.Uses == nil {
 		return nil
 	}
@@ -39,17 +39,17 @@ func (rule *Checker) workflowCallMetadata(call *workflowlang.WorkflowCall) *call
 	return m
 }
 
-func (rule *Checker) calcNeedsType(job workflowdecl.Job) exprtypes.ObjectType {
-	resolved := map[workflowdecl.Job]*calls.Metadata{}
-	for _, dependency := range contextoutputs.DirectDependencies(rule.workflow, job) {
+func (rule *Checker) calcNeedsType(job workflows.Job) exprtypes.ObjectType {
+	resolved := map[workflows.Job]*calls.Metadata{}
+	for _, dependency := range outputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall; call != nil {
 			resolved[dependency] = rule.workflowCallMetadata(call)
 		}
 	}
-	return contextoutputs.NeedsType(rule.workflow, job, resolved)
+	return outputs.NeedsType(rule.workflow, job, resolved)
 }
 
-func (rule *Checker) checkWorkflowCallOutputs(call *workflowlang.WorkflowCallEvent, workflow workflowdecl.Workflow) {
+func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.Workflow) {
 	hasOutputs := false
 	for range call.Outputs {
 		hasOutputs = true
@@ -58,13 +58,13 @@ func (rule *Checker) checkWorkflowCallOutputs(call *workflowlang.WorkflowCallEve
 	if !hasOutputs {
 		return
 	}
-	resolved := map[workflowdecl.Job]*calls.Metadata{}
+	resolved := map[workflows.Job]*calls.Metadata{}
 	for _, job := range workflow.Jobs() {
 		if target := job.WorkflowCall; target != nil {
 			resolved[job] = rule.workflowCallMetadata(target)
 		}
 	}
-	jobs := contextoutputs.JobsType(workflow, resolved)
+	jobs := outputs.JobsType(workflow, resolved)
 	if jobs.Len() == 0 {
 		return
 	}

@@ -9,16 +9,16 @@ import (
 	"strings"
 	"testing"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -34,15 +34,15 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	const metadata = `{"metadata_version":1,"id":"no-sudo","name":"Registry process","description":"Process installation fixture","license":"MIT","repository":"https://github.com/publisher/plugin","plugin_version":"1.0.0","transport":"process"}`
-	manifest := manifests.Manifest{
-		SchemaVersion: 1, Metadata: json.RawMessage(metadata), ID: "no-sudo", Version: "1.0.0", Role: manifests.RoleScript, Scope: manifests.ScopeSource, Transport: manifests.TransportProcess,
+	manifest := toolmanifest.Manifest{
+		SchemaVersion: 1, Metadata: json.RawMessage(metadata), ID: "no-sudo", Version: "1.0.0", Role: toolmanifest.RoleScript, Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess,
 		Rule:        rule.Descriptor{Name: "registry-process", Description: "Registry process fixture", Category: "correctness", Subcategory: "shell", Maturity: "stable", Provider: "registry-process", Recommended: true, DocumentationURL: "https://github.com/publisher/plugin"},
-		Preparation: "kjanat:actionlint/expression-mask@0.1.0", Selectors: manifests.Selectors{Shells: []string{"bash"}, Filename: "actionlint.sh"},
-		Capabilities: manifests.Capabilities{MessageTemplate: "{code}: {message}"},
-		Process: &manifests.ProcessSpec{
-			Entry: executable, Args: []string{"-test.run=^TestLocalManifestToolHelper$", "--", "{var:filename}"}, Stdin: manifests.StdinSource,
-			Env: map[string]string{"ACTIONLINT_LOCAL_MANIFEST_HELPER": "1"}, EnvPassthrough: []string{"TEMP", "TMP", "TMPDIR"}, Config: manifests.ConfigRendering{Render: manifests.RenderNone},
-			Output: manifests.Output{Format: manifests.FormatJSON, Transform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `[.items[] | {filename: $vars.filename, code: "NATIVE1", message: .text, location: {row: .line, column: .col}}]`}},
+		Preparation: "kjanat:actionlint/expression-mask@0.1.0", Selectors: toolmanifest.Selectors{Shells: []string{"bash"}, Filename: "actionlint.sh"},
+		Capabilities: toolmanifest.Capabilities{MessageTemplate: "{code}: {message}"},
+		Process: &toolmanifest.ProcessSpec{
+			Entry: executable, Args: []string{"-test.run=^TestLocalManifestToolHelper$", "--", "{var:filename}"}, Stdin: toolmanifest.StdinSource,
+			Env: map[string]string{"ACTIONLINT_LOCAL_MANIFEST_HELPER": "1"}, EnvPassthrough: []string{"TEMP", "TMP", "TMPDIR"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone},
+			Output: toolmanifest.Output{Format: toolmanifest.FormatJSON, Transform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `[.items[] | {filename: $vars.filename, code: "NATIVE1", message: .text, location: {row: .line, column: .col}}]`}},
 		},
 	}
 	data, err := json.Marshal(manifest)
@@ -62,7 +62,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, configPath, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, configPath)
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,12 +76,12 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (pluginselection.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := func() inputmodel.Request {
-		return inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}
+	input := func() checkrequest.Request {
+		return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 	}
 	if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 		t.Fatalf("repository process did not require consent: %v", err)

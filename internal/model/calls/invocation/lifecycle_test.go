@@ -4,12 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
-func reference(document, node string) source.Reference {
-	return source.Reference{Document: document, Node: node, Revision: "snapshot-1"}
+func reference(document, node string) sourcetext.Reference {
+	return sourcetext.Reference{Document: document, Node: node, Revision: "snapshot-1"}
 }
 
 func builder(t *testing.T, kind invocation.EntryKind, budget invocation.Budget) *invocation.Builder {
@@ -33,7 +33,7 @@ func contextFor(t *testing.T, b *invocation.Builder, id invocation.ID) invocatio
 	return ctx
 }
 
-func begin(t *testing.T, b *invocation.Builder, parent invocation.ID, site source.Reference) invocation.Ticket {
+func begin(t *testing.T, b *invocation.Builder, parent invocation.ID, site sourcetext.Reference) invocation.Ticket {
 	t.Helper()
 	ticket, err := b.Begin(contextFor(t, b, parent), site, invocation.Facts{Uses: "./action", HasUses: true, Condition: invocation.ConditionEnabled})
 	if err != nil {
@@ -42,12 +42,12 @@ func begin(t *testing.T, b *invocation.Builder, parent invocation.ID, site sourc
 	return ticket
 }
 
-func addScript(t *testing.T, b *invocation.Builder, owner invocation.ID, declaration source.Reference, kind invocation.ScriptKind, input string) (invocation.ID, error) {
+func addScript(t *testing.T, b *invocation.Builder, owner invocation.ID, declaration sourcetext.Reference, kind invocation.ScriptKind, input string) (invocation.ID, error) {
 	t.Helper()
 	return b.AddScript(contextFor(t, b, owner), declaration, kind, input)
 }
 
-func expand(t *testing.T, b *invocation.Builder, ticket invocation.Ticket, target source.Reference) {
+func expand(t *testing.T, b *invocation.Builder, ticket invocation.Ticket, target sourcetext.Reference) {
 	t.Helper()
 	outcome, err := invocation.Expanded(target)
 	if err != nil {

@@ -90,7 +90,7 @@ deny  = [
 ]
 
 [linters.settings.depguard.rules.tool-providers]
-files = ["**/internal/plugins/manifests/**", "!$test"]
+files = ["**/internal/model/toolmanifest/**", "!$test"]
 deny  = [
   { pkg = "github.com/kjanat/wazero", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
   { pkg = "github.com/kjanat/wacogo", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
@@ -133,12 +133,12 @@ text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/input/files/names/index\.go$'
+path    = '^internal/input/files/nameindex/index\.go$'
 text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/development/(generators/files/write_new|tests/support/ruff)\.go$'
+path    = '^internal/development/(generators/genfile/write_new|tests/testutil/ruff)\.go$'
 text    = 'use of `os\.OpenFile`'
 linters = ["forbidigo"]
 
@@ -148,7 +148,7 @@ linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
 
 # testing.AllocsPerRun panics while a parallel test runs.
 [[linters.exclusions.rules]]
-path    = '^internal/(checking/inputs/input_selection_cost|input/source/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
+path    = '^internal/(model/checkinputs/input_selection_cost|input/sourcetext/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
 text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
 linters = ["paralleltest"]
 

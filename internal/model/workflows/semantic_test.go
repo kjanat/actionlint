@@ -1,41 +1,41 @@
-package declaration
+package workflows
 
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 	t.Parallel()
-	name := &workflowlang.String{Value: "before", Pos: &source.Position{Line: 2, Column: 4}}
-	condition := &workflowlang.String{Value: "${{ true }}", Pos: &source.Position{Line: 3, Column: 7}}
-	job := &workflowlang.Job{
+	name := &definition.String{Value: "before", Pos: &sourcetext.Position{Line: 2, Column: 4}}
+	condition := &definition.String{Value: "${{ true }}", Pos: &sourcetext.Position{Line: 3, Column: 7}}
+	job := &definition.Job{
 		Name:   name,
 		If:     condition,
-		RunsOn: &workflowlang.Runner{Labels: []*workflowlang.String{{Value: "ubuntu-latest"}}},
-		Strategy: &workflowlang.Strategy{Matrix: &workflowlang.Matrix{Rows: map[string]*workflowlang.MatrixRow{
-			"os": {Name: &workflowlang.String{Value: "os"}, Values: []workflowlang.RawYAMLValue{
-				&workflowlang.RawYAMLString{Value: "ubuntu-latest", Tag: workflowlang.YamlTagStr},
+		RunsOn: &definition.Runner{Labels: []*definition.String{{Value: "ubuntu-latest"}}},
+		Strategy: &definition.Strategy{Matrix: &definition.Matrix{Rows: map[string]*definition.MatrixRow{
+			"os": {Name: &definition.String{Value: "os"}, Values: []definition.RawYAMLValue{
+				&definition.RawYAMLString{Value: "ubuntu-latest", Tag: definition.YamlTagStr},
 			}},
 		}}},
-		Env: &workflowlang.Env{
-			Vars: map[string]*workflowlang.EnvVar{
-				"defined":  {Name: &workflowlang.String{Value: "defined"}, Value: &workflowlang.String{Value: "present"}},
-				"nullable": {Name: &workflowlang.String{Value: "nullable"}, Value: &workflowlang.String{Value: "${{ fromJSON('null') }}"}},
-				"empty":    {Name: &workflowlang.String{Value: "empty"}, Value: &workflowlang.String{Value: ""}},
+		Env: &definition.Env{
+			Vars: map[string]*definition.EnvVar{
+				"defined":  {Name: &definition.String{Value: "defined"}, Value: &definition.String{Value: "present"}},
+				"nullable": {Name: &definition.String{Value: "nullable"}, Value: &definition.String{Value: "${{ fromJSON('null') }}"}},
+				"empty":    {Name: &definition.String{Value: "empty"}, Value: &definition.String{Value: ""}},
 			},
 		},
-		Steps: []*workflowlang.Step{{If: condition, Exec: &workflowlang.ExecAction{Inputs: map[string]*workflowlang.ActionArgument{
-			"greeting": {Name: &workflowlang.String{Value: "greeting"}, Value: &workflowlang.String{Value: "hello"}},
+		Steps: []*definition.Step{{If: condition, Exec: &definition.ExecAction{Inputs: map[string]*definition.ActionArgument{
+			"greeting": {Name: &definition.String{Value: "greeting"}, Value: &definition.String{Value: "hello"}},
 		}}}},
 	}
-	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}
+	workflow := &definition.Workflow{Jobs: map[string]*definition.Job{"build": job}}
 	bound := Bind("semantic-test", "", workflow, false, "")
 	workflowView := bound.Workflow()
 	jobView, ok := workflowView.Job("build")
@@ -112,7 +112,7 @@ jobs:
           - if: ${{ github.ref == 'refs/heads/main' }}
             run: echo runtime
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -169,7 +169,7 @@ jobs:
           blank:
           empty: ""
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -194,7 +194,7 @@ jobs:
 	if got := Environment(job.Env).Lookup("blank"); got.State() != value.Literal || got.Kind() != value.Null {
 		t.Fatalf("blank null = (%v,%v); want Literal Null", got.State(), got.Kind())
 	}
-	var actionView *workflowlang.ExecAction
+	var actionView *definition.ExecAction
 	for step := range job.Steps() {
 		if action, ok := step.Action(); ok {
 			actionView = action
@@ -225,7 +225,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -239,11 +239,11 @@ jobs:
 		t.Fatal("environment variable view missing")
 	}
 	got := view.Value.SourceScalar
-	if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" {
+	if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != definition.YamlTagNull || got.Value != "null" {
 		t.Fatalf("published source scalar = %#v; want original YAML null", got)
 	}
-	manual := Bind("manual-source", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{
-		"manual": {Name: &workflowlang.String{Value: "manual"}},
+	manual := Bind("manual-source", "", &definition.Workflow{Jobs: map[string]*definition.Job{
+		"manual": {Name: &definition.String{Value: "manual"}},
 	}}, false, "")
 	manualJob, ok := manual.Workflow().Job("manual")
 	if !ok {
@@ -264,7 +264,7 @@ jobs:
       - id: ${{ '${{ runtime }}' }}
         run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -285,7 +285,7 @@ jobs:
 		t.Fatal("folded ID lost expression origin")
 	}
 	sourceScalar := name.SourceScalar
-	if !sourceScalar.HasSource || !sourceScalar.Evaluated || sourceScalar.Tag != workflowlang.YamlTagStr || sourceScalar.Value != "${{ '${{ runtime }}' }}" {
+	if !sourceScalar.HasSource || !sourceScalar.Evaluated || sourceScalar.Tag != definition.YamlTagStr || sourceScalar.Value != "${{ '${{ runtime }}' }}" {
 		t.Fatalf("folded source = %#v; want original expression and evaluated marker", sourceScalar)
 	}
 }
@@ -304,7 +304,7 @@ jobs:
       - uses: actions/checkout@v4
         with: ${{ fromJSON('{"script":"echo derived"}') }}
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -312,7 +312,7 @@ jobs:
 	if !ok {
 		t.Fatal("job view missing")
 	}
-	var actions []*workflowlang.ExecAction
+	var actions []*definition.ExecAction
 	for step := range job.Steps() {
 		if action, ok := step.Action(); ok {
 			actions = append(actions, action)
@@ -321,7 +321,7 @@ jobs:
 	if len(actions) != 2 {
 		t.Fatalf("action count = %d; want 2", len(actions))
 	}
-	var literalInput *workflowlang.ActionArgument
+	var literalInput *definition.ActionArgument
 	literalNames, _ := InputNames(actions[0])
 	for name, candidate := range literalNames {
 		if name == "script" {
@@ -331,7 +331,7 @@ jobs:
 	if literalInput == nil || literalInput.Source == nil {
 		t.Fatal("literal key expression lost its declared source handle")
 	}
-	var derivedInput *workflowlang.ActionArgument
+	var derivedInput *definition.ActionArgument
 	derivedNames, _ := InputNames(actions[1])
 	for name, candidate := range derivedNames {
 		if name == "script" {
@@ -355,7 +355,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -384,7 +384,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  build:\n    runs-on: " + test.runsOn + "\n    steps:\n      - run: echo ok\n"
-			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errors := parser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatalf("parse source: %v", errors)
 			}

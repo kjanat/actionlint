@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // FunctionEvaluationPolicy describes argument demand independently of return types.

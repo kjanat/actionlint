@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) {
@@ -29,31 +29,31 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	}
 	ref := step.Reference()
 
-	if got, ok := snapshots.Lookup(source.Reference{}); ok || got.Present() {
+	if got, ok := snapshots.Lookup(sourcetext.Reference{}); ok || got.Present() {
 		t.Fatal("lookup accepted a zero reference")
 	}
 	var nilSnapshots *SourceSnapshots
 	if got, ok := nilSnapshots.Lookup(ref); ok || got.Present() {
 		t.Fatal("lookup accepted a nil snapshot set")
 	}
-	if _, ok := snapshots.Lookup(source.Reference{Document: ref.Document}); ok {
+	if _, ok := snapshots.Lookup(sourcetext.Reference{Document: ref.Document}); ok {
 		t.Fatal("lookup accepted a missing reference")
 	}
-	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (workflowdecl.Step{}) {
+	if declaration, ok := snapshots.Declaration(sourcetext.Reference{}); ok || declaration != (workflows.Step{}) {
 		t.Fatal("step lookup accepted a zero reference")
 	}
-	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflowdecl.Step{}) {
+	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflows.Step{}) {
 		t.Fatal("step lookup accepted a nil snapshot set")
 	}
-	if _, ok := snapshots.Declaration(source.Reference{Document: ref.Document}); ok {
+	if _, ok := snapshots.Declaration(sourcetext.Reference{Document: ref.Document}); ok {
 		t.Fatal("step lookup accepted a missing reference")
 	}
 
-	mutations := map[string]func(*source.Reference){
-		"document": func(value *source.Reference) { value.Document += ".other" },
-		"revision": func(value *source.Reference) { value.Revision += ".other" },
-		"node":     func(value *source.Reference) { value.Node += ".other" },
-		"address":  func(value *source.Reference) { value.Address += ".other" },
+	mutations := map[string]func(*sourcetext.Reference){
+		"document": func(value *sourcetext.Reference) { value.Document += ".other" },
+		"revision": func(value *sourcetext.Reference) { value.Revision += ".other" },
+		"node":     func(value *sourcetext.Reference) { value.Node += ".other" },
+		"address":  func(value *sourcetext.Reference) { value.Address += ".other" },
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 			if got, ok := snapshots.Lookup(documentRef); ok || got.Present() {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
-			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflowdecl.Step{}) {
+			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflows.Step{}) {
 				t.Fatalf("step lookup accepted modified reference: %+v", modified)
 			}
 		})
@@ -104,8 +104,8 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 		t.Fatal("parallel declaration unavailable")
 	}
 	nested := slices.Collect(parallel)
-	steps := []workflowdecl.Step{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
-	refs := make([]source.Reference, len(steps))
+	steps := []workflows.Step{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
+	refs := make([]sourcetext.Reference, len(steps))
 	for i, step := range steps {
 		refs[i] = step.Reference()
 		if err := workflowSnapshot.ValidateStep(step); err != nil {

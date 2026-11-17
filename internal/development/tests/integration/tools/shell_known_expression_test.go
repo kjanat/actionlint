@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestKnownShellExpressions(t *testing.T) {
@@ -61,7 +61,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var found []diagmodel.Diagnostic
+			var found []results.Diagnostic
 			for _, diagnostic := range errors {
 				if diagnostic.Rule == "shell-name" {
 					found = append(found, diagnostic)

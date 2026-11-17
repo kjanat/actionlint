@@ -5,13 +5,13 @@ import (
 	"io"
 	"os"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/fatih/color"
 )
 
-func writeCheckSummary(out io.Writer, mode render.Color, summary resultreport.CheckSummary) error {
+func writeCheckSummary(out io.Writer, mode output.Color, summary report.CheckSummary) error {
 	files := "files"
 	if summary.Files == 1 {
 		files = "file"
@@ -39,7 +39,7 @@ func writeCheckSummary(out io.Writer, mode render.Color, summary resultreport.Ch
 		attribute = color.FgYellow
 	}
 	file, terminal := terminalFile(out)
-	colored := mode == render.ColorAlways || mode == render.ColorAuto &&
+	colored := mode == output.ColorAlways || mode == output.ColorAuto &&
 		(githubActionsColor(out) || terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
 	style := color.New(attribute)
 	if colored {
@@ -54,5 +54,5 @@ func writeCheckSummary(out io.Writer, mode render.Color, summary resultreport.Ch
 	if _, err := fmt.Fprintln(out, style.Sprint(text)); err != nil {
 		return err
 	}
-	return render.WriteSummaryDetails(out, summary)
+	return output.WriteSummaryDetails(out, summary)
 }

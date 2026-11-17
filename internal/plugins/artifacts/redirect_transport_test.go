@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 type downloadResponse func(*http.Request) (*http.Response, error)

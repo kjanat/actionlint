@@ -10,19 +10,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	t.Parallel()
 	const src = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: same\n        run: echo first\n      - id: same\n        run: echo second\n"
-	ast, errs := workflowparser.ParseWorkflow([]byte(src))
+	ast, errs := parser.ParseWorkflow([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", src, ast, false, "").Workflow()
+	w := workflows.Bind("test", src, ast, false, "").Workflow()
 	check := correctness.IdRule.Checks(define.RuleInputs{})
 	if check.Step != nil || check.Workflow != nil {
 		t.Fatal("ID checking requests more than job declarations")
@@ -44,11 +44,11 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 
 func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
+	ast, errs := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", "", ast, false, "").Workflow()
+	w := workflows.Bind("test", "", ast, false, "").Workflow()
 	findings := correctness.EnvVarRule.Checks(define.RuleInputs{}).Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
@@ -64,7 +64,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 
 func TestParallelJobsDoNotShareBackgroundSteps(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.ParseWorkflow([]byte(`on: push
+	ast, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   producer:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", "", ast, false, "").Workflow()
+	w := workflows.Bind("test", "", ast, false, "").Workflow()
 	want := correctness.ParallelSteps(jobView(w, "consumer"))
 	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "consumer").Steps())[0].Reference() {
 		t.Fatalf("expected unknown background step with its owner: %+v", want)
@@ -100,7 +100,7 @@ jobs:
 	workers.Wait()
 }
 
-func jobView(w declaration.Workflow, key string) declaration.Job {
+func jobView(w workflows.Workflow, key string) workflows.Job {
 	job, _ := w.Job(key)
 	return job
 }

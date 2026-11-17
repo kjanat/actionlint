@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -29,7 +29,7 @@ permissions: {}
 type scriptAnalyzer struct{ failure error }
 
 func (scriptAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
 func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -65,7 +65,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, findings := workflowparser.ParseWorkflow([]byte(workflow))
+	tree, findings := parser.ParseWorkflow([]byte(workflow))
 	if tree == nil || tree.Jobs["build"] == nil || len(findings) != 0 {
 		t.Fatalf("tree=%v findings=%v", tree, findings)
 	}
@@ -74,7 +74,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%v err=%v", result, err)
 	}

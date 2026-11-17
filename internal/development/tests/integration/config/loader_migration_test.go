@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
@@ -70,7 +71,7 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		rule        string
-		strictLevel configuration.Level
+		strictLevel ruleconfig.Level
 		enabled     func(*configuration.Config) bool
 	}{
 		{"require-job-timeout", "off", func(cfg *configuration.Config) bool { return cfg.RequiresJobTimeout().Enabled() }},

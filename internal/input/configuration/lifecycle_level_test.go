@@ -3,7 +3,8 @@ package configuration
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestLifecycleFixedDiagnosticLevel(t *testing.T) {
@@ -15,7 +16,7 @@ func TestLifecycleFixedDiagnosticLevel(t *testing.T) {
 	for _, tc := range []struct {
 		name, config string
 		strict       bool
-		level        Level
+		level        ruleconfig.Level
 		fixed        bool
 	}{
 		{"default", "{}", false, "warn", false},

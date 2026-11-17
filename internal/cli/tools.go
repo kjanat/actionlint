@@ -6,21 +6,21 @@ import (
 	"slices"
 	"strings"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"github.com/spf13/pflag"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // deprecatedToolFlag is one use of a deprecated flag whose value is ignored,
 // as declared in a bundled provider manifest.
 type deprecatedToolFlag struct {
 	id    string
-	flag  pluginmanifests.DeprecatedFlag
+	flag  toolmanifest.DeprecatedFlag
 	value string
 }
 
@@ -37,7 +37,7 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	for _, name := range []string{"tool", "no-tool", "no-tools", "allow-config-processes"} {
 		annotateFlag(f, name, "External linters")
 	}
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		// The bundled manifests are a build input that tests validate.
 		panic(err)
@@ -62,7 +62,7 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 // deprecatedFlagHelp returns one --help-legacy line for each retired flag
 // listed in the deprecated_flags field of a bundled provider manifest.
 func deprecatedFlagHelp() string {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		// externalToolFlags already read the same manifests.
 		panic(err)
@@ -72,7 +72,7 @@ func deprecatedFlagHelp() string {
 		id := manifest.Rule.Name
 		for _, retired := range manifest.DeprecatedFlags {
 			name, usage := "-"+retired.Name+" COMMAND", "--tool "+id+"=COMMAND"
-			if retired.Value == pluginmanifests.DeprecatedFlagIgnored {
+			if retired.Value == toolmanifest.DeprecatedFlagIgnored {
 				name, usage = "-"+retired.Name+" VALUE", "runs "+id
 				if len(retired.Arguments) != 0 {
 					usage += " adding " + strings.Join(retired.Arguments, " ")
@@ -117,7 +117,7 @@ func (noToolValue) Type() string { return "stringArray" }
 // values; an ignored-value flag is recorded for defaultSelection.
 type deprecatedFlagValue struct {
 	id    string
-	flag  pluginmanifests.DeprecatedFlag
+	flag  toolmanifest.DeprecatedFlag
 	check *checkInvocation
 }
 
@@ -125,10 +125,10 @@ func (v deprecatedFlagValue) String() string { return "" }
 
 func (v deprecatedFlagValue) Set(value string) error {
 	switch v.flag.Value {
-	case pluginmanifests.DeprecatedFlagCommand:
+	case toolmanifest.DeprecatedFlagCommand:
 		v.check.ToolFlags = append(v.check.ToolFlags, v.id+"="+value)
 		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s=COMMAND or --no-tool %s", v.flag.Name, v.id, v.id))
-	case pluginmanifests.DeprecatedFlagIgnored:
+	case toolmanifest.DeprecatedFlagIgnored:
 		v.check.DeprecatedToolFlags = append(v.check.DeprecatedToolFlags, deprecatedToolFlag{v.id, v.flag, value})
 		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s or --no-tool %s", v.flag.Name, v.id, v.id))
 	default:
@@ -149,18 +149,18 @@ func disablesTool(value string) bool {
 // The last per-tool flag wins. Unselected tools remain eligible for registry
 // Wasm defaults. --no-tools disables every tool regardless of its selections.
 func (c checkInvocation) resolveTools() (resolvedTools, error) {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return resolvedTools{}, err
 	}
 	bundled := func(id string) bool {
-		return slices.ContainsFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == id })
+		return slices.ContainsFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == id })
 	}
 	var resolved resolvedTools
 	if c.NoTools {
-		resolved.tools = make(registry.Selections, len(manifests))
+		resolved.tools = make(registry.ToolSelections, len(manifests))
 		for _, manifest := range manifests {
-			resolved.tools[manifest.Rule.Name] = scripts.Selection{}
+			resolved.tools[manifest.Rule.Name] = backends.ToolSelection{}
 			resolved.disabled = append(resolved.disabled, manifest.Rule.Name)
 		}
 		return resolved, nil
@@ -169,13 +169,13 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	for _, value := range c.ToolFlags {
 		id, command, explicit := strings.Cut(value, "=")
 		if id == "" {
-			return resolvedTools{}, commandargs.UsageError{Cause: fmt.Errorf("--tool %q names no tool", value)}
+			return resolvedTools{}, arguments.UsageError{Cause: fmt.Errorf("--tool %q names no tool", value)}
 		}
 		if !explicit {
 			command = id
 		}
 		if !bundled(id) && !disablesTool(command) && command != id {
-			return resolvedTools{}, commandargs.UsageError{Cause: fmt.Errorf("--tool %s: only bundled tools take a command", value)}
+			return resolvedTools{}, arguments.UsageError{Cause: fmt.Errorf("--tool %s: only bundled tools take a command", value)}
 		}
 		if _, seen := commands[id]; !seen {
 			resolved.named = append(resolved.named, id)
@@ -187,22 +187,22 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 			resolved.disabled = append(resolved.disabled, id)
 		}
 	}
-	resolved.tools = make(registry.Selections, len(manifests))
+	resolved.tools = make(registry.ToolSelections, len(manifests))
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
 		command, explicit := commands[id]
 		switch {
 		case slices.Contains(resolved.disabled, id):
-			resolved.tools[id] = scripts.Selection{}
+			resolved.tools[id] = backends.ToolSelection{}
 		case explicit:
-			resolved.tools[id] = scripts.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
+			resolved.tools[id] = backends.ToolSelection{Command: command, Process: &hostprocess.CommandOptions{IgnoreConfig: true}}
 		default:
 			options, err := toolEnvironment(id)
 			if err != nil {
 				return resolvedTools{}, err
 			}
 			if options != nil {
-				resolved.tools[id] = scripts.Selection{Command: id, Process: options}
+				resolved.tools[id] = backends.ToolSelection{Command: id, Process: options}
 				continue
 			}
 			selection, disabled := defaultSelection(id, c.DeprecatedToolFlags)
@@ -218,7 +218,7 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 // resolvedTools is how resolveTools selects the external tools.
 type resolvedTools struct {
 	// tools selects every bundled tool.
-	tools registry.Selections
+	tools registry.ToolSelections
 	// disabled lists the tool ids the flags disabled.
 	disabled []string
 	// named lists the tool ids --tool and --no-tool named.
@@ -229,14 +229,14 @@ type resolvedTools struct {
 // or environment variable selected it: its default command, changed by the
 // last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
-func defaultSelection(id string, used []deprecatedToolFlag) (scripts.Selection, bool) {
-	selection := scripts.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
+func defaultSelection(id string, used []deprecatedToolFlag) (backends.ToolSelection, bool) {
+	selection := backends.ToolSelection{Command: id, Process: &hostprocess.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {
 		if flag.id != id {
 			continue
 		}
 		if disablesTool(flag.value) {
-			return scripts.Selection{}, true
+			return backends.ToolSelection{}, true
 		}
 		selection.Process.Arguments = slices.Clone(flag.flag.Arguments)
 		break
@@ -248,7 +248,7 @@ func defaultSelection(id string, used []deprecatedToolFlag) (scripts.Selection, 
 // variables of the tool id, where <ID> is id upper-cased with dashes
 // replaced by underscores. It returns nil options when none of the
 // variables is set.
-func toolEnvironment(id string) (*process.CommandOptions, error) {
+func toolEnvironment(id string) (*hostprocess.CommandOptions, error) {
 	prefix := "ACTIONLINT_TOOL_" + strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
 	return externalToolEnvironment(func(suffix string) (string, string, bool) {
 		value, ok := os.LookupEnv(prefix + suffix)

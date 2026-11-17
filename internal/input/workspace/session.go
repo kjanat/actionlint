@@ -11,12 +11,12 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 // InputFile associates the displayed path with the file read for analysis.
@@ -31,8 +31,10 @@ type InputFile struct {
 	ExplicitFile bool
 }
 
-// Selection is a prepared batch. Inputs includes configuration and excluded discovery candidates.
-type Selection struct {
+// PreparedBatch holds the input files read for one analysis batch, with the
+// reports of the configuration loaded for them. Inputs includes configuration and
+// excluded discovery candidates.
+type PreparedBatch struct {
 	Sources        []InputFile
 	Inputs         []string
 	Configurations []configreport.Report
@@ -152,7 +154,7 @@ func (a *InputPreparer) selectionLog(args ...any) {
 }
 
 // Repository analyzes the nearest repository's workflows and actions. An empty dir uses WorkingDir.
-func (a *InputPreparer) Repository(dir string) (*Selection, error) {
+func (a *InputPreparer) Repository(dir string) (*PreparedBatch, error) {
 	if dir == "" {
 		dir = a.cwd
 	}
@@ -188,7 +190,7 @@ func (a *InputPreparer) Repository(dir string) (*Selection, error) {
 	return a.discoveredFiles(paths, metadata.List(), project)
 }
 
-func (a *InputPreparer) Directory(dir string, project *Project) (*Selection, error) {
+func (a *InputPreparer) Directory(dir string, project *Project) (*PreparedBatch, error) {
 	listed := &InputFiles{}
 	paths, err := WorkflowPaths(files.New(a.ctx, nil, listed.Add), dir)
 	if err != nil {
@@ -201,7 +203,7 @@ func (a *InputPreparer) Directory(dir string, project *Project) (*Selection, err
 	return a.discoveredFiles(paths, listed.List(), project)
 }
 
-func (a *InputPreparer) discoveredFiles(paths, metadata []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) discoveredFiles(paths, metadata []string, project *Project) (*PreparedBatch, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	a.filesSelected(paths)
 	result, err := a.readFiles(paths, project, nil)
@@ -231,7 +233,7 @@ func (a *InputPreparer) filesSelected(paths []string) {
 // Files expands directory inputs and analyzes paths in order, discovering each
 // file's project when project is nil. Overlapping inputs are deduplicated.
 // Relative paths retain the caller's spelling and resolve from the process directory.
-func (a *InputPreparer) Files(paths []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) Files(paths []string, project *Project) (*PreparedBatch, error) {
 	selection, err := FindFiles(a.ctx, paths, a.noIgnore)
 	if err != nil {
 		return nil, err
@@ -241,7 +243,7 @@ func (a *InputPreparer) Files(paths []string, project *Project) (*Selection, err
 
 // SelectedFiles reads a discovery result without reinterpreting discovered paths
 // as literal file arguments. Hosts can partition it by repository before loading plugins.
-func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project) (*Selection, error) {
+func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project) (*PreparedBatch, error) {
 	paths := make([]string, 0, len(selection.Files))
 	explicit := make(map[string]bool)
 	for _, file := range selection.Files {
@@ -250,7 +252,7 @@ func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project)
 	}
 	a.filesSelected(paths)
 	if len(paths) == 0 {
-		return &Selection{Sources: []InputFile{}, Inputs: selection.Inputs}, nil
+		return &PreparedBatch{Sources: []InputFile{}, Inputs: selection.Inputs}, nil
 	}
 	result, err := a.readFiles(paths, project, explicit)
 	if result != nil {
@@ -261,12 +263,12 @@ func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project)
 
 // Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
 // or from its project, as an input with its report.
-func (a *InputPreparer) Empty() (*Selection, error) {
+func (a *InputPreparer) Empty() (*PreparedBatch, error) {
 	project, err := a.projects.At(a.cwd)
 	if err != nil {
 		return nil, err
 	}
-	result := &Selection{Sources: []InputFile{}}
+	result := &PreparedBatch{Sources: []InputFile{}}
 	inputs := &InputFiles{}
 	inputs.Add(a.defaultConfigPath)
 	for _, path := range a.networkPolicy.Files() {
@@ -285,11 +287,11 @@ func (a *InputPreparer) Empty() (*Selection, error) {
 	return result, nil
 }
 
-func (a *InputPreparer) ReadFiles(paths []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) ReadFiles(paths []string, project *Project) (*PreparedBatch, error) {
 	return a.readFiles(paths, project, nil)
 }
 
-func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map[string]bool) (*Selection, error) {
+func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map[string]bool) (*PreparedBatch, error) {
 	sources := make([]InputFile, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))
 	for _, path := range paths {
@@ -340,7 +342,7 @@ func (a *InputPreparer) relativePath(path string) string {
 
 // ReadStdin analyzes a reader using StdinFileName. normalizePath makes its diagnostic
 // path relative to WorkingDir; false preserves the caller's spelling.
-func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, error) {
+func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*PreparedBatch, error) {
 	a.selectionLog("Reading the input from stdin")
 	content, err := io.ReadAll(stdin)
 	if err != nil {
@@ -349,7 +351,7 @@ func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*Selecti
 	return a.Content(a.stdin, content, nil, normalizePath)
 }
 
-func (a *InputPreparer) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
+func (a *InputPreparer) Content(path string, content []byte, project *Project, normalizePath bool) (*PreparedBatch, error) {
 	if project == nil && path != "<stdin>" {
 		discoveryPath := path
 		if !filepath.IsAbs(discoveryPath) {
@@ -379,7 +381,7 @@ func (a *InputPreparer) source(path string, content []byte, project *Project) In
 	return InputFile{Path: path, Content: content, Config: cfg, Project: project}
 }
 
-func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project) (*Selection, error) {
+func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project) (*PreparedBatch, error) {
 	for i := range sources {
 		cfg, err := a.ConfigForProject(sources[i].Project)
 		if err != nil {
@@ -394,7 +396,7 @@ func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project)
 	for _, source := range sources {
 		projects = append(projects, source.Project)
 	}
-	result := &Selection{Sources: sources}
+	result := &PreparedBatch{Sources: sources}
 	inputs := &InputFiles{}
 	for _, source := range sources {
 		path := source.InputPath

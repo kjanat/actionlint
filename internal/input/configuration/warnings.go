@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 func MergeWarnings(groups ...[]configreport.Warning) []configreport.Warning {
@@ -39,7 +39,7 @@ func configWarnings(root any, inputs map[string]document.Location) []configrepor
 			pointer := document.Path(path, key)
 			if !slices.Contains(allowed, key) {
 				loc := inputs[pointer]
-				warnings = append(warnings, configreport.Warning{File: loc.File, Line: loc.KeyLine, Column: loc.KeyColumn, Message: fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", "))})
+				warnings = append(warnings, configreport.Warning{File: loc.File, Line: loc.Key.Line, Column: loc.Key.Column, Message: fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", "))})
 				continue
 			}
 			if prefix != "" {

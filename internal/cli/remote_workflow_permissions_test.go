@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
@@ -34,7 +34,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		body := "on: workflow_call\npermissions: {contents: write}\njobs: {publish: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	// GitHub rejects a reusable workflow requesting more token permissions than
 	// its caller grants. https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
 	source := "on: push\npermissions: {}\njobs:\n  allowed:\n    permissions: {contents: write}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  denied:\n    permissions: {contents: read}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  inherited:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n"
@@ -43,7 +43,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--" + mode, "-"})
-		var result resultreport.CheckResult
+		var result report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatalf("%s: status=%d error=%v stderr=%s stdout=%s", mode, status, err, &log, &out)
 		}
@@ -93,7 +93,7 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/kjanat/actionlint/"+revision+"/.github/workflows/nix.yml" {
 			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
@@ -103,7 +103,7 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\npermissions: " + permissions + "\njobs:\n  nix:\n    uses: kjanat/actionlint/.github/workflows/nix.yml@" + revision + "\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output-format=json", "--summary=false", "-"})
-		var result resultreport.CheckResult
+		var result report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatalf("status=%d error=%v stderr=%s stdout=%s", status, err, &log, &out)
 		}
@@ -147,7 +147,7 @@ jobs:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			sha := strings.Repeat("a", 40)
-			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
 					t.Fatalf("unexpected HTTP request %s", r.URL)
 				}
@@ -163,7 +163,7 @@ jobs:
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--output-format=json", "--summary=false", "--tool=shellcheck=", "--no-tool=ruff", "-"})
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatalf("status=%d error=%v stderr=%s stdout=%s", status, err, &log, &out)
 			}

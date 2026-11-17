@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
@@ -115,26 +115,26 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, err := toolconfig.NewCommand(executable,
+	command, err := tools.NewCommand(executable,
 		[]string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
 		map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := toolconfig.ProcessBackend(command)
+	process := tools.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			cfg := &configuration.Config{}
 			request := analysisRequest{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
-			options := registry.Selections{}
+			options := registry.ToolSelections{}
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
-				options["ruff"] = scripts.Selection{Command: "ruff"}
+				options["ruff"] = backends.ToolSelection{Command: "ruff"}
 			} else {
 				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
-				options["shellcheck"] = scripts.Selection{Command: "shellcheck"}
+				options["shellcheck"] = backends.ToolSelection{Command: "shellcheck"}
 				shell = "bash"
 			}
 			request.Sources = []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\npermissions: {}\n")}}

@@ -16,26 +16,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -45,11 +45,11 @@ type Options struct {
 	ExecutionEnvironment
 	// Processes shares the invocation's process budget with native analyzers.
 	// Nil creates an application-owned pool.
-	Processes     *process.ProcessPool
+	Processes     *hostprocess.ProcessPool
 	RemoteActions actions.Provider
 	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
 	// them when it also implements workflows.Provider.
-	RemoteWorkflows workflowinputs.Provider
+	RemoteWorkflows reusableworkflows.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
 	Tools      []contract.Registration
@@ -95,7 +95,7 @@ type SourceOverlay struct {
 }
 
 // Check manages the analysis runtime and returns findings collected before any error.
-func Check(ctx context.Context, options Options, input inputmodel.Request) (result *report.Analysis, err error) {
+func Check(ctx context.Context, options Options, input checkrequest.Request) (result *report.Analysis, err error) {
 	options, err = prepareEnforcedLifecycle(ctx, options)
 	if err != nil {
 		return nil, err
@@ -202,9 +202,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 
 	processes := options.Processes
 	if processes == nil {
-		processes = process.NewProcessPool(ctx, runtime.NumCPU())
+		processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 	}
-	engines := scriptengines.NewScriptEngines(options.LoadScriptEngine)
+	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
@@ -212,10 +212,10 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request.RemoteActions = options.RemoteActions
 	request.RemoteWorkflows = options.RemoteWorkflows
 	if request.RemoteWorkflows == nil {
-		request.RemoteWorkflows, _ = options.RemoteActions.(workflowinputs.Provider)
+		request.RemoteWorkflows, _ = options.RemoteActions.(reusableworkflows.Provider)
 	}
 	request.Repository = options.Repository
-	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
+	request.DiskSources = input.Kind == checkrequest.Files || input.Kind == checkrequest.Repository
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.LoadModuleBackend
@@ -230,7 +230,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if err != nil {
 		return nil, err
 	}
-	if input.Kind == inputmodel.Prepared {
+	if input.Kind == checkrequest.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
 		policy, err := configuration.LoadNetworkPolicy(ctx, options.ConfigConnections)
 		if err != nil {
@@ -282,20 +282,20 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if err != nil {
 		return nil, err
 	}
-	var selection *workspace.Selection
+	var selection *workspace.PreparedBatch
 	switch input.Kind {
-	case inputmodel.Files:
+	case checkrequest.Files:
 		if input.Selection != nil {
 			selection, err = session.SelectedFiles(*input.Selection, nil)
 		} else {
 			selection, err = session.Files(input.Paths, nil)
 		}
-	case inputmodel.Stdin:
+	case checkrequest.Stdin:
 		if input.Reader == nil {
 			return nil, errors.New("stdin source requires a reader")
 		}
 		selection, err = session.ReadStdin(input.Reader, input.NormalizePath)
-	case inputmodel.Repository:
+	case checkrequest.Repository:
 		if input.Selection != nil && len(input.Selection.Files) != 0 {
 			selection, err = session.SelectedFiles(*input.Selection, nil)
 			break
@@ -319,7 +319,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		if selection != nil {
 			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
-	case inputmodel.Prepared:
+	case checkrequest.Prepared:
 		// Prepared sources were analyzed above and never reach selection.
 		fallthrough
 	default:
@@ -359,7 +359,7 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 // It does not discover configuration or read the supplied source paths.
 func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
-	return Check(ctx, options, inputmodel.Request{Kind: inputmodel.Prepared, Sources: sources})
+	return Check(ctx, options, checkrequest.Request{Kind: checkrequest.Prepared, Sources: sources})
 }
 
 func analyzePrepared(ctx context.Context, request analysisRequest) (*report.Analysis, error) {

@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -35,11 +35,11 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := pluginselection.Selection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
+				selection := pluginselection.PluginSelection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
 				if explicit {
 					selection.ConfigFile = path
 				}
-				if err := configmigration.MigrateSelection(t.Context(), selection, root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+				if err := configmigration.MigrateSelection(t.Context(), selection, root, checkrequest.Request{Kind: checkrequest.Repository}, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 					t.Fatal(err)
 				}
 				if len(registry.Requests()) != 0 {

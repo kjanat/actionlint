@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestKnownExpressionRunnerLabels(t *testing.T) {
@@ -34,11 +34,11 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"
-			_, parseErrors := workflowparser.ParseWorkflow([]byte(source))
+			_, parseErrors := parser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := runnerlang.LabelRejections(runnerJobView(t, source), runnerlang.KnownLabels(nil))
+			errs := runners.LabelRejections(runnerJobView(t, source), runners.KnownLabels(nil))
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Reason, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}

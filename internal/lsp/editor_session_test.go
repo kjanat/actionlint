@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -65,7 +65,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	backend := &editorTestBackend{}
 	var loads atomic.Int32
 	options := checking.Options{
-		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}),
+		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}),
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 			loads.Add(1)
 			return backend, nil
@@ -167,8 +167,8 @@ func TestEditorSessionRetainsExplicitPluginSnapshot(t *testing.T) {
 	for _, test := range []struct {
 		path, rule, shell, script string
 	}{
-		{"../plugins/execution/module/testdata/engines/echo.wasm", "echo", "python", "print(missing)"},
-		{"../plugins/execution/component/testdata/plugins/no-sudo.wasm", "no-sudo", "bash", "sudo first"},
+		{"../plugins/pluginexecution/module/testdata/engines/echo.wasm", "echo", "python", "print(missing)"},
+		{"../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm", "no-sudo", "bash", "sudo first"},
 	} {
 		t.Run(test.rule, func(t *testing.T) {
 			t.Parallel()
@@ -187,7 +187,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 
 func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../plugins/execution/module/testdata/engines/echo.wasm")
+	data, err := os.ReadFile("../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 			}
 			return backend, nil
 		},
-	}, nil, pluginacquisition.Settings{})
+	}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 			<-release
 			return &editorTestBackend{}, nil
 		},
-	}, nil, pluginacquisition.Settings{})
+	}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,13 +388,13 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, value := range []string{"first", "second"} {
 		workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/python@v1\n        with:\n          source: print('" + value + "')\n" + "\npermissions: {}\n"
-		_, err := checking.Check(t.Context(), session.options, inputmodel.Request{Kind: inputmodel.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
+		_, err := checking.Check(t.Context(), session.options, checkrequest.Request{Kind: checkrequest.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
 		if err != nil {
 			t.Fatal(err)
 		}

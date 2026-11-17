@@ -3,9 +3,9 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestExpressionValueContexts(t *testing.T) {
@@ -31,14 +31,14 @@ func TestExpressionValueContexts(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
-			got, known := expreval.ExpressionValue(expression, variables)
+			expression := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			got, known := evaluate.ExpressionValue(expression, variables)
 			if known != tc.known || got != tc.want {
 				t.Fatalf("got %v known=%v, want %v known=%v", got, known, tc.want, tc.known)
 			}
 		})
 	}
-	if _, known := expreval.ExpressionValue(exprsyntax.ParseAssignedExpression("${{ matrix.pm }}"), nil); known {
+	if _, known := evaluate.ExpressionValue(syntax.ParseAssignedExpression("${{ matrix.pm }}"), nil); known {
 		t.Fatal("missing context fabricated a value")
 	}
 }

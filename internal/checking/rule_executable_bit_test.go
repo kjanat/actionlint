@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestExecutableBitWorkflows(t *testing.T) {
@@ -21,7 +21,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		t.Helper()
 		root, git := executableFixture(t)
 		link := writeFixture(t, root, "link", "bad.sh")
-		object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+		object, err := gitcommand.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -539,11 +539,11 @@ jobs:
 			session := checking.Options{WorkingDir: root}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
 					findings = append(findings, diagnostic.Diagnostic)
@@ -561,10 +561,10 @@ jobs:
 				if !strings.Contains(strings.ToLower(line), strings.ToLower(filepath.Base(tc.want))) {
 					t.Fatalf("diagnostic mapped to wrong line: %+v", findings[0])
 				}
-				if tc.name == "direct" && findings[0].Start != (sourcepos.Position{Line: 7, Column: 14}) {
+				if tc.name == "direct" && findings[0].Start != (sourcetext.Position{Line: 7, Column: 14}) {
 					t.Fatalf("direct call location: %+v", findings[0].Start)
 				}
-				if tc.name == "Unicode before invocation" && findings[0].Start != (sourcepos.Position{Line: 7, Column: 22}) {
+				if tc.name == "Unicode before invocation" && findings[0].Start != (sourcetext.Position{Line: 7, Column: 22}) {
 					t.Fatalf("Unicode call location: %+v", findings[0].Start)
 				}
 				if !slices.ContainsFunc(result.Inputs, func(path string) bool {
@@ -602,11 +602,11 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh
 `)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("checkout repository assumption for %s: %+v", tc.event, result.Diagnostics)
 			}
@@ -646,11 +646,11 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh "$UNSET"
 `)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
+			if found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
 		})
@@ -673,11 +673,11 @@ jobs:
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("workspace invocation of checkout-prefixed script missed: %+v", result.Diagnostics)
 	}
 }
@@ -730,11 +730,11 @@ jobs:
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
 			file := writeFixture(t, root, workflowFixturePath(t, "test"), workflow)
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
@@ -754,19 +754,19 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./bad.sh
 `)
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 	}
 	git("update-index", "--chmod=+x", "bad.sh")
-	result, err = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+	result, err = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("session reused stale Git index: %+v", result.Diagnostics)
 	}
 }

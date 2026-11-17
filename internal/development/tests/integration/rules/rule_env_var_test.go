@@ -6,27 +6,27 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
+func testValidateEnvVarName(t *testing.T, name string) []*finding.Finding {
 	t.Helper()
-	n := &workflowlang.String{Value: name, Pos: &source.Position{}}
-	e := &workflowlang.Env{
-		Vars: map[string]*workflowlang.EnvVar{
-			name: {Name: n, Value: &workflowlang.String{Value: "", Pos: &source.Position{}}},
+	n := &definition.String{Value: name, Pos: &sourcetext.Position{}}
+	e := &definition.Env{
+		Vars: map[string]*definition.EnvVar{
+			name: {Name: n, Value: &definition.String{Value: "", Pos: &sourcetext.Position{}}},
 		},
 	}
-	w := &workflowlang.Workflow{Env: e}
+	w := &definition.Workflow{Env: e}
 	r := correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	return r.Errs()
@@ -72,22 +72,22 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 
 func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 	t.Parallel()
-	w := &workflowlang.Workflow{Env: nil}
+	w := &definition.Workflow{Env: nil}
 	r := correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	if errs := r.Errs(); len(errs) > 0 {
 		t.Fatal("no error should be detected when `Env` is nil but got", errs)
 	}
 
-	w = &workflowlang.Workflow{
-		Env: &workflowlang.Env{
-			Expression: &workflowlang.String{Value: ""},
+	w = &definition.Workflow{
+		Env: &definition.Env{
+			Expression: &definition.String{Value: ""},
 		},
 	}
 	r = correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	if errs := r.Errs(); len(errs) > 0 {

@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestIndependentProcessTool(t *testing.T) {
@@ -24,20 +24,20 @@ func TestIndependentProcessTool(t *testing.T) {
 	}
 	register := func(environment ...string) contract.Registration {
 		t.Helper()
-		registration, err := scripts.RegisterProvider(scripts.Provider{
-			Manifest: manifests.Manifest{
-				SchemaVersion: manifests.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: manifests.RoleScript,
-				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider", Category: "correctness", Maturity: "stable"}, Scope: manifests.ScopeSource,
-				Transport: manifests.TransportProcess, Selectors: manifests.Selectors{Shells: []string{"python"}},
-				Process: &manifests.ProcessSpec{
-					Entry: "example-script", Stdin: manifests.StdinRequest,
+		registration, err := backends.RegisterProvider(backends.Provider{
+			Manifest: toolmanifest.Manifest{
+				SchemaVersion: toolmanifest.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: toolmanifest.RoleScript,
+				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider", Category: "correctness", Maturity: "stable"}, Scope: toolmanifest.ScopeSource,
+				Transport: toolmanifest.TransportProcess, Selectors: toolmanifest.Selectors{Shells: []string{"python"}},
+				Process: &toolmanifest.ProcessSpec{
+					Entry: "example-script", Stdin: toolmanifest.StdinRequest,
 					// The child runs scrubbed; the test binary needs a temporary directory.
 					EnvPassthrough: []string{"TMPDIR", "TEMP", "TMP"},
-					Config:         manifests.ConfigRendering{Render: manifests.RenderJSONStdin},
-					Output:         manifests.Output{Format: manifests.FormatEnvelope},
+					Config:         toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin},
+					Output:         toolmanifest.Output{Format: toolmanifest.FormatEnvelope},
 				},
 			},
-			Selection: scripts.Selection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
+			Selection: backends.ToolSelection{Process: &hostprocess.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
 		})
 		if err != nil {
 			t.Fatal(err)

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -46,7 +46,7 @@ func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
 			root := workspaceWith(t, files)
 			registry := fixtureregistry.NewPluginRegistry(t)
 			addRuffFixture(t, registry)
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 			if err != nil {
@@ -82,7 +82,7 @@ func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
 
 func addRuffFixture(t *testing.T, registry *fixtureregistry.PluginRegistry) {
 	t.Helper()
-	module, err := os.ReadFile("../../plugins/execution/module/testdata/engines/echo.wasm")
+	module, err := os.ReadFile("../../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,11 +107,11 @@ func addRuffFixture(t *testing.T, registry *fixtureregistry.PluginRegistry) {
 func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	module, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm")
+	module, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := os.ReadFile("../../plugins/execution/component/testdata/sources/script-engine/ruff-action-input.metadata.json")
+	metadata, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/sources/script-engine/ruff-action-input.metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 		".git": "", "bash.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
 		"input.yml": "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing()\n",
 	})
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": "bash.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 	req, err := provisioningRequest(func(key string) string { return env[key] }, acquisition)
 	if err != nil {

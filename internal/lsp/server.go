@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -169,7 +169,7 @@ serve:
 						missingSources[related.Path] = struct{}{}
 						continue
 					}
-					if _, _, err := sourceposition.Range([]byte(target.Text), row.Coordinates, related.Start, related.End); err != nil {
+					if _, _, err := byteoffset.Range([]byte(target.Text), row.Coordinates, related.Start, related.End); err != nil {
 						missingSources[related.Path] = struct{}{}
 						continue
 					}
@@ -288,7 +288,7 @@ serve:
 				var p struct {
 					TextDocument   Document `json:"textDocument"`
 					ContentChanges []struct {
-						Range *sourceRange `json:"range"`
+						Range *editorRange `json:"range"`
 						Text  string       `json:"text"`
 					} `json:"contentChanges"`
 				}
@@ -314,14 +314,14 @@ serve:
 						doc.Text = change.Text
 						continue
 					}
-					start, err := byteOffset(doc.Text, change.Range.Start)
+					start, err := editorByteOffset(doc.Text, change.Range.Start)
 					if err != nil {
 						if err := reject(err); err != nil {
 							return err
 						}
 						continue serve
 					}
-					end, err := byteOffset(doc.Text, change.Range.End)
+					end, err := editorByteOffset(doc.Text, change.Range.End)
 					if err != nil || end < start {
 						if err := reject(errors.New("invalid document change range")); err != nil {
 							return err
@@ -360,8 +360,8 @@ serve:
 				schedule()
 			case "textDocument/completion":
 				var p struct {
-					TextDocument Document `json:"textDocument"`
-					Position     position `json:"position"`
+					TextDocument Document       `json:"textDocument"`
+					Position     editorPosition `json:"position"`
 				}
 				if err := jsonv2.Unmarshal(m.Params, &p); err != nil {
 					if err := reject(err); err != nil {
@@ -378,7 +378,7 @@ serve:
 				}
 				items := []completionItem{}
 				if doc, ok := documents[path]; ok && options.Complete != nil {
-					offset, err := byteOffset(doc.Text, p.Position)
+					offset, err := editorByteOffset(doc.Text, p.Position)
 					if err != nil {
 						if err := reject(err); err != nil {
 							return err
@@ -395,7 +395,7 @@ serve:
 			case "textDocument/codeAction":
 				var p struct {
 					TextDocument Document    `json:"textDocument"`
-					Range        sourceRange `json:"range"`
+					Range        editorRange `json:"range"`
 				}
 				if err := jsonv2.Unmarshal(m.Params, &p); err != nil {
 					if err := reject(err); err != nil {

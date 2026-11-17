@@ -5,7 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // FromAction projects decoded action metadata into a report outline.
@@ -56,7 +57,7 @@ func actionInputOutlines(node *codec.Node) []ActionInputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		input := ActionInputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowparser.PosAt(key)),
+			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(parser.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
 			session, cursor, err := codec.Open(required)
@@ -84,7 +85,7 @@ func actionOutputOutlines(node *codec.Node) []ActionOutputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		outputs = append(outputs, ActionOutputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowparser.PosAt(key)),
+			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(parser.PosAt(key)),
 		})
 	}
 	return outputs
@@ -123,25 +124,25 @@ func actionRunsOutline(node *codec.Node) ActionRuns {
 	return UnknownRuns{Using: using}
 }
 
-func actionStepOutlines(node *codec.Node) []Step {
-	steps := []Step{}
+func actionStepOutlines(node *codec.Node) []StepOutline {
+	steps := []StepOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != codec.SequenceNode {
 		return steps
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := Step{
+		step := StepOutline{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
-			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
+			Start: outlinePosition(parser.PosAt(node)), Kind: unknownStepKind, Uses: actionOutlineString(fields["uses"]),
 		}
 		_, hasRun := fields["run"]
 		_, hasUses := fields["uses"]
 		switch {
 		case hasRun && !hasUses:
-			step.Kind = "run"
+			step.Kind = definition.ExecKindRun.String()
 		case hasUses && !hasRun:
-			step.Kind = "uses"
+			step.Kind = definition.ExecKindAction.String()
 		}
 		steps = append(steps, step)
 	}

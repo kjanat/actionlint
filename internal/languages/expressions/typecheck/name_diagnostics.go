@@ -3,16 +3,16 @@ package typecheck
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // missingProperty gives a bounded diagnostic for dot, literal bracket and filtered access.
-func (sema *Checker) missingProperty(node, receiver exprsyntax.Node, name string, object exprtypes.ObjectType) {
-	path := exprsyntax.DisplayReference(receiver)
+func (sema *Checker) missingProperty(node, receiver syntax.Node, name string, object exprtypes.ObjectType) {
+	path := syntax.DisplayReference(receiver)
 	kind := unknownProperty
 	suffix := ""
 	key := strings.ToLower(path)

@@ -1,18 +1,18 @@
 package finding
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 type Owner struct {
 	Job  string
-	Step *source.Position
+	Step *sourcetext.Position
 }
 
 // IgnoreOrigin distinguishes executions of shared YAML anchors.
 // It never changes displayed locations or the scope of inline comments.
 type IgnoreOrigin struct {
-	StepPosition                *source.Position
+	StepPosition                *sourcetext.Position
 	Job, StepID, StepName, Uses string
 	// metadata uses the owning action's YAML location for inner selectors.
 	Metadata bool

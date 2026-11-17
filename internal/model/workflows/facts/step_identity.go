@@ -6,20 +6,20 @@ import (
 	"strconv"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // stepFingerprint includes the step's structural values, without source positions,
 // quoting, or parser source maps. Length-prefixed fields preserve boundaries;
 // sorted mapping keys make presentation-only changes irrelevant to identity.
-func stepFingerprint(step *workflowlang.Step) string {
+func stepFingerprint(step *definition.Step) string {
 	var b strings.Builder
 	field := func(value string) {
 		b.WriteString(strconv.Itoa(len(value)))
 		b.WriteByte(':')
 		b.WriteString(value)
 	}
-	text := func(value *workflowlang.String) {
+	text := func(value *definition.String) {
 		if value == nil {
 			field("missing")
 		} else {
@@ -27,7 +27,7 @@ func stepFingerprint(step *workflowlang.Step) string {
 			field(value.Value)
 		}
 	}
-	boolean := func(value *workflowlang.Bool) {
+	boolean := func(value *definition.Bool) {
 		if value == nil {
 			field("missing")
 		} else {
@@ -35,8 +35,8 @@ func stepFingerprint(step *workflowlang.Step) string {
 			text(value.Expression)
 		}
 	}
-	var env func(*workflowlang.Env)
-	env = func(value *workflowlang.Env) {
+	var env func(*definition.Env)
+	env = func(value *definition.Env) {
 		if value == nil {
 			field("missing")
 			return
@@ -53,8 +53,8 @@ func stepFingerprint(step *workflowlang.Step) string {
 			env(insertion)
 		}
 	}
-	var inputs func(*workflowlang.ActionInputMapping)
-	inputs = func(value *workflowlang.ActionInputMapping) {
+	var inputs func(*definition.ActionInputMapping)
+	inputs = func(value *definition.ActionInputMapping) {
 		text(value.Expression)
 		field(strconv.Itoa(len(value.Inputs)))
 		for _, key := range slices.Sorted(maps.Keys(value.Inputs)) {
@@ -86,13 +86,13 @@ func stepFingerprint(step *workflowlang.Step) string {
 	}
 	field(strconv.Itoa(int(step.Exec.Kind())))
 	switch exec := step.Exec.(type) {
-	case *workflowlang.ExecRun:
+	case *definition.ExecRun:
 		text(exec.Run)
 		text(exec.Shell)
 		text(exec.WorkingDirectory)
-	case *workflowlang.ExecAction:
+	case *definition.ExecAction:
 		text(exec.Uses)
-		inputs(&workflowlang.ActionInputMapping{Inputs: exec.Inputs, Expression: exec.InputsExpression, Insertions: exec.InputInsertions})
+		inputs(&definition.ActionInputMapping{Inputs: exec.Inputs, Expression: exec.InputsExpression, Insertions: exec.InputInsertions})
 		text(exec.Entrypoint)
 		text(exec.Args)
 		field(strconv.FormatBool(exec.EntrypointEvaluated))
@@ -101,15 +101,15 @@ func stepFingerprint(step *workflowlang.Step) string {
 		for _, name := range exec.InputNameExpressions {
 			text(name)
 		}
-	case *workflowlang.ExecWait:
+	case *definition.ExecWait:
 		field(strconv.FormatBool(exec.All))
 		field(strconv.Itoa(len(exec.Names)))
 		for _, name := range exec.Names {
 			text(name)
 		}
-	case *workflowlang.ExecCancel:
+	case *definition.ExecCancel:
 		text(exec.Name)
-	case *workflowlang.ExecParallel:
+	case *definition.ExecParallel:
 		field(strconv.Itoa(len(exec.Steps)))
 		for _, child := range exec.Steps {
 			field(stepFingerprint(child))

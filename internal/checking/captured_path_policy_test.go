@@ -10,18 +10,18 @@ import (
 	"syscall"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type pathRetargetChecker struct{ retarget func() error }
 
 func (pathRetargetChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "captured-path-test", Category: "correctness", Maturity: "stable", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "captured-path-test", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -31,7 +31,7 @@ func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input chec
 	if err := checker.retarget(); err != nil {
 		return nil, err
 	}
-	return []results.Diagnostic{{Rule: "captured-path-test", Path: input.Path, Reference: &input.Reference, Start: sourcepos.Position{Line: 1}, Message: "captured source"}}, nil
+	return []results.Diagnostic{{Rule: "captured-path-test", Path: input.Path, Reference: &input.Reference, Start: sourcetext.Position{Line: 1}, Message: "captured source"}}, nil
 }
 
 func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
@@ -81,7 +81,7 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 		}
 		return os.Symlink(second, alias)
 	}}
-	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: checker}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{alias}})
+	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
 	if err != nil || result == nil {
 		t.Fatalf("result available=%t error=%v", result != nil, err)
 	}

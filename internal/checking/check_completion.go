@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -18,7 +18,7 @@ func indexCheckInvocations(graph invocation.Graph) checkInvocationIndex {
 	}
 	index := make(checkInvocationIndex)
 	entry := graph.Entry().Reference
-	add := func(ref sourcepos.Reference, id invocation.ID) {
+	add := func(ref sourcetext.Reference, id invocation.ID) {
 		key := checkRevision{ref.Document, ref.Revision}
 		index[key] = append(index[key], report.CheckInvocation{Entry: entry, ID: id})
 	}
@@ -33,7 +33,7 @@ func indexCheckInvocations(graph invocation.Graph) checkInvocationIndex {
 
 // forSource returns every known call of this source revision. A source-only
 // record is used when resolution stopped before the graph identified a target.
-func (index checkInvocationIndex) forSource(ref sourcepos.Reference) []report.CheckInvocation {
+func (index checkInvocationIndex) forSource(ref sourcetext.Reference) []report.CheckInvocation {
 	if contexts := index[checkRevision{ref.Document, ref.Revision}]; len(contexts) != 0 {
 		return contexts
 	}
@@ -59,11 +59,11 @@ type (
 	}
 )
 
-func (u *checkCompletion) markIncomplete(ref sourcepos.Reference) {
+func (u *checkCompletion) markIncomplete(ref sourcetext.Reference) {
 	u.markIncompleteInvocation(ref, report.CheckInvocation{})
 }
 
-func (u *checkCompletion) markIncompleteInvocation(ref sourcepos.Reference, invocation report.CheckInvocation) {
+func (u *checkCompletion) markIncompleteInvocation(ref sourcetext.Reference, invocation report.CheckInvocation) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if u.incomplete == nil {
@@ -72,11 +72,11 @@ func (u *checkCompletion) markIncompleteInvocation(ref sourcepos.Reference, invo
 	u.incomplete[checkOccurrence{checkRevision{ref.Document, ref.Revision}, invocation}] = true
 }
 
-func (u *checkCompletion) markUnavailable(ref sourcepos.Reference, rule, reason string) {
+func (u *checkCompletion) markUnavailable(ref sourcetext.Reference, rule, reason string) {
 	u.markUnavailableInvocation(ref, report.CheckInvocation{}, rule, reason)
 }
 
-func (u *checkCompletion) markUnavailableInvocation(ref sourcepos.Reference, invocation report.CheckInvocation, rule, reason string) {
+func (u *checkCompletion) markUnavailableInvocation(ref sourcetext.Reference, invocation report.CheckInvocation, rule, reason string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if u.unavailable == nil {
@@ -90,10 +90,10 @@ func (u *checkCompletion) incompleteChecks() []report.IncompleteCheck {
 	defer u.mu.Unlock()
 	checks := make([]report.IncompleteCheck, 0, len(u.incomplete)+len(u.unavailable))
 	for occurrence := range u.incomplete {
-		checks = append(checks, report.IncompleteCheck{Source: sourcepos.Reference{Document: occurrence.source.document, Revision: occurrence.source.revision}, Invocation: occurrence.invocation, Reason: "source analysis did not complete"})
+		checks = append(checks, report.IncompleteCheck{Source: sourcetext.Reference{Document: occurrence.source.document, Revision: occurrence.source.revision}, Invocation: occurrence.invocation, Reason: "source analysis did not complete"})
 	}
 	for rule, reason := range u.unavailable {
-		checks = append(checks, report.IncompleteCheck{Source: sourcepos.Reference{Document: rule.occurrence.source.document, Revision: rule.occurrence.source.revision}, Invocation: rule.occurrence.invocation, Rule: rule.rule, Reason: reason})
+		checks = append(checks, report.IncompleteCheck{Source: sourcetext.Reference{Document: rule.occurrence.source.document, Revision: rule.occurrence.source.revision}, Invocation: rule.occurrence.invocation, Rule: rule.rule, Reason: reason})
 	}
 	slices.SortFunc(checks, func(a, b report.IncompleteCheck) int {
 		return cmp.Or(cmp.Compare(a.Source.Document, b.Source.Document), cmp.Compare(a.Source.Revision, b.Source.Revision),

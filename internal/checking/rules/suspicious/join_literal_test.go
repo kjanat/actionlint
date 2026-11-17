@@ -3,10 +3,10 @@ package suspicious
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 func TestJoinLiteral(t *testing.T) {
@@ -27,11 +27,11 @@ func TestJoinLiteral(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checked := exprlang.NewChecker(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil).CheckResult(expreval.EvaluateSubexpressions(node))
+			checked := typecheck.NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil).CheckResult(evaluate.EvaluateSubexpressions(node))
 			findings := JoinLiteral(node, checked.Calls)
 			if len(findings) != tc.want {
 				t.Fatalf("findings=%v, want %d", findings, tc.want)

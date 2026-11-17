@@ -3,15 +3,15 @@ package functions
 import (
 	"strings"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
-func evaluateFormat(context EvaluationContext) exprvalues.EvaluationResult {
+func evaluateFormat(context EvaluationContext) values.EvaluationResult {
 	first := context.Argument(0)
-	if first.State != exprvalues.EvaluationKnown {
+	if first.State != values.EvaluationKnown {
 		return first
 	}
-	template, known := exprvalues.FunctionString(first.Value)
+	template, known := values.FunctionString(first.Value)
 	if !known {
 		return unknownValue()
 	}
@@ -26,13 +26,13 @@ func evaluateFormat(context EvaluationContext) exprvalues.EvaluationResult {
 			continue
 		}
 		argument := context.Argument(part.Index + 1)
-		if argument.State != exprvalues.EvaluationKnown {
+		if argument.State != values.EvaluationKnown {
 			return argument
 		}
 		if part.Specifier != "" {
 			return invalidValue()
 		}
-		value, known := exprvalues.FunctionString(argument.Value)
+		value, known := values.FunctionString(argument.Value)
 		if !known {
 			return unknownValue()
 		}

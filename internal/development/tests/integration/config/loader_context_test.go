@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
@@ -26,7 +26,7 @@ func TestInspectContextStopsBeforeSelection(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err := checking.ConfigurationRules().InspectContext(ctx, configuration.Selection{Path: "missing.yaml"}, true)
+	_, err := checking.ConfigurationRules().InspectContext(ctx, configuration.ConfigFileSelection{Path: "missing.yaml"}, true)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("inspection error = %v", err)
 	}

@@ -9,17 +9,17 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
+func applyDiagnosticFix(t *testing.T, input string, fix results.Fix) string {
 	t.Helper()
-	offset := func(pos sourcepos.Position) int {
+	offset := func(pos sourcetext.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -29,7 +29,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := sourcepos.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcetext.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -47,7 +47,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\npermissions: {}\n"
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if changed != strings.Replace(workflow, "$VALUE", `"$VALUE"`, 1) {
 		t.Fatalf("wrong ShellCheck edit: %q", changed)
 	}
-	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(changed)}})
+	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(changed)}})
 	if err != nil || len(rechecked.Diagnostics) != 0 {
 		t.Fatalf("fixed workflow findings: %+v, %v", rechecked, err)
 	}
@@ -75,7 +75,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var decoded diagmodel.Diagnostic
+	var decoded results.Diagnostic
 	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Code != diagnostic.Code || len(decoded.Fixes) != 1 {
 		t.Fatalf("structured JSON: %s, %v", encoded, err)
 	}
@@ -96,7 +96,7 @@ runs:
         echo $VALUE
 `
 	path := fixturefiles.Write(t, root, "local/action.yml", input)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {
 		t.Fatalf("composite fixes missing: %+v", result.Diagnostics)
 	}
@@ -113,7 +113,7 @@ runs:
 	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if checked := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}); len(checked.Diagnostics) != 0 {
+	if checked := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}); len(checked.Diagnostics) != 0 {
 		t.Fatalf("fixed composite findings: %+v", checked.Diagnostics)
 	}
 }

@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeCheckoutLocations(t *testing.T) {
@@ -56,16 +56,16 @@ runs:
 - uses: ./source/local
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`
-			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			if tc.read && !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			if tc.read && !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "expression-reference" && strings.Contains(d.Message, `property "missing" is not defined`)
 			}) {
 				t.Fatalf("earlier checkout output metadata was lost: %+v", result.Diagnostics)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 			}) {
 				t.Fatalf("earlier checkout source was not followed: %+v", result.Diagnostics)
@@ -119,8 +119,8 @@ runs:
 			result := testutil.Composite(t, root, tc.before+"\n- uses: $/local"+tc.call+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-			var shell, executable []diagmodel.Diagnostic
+  run: ./bad.sh`, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
+			var shell, executable []results.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
 					shell = append(shell, d.Diagnostic)
@@ -161,7 +161,7 @@ runs:
 - shell: bash
   working-directory: .
   run: ./bad.sh`, checking.Options{})
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("self-repository action restored workspace certainty: %+v", result.Diagnostics)
 	}
 }
@@ -195,7 +195,7 @@ runs:
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {repository: other/repo}
 - uses: $/outer`, checking.Options{})
-	var executable []diagmodel.Diagnostic
+	var executable []results.Diagnostic
 	for _, d := range result.Diagnostics {
 		if d.Rule == "executable-bit" {
 			executable = append(executable, d.Diagnostic)
@@ -240,7 +240,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != (mutation != "unknown-command") {
 				t.Fatalf("wrong earlier checkout certainty after %q: %v", mutation, result.Inputs)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+			if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 				t.Fatalf("new checkout restored modified earlier copy: %+v", result.Diagnostics)
 			}
 		})
@@ -267,7 +267,7 @@ runs:
 	git("add", "local/bad.sh")
 	git("update-index", "--chmod=-x", "local/bad.sh")
 	result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n- uses: $/local", checking.Options{})
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("workspace checkout restored independent action mode: %+v", result.Diagnostics)
 	}
 }
@@ -324,7 +324,7 @@ runs:
 						t.Fatalf("composite execution not inspected: %v", result.Inputs)
 					}
 
-					found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+					found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 						return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata
 					})
 					want := condition == "false" || independent != checkIndependent
@@ -389,7 +389,7 @@ runs:
 - shell: bash
   working-directory: .
   run: ./local/bad.sh`, checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && strings.Contains(d.Message, `"local/bad.sh"`)
 			})
 			if found != strings.HasPrefix(spec, "$/") {
@@ -419,7 +419,7 @@ runs:
   working-directory: .
   run: chmod +x local/bad.sh
 - uses: $/local`, checking.Options{})
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata
 	}) {
 		t.Fatalf("workspace mutation suppressed independent action finding: %+v", result.Diagnostics)

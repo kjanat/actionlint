@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -33,11 +33,11 @@ type KeyValue struct {
 	Value ExprString `json:"value"`
 }
 
-// Step is a step in "steps" section in "runs" section of action.yaml for a
+// CompositeStep is a step in "steps" section in "runs" section of action.yaml for a
 // composite action. The runner only accepts a step which runs a script with "run" and "shell"
 // keys, or a step which runs another action with "uses" key.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runssteps
-type Step struct {
+type CompositeStep struct {
 	// Line is the line where the step starts in action.yaml.
 	Line int `json:"line"`
 	// Column is the column where the step starts in action.yaml.
@@ -92,7 +92,7 @@ func yamlExprString(n *codec.Node) *ExprString {
 	return nil
 }
 
-type actionCompositeSteps []*Step
+type actionCompositeSteps []*CompositeStep
 
 // Runs is "runs" section of action.yaml. It defines how the action is run.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
@@ -207,14 +207,14 @@ func (md *Metadata) Dir() string {
 
 // Path returns a file path of the action's metadata file.
 func (md *Metadata) Path() string {
-	if source.RemoteAddress(md.Directory) {
+	if sourcetext.RemoteAddress(md.Directory) {
 		return md.Directory + "/" + md.Filename
 	}
 	return filepath.Join(md.Directory, md.Filename)
 }
 
 func expectedMapping(where string, n *codec.Node) error {
-	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
+	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, parser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
 // ParseActionMetadata decodes an action manifest.
@@ -228,7 +228,7 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 		err = Decode(root, metadata)
 		// Schema errors can leave useful declarations and unvisited step fields.
 		// Admission must still gate semantic recovery of those fields.
-		if admissionErr := workflowparser.AdmitYAMLAliases(root); admissionErr != nil {
+		if admissionErr := parser.AdmitYAMLAliases(root); admissionErr != nil {
 			if _, fatal := codec.FatalLoadError(err); fatal {
 				err = codec.NewAdmissionError(err)
 			} else {
@@ -238,7 +238,7 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	}
 	metadata.Provenance = newProvenance(string(owned))
 	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
-	if source.RemoteAddress(path) {
+	if sourcetext.RemoteAddress(path) {
 		metadata.Directory, metadata.Filename = remotePathParts(path)
 	}
 	return metadata, err

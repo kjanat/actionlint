@@ -1,6 +1,6 @@
 package contexts
 
-import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 // TypeBindings reads and replaces expression context types. Implementations
 // store immutable type values; these operations do not evaluate expressions.

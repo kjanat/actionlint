@@ -12,18 +12,18 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -35,7 +35,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		return nil, errors.New("private endpoint dialed")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	const endpoint = "https://127.0.0.1:8443/plugin.wasm"
 	source := endpoint + "#sha256=" + strings.Repeat("a", 64)
 	root := repositoryfixture.Directory(t)
@@ -44,16 +44,16 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
-	for _, selection := range []pluginselection.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
-		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	for _, selection := range []pluginselection.PluginSelection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
+		sources, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := pluginexec.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
+		if _, err := pluginexecution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 	if _, err := project.SelectedPlugins(t.Context(), project.Manifest.References); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("project private registry acquired: %v", err)
 	}
-	if _, err := pluginexec.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
+	if _, err := pluginexecution.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("configured backend acquired private source: %v", err)
 	}
 	if dials != 0 {
@@ -76,7 +76,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 func TestExplicitPluginSelectionCarriesOnlyItsOwnSourceGrant(t *testing.T) {
 	t.Parallel()
 	source := "https://127.0.0.1:8443/plugin.wasm#sha256=" + strings.Repeat("a", 64)
-	sources, err := (pluginselection.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (pluginselection.PluginSelection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), checkrequest.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,8 +11,8 @@ objects requested by that component. Script engines and component analyzers use
 their own WebAssembly interfaces.
 
 The root Cargo workspace contains the Rust SDK, plugin examples and test fixtures.
-Component fixtures live under `internal/plugins/execution/component/testdata/sources`;
-core-module fixtures live under `internal/plugins/execution/module/testdata/sources`.
+Component fixtures live under `internal/plugins/pluginexecution/component/testdata/sources`;
+core-module fixtures live under `internal/plugins/pluginexecution/module/testdata/sources`.
 Dependencies, the lockfile, toolchain and WASM profile are shared within that scope.
 The C and TinyGo examples live alongside the Rust example under `plugins/examples`
 and have explicit Make targets. Native checks and the two WASM targets are built
@@ -34,7 +34,7 @@ belong to `distribution/docker`. Comment Cop's helper belongs to its GitHub acti
 ## Consequences
 
 Actionlint embeds a prebuilt Commitish component. Its
-[`source.json`](../../internal/plugins/execution/component/builtin_commitish.source.json) records the
+[`source.json`](../../internal/plugins/pluginexecution/component/builtin_commitish.source.json) records the
 source revision, build commands and component digest. Updating the bundled
 resolver requires rebuilding that component and running actionlint's resolver
 tests. Other providers can release independently. Test them against actionlint

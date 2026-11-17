@@ -8,6 +8,8 @@ import (
 	"io"
 
 	"github.com/tidwall/jsonc"
+
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
 func parseJSON(path string, data []byte) (*parsedSource, error) {
@@ -23,8 +25,8 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		if syntax, ok := errors.AsType[*json.SyntaxError](err); ok {
 			offset = syntax.Offset - 1
 		}
-		at := offsetPosition(data, int(offset))
-		return fmt.Errorf("%s:%d:%d: %w", path, at.line, at.column, err)
+		at := byteoffset.RawLFPosition(data, int(offset))
+		return fmt.Errorf("%s:%d:%d: %w", path, at.Line, at.Column, err)
 	}
 	if err := decoder.Decode(&result.value); err != nil {
 		return result, contextualize(err, decoder.InputOffset())
@@ -55,7 +57,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		if err != nil {
 			return err
 		}
-		result.values[pointer] = offsetPosition(data, at)
+		result.values[pointer] = byteoffset.RawLFPosition(data, at)
 		delimiter, container := token.(json.Delim)
 		if !container {
 			return nil
@@ -74,12 +76,12 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 					return errors.New("expected object key")
 				}
 				if seen[key] {
-					at := offsetPosition(data, at)
-					return fmt.Errorf("%s:%d:%d: duplicate key %q", path, at.line, at.column, key)
+					at := byteoffset.RawLFPosition(data, at)
+					return fmt.Errorf("%s:%d:%d: duplicate key %q", path, at.Line, at.Column, key)
 				}
 				seen[key] = true
 				child := Path(pointer, key)
-				result.keys[child] = offsetPosition(data, at)
+				result.keys[child] = byteoffset.RawLFPosition(data, at)
 				if err := index(child); err != nil {
 					return err
 				}
@@ -87,7 +89,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		case '[':
 			for i := 0; tokens.More(); i++ {
 				child := Index(pointer, i)
-				result.keys[child] = offsetPosition(data, start())
+				result.keys[child] = byteoffset.RawLFPosition(data, start())
 				if err := index(child); err != nil {
 					return err
 				}

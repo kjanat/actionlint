@@ -8,18 +8,18 @@ import (
 	"strings"
 	"testing"
 
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 )
 
 // documentValues compares opaque document outlines and repository IDs by their recorded values.
 var documentValues = cmp.AllowUnexported(
-	outline.Workflow{}, outline.Job{}, outline.Step{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repofacts.ID{},
+	outline.WorkflowOutline{}, outline.JobOutline{}, outline.StepOutline{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repository.ID{},
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {
@@ -42,7 +42,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var stdout bytes.Buffer
-	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
 	rendered := parseOutputs(read(t, outputPath))["output"]
@@ -51,7 +51,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 			t.Errorf("%s differs from Action JSON output", filepath.Base(path))
 		}
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(rendered), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ permissions: {}
 			if code := command.Main([]string{"actionlint", "check", "--json", "--config-file", configPath, "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
-			var cliResult resultreport.CheckResult
+			var cliResult report.CheckResult
 			if err := json.Unmarshal(stdout.Bytes(), &cliResult); err != nil {
 				t.Fatal(err)
 			}
@@ -144,10 +144,10 @@ permissions: {}
 				"INPUT_FILES":       "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
-			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
 				t.Fatalf("Action status %d: %s", code, &stdout)
 			}
-			var persisted, rendered resultreport.CheckResult
+			var persisted, rendered report.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
 				t.Fatal(err)
 			}

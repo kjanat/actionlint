@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 // absent fields return nil; explicit null uses this marker while inspecting a
@@ -57,7 +57,7 @@ func setField(value any, key string, child any) {
 	object[key] = rawValue(child)
 }
 func removeField(value any, key string) { delete(members(value), key) }
-func decodeValue(value, dst any) error  { return binding.Decode(rawValue(value), dst) }
+func decodeValue(value, dst any) error  { return configdecode.Decode(rawValue(value), dst) }
 
 func cloneValue(value any) any {
 	switch value := value.(type) {

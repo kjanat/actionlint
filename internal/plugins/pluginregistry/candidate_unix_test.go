@@ -26,7 +26,7 @@ func TestCandidateRejectsFIFO(t *testing.T) {
 		var err error
 		if os.Getenv("ACTIONLINT_TEST_CANDIDATE_KIND") == "metadata" {
 			var client *Client
-			client, err = New(registry, pluginacquisition.Settings{})
+			client, err = New(registry, pluginacquisition.Options{})
 			if err == nil {
 				_, err = client.Search(t.Context(), "")
 			}

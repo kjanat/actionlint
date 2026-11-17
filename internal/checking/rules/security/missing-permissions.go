@@ -7,10 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // MissingPermissionsRule is the single definition of the missing-permissions rule.
@@ -33,12 +33,12 @@ var MissingPermissionsRule = &define.Rule{
 
 func MissingPermissionsChecks(locations []configuration.PermissionLocation) define.Checks {
 	locations = slices.Clone(locations)
-	return define.Checks{Workflow: func(workflow declaration.Workflow) []reporting.StepFinding {
+	return define.Checks{Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
 		return MissingPermissions(workflow, locations)
 	}}
 }
 
-func MissingPermissions(workflow declaration.Workflow, locations []configuration.PermissionLocation) []reporting.StepFinding {
+func MissingPermissions(workflow workflows.Workflow, locations []configuration.PermissionLocation) []reporting.StepFinding {
 	defaultLocations := len(locations) == 0
 	requireWorkflow := slices.Contains(locations, configuration.WorkflowPermissions)
 	requireJob := slices.Contains(locations, configuration.EveryJobPermissions)
@@ -49,7 +49,7 @@ func MissingPermissions(workflow declaration.Workflow, locations []configuration
 	if requireWorkflow && workflow.Permissions == nil {
 		pos := workflow.Pos
 		if pos == nil {
-			pos = &sourcepos.Position{Line: 1, Column: 1}
+			pos = &sourcetext.Position{Line: 1, Column: 1}
 		}
 		findings.Errorf(pos, "workflow-level \"permissions\" is required; declare the token permissions your jobs need, or use \"permissions: {}\" to grant none")
 	}
@@ -59,7 +59,7 @@ func MissingPermissions(workflow declaration.Workflow, locations []configuration
 	if defaultLocations {
 		independentlyTriggered := false
 		for _, event := range workflow.On {
-			if _, reusable := event.(*workflowlang.WorkflowCallEvent); !reusable {
+			if _, reusable := event.(*definition.WorkflowCallEvent); !reusable {
 				independentlyTriggered = true
 				break
 			}

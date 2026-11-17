@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -36,15 +37,15 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	renderer, err := render.New(render.FormatSARIF, "", false, func() string { return "test" }, nil)
+	renderer, err := output.New(outputformat.SARIF, "", false, func() string { return "test" }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var output strings.Builder
-	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
+	var rendered strings.Builder
+	if err := renderer.Render(&rendered, output.FromAnalysis(*analysis)); err != nil {
 		t.Fatal(err)
 	}
-	sarifcheck.RequireValid(t, []byte(output.String()))
+	sarif.RequireValid(t, []byte(rendered.String()))
 	var doc struct {
 		Runs []struct {
 			Tool struct {
@@ -64,7 +65,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 			} `json:"results"`
 		} `json:"runs"`
 	}
-	if err := json.Unmarshal([]byte(output.String()), &doc); err != nil {
+	if err := json.Unmarshal([]byte(rendered.String()), &doc); err != nil {
 		t.Fatal(err)
 	}
 	var foundRule, foundResult bool
@@ -131,11 +132,11 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 			if len(result.Diagnostics) == 0 {
 				t.Fatal("no diagnostics")
 			}
-			renderer, err := render.New("", tc.format, false, func() string { return "test" }, nil)
+			renderer, err := output.New("", tc.format, false, func() string { return "test" }, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
+			if err := renderer.Render(&b, output.FromAnalysis(*result)); err != nil {
 				t.Fatal(err)
 			}
 			buf, err := os.ReadFile(filepath.Join(root, dir, tc.file))
@@ -185,14 +186,14 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 	if len(result.Diagnostics) == 0 {
 		t.Fatal("no diagnostics")
 	}
-	renderer, err := render.New(render.FormatSARIF, "", false, func() string { return "(devel)" }, nil)
+	renderer, err := output.New(outputformat.SARIF, "", false, func() string { return "(devel)" }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
+	if err := renderer.Render(&b, output.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
-	sarifcheck.RequireValid(t, []byte(b.String()))
+	sarif.RequireValid(t, []byte(b.String()))
 	var document struct {
 		Runs []struct {
 			ColumnKind string

@@ -4,9 +4,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -28,23 +28,23 @@ var ShellNameRule = &define.Rule{
 
 // ShellNameChecks validates shell declarations against their declaring job's
 // prepared platform. Without a known job platform, it accepts any supported shell.
-func ShellNameChecks(runners *runnerlang.Knowledge, registries ...*commands.Registry) define.Checks {
-	platform := func(job workflowdecl.Job) runnerlang.Platform {
-		if runners == nil || !job.Present() {
-			return runnerlang.Any
+func ShellNameChecks(knownRunners *runners.Knowledge, registries ...*commands.Registry) define.Checks {
+	platform := func(job workflows.Job) runners.Platform {
+		if knownRunners == nil || !job.Present() {
+			return runners.Any
 		}
-		return runners.Job(job).Platform
+		return knownRunners.Job(job).Platform
 	}
 	return define.Checks{
-		Workflow: func(workflow workflowdecl.Workflow) []reporting.StepFinding {
-			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
+		Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(workflow.Defaults)), runners.Any, registries...))
 		},
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
-			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults)), platform(job), registries...))
+		Job: func(job workflows.Job) []reporting.StepFinding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(job.Defaults)), platform(job), registries...))
 		},
-		Step: func(step workflowdecl.Step) []reporting.StepFinding {
+		Step: func(step workflows.Step) []reporting.StepFinding {
 			if run, present := step.Run(); present {
-				findings := reporting.FromDiagnostics(checkShell(workflowdecl.Scalar(run.Shell), platform(step.Job()), registries...))
+				findings := reporting.FromDiagnostics(checkShell(workflows.Scalar(run.Shell), platform(step.Job()), registries...))
 				for i := range findings {
 					findings[i].Step = step
 				}

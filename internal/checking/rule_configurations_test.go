@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -61,14 +62,14 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 	t.Parallel()
 	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}}
-	setting, err := configuration.NewSetting("error", nil)
+	setting, err := ruleconfig.NewSetting("error", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	config := &configuration.Config{Overrides: []configuration.Override{{
 		Includes: []string{"inner/**"},
 		Lint: &configuration.LintConfig{Rules: configuration.LintRulesConfig{
-			Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"plugin-check": setting}),
+			Correctness: ruleconfig.NewGroup("", "", map[string]ruleconfig.Setting{"plugin-check": setting}),
 		}},
 	}}}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)
@@ -202,7 +203,7 @@ func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	t.Parallel()
 	registration := configuration.RuleRegistration{
 		Declaration:  rule.Declaration{Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true},
-		ToolSettings: &toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
+		ToolSettings: &toolsettings.Spec{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 	}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)
 	if err != nil {

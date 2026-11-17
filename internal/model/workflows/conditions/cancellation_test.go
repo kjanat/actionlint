@@ -3,7 +3,7 @@ package conditions
 import (
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestAlwaysIgnoresCancellation(t *testing.T) {
@@ -38,7 +38,7 @@ func TestAlwaysIgnoresCancellation(t *testing.T) {
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
 			t.Parallel()
-			expr, err, _ := exprsyntax.ParseConditionExpression(tc.condition)
+			expr, err, _ := syntax.ParseConditionExpression(tc.condition)
 			if err != nil || expr == nil {
 				t.Fatalf("parse: %v", err)
 			}

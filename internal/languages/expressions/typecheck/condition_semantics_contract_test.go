@@ -3,11 +3,11 @@ package typecheck_test
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestConditionConstantCase(t *testing.T) {
@@ -47,11 +47,11 @@ func TestConditionConstantCase(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			expr := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid fixture")
 			}
-			value, known := expreval.ConditionConstantValue(expr)
+			value, known := evaluate.ConditionConstantValue(expr)
 			if known != tc.known || value != tc.value {
 				t.Fatalf("value=%v known=%v, want value=%v known=%v", value, known, tc.value, tc.known)
 			}
@@ -96,12 +96,12 @@ func TestConditionConstantOutcomes(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			value, known := expreval.ConditionConstantValue(expr)
-			if !known || exprvalues.ExpressionTruthy(value) != tc.truthy {
+			value, known := evaluate.ConditionConstantValue(expr)
+			if !known || values.ExpressionTruthy(value) != tc.truthy {
 				t.Fatalf("value=%v known=%v", value, known)
 			}
 		})
@@ -128,8 +128,8 @@ func TestConditionConstantSerialization(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
-			value, known := expreval.ConditionConstantValue(expr)
+			expr := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			value, known := evaluate.ConditionConstantValue(expr)
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%v, want %q", value, known, tc.want)
 			}
@@ -150,11 +150,11 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 		`fromJSON('{}') == fromJSON('{}')`,
 		`contains(fromJSON('[{}]'), fromJSON('{}'))`,
 	} {
-		expr := exprsyntax.ParseAssignedExpression("${{ " + expression + " }}")
+		expr := syntax.ParseAssignedExpression("${{ " + expression + " }}")
 		if expr == nil {
 			t.Fatalf("invalid fixture %s", expression)
 		}
-		if v, known := expreval.ConditionConstantValue(expr); known {
+		if v, known := evaluate.ConditionConstantValue(expr); known {
 			t.Fatalf("invented outcome for %s: %v", expression, v)
 		}
 	}

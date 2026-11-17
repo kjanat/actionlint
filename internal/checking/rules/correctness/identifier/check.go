@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -17,14 +17,14 @@ func Valid(value string) bool { return pattern.MatchString(value) }
 type Name struct {
 	Value   string
 	Dynamic bool
-	Start   sourcepos.Position
+	Start   sourcetext.Position
 }
-type Job struct {
+type JobIdentifiers struct {
 	ID           *Name
 	Needs, Steps []Name
 }
 
-func Check(job Job) []results.Diagnostic {
+func Check(job JobIdentifiers) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(name Name, message string) {
 		findings = append(findings, results.Diagnostic{Start: name.Start, Message: message})
@@ -40,7 +40,7 @@ func Check(job Job) []results.Diagnostic {
 	for _, name := range job.Needs {
 		convention(name, "job")
 	}
-	seen := map[string]sourcepos.Position{}
+	seen := map[string]sourcetext.Position{}
 	for _, name := range job.Steps {
 		convention(name, "step")
 		if strings.HasPrefix(name.Value, "__") {

@@ -6,21 +6,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestCacheModeLiteralExpressionMetadata(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
+	for _, kind := range []definition.CacheModeKind{definition.CacheModeRead, definition.CacheModeWrite, definition.CacheModeWriteOnly, definition.CacheModeNone} {
 		for _, aliased := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/alias=%v", kind, aliased), func(t *testing.T) {
 				t.Parallel()
@@ -44,7 +44,7 @@ jobs:
     cache-mode: ` + jobMode + `
     uses: $/leaf.yaml
 `
-				workflow, diagnostics := workflowparser.ParseWorkflow([]byte(source))
+				workflow, diagnostics := parser.ParseWorkflow([]byte(source))
 				if len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -54,17 +54,17 @@ jobs:
 				}
 				project := workspace.Identity(root)
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
-				fileCache := workflowinputs.NewCache(project.RootDir(), nil)
+				fileCache := reusableworkflows.NewCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
 				fromFile, err := fileCache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
+				_, ok := definition.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := workflowinputs.NewCache(project.RootDir(), nil)
+				astCache := reusableworkflows.NewCache(project.RootDir(), nil)
 				astCache.SetSources(t.Context(), store, root)
 				path := filepath.Join(root, "callee.yaml")
 				snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))
@@ -86,10 +86,10 @@ jobs:
 						t.Fatalf("%s: metadata recorded %s (declared %t), want %s", id, recorded, declared, kind)
 					}
 					// Metadata keeps only the mode; the parsed declaration keeps its source.
-					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
-					want := sourcepos.Position{Line: line, Column: 17}
+					mode := definition.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
+					want := sourcetext.Position{Line: line, Column: 17}
 					if line == 2 || aliased {
-						want = sourcepos.Position{Line: 2, Column: 13}
+						want = sourcetext.Position{Line: 2, Column: 13}
 					}
 					if mode == nil || mode.Kind != kind || *mode.Pos != want {
 						t.Fatalf("%s: expected %s at %v, got %#v", id, kind, want, mode)

@@ -4,10 +4,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Checks are stateless checks of published workflow views. A nil callback
@@ -15,9 +15,9 @@ import (
 // and may run without any preceding or following callback. Findings may leave
 // Rule empty; the adapter attaches the rule's name.
 type Checks struct {
-	Workflow func(workflowdecl.Workflow) []reporting.StepFinding
-	Job      func(workflowdecl.Job) []reporting.StepFinding
-	Step     func(workflowdecl.Step) []reporting.StepFinding
+	Workflow func(workflows.Workflow) []reporting.StepFinding
+	Job      func(workflows.Job) []reporting.StepFinding
+	Step     func(workflows.Step) []reporting.StepFinding
 }
 
 // checksVisitor is the traversal adapter for stateless checks.
@@ -51,11 +51,11 @@ func (r *invocationChecksVisitor) LeaveInvocation(scope invocation.Context) erro
 	return nil
 }
 
-func (r *invocationChecksVisitor) VisitInvocationStep(step workflowdecl.Step) error {
+func (r *invocationChecksVisitor) VisitInvocationStep(step workflows.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *invocationChecksVisitor) VisitOpaqueAction(step workflowdecl.Step) error {
+func (r *invocationChecksVisitor) VisitOpaqueAction(step workflows.Step) error {
 	if len(r.contexts) == 0 {
 		return nil
 	}
@@ -81,39 +81,39 @@ func NewChecksVisitor(rules configuration.RuleSet, name string, checks Checks) w
 
 func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 	for _, d := range input {
-		finding := new(d.Finding)
-		if finding.Rule == "" {
-			finding.Rule = r.name
-		} else if descriptor, known := r.rules.FindRule(finding.Rule); known {
-			finding.Rule = descriptor.Name
+		item := new(d.Finding)
+		if item.Rule == "" {
+			item.Rule = r.name
+		} else if descriptor, known := r.rules.FindRule(item.Rule); known {
+			item.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: sourcepos.NilUnlessPresent(d.Step.Position())}
+			item.Owner = &finding.Owner{Job: job, Step: sourcetext.NilUnlessPresent(d.Step.Position())}
 			origin := d.Step.Origin(job)
-			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
+			item.IgnoreOrigin = &finding.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {
-				finding.IgnoreOrigin.StepPosition = &origin.Position
+				item.IgnoreOrigin.StepPosition = &origin.Position
 			}
 		}
-		r.Report(finding)
+		r.Report(item)
 	}
 }
 
-func (r *checksVisitor) VisitWorkflowPre(w workflowdecl.Workflow) error {
+func (r *checksVisitor) VisitWorkflowPre(w workflows.Workflow) error {
 	if r.checks.Workflow != nil {
 		r.collect(r.checks.Workflow(w), "")
 	}
 	return nil
 }
 
-func (r *checksVisitor) VisitJobPre(j workflowdecl.Job) error {
+func (r *checksVisitor) VisitJobPre(j workflows.Job) error {
 	if r.checks.Job != nil {
 		r.collect(r.checks.Job(j), j.ID.Text())
 	}
 	return nil
 }
 
-func (r *checksVisitor) VisitStep(s workflowdecl.Step) error {
+func (r *checksVisitor) VisitStep(s workflows.Step) error {
 	if r.checks.Step != nil {
 		r.collect(r.checks.Step(s), s.DeclaringJob())
 	}

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 // Override scopes settings to selected files. Other feature sections can
@@ -40,23 +40,23 @@ func (o *Override) DecodeConfig(value any) error {
 	}
 	type plain Override
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	positive := false
 	for i, pattern := range next.Includes {
 		if !selection.ValidPattern(pattern) {
-			return binding.At("includes", binding.At(strconv.Itoa(i), fmt.Errorf("invalid repository-relative override glob %q", pattern)))
+			return configdecode.At("includes", configdecode.At(strconv.Itoa(i), fmt.Errorf("invalid repository-relative override glob %q", pattern)))
 		}
 		positive = positive || !strings.HasPrefix(pattern, "!")
 	}
 	for i, pattern := range next.Excludes {
 		if !selection.ValidPattern(pattern) {
-			return binding.At("excludes", binding.At(strconv.Itoa(i), fmt.Errorf("invalid override exclusion %q", pattern)))
+			return configdecode.At("excludes", configdecode.At(strconv.Itoa(i), fmt.Errorf("invalid override exclusion %q", pattern)))
 		}
 	}
 	if !positive {
-		return binding.At("includes", errors.New("overrides.includes requires at least one positive file glob"))
+		return configdecode.At("includes", errors.New("overrides.includes requires at least one positive file glob"))
 	}
 	next.partial = document.Capture(object, nil)
 	*o = Override(next)
@@ -66,13 +66,13 @@ func (o *Override) DecodeConfig(value any) error {
 // CopyConfig copies typed settings and their captured partial independently.
 func (o Override) CopyConfig() (any, error) {
 	type plain Override
-	copied, err := binding.DetachPublicFields(plain(o))
+	copied, err := configdecode.DetachPublicFields(plain(o))
 	if err != nil {
 		return nil, err
 	}
 	next := copied
 	if o.partial != nil {
-		value, err := binding.DetachValue(o.partial.Value())
+		value, err := configdecode.DetachValue(o.partial.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (o Override) EncodeConfig() (any, error) {
 	} else {
 		type plain Override
 		var err error
-		value, err = binding.EncodePartial(plain(o))
+		value, err = configdecode.EncodePartial(plain(o))
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func lintConfigValue(config LintConfig) (any, error) {
 		return cloneValue(config.source), nil
 	}
 	type plain LintConfig
-	value, err := binding.Encode(plain(config))
+	value, err := configdecode.Encode(plain(config))
 	if err != nil {
 		return nil, err
 	}

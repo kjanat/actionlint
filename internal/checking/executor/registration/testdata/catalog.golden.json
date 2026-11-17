@@ -1313,7 +1313,7 @@
 		},
 		"supports_actions": false,
 		"scope": 0,
-		"options": "*rules.CommitHashOptions",
+		"options": "*ruleconfig.CommitHashOptions",
 		"execution": "build",
 		"prepare": false,
 		"enabled": true

@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type countedMetadataProvider struct {
@@ -30,11 +30,11 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(reference.Host(), reference.Repository(), repofacts.ID{}, commit, "")
+	identity, err := actions.NewIdentity(reference.Host(), reference.Repository(), repository.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, commit, actions.ObjectRoute(), "fixture")
+	selection, err := actions.NewReferenceSelection(reference, identity, commit, actions.ObjectRoute(), "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 		t.Fatalf("repeated calls: requests=%d input findings=%d diagnostics=%+v", provider.requests, findings, result.Diagnostics)
 	}
 	provider.requests = 0
-	result, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, RemoteActions: provider}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	result, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, RemoteActions: provider}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

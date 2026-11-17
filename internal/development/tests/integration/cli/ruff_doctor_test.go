@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {

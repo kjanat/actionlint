@@ -9,8 +9,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func deferredOptionsRegistration() configuration.RuleRegistration {
@@ -100,7 +100,7 @@ func TestCallerPluginOptionsAreNotAttributedToConfig(t *testing.T) {
 	if location, ok := errors.AsType[*configuration.SourceError](err); ok {
 		t.Fatalf("caller options were attributed to config: %v", location)
 	}
-	failure, ok := errors.AsType[*binding.Error](err)
+	failure, ok := errors.AsType[*configdecode.Error](err)
 	if !ok || failure.Path != "/count" {
 		t.Fatalf("caller option path: %v", err)
 	}

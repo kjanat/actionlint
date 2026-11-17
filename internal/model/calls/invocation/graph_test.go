@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
@@ -47,12 +47,12 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	var branches [][]invocation.ID
-	var sites [][]source.Reference
+	var sites [][]sourcetext.Reference
 	var scripts []invocation.ID
 	for _, branch := range []string{"left", "right"} {
 		parent := b.RootID()
 		chain := []invocation.ID{parent}
-		callSites := []source.Reference{
+		callSites := []sourcetext.Reference{
 			reference("entry", branch),
 			reference("outer", "middle-call"),
 			reference("middle", "inner-call"),

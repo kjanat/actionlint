@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -107,7 +107,7 @@ func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
 	if err != nil || len(analysis.Diagnostics) != 1 || analysis.Diagnostics[0].Path != dependency || analysis.Sources[dependency].Text != text || reads.Load() != 0 {
 		t.Fatalf("virtual buffers fell back to disk: analysis=%+v error=%v reads=%d", analysis, err, reads.Load())
 	}
-	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != source.ContentDigest([]byte(text)) {
+	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != sourcetext.ContentDigest([]byte(text)) {
 		t.Fatal("virtual dependency digest did not match its buffer")
 	}
 }
@@ -139,7 +139,7 @@ func TestEditorSymlinkDependencyAndClosingBufferUseCurrentCapture(t *testing.T) 
 	if err != nil || len(second.Diagnostics) != 1 || second.Diagnostics[0].Rule != "deprecated-commands" || second.Sources[alias].Text != disk {
 		t.Fatalf("closed buffer did not fall back to disk: %+v %v", second, err)
 	}
-	if second.Sources[alias].Revision == first.Sources[alias].Revision || second.Diagnostics[0].Reference == nil || second.Diagnostics[0].Reference.Revision != source.ContentDigest([]byte(disk)) {
+	if second.Sources[alias].Revision == first.Sources[alias].Revision || second.Diagnostics[0].Reference == nil || second.Diagnostics[0].Reference.Revision != sourcetext.ContentDigest([]byte(disk)) {
 		t.Fatal("closed overlay retained stale source identity")
 	}
 }
@@ -174,7 +174,7 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 type cancellingEditorAnalyzer struct{ started chan struct{} }
 
 func (*cancellingEditorAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

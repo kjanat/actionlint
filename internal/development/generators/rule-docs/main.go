@@ -5,7 +5,7 @@ import (
 	"context"
 	"log"
 
-	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
+	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 )
 
 func main() {

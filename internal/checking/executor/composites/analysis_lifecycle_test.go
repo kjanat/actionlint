@@ -9,17 +9,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type phaseScriptAnalyzer struct {
@@ -34,7 +34,7 @@ type cancelBeforeStep struct {
 	cancel context.CancelFunc
 }
 
-func (r *cancelBeforeStep) VisitWorkflowPre(workflowdecl.Workflow) error {
+func (r *cancelBeforeStep) VisitWorkflowPre(workflows.Workflow) error {
 	r.cancel()
 	return nil
 }
@@ -45,7 +45,7 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
 	check := conventions.MissingActionMetadataChecks(nil)
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.ResolvedDeclaration()})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{conventions.MissingActionMetadataRule.ResolvedDeclaration()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,10 +68,10 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			script := &phaseScriptAnalyzer{t: t, visited: &visited}
 			joinFailure := errors.New("join failure")
 			f.options.Rules = []workflowvisit.Rule{pass}
-			f.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
+			f.options.Scripts = scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}
 			f.options.Join = func() error {
 				joined = true
-				pass.Error(&source.Position{Line: 1, Column: 1}, "reported finding")
+				pass.Error(&sourcetext.Position{Line: 1, Column: 1}, "reported finding")
 				return joinFailure
 			}
 			result, err := analyze(f.options, func(c *compositeAnalyzer) error {
@@ -87,7 +87,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 				_, err := c.invocations.AddScript(c.invocations.RootContext(), ref, invocation.ScriptRun, "")
 				return err
 			})
-			want := scriptexecution.ErrInvalidBatch
+			want := scriptanalysis.ErrInvalidBatch
 			if unfinished {
 				want = invocation.ErrUnfinished
 			}
@@ -107,7 +107,7 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 		parsed := parsing.Workflow([]byte(content))
 		input, err := CheckInput(Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
-			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
+			if !errors.Is(err, scriptanalysis.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
 			}
 		} else if err != nil || len(input.AvailableInputs) != 1 || input.Content != content {
@@ -129,7 +129,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
+			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: localactions.NewResolver(nil, nil), CollectScripts: true}, meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes) != 1 || len(result.Batch.Scripts) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
@@ -137,7 +137,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 	}
 }
 
-func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptexecution.Batch) ([]*findingmodel.Finding, error) {
+func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptanalysis.Batch) ([]*finding.Finding, error) {
 	a.t.Helper()
 	if !*a.visited || len(batch.Scripts) != 1 {
 		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts))
@@ -153,7 +153,7 @@ type phaseRule struct {
 	joined  *bool
 }
 
-func (r *phaseRule) VisitStep(workflowdecl.Step) error { *r.visited = true; return r.failure }
+func (r *phaseRule) VisitStep(workflows.Step) error { *r.visited = true; return r.failure }
 func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
 	for _, failVisit := range []bool{false, true} {
@@ -170,10 +170,10 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			script := &phaseScriptAnalyzer{t: t, visited: &visited, failure: scriptFailure}
 			options := Options{
 				Bindings: testBindings(nil),
-				Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
-				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
+				Context:  t.Context(), Actions: localactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
+				CollectScripts: true, Scripts: scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}, Join: func() error {
 					joined = true
-					pass.Error(&source.Position{Line: 1, Column: 1}, "joined finding")
+					pass.Error(&sourcetext.Position{Line: 1, Column: 1}, "joined finding")
 					return nil
 				},
 			}

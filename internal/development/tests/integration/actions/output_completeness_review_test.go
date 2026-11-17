@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
@@ -19,11 +19,11 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, sha, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, sha, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,11 +104,11 @@ func TestRemoteCompositeOutputMappingIsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, sha, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, sha, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

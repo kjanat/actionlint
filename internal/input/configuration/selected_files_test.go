@@ -3,7 +3,7 @@ package configuration_test
 import (
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 )
 
 func TestLiteralFileSelectionScope(t *testing.T) {

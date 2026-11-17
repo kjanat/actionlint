@@ -5,12 +5,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	rulemodel "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -18,7 +18,7 @@ import (
 // policy and bind the returned edit to the captured source revision and path.
 // Existing directives retain their selectors and reason; scalar content is
 // targeted through its YAML declaration, never by inserting script comments.
-func Edit(content []byte, line int, rule string, allowed []string, names rulemodel.Names) (results.Edit, bool) {
+func Edit(content []byte, line int, rule string, allowed []string, names rule.Names) (results.Edit, bool) {
 	if !slices.Contains(allowed, rule) {
 		return results.Edit{}, false
 	}
@@ -43,12 +43,12 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 		if directive.Reason != "" {
 			replacement += " -- " + directive.Reason
 		}
-		edit := results.Edit{Start: directive.Position, End: sourcepos.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
+		edit := results.Edit{Start: directive.Position, End: sourcetext.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
 		return validateEdit(content, edit, line, rule, allowed, invalid, 0, names)
 	}
 	target := line
 	if root, err := codec.ParseYAML(content); err == nil {
-		parser := workflowparser.NewSourceParser(content)
+		parser := parser.NewSourceParser(content)
 		parser.IndexScalarSources(root)
 		var visit func(*codec.Node)
 		visit = func(node *codec.Node) {
@@ -71,15 +71,15 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 		}
 	}
 	indent := text[:len(text)-len(strings.TrimLeft(text, " \t"))]
-	point := sourcepos.Position{Line: target, Column: 1}
+	point := sourcetext.Position{Line: target, Column: 1}
 	edit := results.Edit{Start: point, End: point, Replacement: indent + "# actionlint-ignore-next-line " + rule + ending}
 	return validateEdit(content, edit, line, rule, allowed, invalid, 1, names)
 }
 
 // Validate through the suppression parser itself, including malformed YAML
 // recovery. An edit must suppress its target without hiding grammar errors.
-func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rulemodel.Names) (results.Edit, bool) {
-	first, last, err := sourceposition.Range(content, sourcepos.YAML, edit.Start, edit.End)
+func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rule.Names) (results.Edit, bool) {
+	first, last, err := byteoffset.Range(content, sourcetext.YAML, edit.Start, edit.End)
 	if err != nil {
 		return results.Edit{}, false
 	}

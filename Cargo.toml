@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
 members  = [
-  "internal/plugins/execution/component/testdata/sources/*",
-  "internal/plugins/execution/module/testdata/sources/*",
+  "internal/plugins/pluginexecution/component/testdata/sources/*",
+  "internal/plugins/pluginexecution/module/testdata/sources/*",
   "plugins/examples/buildkite-runners",
   "plugins/examples/pinned-actions",
   "plugins/examples/pipe-to-shell",

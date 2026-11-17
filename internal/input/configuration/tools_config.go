@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -20,8 +20,8 @@ import (
 // implements. Bundled providers and providers registered by plugins share it.
 type ToolsConfig map[string]ToolConfig
 
-func (tools ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
-	for name, tool := range tools {
+func (toolsConfig ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
+	for name, tool := range toolsConfig {
 		if tool.Config != nil {
 			tool.Config.fromInput = inputs[prefix+"/"+configPointerPart(name)+"/config"].Name != ""
 		}
@@ -35,7 +35,7 @@ type ToolConfig struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// Backend selects the execution transport and its settings.
 	// Explicit CLI or application invocation settings take precedence.
-	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
+	Backend *tools.Backend `yaml:"backend,omitempty"`
 	// Config is the tool's own configuration: inline settings the provider
 	// validates, or a path to the tool's configuration file or directory.
 	Config *ToolSettings `yaml:"config"`
@@ -70,7 +70,7 @@ func inlineSettings(values map[string]any) (toolSettingsInline, error) {
 	}
 	owned := make(toolSettingsInline, len(values))
 	for key, value := range values {
-		owned[key] = binding.Native(value)
+		owned[key] = configdecode.Native(value)
 	}
 	return owned, nil
 }
@@ -108,7 +108,7 @@ func validatedToolSettings(name string, known toolProvider, values map[string]an
 	}
 	if known.schema != nil {
 		if err := known.schema.Validate(document); err != nil {
-			return nil, binding.Context(fmt.Sprintf("tools.%s.config", name), schemaBindingError(err))
+			return nil, configdecode.Context(fmt.Sprintf("tools.%s.config", name), schemaBindingError(err))
 		}
 	}
 	inline, err := inlineSettings(values)
@@ -150,7 +150,7 @@ func (s *ToolSettings) CopyConfig() (any, error) {
 	switch value := s.value.(type) {
 	case toolSettingsPath:
 	case toolSettingsInline:
-		detached, err := binding.DetachValue(value)
+		detached, err := configdecode.DetachValue(value)
 		if err != nil {
 			return nil, err
 		}
@@ -182,9 +182,9 @@ func (s *ToolSettings) EncodeConfig() (any, error) {
 }
 
 // DecodeConfig reads tool settings after RuleSet has expanded shorthands and validated provider settings.
-func (tools *ToolsConfig) DecodeConfig(value any) error {
+func (toolsConfig *ToolsConfig) DecodeConfig(value any) error {
 	if value == nil {
-		*tools = nil
+		*toolsConfig = nil
 		return nil
 	}
 	entries, ok := value.(map[string]any)
@@ -195,11 +195,11 @@ func (tools *ToolsConfig) DecodeConfig(value any) error {
 	for _, name := range slices.Sorted(maps.Keys(entries)) {
 		tool, err := decodeToolConfig(name, entries[name], toolProvider{}, false)
 		if err != nil {
-			return binding.At(name, err)
+			return configdecode.At(name, err)
 		}
 		next[name] = tool
 	}
-	*tools = next
+	*toolsConfig = next
 	return nil
 }
 
@@ -227,16 +227,16 @@ func decodeToolConfig(name string, value any, known toolProvider, registered boo
 		value := fields[key]
 		switch key {
 		case "enabled":
-			err = binding.Decode(value, &tool.Enabled)
+			err = configdecode.Decode(value, &tool.Enabled)
 		case "backend":
-			err = binding.Decode(value, &tool.Backend)
+			err = configdecode.Decode(value, &tool.Backend)
 		case "config":
 			tool.Config, err = decodeToolSettings(name, value, known, registered)
 		default:
-			return ToolConfig{}, binding.At(key, fmt.Errorf("unknown key %q in tools.%s", key, name))
+			return ToolConfig{}, configdecode.At(key, fmt.Errorf("unknown key %q in tools.%s", key, name))
 		}
 		if err != nil {
-			return ToolConfig{}, binding.At(key, err)
+			return ToolConfig{}, configdecode.At(key, err)
 		}
 	}
 	return tool, nil
@@ -282,7 +282,7 @@ func foldToolShorthands(name string, value any, shorthands map[string]toolsettin
 	merged := any(mapping())
 	if config != nil && !isNull(config) {
 		if !isMapping(config) {
-			return nil, binding.At(selected[0], fmt.Errorf("tools.%s.%s cannot be combined with a configuration file path", name, selected[0]))
+			return nil, configdecode.At(selected[0], fmt.Errorf("tools.%s.%s cannot be combined with a configuration file path", name, selected[0]))
 		}
 		merged = config
 	}
@@ -293,7 +293,7 @@ func foldToolShorthands(name string, value any, shorthands map[string]toolsettin
 		var err error
 		merged, err = foldShorthand(merged, shorthand.Path, 0, child, replace)
 		if err != nil {
-			return nil, binding.At(key, fmt.Errorf("tools.%s.%s: %w", name, key, err))
+			return nil, configdecode.At(key, fmt.Errorf("tools.%s.%s: %w", name, key, err))
 		}
 		removeField(next, key)
 	}
@@ -339,9 +339,9 @@ func (ruleSet RuleSet) normalizeToolSwitch(value any) any {
 		return value
 	}
 	next := cloneMapping(value)
-	if tools := field(value, "tools"); isMapping(tools) {
-		entries := cloneMapping(tools)
-		for name, entry := range members(tools) {
+	if toolsConfig := field(value, "tools"); isMapping(toolsConfig) {
+		entries := cloneMapping(toolsConfig)
+		for name, entry := range members(toolsConfig) {
 			setField(entries, name, ruleSet.normalizeToolEntry(name, entry))
 		}
 		setField(next, "tools", entries)
@@ -378,12 +378,12 @@ func (ruleSet RuleSet) validateToolSettings(value any) error {
 	for _, name := range slices.Sorted(maps.Keys(members(field(value, "tools")))) {
 		provider, known := ruleSet.toolProvider(name)
 		if _, err := decodeToolConfig(name, rawValue(field(field(value, "tools"), name)), provider, known); err != nil {
-			return binding.At("tools", binding.At(name, err))
+			return configdecode.At("tools", configdecode.At(name, err))
 		}
 	}
 	for i, override := range elements(field(value, "overrides")) {
 		if err := ruleSet.validateToolSettings(override); err != nil {
-			return binding.At("overrides", binding.At(strconv.Itoa(i), err))
+			return configdecode.At("overrides", configdecode.At(strconv.Itoa(i), err))
 		}
 	}
 	return nil
@@ -396,9 +396,9 @@ func toolFieldsBeforePlugins(value any) any {
 		return value
 	}
 	next := cloneMapping(value)
-	if tools := field(value, "tools"); isMapping(tools) {
-		entries := cloneMapping(tools)
-		for name, entry := range members(tools) {
+	if toolsConfig := field(value, "tools"); isMapping(toolsConfig) {
+		entries := cloneMapping(toolsConfig)
+		for name, entry := range members(toolsConfig) {
 			if !isMapping(entry) {
 				continue
 			}

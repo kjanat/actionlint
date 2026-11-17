@@ -11,28 +11,28 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 type invocationFixture struct {
 	options         Options
 	root            parsing.SourceSnapshot
-	original        *workflowlang.Workflow
+	original        *definition.Workflow
 	registry        *parsing.SourceSnapshots
 	snapshots       *capturedSnapshots
-	cache           *workspaceactions.Cache
+	cache           *localactions.Cache
 	parsed          []string
 	afterParse      func(string)
 	mutateMeta      func(*actionmeta.Metadata)
@@ -49,7 +49,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		t.Fatal(document.SyntaxErrors)
 	}
 	registry, store, snapshots := newCapturedSnapshots(t, directory)
-	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: workspaceactions.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
+	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: localactions.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
 	var err error
 	f.root, err = f.snapshots.Document(files.PhysicalPath(path), content, document)
 	if err != nil {
@@ -57,13 +57,13 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	}
 	explicit := map[string]struct{}{}
 	for path, content := range actions {
-		captured, err := f.snapshots.Capture(filepath.Join(directory, filepath.FromSlash(path)), []byte(content), source.YAML)
+		captured, err := f.snapshots.Capture(filepath.Join(directory, filepath.FromSlash(path)), []byte(content), sourcetext.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}
 		explicit[captured.Revision().Document()] = struct{}{}
 	}
-	f.cache.Configure(workspaceactions.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.CapturedDocument, path string, metadata *actionmeta.Metadata, _ error) {
+	f.cache.Configure(localactions.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.CapturedDocument, path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
 		f.mutableMetadata[path] = metadata
 		if f.mutateMeta != nil {
@@ -73,7 +73,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 			f.afterParse(path)
 		}
 	}})
-	resolver := workspaceactions.NewResolver(f.cache, nil)
+	resolver := localactions.NewResolver(f.cache, nil)
 	f.options = Options{Bindings: testBindings(nil), Context: ctx, SourceSnapshots: registry, Captures: store, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{correctness.NewRuleAction(ctx, correctness.ActionRule.Base(), resolver.Prepared(), nil)}}
 	return f
 }
@@ -141,7 +141,7 @@ jobs:
 				}
 			}
 			root, _ := f.root.WorkflowView()
-			var rootSites []source.Reference
+			var rootSites []sourcetext.Reference
 			for _, step := range slices.Concat(workflowStepViews(t, root, "first"), workflowStepViews(t, root, "second")) {
 				ref := stepReference(t, f.root, step)
 				rootSites = append(rootSites, ref)
@@ -154,7 +154,7 @@ jobs:
 			seen := map[invocation.ID]bool{}
 			for i, unit := range result.Batch.Scripts {
 				chain := []invocation.ID{graph.RootID()}
-				sites := []source.Reference{rootSites[i/2]}
+				sites := []sourcetext.Reference{rootSites[i/2]}
 				if middle {
 					ref := stepReference(t, outer, outerSteps[0])
 					sites = append(sites, ref)

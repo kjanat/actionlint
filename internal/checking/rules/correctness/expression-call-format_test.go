@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
@@ -35,13 +35,13 @@ func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if result.Valid != (tc.failures == 0) || len(result.Findings) != tc.failures {
 				t.Fatalf("language findings=%v, want %d", result.Findings, tc.failures)
 			}
@@ -65,16 +65,16 @@ func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
 func TestUnusedFormatArgumentRangeExcludesResultAccess(t *testing.T) {
 	t.Parallel()
 	const source = `format('{0}{1}', 1, 2, 3)[0]`
-	root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+	root, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(root))
+	checked := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(root))
 	findings := UnusedFormatArguments(root, checked.Calls)
 	if len(findings) != 1 || source[findings[0].Offset:findings[0].EndOffset] != "format" {
 		t.Fatalf("wrong callee range: %+v", findings)
 	}
-	if findings := UnusedFormatArguments(root, exprlang.CheckedCalls{}); len(findings) != 0 {
+	if findings := UnusedFormatArguments(root, typecheck.CheckedCalls{}); len(findings) != 0 {
 		t.Fatalf("unchecked syntax acquired a finding: %+v", findings)
 	}
 }
@@ -83,11 +83,11 @@ func TestGroupedUnusedFormatArgumentRanges(t *testing.T) {
 	t.Parallel()
 	for _, suffix := range []string{"", ".x", "[0]", "['x'].y"} {
 		source := "((format('{0}', 1, 2)))" + suffix
-		root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+		root, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(root))
+		checked := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(root))
 		findings := UnusedFormatArguments(root, checked.Calls)
 		if len(findings) != 1 || source[findings[0].Offset:findings[0].EndOffset] != "format" {
 			t.Fatalf("%s: wrong range %+v", source, findings)

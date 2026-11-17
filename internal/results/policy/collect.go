@@ -5,21 +5,21 @@ import (
 	"reflect"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // retain makes the only visibility and duplicate decision across evaluated batches.
-func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.PublishedDiagnostic) {
+func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (diagnostics []results.PublishedDiagnostic) {
 	type location struct {
 		project, path, rule string
-		start               sourcepos.Position
+		start               sourcetext.Position
 	}
 	seen := make(map[location][]int)
-	var retained []*findingmodel.Finding
+	var retained []*finding.Finding
 	var retainedBatch []int
-	mergeFinding := func(index int, diagnostic diagmodel.Diagnostic) {
+	mergeFinding := func(index int, diagnostic results.Diagnostic) {
 		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
 		if _, required := authority[retained[index]]; required {
@@ -29,15 +29,15 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 	}
 	type metadataLocation struct {
 		project, kind, severity string
-		finding                 findingmodel.MetadataKey
+		finding                 finding.MetadataKey
 	}
 	seenMetadata := make(map[metadataLocation][]int)
 	type declarationLocation struct {
 		project string
-		finding findingmodel.MetadataKey
+		finding finding.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
-	parseDeclarations := make(map[sourcepos.Revision]bool)
+	parseDeclarations := make(map[sourcetext.Revision]bool)
 	for _, file := range files {
 		project := file.Project
 		for _, finding := range file.Findings {
@@ -57,7 +57,7 @@ func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligati
 			metadata  metadataLocation
 			authority obligation
 		}
-		preferred := make(map[invocationIdentity]*findingmodel.Finding)
+		preferred := make(map[invocationIdentity]*finding.Finding)
 		for _, candidate := range file.Findings {
 			if identity := candidate.MetadataIdentity; identity != nil && candidate.Rule == "action" {
 				key := invocationIdentity{metadataLocation{project, candidate.Rule, candidate.Severity, identity.Key}, authority[candidate]}

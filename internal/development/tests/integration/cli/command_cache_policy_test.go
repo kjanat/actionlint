@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -84,9 +84,9 @@ permissions: {}
 					var stdout, stderr bytes.Buffer
 					cmd := cli.Command{Stdin: bytes.NewReader(nil), Stdout: &stdout, Stderr: &stderr}
 					status := cmd.Main(args)
-					wantStatus, wantCount := commandstatus.ExitSuccessProblemFound, 1
+					wantStatus, wantCount := exitcode.ExitSuccessProblemFound, 1
 					if config.disabled {
-						wantStatus, wantCount = commandstatus.ExitSuccessNoProblem, 0
+						wantStatus, wantCount = exitcode.ExitSuccessNoProblem, 0
 					}
 					if status != wantStatus || stderr.Len() != 0 {
 						t.Fatalf("exit=%d, want=%d; stderr=%s", status, wantStatus, stderr.String())

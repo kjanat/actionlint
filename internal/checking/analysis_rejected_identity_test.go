@@ -4,21 +4,21 @@ import (
 	"errors"
 	"testing"
 
-	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	t.Parallel()
 	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n"
 	parsed := parsing.Workflow([]byte(content))
-	entry := source.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}
+	entry := sourcetext.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
@@ -27,14 +27,14 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{Scopes: []*scriptexecution.Scope{{Context: builder.RootContext()}}})
+	batch, err := scriptanalysis.NewBatch(graph, scriptanalysis.Collection{Scopes: []*scriptanalysis.Scope{{Context: builder.RootContext()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	actual := entry
 	actual.Revision = "current"
-	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]workflowfacts.SourceIndex{"ci.yml": {Document: actual}})
-	if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
+	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]facts.SourceIndex{"ci.yml": {Document: actual}})
+	if !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
 		t.Fatalf("mismatched graph accepted: %v", err)
 	}
 	if input.Reference != actual || input.CallGraph.Valid() {

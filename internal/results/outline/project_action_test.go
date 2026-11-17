@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
@@ -50,7 +50,7 @@ runs:
 		t.Fatalf("input order/casing lost: %+v", outline.Inputs)
 	}
 	input := outline.Inputs[0]
-	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (sourcepos.Position{Line: 4, Column: 3}) {
+	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (sourcetext.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared input metadata lost: %+v", input)
 	}
 	if second := outline.Inputs[1]; second.Required == nil || *second.Required || second.Default != nil {
@@ -99,7 +99,7 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
   args: [test, 42]`, DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
 		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
 		{"empty composite", `using: composite
-  steps: []`, CompositeRuns{Steps: []Step{}}},
+  steps: []`, CompositeRuns{Steps: []StepOutline{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

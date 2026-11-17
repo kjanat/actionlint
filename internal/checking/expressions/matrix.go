@@ -1,17 +1,17 @@
 package expressions
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-func (rule *Checker) checkMatrixSourceKey(source *workflowlang.String, evaluated bool) {
+func (rule *Checker) checkMatrixSourceKey(source *definition.String, evaluated bool) {
 	if source != nil && !evaluated {
 		rule.checkString(source, "jobs.<job_id>.strategy")
 	}
@@ -40,7 +40,7 @@ func (e *elementTypes) merged() exprtypes.Type {
 	return e.ty
 }
 
-func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) exprtypes.ObjectType {
+func (rule *Checker) checkMatrixExpression(expr *definition.String) exprtypes.ObjectType {
 	ty, ok := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
 	if !ok {
 		return exprtypes.NewEmptyObjectType()
@@ -48,13 +48,13 @@ func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) exprtypes.
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.Resolution) exprtypes.ObjectType {
+func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) exprtypes.ObjectType {
 	if m == nil {
 		return exprtypes.NewEmptyStrictObjectType()
 	}
 	// inferred holds the element type of each row declaration. A missing
 	// position reads as any, which means nothing was inferred.
-	inferred := map[sourcepos.Position]exprtypes.Type{}
+	inferred := map[sourcetext.Position]exprtypes.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
 	} else {
@@ -109,7 +109,7 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 	return resolution.ContextType(inferred)
 }
 
-func (rule *Checker) checkMatrixCombination(combination *workflowlang.MatrixCombination, section string) {
+func (rule *Checker) checkMatrixCombination(combination *definition.MatrixCombination, section string) {
 	if combination == nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (rule *Checker) checkMatrixCombination(combination *workflowlang.MatrixComb
 
 // checkMatrixRow returns the element type of a matrix row, or any when no
 // element has a known type.
-func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprtypes.Type {
+func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
 		if ty, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy"); ok {
@@ -148,7 +148,7 @@ func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprtypes.Type {
 	return elements.merged()
 }
 
-func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, section string) {
+func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, section string) {
 	ty, ok := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
 	if !ok {
 		return
@@ -180,9 +180,9 @@ func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, se
 // checkMatrixSequenceItem returns the type of the values a sequence item adds.
 // ok is false when the item is an expression that inserts no values, such as
 // an empty array literal.
-func (rule *Checker) checkMatrixSequenceItem(value workflowlang.RawYAMLValue) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {
 	ty = rule.checkRawYAMLValue(value)
-	if scalar, ok := value.(*workflowlang.RawYAMLString); ok && exprsyntax.ParseAssignedExpression(scalar.Value) != nil {
+	if scalar, ok := value.(*definition.RawYAMLString); ok && syntax.ParseAssignedExpression(scalar.Value) != nil {
 		if array, ok := ty.Array(); ok {
 			if literal, known := expressionLiteral(scalar.Value); known {
 				if values, ok := literal.([]any); ok && len(values) == 0 {

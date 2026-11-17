@@ -9,12 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
@@ -56,7 +56,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {
@@ -135,7 +135,7 @@ runs:
 					inputs += ", ref: \"" + tc.ref + "\""
 				}
 				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
-				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
 				if read != tc.read {
 					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
@@ -144,7 +144,7 @@ runs:
 				if destination == "source" && tc.name == "dynamic ref" {
 					wantMetadata = decoy
 				}
-				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+				found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && d.Code == "SC2086"
 				})
 				if found != tc.read {
@@ -156,7 +156,7 @@ runs:
 	root, metadata, _ := fixture(t)
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
-- uses: $/local`, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+- uses: $/local`, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}

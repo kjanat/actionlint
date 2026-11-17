@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -43,8 +43,8 @@ const (
 )
 
 type Span struct {
-	Start sourcepos.Position
-	End   sourcepos.Position
+	Start sourcetext.Position
+	End   sourcetext.Position
 }
 
 type Origin struct {
@@ -149,7 +149,7 @@ func (v Value) StringAlternatives() ([]string, bool) {
 	if v.State() != Dynamic || !v.Origin().FromExpression || !strings.Contains(v.Source(), "${{") {
 		return nil, false
 	}
-	return expreval.TemplateStringAlternatives(v.Source())
+	return evaluate.TemplateStringAlternatives(v.Source())
 }
 
 // Spelling returns the source text a YAML literal scalar was written with,
@@ -359,9 +359,9 @@ func Template(text string, origin Origin) Value {
 		return YAMLScalar(text, "!!str", origin)
 	}
 	expressionOrigin := Origin{Span: origin.Span, FromExpression: true}
-	expression := exprsyntax.ParseAssignedExpression(text)
+	expression := syntax.ParseAssignedExpression(text)
 	if expression == nil {
-		_, parseErr, _ := exprsyntax.ParseConditionExpression(text)
+		_, parseErr, _ := syntax.ParseConditionExpression(text)
 		if parseErr != nil {
 			return invalid(text, expressionOrigin, parseErr.Error())
 		}
@@ -370,7 +370,7 @@ func Template(text string, origin Origin) Value {
 		value.p.templateFragment = true
 		return value
 	}
-	constant, known := expreval.ConditionConstantValue(expression)
+	constant, known := evaluate.ConditionConstantValue(expression)
 	if !known {
 		value := makeValue(Dynamic, KindUnknown, expressionOrigin)
 		value.p.source = text
@@ -385,7 +385,7 @@ func Template(text string, origin Origin) Value {
 
 func Condition(text string, origin Origin) Value {
 	expressionOrigin := Origin{Span: origin.Span, FromExpression: true}
-	expression, parseErr, _ := exprsyntax.ParseConditionExpression(text)
+	expression, parseErr, _ := syntax.ParseConditionExpression(text)
 	if parseErr != nil {
 		return invalid(text, expressionOrigin, parseErr.Error())
 	}
@@ -394,7 +394,7 @@ func Condition(text string, origin Origin) Value {
 		value.p.source = text
 		return value
 	}
-	constant, known := expreval.ConditionConstantValue(expression)
+	constant, known := evaluate.ConditionConstantValue(expression)
 	if !known {
 		value := makeValue(Dynamic, KindUnknown, expressionOrigin)
 		value.p.source = text

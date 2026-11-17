@@ -9,9 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -50,11 +50,11 @@ func TestUncancellableCondition(t *testing.T) {
 			if tc.stepIf != "" {
 				source += "        if: " + tc.stepIf + "\n"
 			}
-			ast, errs := workflowparser.ParseWorkflow([]byte(source))
+			ast, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Bind("test", source, ast, false, "").Workflow()
+			view := workflows.Bind("test", source, ast, false, "").Workflow()
 			check := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{})
 			for _, job := range view.Jobs() {
 				got := check.Job(job)
@@ -96,11 +96,11 @@ func TestUncancellableConditionFix(t *testing.T) {
 			if strings.HasPrefix(scalar, "&gate") {
 				content = strings.Replace(content, "steps: [{run: echo ok}]", "steps: [{run: echo ok, if: *gate}]", 1)
 			}
-			ast, errs := workflowparser.ParseWorkflow([]byte(content))
+			ast, errs := parser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Bind("test", content, ast, false, "").Workflow()
+			view := workflows.Bind("test", content, ast, false, "").Workflow()
 			for _, job := range view.Jobs() {
 				findings := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{}).Job(job)
 				if len(findings) != 1 || len(findings[0].Fixes) != 1 {
@@ -111,7 +111,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]
-				offset := func(pos sourcepos.Position) int {
+				offset := func(pos sourcetext.Position) int {
 					lines := strings.SplitAfter(content, "\n")
 					prefix := strings.Join(lines[:pos.Line-1], "")
 					return len(prefix) + len(string([]rune(lines[pos.Line-1])[:pos.Column-1]))
@@ -123,11 +123,11 @@ func TestUncancellableConditionFix(t *testing.T) {
 				if strings.Contains(content, "&gate") && !strings.Contains(fixed, "&gate") {
 					t.Fatalf("lost anchor: %s", fixed)
 				}
-				updated, parseErrs := workflowparser.ParseWorkflow([]byte(fixed))
+				updated, parseErrs := parser.ParseWorkflow([]byte(fixed))
 				if len(parseErrs) != 0 {
 					t.Fatalf("invalid fix %s: %v", fixed, parseErrs)
 				}
-				checked := declaration.Bind("fixed", fixed, updated, false, "").Workflow()
+				checked := workflows.Bind("fixed", fixed, updated, false, "").Workflow()
 				for _, fixedJob := range checked.Jobs() {
 					if got := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{}).Job(fixedJob); len(got) != 0 {
 						t.Fatalf("fix leaves finding: %+v", got)
@@ -166,11 +166,11 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 				content += "    if: " + tc.jobIf + "\n"
 			}
 			content += "    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
-			ast, errs := workflowparser.ParseWorkflow([]byte(content))
+			ast, errs := parser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Bind("test", content, ast, false, "").Workflow()
+			view := workflows.Bind("test", content, ast, false, "").Workflow()
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
 					check := suspicious.UncancellableConditionRule.Checks(define.RuleInputs{})

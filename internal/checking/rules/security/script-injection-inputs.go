@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // UntrustedInputMap is a node in a tree of untrusted input paths. Roots name
@@ -215,15 +215,15 @@ type UntrustedInputChecker struct {
 	roots           UntrustedInputSearchRoots
 	filteringObject bool
 	cur             []*UntrustedInputMap
-	start           exprsyntax.Node
-	errs            []*exprlang.Error
+	start           syntax.Node
+	errs            []*typecheck.Error
 	safeCalls       int
 	booleanContexts int
 	visits          []untrustedInputVisit
 }
 
 type untrustedInputVisit struct {
-	node    exprsyntax.Node
+	node    syntax.Node
 	boolean bool
 }
 
@@ -232,7 +232,7 @@ type untrustedInputVisit struct {
 func NewUntrustedInputChecker(roots UntrustedInputSearchRoots) *UntrustedInputChecker {
 	return &UntrustedInputChecker{
 		roots: roots,
-		errs:  []*exprlang.Error{},
+		errs:  []*typecheck.Error{},
 	}
 }
 
@@ -257,7 +257,7 @@ func (u *UntrustedInputChecker) compact() {
 	u.cur = u.cur[:len(u.cur)-delta]
 }
 
-func (u *UntrustedInputChecker) onVar(v *exprsyntax.VariableNode) {
+func (u *UntrustedInputChecker) onVar(v *syntax.VariableNode) {
 	c, ok := u.roots[v.Name] // Find root context (currently only "github" exists)
 	if !ok {
 		return
@@ -356,7 +356,7 @@ func (u *UntrustedInputChecker) endInput(serialized bool) {
 	u.reset()
 }
 
-func (u *UntrustedInputChecker) reportInputs(start exprsyntax.Node, inputs []string) {
+func (u *UntrustedInputChecker) reportInputs(start syntax.Node, inputs []string) {
 	if len(inputs) == 1 {
 		err := scriptInjectionIssuef("untrusted-interpolation",
 			start,
@@ -378,26 +378,26 @@ func (u *UntrustedInputChecker) reportInputs(start exprsyntax.Node, inputs []str
 
 // serializedContainers follows values selected for JSON serialization. Boolean
 // operands and function predicates do not contribute container contents.
-func (u *UntrustedInputChecker) serializedContainers(expr exprsyntax.Node) {
+func (u *UntrustedInputChecker) serializedContainers(expr syntax.Node) {
 	switch n := expr.(type) {
-	case *exprsyntax.LogicalOpNode:
-		if value, known := expreval.ConditionConstantValue(n.Left); known {
-			if exprvalues.ExpressionTruthy(value) != (n.Kind == exprsyntax.LogicalOpNodeKindOr) {
+	case *syntax.LogicalOpNode:
+		if value, known := evaluate.ConditionConstantValue(n.Left); known {
+			if values.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 				u.serializedContainers(n.Right)
 			}
 			return
 		}
-		if n.Kind == exprsyntax.LogicalOpNodeKindOr {
+		if n.Kind == syntax.LogicalOpNodeKindOr {
 			u.serializedContainers(n.Left)
 		}
 		u.serializedContainers(n.Right)
-	case *exprsyntax.FuncCallNode:
+	case *syntax.FuncCallNode:
 		if !strings.EqualFold(n.Callee, "case") || len(n.Args) < 3 || len(n.Args)%2 != 1 {
 			return
 		}
 		for i := 0; i < len(n.Args)-1; i += 2 {
-			if value, known := expreval.ConditionConstantValue(n.Args[i]); known {
-				if !exprvalues.ExpressionTruthy(value) {
+			if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
+				if !values.ExpressionTruthy(value) {
 					continue
 				}
 				u.serializedContainers(n.Args[i+1])
@@ -421,25 +421,25 @@ func (u *UntrustedInputChecker) serializedContainers(expr exprsyntax.Node) {
 	}
 }
 
-func (u *UntrustedInputChecker) followAccess(expr exprsyntax.Node) bool {
+func (u *UntrustedInputChecker) followAccess(expr syntax.Node) bool {
 	switch n := expr.(type) {
-	case *exprsyntax.VariableNode:
+	case *syntax.VariableNode:
 		u.onVar(n)
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		if !u.followAccess(n.Receiver) {
 			return false
 		}
 		u.onPropAccess(n.Property)
-	case *exprsyntax.ArrayDerefNode:
+	case *syntax.ArrayDerefNode:
 		if !u.followAccess(n.Receiver) {
 			return false
 		}
 		u.onObjectFilter()
-	case *exprsyntax.IndexAccessNode:
+	case *syntax.IndexAccessNode:
 		if !u.followAccess(n.Operand) {
 			return false
 		}
-		if key, ok := n.Index.(*exprsyntax.StringNode); ok {
+		if key, ok := n.Index.(*syntax.StringNode); ok {
 			u.onPropAccess(strings.ToLower(key.Value))
 		} else {
 			u.onIndexAccess()
@@ -453,17 +453,17 @@ func (u *UntrustedInputChecker) followAccess(expr exprsyntax.Node) bool {
 	return true
 }
 
-func (u *UntrustedInputChecker) OnVisitNodeEnter(n exprsyntax.Node) {
+func (u *UntrustedInputChecker) OnVisitNodeEnter(n syntax.Node) {
 	boolean := false
 	switch n.(type) {
-	case *exprsyntax.CompareOpNode, *exprsyntax.NotOpNode:
+	case *syntax.CompareOpNode, *syntax.NotOpNode:
 		boolean = true
 	}
 	if len(u.visits) > 0 {
 		switch parent := u.visits[len(u.visits)-1].node.(type) {
-		case *exprsyntax.LogicalOpNode:
-			boolean = boolean || parent.Kind == exprsyntax.LogicalOpNodeKindAnd && parent.Left == n
-		case *exprsyntax.FuncCallNode:
+		case *syntax.LogicalOpNode:
+			boolean = boolean || parent.Kind == syntax.LogicalOpNodeKindAnd && parent.Left == n
+		case *syntax.FuncCallNode:
 			if strings.EqualFold(parent.Callee, "case") {
 				for i := 0; i < len(parent.Args)-1; i += 2 {
 					boolean = boolean || parent.Args[i] == n
@@ -475,13 +475,13 @@ func (u *UntrustedInputChecker) OnVisitNodeEnter(n exprsyntax.Node) {
 	if boolean {
 		u.booleanContexts++
 	}
-	if f, ok := n.(*exprsyntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
+	if f, ok := n.(*syntax.FuncCallNode); ok && functions.IsStringPredicate(f.Callee) {
 		u.safeCalls++
 	}
 }
 
 // OnVisitNodeLeave is a callback which should be called on visiting node after visiting its children.
-func (u *UntrustedInputChecker) OnVisitNodeLeave(n exprsyntax.Node) {
+func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 	defer func() {
 		if len(u.visits) > 0 {
 			visit := u.visits[len(u.visits)-1]
@@ -493,23 +493,23 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n exprsyntax.Node) {
 	}()
 	// Skip unsafe checks if we are inside of safe function call expression
 	if u.safeCalls > 0 {
-		if f, ok := n.(*exprsyntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
+		if f, ok := n.(*syntax.FuncCallNode); ok && functions.IsStringPredicate(f.Callee) {
 			u.safeCalls--
 		}
 		return
 	}
 
 	switch n := n.(type) {
-	case *exprsyntax.VariableNode:
+	case *syntax.VariableNode:
 		u.end()
 		u.onVar(n)
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		u.onPropAccess(n.Property)
 		if u.start != nil {
 			u.start = n
 		}
-	case *exprsyntax.IndexAccessNode:
-		if lit, ok := n.Index.(*exprsyntax.StringNode); ok {
+	case *syntax.IndexAccessNode:
+		if lit, ok := n.Index.(*syntax.StringNode); ok {
 			// Special case like github['event']['issue']['title']
 			u.onPropAccess(strings.ToLower(lit.Value))
 		} else {
@@ -518,15 +518,15 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n exprsyntax.Node) {
 		if u.start != nil {
 			u.start = n
 		}
-	case *exprsyntax.ArrayDerefNode:
+	case *syntax.ArrayDerefNode:
 		u.onObjectFilter()
 		if u.start != nil {
 			u.start = n
 		}
-	case *exprsyntax.FuncCallNode:
+	case *syntax.FuncCallNode:
 		if u.booleanContexts == 0 && strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
 			switch n.Args[0].(type) {
-			case *exprsyntax.VariableNode, *exprsyntax.ObjectDerefNode, *exprsyntax.ArrayDerefNode, *exprsyntax.IndexAccessNode:
+			case *syntax.VariableNode, *syntax.ObjectDerefNode, *syntax.ArrayDerefNode, *syntax.IndexAccessNode:
 				u.endInput(true)
 				return
 			default:
@@ -547,8 +547,8 @@ func (u *UntrustedInputChecker) OnVisitEnd() {
 
 // Errs returns errors detected by this checker. This method should be called after visiting all
 // nodes in a syntax tree.
-func (u *UntrustedInputChecker) Errs() []*exprlang.Error {
-	out := make([]*exprlang.Error, len(u.errs))
+func (u *UntrustedInputChecker) Errs() []*typecheck.Error {
+	out := make([]*typecheck.Error, len(u.errs))
 	for i, issue := range u.errs {
 		copied := *issue
 		out[i] = &copied
@@ -565,14 +565,14 @@ func (u *UntrustedInputChecker) Init() {
 	u.reset()
 }
 
-func scriptInjectionIssuef(code string, node exprsyntax.Node, format string, args ...any) *exprlang.Error {
-	span := exprsyntax.ExpressionSpan(node)
-	return &exprlang.Error{Rule: "script-injection", Code: code, Message: fmt.Sprintf(format, args...), Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column}
+func scriptInjectionIssuef(code string, node syntax.Node, format string, args ...any) *typecheck.Error {
+	span := syntax.ExpressionSpan(node)
+	return &typecheck.Error{Rule: "script-injection", Code: code, Message: fmt.Sprintf(format, args...), Offset: span.Start, EndOffset: span.End, Position: span.Position}
 }
 
-func checkUntrustedInputs(expr exprsyntax.Node) []*exprlang.Error {
+func checkUntrustedInputs(expr syntax.Node) []*typecheck.Error {
 	checker := NewUntrustedInputChecker(BuiltinUntrustedInputs)
-	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
+	syntax.Visit(expr, func(node, _ syntax.Node, entering bool) {
 		if entering {
 			checker.OnVisitNodeEnter(node)
 		} else {

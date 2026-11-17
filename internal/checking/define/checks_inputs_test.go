@@ -7,10 +7,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestActionSupportComesFromDeclaration(t *testing.T) {
@@ -19,7 +19,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 		t.Run(map[bool]string{false: "workflow", true: "workflow and actions"}[supportsActions], func(t *testing.T) {
 			t.Parallel()
 			native := rule.Declaration{Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions}
-			checks := Checks{Step: func(declaration.Step) []reporting.StepFinding { return nil }}
+			checks := Checks{Step: func(workflows.Step) []reporting.StepFinding { return nil }}
 			rules, err := configuration.NewRuleSet([]rule.Declaration{native})
 			if err != nil {
 				t.Fatal(err)
@@ -35,11 +35,11 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	t.Parallel()
 	const source = "name: Native\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: work\n        run: echo ok\n"
-	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
+	parsed, errs := parser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := declaration.Bind("test", source, parsed, false, "").Workflow()
+	workflow := workflows.Bind("test", source, parsed, false, "").Workflow()
 	job, found := workflow.Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")
@@ -53,7 +53,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			calls := 0
 			switch scope {
 			case "workflow":
-				checks.Workflow = func(input declaration.Workflow) []reporting.StepFinding {
+				checks.Workflow = func(input workflows.Workflow) []reporting.StepFinding {
 					if input.Name.Text() != "Native" {
 						t.Fatal("callback received a different workflow")
 					}
@@ -61,7 +61,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "job":
-				checks.Job = func(input declaration.Job) []reporting.StepFinding {
+				checks.Job = func(input workflows.Job) []reporting.StepFinding {
 					if input.ID.Text() != "build" {
 						t.Fatal("callback received a different job")
 					}
@@ -69,13 +69,13 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "step":
-				checks.Step = func(input declaration.Step) []reporting.StepFinding {
+				checks.Step = func(input workflows.Step) []reporting.StepFinding {
 					if input.Reference() != step.Reference() {
 						t.Fatal("callback received a different step")
 					}
 					calls++
 					collector := reporting.Collector{Step: input}
-					collector.Errorf(sourcepos.NilUnlessPresent(input.Position()), "test finding")
+					collector.Errorf(sourcetext.NilUnlessPresent(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}

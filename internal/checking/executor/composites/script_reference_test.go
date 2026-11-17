@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -23,7 +23,7 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: localactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -67,13 +67,13 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := workspaceactions.NewCache(t.Context(), root, nil)
-	actionCapture, err := snapshots.Capture(actionPath, actionContent, source.YAML)
+	cache := localactions.NewCache(t.Context(), root, nil)
+	actionCapture, err := snapshots.Capture(actionPath, actionContent, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
-	resolver := workspaceactions.NewResolver(cache, map[string]string{"./generated": "./source"})
+	cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
+	resolver := localactions.NewResolver(cache, map[string]string{"./generated": "./source"})
 	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts))
 	}
 	indexes := parsing.References(path, content, document, result.Sources, files.PhysicalPath)
-	declarations := map[source.Reference]bool{}
+	declarations := map[sourcetext.Reference]bool{}
 	for _, reference := range indexes[actionPath].Steps {
 		declarations[reference] = true
 	}

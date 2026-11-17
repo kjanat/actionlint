@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-func runOfflineCommand(t *testing.T, acquisition pluginacquisition.Settings, input string, args ...string) (int, string, string) {
+func runOfflineCommand(t *testing.T, acquisition pluginacquisition.Options, input string, args ...string) (int, string, string) {
 	t.Helper()
 	var out, log bytes.Buffer
 	cmd := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &log, Acquisition: acquisition}
@@ -28,11 +28,11 @@ func runOfflineCommand(t *testing.T, acquisition pluginacquisition.Settings, inp
 func TestCacheWarmThenOfflineConfigurationAndPlugin(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	const base = "https://config.example/team/base.yaml"
 	const parent = "https://config.example/defaults.yaml"
 	const module = "https://config.example/no-sudo.wasm"
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestCacheWarmThenOfflineConfigurationAndPlugin(t *testing.T) {
 	registry.ResetRequests()
 	registry.SetOffline(true)
 	status, out, log = runOfflineCommand(t, acquisition, "", append([]string{"check", "--offline"}, args...)...)
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("offline status=%d stdout=%s stderr=%s: %v", status, out, log, err)
 	}
@@ -85,7 +85,7 @@ func TestOfflineColdCacheWarnsWithoutRequests(t *testing.T) {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			status, out, log := runOfflineCommand(t, acquisition, "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", append([]string{"--offline"}, args...)...)
 			if status != 0 || !strings.Contains(log, "warning:") || !strings.Contains(log, "--offline") {
 				t.Fatalf("status=%d stdout=%s stderr=%s", status, out, log)
@@ -102,7 +102,7 @@ func TestCacheWarmThenOfflineNamedAction(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	var requests []string
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 	input := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"
 	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "-")
 	if status != 0 {
@@ -117,7 +117,7 @@ func TestCacheWarmThenOfflineNamedAction(t *testing.T) {
 		t.Fatalf("warm saved references=%v err=%v stdout=%s stderr=%s requests=%v", refs, err, out, log, requests)
 	}
 	status, out, log = runOfflineCommand(t, acquisition, input, "check", "--offline", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "--summary=false", "-")
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("status=%d stdout=%s stderr=%s: %v", status, out, log, err)
 	}
@@ -137,7 +137,7 @@ func TestOfflineRejectsCorruptCachedPlugin(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, digest), []byte("wrong bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	status, out, log := runOfflineCommand(t, pluginacquisition.Settings{UserCacheDir: cache}, "", "check", "--offline", "--no-config", "--plugin", "https://plugins.example/plugin.wasm#sha256="+digest, "-")
+	status, out, log := runOfflineCommand(t, pluginacquisition.Options{UserCacheDir: cache}, "", "check", "--offline", "--no-config", "--plugin", "https://plugins.example/plugin.wasm#sha256="+digest, "-")
 	if status == 0 || !strings.Contains(log, "SHA256 mismatch") {
 		t.Fatalf("status=%d stdout=%s stderr=%s", status, out, log)
 	}
@@ -145,7 +145,7 @@ func TestOfflineRejectsCorruptCachedPlugin(t *testing.T) {
 
 func TestOfflineHTTPGuardWithExplicitEndpoint(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("offline contacted %s", r.URL)
 		return nil, nil
 	})}}
@@ -159,7 +159,7 @@ func TestCacheWarmDoesNotReportSuccessForMissingWorkflow(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetOffline(true)
-	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	input := "on: push\npermissions: {}\njobs: {call: {uses: example/workflows/.github/workflows/build.yml@" + strings.Repeat("a", 40) + "}}\n"
 	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "-")
 	if status != 3 || strings.Contains(out, "cache_directory") || !strings.Contains(log, "could not cache") {

@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -26,14 +26,14 @@ func TestCheckResultSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: sourcepos.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
-	entry := sourcepos.Reference{Document: "/work/ci.yml", Revision: "abc", Node: "root"}
+	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: sourcetext.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
+	entry := sourcetext.Reference{Document: "/work/ci.yml", Revision: "abc", Node: "root"}
 	partial.IncompleteChecks = append(partial.IncompleteChecks, report.IncompleteCheck{
-		Source:     sourcepos.Reference{Document: "/work/action.yml", Revision: "def"},
+		Source:     sourcetext.Reference{Document: "/work/action.yml", Revision: "def"},
 		Invocation: report.CheckInvocation{Entry: entry, ID: invocation.ID(strings.Repeat("a", 64))},
 		Rule:       "shellcheck", Reason: "tool unavailable",
 	})
-	encoded, err := json.Marshal(commandstatus.AnalysisResult(partial))
+	encoded, err := json.Marshal(exitcode.AnalysisResult(partial))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ runs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := commandstatus.NewCheckResult(0)
+		result := exitcode.NewCheckResult(0)
 		result.Documents = analysis.Documents
 		data, err := json.Marshal(result)
 		if err != nil {
@@ -123,7 +123,7 @@ runs:
 		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"jobs":[],"runs":{"kind":"composite","steps":[]}}`,
 		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"runs":{"kind":"javascript","using":"node24","steps":[]}}`,
 	} {
-		data, err := json.Marshal(commandstatus.NewCheckResult(0))
+		data, err := json.Marshal(exitcode.NewCheckResult(0))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -140,10 +140,10 @@ runs:
 			t.Fatalf("schema accepted mixed document/runtime: %s", invalid)
 		}
 	}
-	diagnostic := diagmodel.Diagnostic{
+	diagnostic := results.Diagnostic{
 		Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
-		Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Snippet: "echo $value",
-		Fixes: []diagmodel.Fix{{Description: "Quote", Edits: []diagmodel.Edit{{Path: "ci.yml", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
+		Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 3, Column: 4}, Snippet: "echo $value",
+		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: "ci.yml", Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
 	}
 	for _, tc := range []struct {
 		name     string
@@ -160,9 +160,9 @@ runs:
 			for _, blocking := range tc.blocking {
 				finding := diagnostic
 				finding.NonBlocking = !blocking
-				analysis.Diagnostics = append(analysis.Diagnostics, diagmodel.PublishedDiagnostic{Diagnostic: finding})
+				analysis.Diagnostics = append(analysis.Diagnostics, results.PublishedDiagnostic{Diagnostic: finding})
 			}
-			result := commandstatus.AnalysisResult(analysis)
+			result := exitcode.AnalysisResult(analysis)
 			data, err := json.Marshal(result)
 			if err != nil {
 				t.Fatal(err)
@@ -185,7 +185,7 @@ runs:
 		})
 	}
 	for _, code := range []int{0, 1, 2, 3, 99} {
-		result := commandstatus.NewCheckResult(code)
+		result := exitcode.NewCheckResult(code)
 		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(`on: push
 jobs:
   test:
@@ -199,7 +199,7 @@ permissions: {}
 		}
 		result.Documents = analysis.Documents
 		if code == 1 || code == 3 {
-			result.Diagnostics = []diagmodel.Diagnostic{diagnostic}
+			result.Diagnostics = []results.Diagnostic{diagnostic}
 		}
 		if code < 2 {
 			count := 1
@@ -207,18 +207,18 @@ permissions: {}
 		} else {
 			result.Error = "could not complete"
 		}
-		var output bytes.Buffer
-		if err := render.WriteJSON(&output, result, false); err != nil {
+		var rendered bytes.Buffer
+		if err := output.WriteJSON(&rendered, result, false); err != nil {
 			t.Fatal(err)
 		}
 		var value map[string]any
-		if err := json.Unmarshal(output.Bytes(), &value); err != nil {
+		if err := json.Unmarshal(rendered.Bytes(), &value); err != nil {
 			t.Fatal(err)
 		}
 		// Future additive metadata is accepted without losing the status constraints.
 		value["future"] = map[string]any{"jobs": []string{"test"}}
 		if err := schema.Validate(value); err != nil {
-			t.Fatalf("exit %d: %v\n%s", code, err, &output)
+			t.Fatalf("exit %d: %v\n%s", code, err, &rendered)
 		}
 		value["completed"] = !result.Completed
 		if err := schema.Validate(value); err == nil {
@@ -250,10 +250,10 @@ permissions: {}
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := commandstatus.NewCheckResult(1)
-	result.Diagnostics = []diagmodel.Diagnostic{diagnostic, diagnostic}
+	result := exitcode.NewCheckResult(1)
+	result.Diagnostics = []results.Diagnostic{diagnostic, diagnostic}
 	var lines bytes.Buffer
-	if err := render.WriteJSON(&lines, result, true); err != nil {
+	if err := output.WriteJSON(&lines, result, true); err != nil {
 		t.Fatal(err)
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(lines.String()), "\n") {
@@ -266,7 +266,7 @@ permissions: {}
 		}
 		var record struct {
 			SchemaVersion int `json:"schema_version"`
-			diagmodel.Diagnostic
+			results.Diagnostic
 		}
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			t.Fatal(err)

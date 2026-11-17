@@ -3,15 +3,15 @@ package suspicious
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestConditionValuesUseCheckedTypes(t *testing.T) {
@@ -27,13 +27,13 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node, err, _ := exprsyntax.ParseConditionExpression(tc.source)
+			node, err, _ := syntax.ParseConditionExpression(tc.source)
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			checked := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+			checked := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if !checked.Valid {
 				t.Fatal(checked.Findings)
 			}
@@ -41,7 +41,7 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 				t.Fatalf("type checker emitted policy findings: %v", checked.Findings)
 			}
 			for _, enabled := range []bool{false, true} {
-				var findings []*exprlang.Error
+				var findings []*typecheck.Error
 				if enabled {
 					findings = append(StringConditions(node, checked.Types), MixedTypeComparisons(node, checked.Types)...)
 				}
@@ -59,7 +59,7 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 					}
 				}
 			}
-			if findings := append(StringConditions(node, exprlang.InferredTypes{}), MixedTypeComparisons(node, exprlang.InferredTypes{})...); len(findings) != 0 {
+			if findings := append(StringConditions(node, typecheck.InferredTypes{}), MixedTypeComparisons(node, typecheck.InferredTypes{})...); len(findings) != 0 {
 				t.Fatalf("unchecked syntax acquired policy findings: %v", findings)
 			}
 			if checked.Type.Kind() != exprtypes.KindString && tc.rule == "string-conditions" && tc.source == "env.FLAG" {

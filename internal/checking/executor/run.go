@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"slices"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -48,12 +48,12 @@ type preparedRegistration struct {
 	prepare         func(context.Context, checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error)
 	descriptor      checkinputs.Descriptor
 	options         []byte
-	availableInputs []rulemeta.InputKind
+	availableInputs []rule.InputKind
 	rawErrors       bool
 }
 
 // Prepare validates a registration once for an exact set of available input kinds.
-func Prepare(registration checkinputs.Registration, available []rulemeta.InputKind) (PreparedRegistration, error) {
+func Prepare(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
 	if validation.IsNil(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
@@ -83,7 +83,7 @@ func Prepare(registration checkinputs.Registration, available []rulemeta.InputKi
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration checkinputs.Registration, available []rulemeta.InputKind) (PreparedRegistration, error) {
+func PrepareForwarding(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err
@@ -92,16 +92,16 @@ func PrepareForwarding(registration checkinputs.Registration, available []ruleme
 	return prepared, nil
 }
 
-func supportedInputKind(kind rulemeta.InputKind) bool {
+func supportedInputKind(kind rule.InputKind) bool {
 	switch kind {
-	case rulemeta.Source, rulemeta.Scripts, rulemeta.Mappings, rulemeta.Invocations, rulemeta.Execution, rulemeta.Dependencies:
+	case rule.Source, rule.Scripts, rule.Mappings, rule.Invocations, rule.Execution, rule.Dependencies:
 		return true
 	default:
 		return false
 	}
 }
 
-func validateAvailableInputs(available []rulemeta.InputKind) ([]rulemeta.InputKind, error) {
+func validateAvailableInputs(available []rule.InputKind) ([]rule.InputKind, error) {
 	inputKinds := slices.Clone(available)
 	slices.Sort(inputKinds)
 	for i, kind := range inputKinds {

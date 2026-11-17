@@ -5,13 +5,13 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +22,7 @@ type ReusableWorkflowMetadataLookup interface {
 
 type cacheModeVisit struct {
 	spec string
-	mode workflowlang.CacheModeKind
+	mode definition.CacheModeKind
 }
 
 type operationCheck struct {
@@ -30,26 +30,26 @@ type operationCheck struct {
 	findings []results.Diagnostic
 }
 
-func (r *operationCheck) Errorf(pos source.Position, format string, args ...any) {
+func (r *operationCheck) Errorf(pos sourcetext.Position, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "cache-operation", format, args...))
 }
 
 // CheckCallOperations applies the caller's ceiling to inherited callee operations.
 // Results belong to the call site; policy evaluation is never cached with metadata.
-func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup ReusableWorkflowMetadataLookup) []results.Diagnostic {
+func CheckCallOperations(call *definition.WorkflowCall, granted *definition.CacheMode, lookup ReusableWorkflowMetadataLookup) []results.Diagnostic {
 	if call == nil || call.Uses == nil || lookup == nil {
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(source.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(sourcetext.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cache.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cachemodel.Grant, checked map[cacheModeVisit]bool) {
-	spec, local := references.LocalWorkflow(sourceSpec)
+func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
+	spec, local := callreferences.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
@@ -72,7 +72,7 @@ func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec str
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		own := cachemodel.FromMetadata(job.Mode)
+		own := cache.FromMetadata(job.Mode)
 		mode := granted.Override(own)
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid || known && valid && want&^have != 0 {
@@ -94,18 +94,18 @@ func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec str
 }
 
 // CheckStep reports cache action operations disabled by an explicit cache mode.
-func CheckStep(step declaration.Step, mode *workflowlang.CacheMode) []results.Diagnostic {
+func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagnostic {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil {
 		return nil
 	}
-	access, valid := cachemodel.FromDeclaration(mode).Capabilities()
+	access, valid := cache.FromDeclaration(mode).Capabilities()
 	if !valid {
 		return nil
 	}
-	name := references.CacheAction(action.Uses.Value)
+	name := callreferences.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
-		return []results.Diagnostic{report(source.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
+		return []results.Diagnostic{report(sourcetext.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}
 	return nil
 }

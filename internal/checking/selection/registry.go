@@ -7,16 +7,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	repository "actionlint.kjanat.dev/v2/internal/model/repository"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-type Selection struct {
+// CheckSelection holds the workflow rules and script checkers that
+// configuration enables, and the checks that cannot run because their
+// required inputs are unknown.
+type CheckSelection struct {
 	Unavailable []UnavailableCheck
 	Rules       []workflowvisit.Rule
 	Scripts     []checkinputs.Checker
@@ -28,10 +31,10 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
-func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (Selection, error) {
+func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (CheckSelection, error) {
 	inputs.Rules = ruleSet
-	var selected Selection
-	for _, descriptor := range ruleexec.Registrations(ruleSet) {
+	var selected CheckSelection
+	for _, descriptor := range registration.Registrations(ruleSet) {
 		if descriptor.Build == nil && descriptor.Script == nil || action && !descriptor.SupportsActions {
 			continue
 		}
@@ -103,7 +106,7 @@ func Describe(ruleSet configuration.RuleSet, rules []workflowvisit.Rule) []rule.
 
 func Templates(ruleSet configuration.RuleSet) []rule.Descriptor {
 	var rules []rule.Descriptor
-	for _, descriptor := range ruleexec.Registrations(ruleSet) {
+	for _, descriptor := range registration.Registrations(ruleSet) {
 		if descriptor.Provider == "actionlint" && descriptor.Build == nil && descriptor.Script == nil {
 			rules = append(rules, descriptor.Descriptor.Clone())
 		}

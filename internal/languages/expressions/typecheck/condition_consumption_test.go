@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestConditionSourceFullConsumption(t *testing.T) {
@@ -16,7 +16,7 @@ func TestConditionSourceFullConsumption(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			expr, err, _ := exprsyntax.ParseConditionExpression(source)
+			expr, err, _ := syntax.ParseConditionExpression(source)
 			if err == nil || expr != nil {
 				t.Fatalf("accepted incomplete condition: expr=%v err=%v", expr, err)
 			}

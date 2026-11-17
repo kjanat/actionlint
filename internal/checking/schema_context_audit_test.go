@@ -6,13 +6,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
@@ -168,7 +168,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workflow, workflowvisit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow, workflowvisit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -180,7 +180,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 	if err != nil {
 		t.Fatal(err)
 	}
-	runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	runners, err := runneracquisition.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,11 +189,11 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 		t.Fatal("source snapshot has no workflow")
 	}
 	rules := ConfigurationRules()
-	for _, descriptor := range ruleexec.Registrations(rules) {
+	for _, descriptor := range registration.Registrations(rules) {
 		if descriptor.Name == "expression" {
 			return workflow, descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return workflowdecl.Workflow{}, nil
+	return workflows.Workflow{}, nil
 }

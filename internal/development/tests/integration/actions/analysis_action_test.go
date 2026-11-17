@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"golang.org/x/sys/execabs"
 )
@@ -76,7 +76,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			outline, ok := result.Documents[0].(documentmodel.Action)
+			outline, ok := result.Documents[0].(outline.Action)
 			if !ok || outline.ParseStatus == "failed" {
 				t.Fatalf("expected decoded action outline, got %#v", result.Documents)
 			}
@@ -86,7 +86,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 				}
 				return
 			}
-			matches := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d diagmodel.PublishedDiagnostic) bool { return !strings.Contains(d.Message, tc.message) })
+			matches := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d results.PublishedDiagnostic) bool { return !strings.Contains(d.Message, tc.message) })
 			if len(matches) != 1 || matches[0].Start.Line != tc.line || matches[0].Path != "action.yml" {
 				t.Fatalf("want %q at action.yml:%d; got %+v (all: %+v)", tc.message, tc.line, matches, result.Diagnostics)
 			}
@@ -107,10 +107,10 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if len(result.Documents) != 3 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" {
 		t.Fatalf("unexpected mixed result: %+v", result)
 	}
-	if _, ok := result.Documents[0].(documentmodel.Workflow); !ok {
+	if _, ok := result.Documents[0].(outline.WorkflowOutline); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
-	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus != "failed" {
+	if outline, ok := result.Documents[2].(outline.Action); !ok || outline.ParseStatus != "failed" {
 		t.Fatalf("broken action outline: %#v", result.Documents[2])
 	}
 }
@@ -129,7 +129,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
 			}
-			if _, ok := result.Documents[0].(documentmodel.Workflow); !ok {
+			if _, ok := result.Documents[0].(outline.WorkflowOutline); !ok {
 				t.Fatalf("cwd=%s path=%s: workflow routed to metadata parser: %#v", cwd, path, result.Documents)
 			}
 		}
@@ -218,9 +218,9 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			var requestSources []workspace.InputFile
 			source := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
-				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: executable}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: executable}})
 			} else {
-				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: executable}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"ruff": {Command: executable}})
 				source = strings.Replace(testutil.CompositeAction, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
@@ -229,7 +229,7 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == tool && d.Start.Line == 6 && d.Path == "action.yml"
 			}) {
 				t.Fatalf("missing %s at action.yml:6: %+v", tool, result.Diagnostics)
@@ -258,7 +258,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: root,
 
-				Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: executable}}),
+				Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: executable}}),
 			}, []workspace.InputFile{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},

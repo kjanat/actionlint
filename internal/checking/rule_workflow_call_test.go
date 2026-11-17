@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
@@ -112,9 +112,9 @@ jobs:
 				}
 			}
 			project := workspace.Identity(root)
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
-			checkDiagnostics := func(diagnostics []*findingmodel.Finding, includeCallee bool) {
+			checkDiagnostics := func(diagnostics []*finding.Finding, includeCallee bool) {
 				t.Helper()
 				if !includeCallee {
 					if len(diagnostics) != 0 {

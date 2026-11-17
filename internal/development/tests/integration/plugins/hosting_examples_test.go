@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-var _ interface{ Limits() corewasm.Limits } = (*corewasm.Engine)(nil)
+var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()
-	component, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), componenthost.Options{})
+	component, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -40,7 +40,7 @@ func Example_componentLoading() {
 
 func Example_moduleLoading() {
 	ctx := context.Background()
-	engine, err := corewasm.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -63,7 +63,7 @@ func Example_moduleLoading() {
 
 func Example_componentScriptEngine() {
 	ctx := context.Background()
-	engine, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), componenthost.Options{})
+	engine, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "script-engine.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return

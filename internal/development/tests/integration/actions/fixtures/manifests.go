@@ -1,5 +1,5 @@
-// Package actionfixtures supplies captured remote manifests owned by the action integration suite.
-package actionfixtures
+// Package fixtures supplies captured remote manifests owned by the action integration suite.
+package fixtures
 
 import "embed"
 

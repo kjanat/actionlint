@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 func TestConfigValidationWarnings(t *testing.T) {
@@ -64,14 +64,14 @@ config-variable: [TYPO]
 }
 
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
 	acquisition := registryAcquisition(registry)
 	// Config inspection loads both installed plugins, which need distinct rule names.
-	other, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/insecure-download.wasm")
+	other, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ lint:
 		if err := os.WriteFile(config, []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		result, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: config}, true)
+		result, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: config}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

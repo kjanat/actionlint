@@ -6,14 +6,14 @@ import (
 	"slices"
 )
 
-// Settings describes the configuration accepted by a tool provider.
-type Settings struct {
+// Spec describes the configuration accepted by a tool provider.
+type Spec struct {
 	Schema     json.RawMessage
 	Shorthands map[string]Shorthand
 	ReadsFiles bool
 }
 
-func (s Settings) Clone() Settings {
+func (s Spec) Clone() Spec {
 	s.Schema = slices.Clone(s.Schema)
 	shorthands := maps.Clone(s.Shorthands)
 	for name, shorthand := range s.Shorthands {

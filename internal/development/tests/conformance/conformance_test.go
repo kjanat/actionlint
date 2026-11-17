@@ -20,27 +20,28 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"github.com/google/go-cmp/cmp"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -438,8 +439,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	t.Helper()
 	switch c.Kind {
 	case "expression":
-		parser := exprsyntax.Parser{}
-		lexer := exprsyntax.NewLexer(c.Input + "}}")
+		parser := syntax.Parser{}
+		lexer := syntax.NewLexer(c.Input + "}}")
 		node, err := parser.ParseExpression(lexer)
 		if err != nil {
 			return []string{err.Error()}
@@ -447,35 +448,35 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-		contexts := map[string]exprtypes.Type{}
+		checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+		knownContexts := map[string]exprtypes.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprtypes.AnyType()
+			knownContexts[strings.ToLower(name)] = exprtypes.AnyType()
 		}
-		checker.SetContextTypes(contexts)
-		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
-		var diagnostics []*exprlang.Error
+		checker.SetContextTypes(knownContexts)
+		checker.SetContextAvailability(slices.Sorted(maps.Keys(knownContexts)))
+		var diagnostics []*typecheck.Error
 		// GitHub's parser checks symbols and arity, but leaves coercion and evaluation to its evaluator.
-		exprsyntax.Visit(node, func(n, _ exprsyntax.Node, entering bool) {
+		syntax.Visit(node, func(n, _ syntax.Node, entering bool) {
 			if !entering {
 				return
 			}
 			switch n := n.(type) {
-			case *exprsyntax.VariableNode:
-				_, errs := checker.Check(expreval.EvaluateSubexpressions(n))
+			case *syntax.VariableNode:
+				_, errs := checker.Check(evaluate.EvaluateSubexpressions(n))
 				diagnostics = append(diagnostics, errs...)
-			case *exprsyntax.FuncCallNode:
-				callChecker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			case *syntax.FuncCallNode:
+				callChecker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 				callChecker.SetContextTypes(map[string]exprtypes.Type{"argument": exprtypes.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
-				callChecker.SetFunctionAvailability(contextspec.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
-				args := make([]exprsyntax.Node, len(n.Args))
+				callChecker.SetFunctionAvailability(contexts.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
+				args := make([]syntax.Node, len(n.Args))
 				for i := range args {
-					parsed, err := parser.ParseExpression(exprsyntax.NewLexer("argument}}"))
+					parsed, err := parser.ParseExpression(syntax.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					argument, ok := parsed.(*exprsyntax.VariableNode)
+					argument, ok := parsed.(*syntax.VariableNode)
 					if !ok {
 						t.Fatalf("argument placeholder parsed as %T", parsed)
 					}
@@ -484,7 +485,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				}
 				call := *n
 				call.Args = args
-				_, errs := callChecker.Check(expreval.EvaluateSubexpressions(&call))
+				_, errs := callChecker.Check(evaluate.EvaluateSubexpressions(&call))
 				diagnostics = append(diagnostics, errs...)
 			}
 		})
@@ -496,22 +497,22 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	case "workflow":
 		// The pinned SchemaStore and runner archives were captured on 2026-09-08.
 		// Keep lifecycle observations stable as the wall clock advances.
-		asOf, err := runner.ParseDate("2026-09-08")
+		asOf, err := runnerapi.ParseDate("2026-09-08")
 		if err != nil {
 			t.Fatal(err)
 		}
 		config := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
 			Preset:      "none",
-			Correctness: configuration.NewGroup("recommended", "", nil),
-			Suspicious:  configuration.NewGroup("recommended", "", nil),
+			Correctness: ruleconfig.NewGroup("recommended", "", nil),
+			Suspicious:  ruleconfig.NewGroup("recommended", "", nil),
 		}}}
-		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
+		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runnerapi.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		errs := make([]*findingmodel.Finding, 0, len(result.Diagnostics))
+		errs := make([]*finding.Finding, 0, len(result.Diagnostics))
 		for _, d := range result.Diagnostics {
-			errs = append(errs, &findingmodel.Finding{Diagnostic: d.Diagnostic})
+			errs = append(errs, &finding.Finding{Diagnostic: d.Diagnostic})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
@@ -549,7 +550,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			}
 		}
 		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
-		out := upstreamDiagnostics(actioncheck.Check(meta, &source.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
+		out := upstreamDiagnostics(actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")
@@ -575,7 +576,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	}
 }
 
-func upstreamDiagnostics(errs []*findingmodel.Finding) []string {
+func upstreamDiagnostics(errs []*finding.Finding) []string {
 	out := make([]string, 0, len(errs))
 	for _, err := range errs {
 		err.Path = filepath.ToSlash(err.Path)

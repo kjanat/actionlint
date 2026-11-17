@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -20,9 +20,9 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
+	request := doctorRequest{Config: configuration.ConfigFileSelection{Disabled: true}, Tools: registry.ToolSelections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
 	var text, data bytes.Buffer
-	if err := writeDoctor(t.Context(), &text, request, pluginacquisition.Settings{}); err != nil {
+	if err := writeDoctor(t.Context(), &text, request, pluginacquisition.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	values := map[string]string{}
@@ -45,7 +45,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
-	if err := writeDoctor(t.Context(), &data, request, pluginacquisition.Settings{}); err != nil {
+	if err := writeDoctor(t.Context(), &data, request, pluginacquisition.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	var report struct {

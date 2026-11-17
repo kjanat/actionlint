@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
@@ -94,7 +94,7 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 
 func TestRulesIncludesSelectedPluginMetadata(t *testing.T) {
 	t.Parallel()
-	path := "internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"
+	path := "internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"
 	got := testRunCommand("", "rules", "no-sudo", "--plugin", path, "--json")
 	var descriptor rule.Descriptor
 	if err := json.Unmarshal([]byte(got.Stdout), &descriptor); err != nil || got.Status != 0 {

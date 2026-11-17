@@ -3,13 +3,13 @@ package scripts
 import (
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // FromRun extracts declared script text and shell with their original source mapping.
-func FromRun(run *workflowlang.ExecRun) Declaration {
+func FromRun(run *definition.ExecRun) Declaration {
 	if run == nil {
 		return Declaration{}
 	}
@@ -19,17 +19,17 @@ func FromRun(run *workflowlang.ExecRun) Declaration {
 }
 
 // FromInput extracts script text supplied as an action input. It declares no shell.
-func FromInput(input *workflowlang.ActionArgument) Declaration {
+func FromInput(input *definition.ActionArgument) Declaration {
 	if input == nil {
 		return Declaration{}
 	}
 	return fromSource(input.Value, input.Source)
 }
 
-func fromSource(text *workflowlang.String, source *workflowlang.ScriptSource) Declaration {
+func fromSource(text *definition.String, source *definition.ScriptSource) Declaration {
 	declaration := Declaration{Text: text.Text()}
 	if position, present := text.Position(); present {
-		declaration.Start = sourcepos.ZeroIfNil(&position)
+		declaration.Start = sourcetext.ZeroIfNil(&position)
 	}
 	if source != nil {
 		// Spans index the decoded value; a value replaced after a parse error
@@ -37,7 +37,7 @@ func fromSource(text *workflowlang.String, source *workflowlang.ScriptSource) De
 		if source.Value == declaration.Text {
 			declaration.Spans = slices.Clone(source.Spans)
 		}
-		declaration.Comments = workflowfacts.SourceComments(source.Comments)
+		declaration.Comments = facts.SourceComments(source.Comments)
 	}
 	return declaration
 }

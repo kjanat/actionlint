@@ -6,13 +6,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/glob"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflownames "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/knownvalues"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
 
 // GlobRule is the single definition of the glob rule.
@@ -29,11 +29,11 @@ var GlobRule = &define.Rule{
 type globCheck struct{ reporting.Collector }
 
 // GlobWorkflow validates patterns in event declarations.
-func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
+func GlobWorkflow(n workflows.Workflow) []reporting.StepFinding {
 	rule := &globCheck{}
 
 	for _, e := range n.On {
-		if webhook, ok := e.(*workflowlang.WebhookEvent); ok {
+		if webhook, ok := e.(*definition.WebhookEvent); ok {
 			rule.checkGitRefGlobs(webhook.Branches)
 			rule.checkGitRefGlobs(webhook.BranchesIgnore)
 			rule.checkGitRefGlobs(webhook.Tags)
@@ -41,7 +41,7 @@ func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
 			rule.checkFilePathGlobs(webhook.Paths)
 			rule.checkFilePathGlobs(webhook.PathsIgnore)
 			rule.checkWorkflowNameGlobs(webhook.Workflows)
-		} else if image, ok := e.(*workflowlang.ImageVersionEvent); ok {
+		} else if image, ok := e.(*definition.ImageVersionEvent); ok {
 			for _, v := range image.Versions {
 				rule.checkRefGlob(v)
 			}
@@ -50,21 +50,21 @@ func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
-	allValid, positive := len(names) != 0, false
-	for _, name := range names {
+func (rule *globCheck) checkWorkflowNameGlobs(workflowNames []*definition.String) {
+	allValid, positive := len(workflowNames) != 0, false
+	for _, name := range workflowNames {
 		if name == nil {
 			allValid = false
 			continue
 		}
 		value, evaluated := name.Value, false
-		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
+		if literal := syntax.LiteralExpressionValue(value); literal != nil {
 			value, evaluated = *literal, true
 		} else if name.ContainsExpression() {
 			allValid = false
 			continue
 		}
-		if workflownames.ValidPattern(value) {
+		if names.ValidPattern(value) {
 			positive = positive || !strings.HasPrefix(value, "!")
 			continue
 		}
@@ -84,23 +84,23 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
 		rule.globErrors(errs, name.Pos, name.Quoted && !evaluated)
 	}
 	if allValid && !positive {
-		rule.Error(names[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
+		rule.Error(workflowNames[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
 	}
 }
 
-func GlobJob(n declaration.Job) []reporting.StepFinding {
+func GlobJob(n workflows.Job) []reporting.StepFinding {
 	rule := &globCheck{}
 	if n.Snapshot == nil {
 		return rule.Findings
 	}
 	if expression := n.Snapshot.Expression; expression != nil {
-		if value, known := workflowvalues.Constant(expression); known {
+		if value, known := knownvalues.Constant(expression); known {
 			if snapshot, ok := value.(map[string]any); ok {
 				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), expression.Pos)
 			}
 		}
 	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
-		if value, known := workflowvalues.Constant(version); known {
+		if value, known := knownvalues.Constant(version); known {
 			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {
@@ -109,8 +109,8 @@ func GlobJob(n declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
-	pattern, known := workflowlang.WorkflowScalarString(value)
+func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcetext.Position) {
+	pattern, known := definition.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
 	}
@@ -121,7 +121,7 @@ func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
 	rule.globErrors(errs, pos, false)
 }
 
-func (rule *globCheck) checkRefGlob(s *workflowlang.String) {
+func (rule *globCheck) checkRefGlob(s *definition.String) {
 	// Empty value is already checked by parser. Avoid duplicate errors
 	if s == nil || s.Value == "" {
 		return
@@ -129,7 +129,7 @@ func (rule *globCheck) checkRefGlob(s *workflowlang.String) {
 	rule.globErrors(glob.ValidateRefGlob(s.Value), s.Pos, s.Quoted)
 }
 
-func (rule *globCheck) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter) {
+func (rule *globCheck) checkGitRefGlobs(filter *definition.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}
@@ -138,7 +138,7 @@ func (rule *globCheck) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter)
 	}
 }
 
-func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilter) {
+func (rule *globCheck) checkFilePathGlobs(filter *definition.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}
@@ -150,7 +150,7 @@ func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilte
 	}
 }
 
-func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *sourcepos.Position, quoted bool) {
+func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *sourcetext.Position, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos

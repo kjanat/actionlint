@@ -6,17 +6,17 @@ import (
 	"slices"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 type runnerOSCompat uint
@@ -96,11 +96,11 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 type labelFact struct {
 	text   string
 	source string
-	start  sourcepos.Position
+	start  sourcetext.Position
 }
 
 type checker struct {
-	rejections    []runner.Rejection
+	rejections    []runnerapi.Rejection
 	labels        []string
 	compats       map[runnerOSCompat]labelFact
 	labelsKnown   bool
@@ -120,23 +120,23 @@ func KnownLabels(patterns []string) LabelSet {
 
 // LabelRejections returns spelling and compatibility rejections without assigning a lint rule.
 // Unknown repository labels do not establish that an unrecognized name is invalid.
-func LabelRejections(job workflowdecl.Job, customLabels LabelSet) []runner.Rejection {
+func LabelRejections(job workflows.Job, customLabels LabelSet) []runnerapi.Rejection {
 	if !job.Present() {
 		return nil
 	}
-	selection := workflowdecl.RunnerSelection(job.RunsOn)
-	strategy := workflowdecl.MatrixResolution(job.Strategy)
+	selection := workflows.RunnerSelection(job.RunsOn)
+	strategy := workflows.MatrixResolution(job.Strategy)
 	check := checker{labels: customLabels.patterns, labelsKnown: customLabels.known}
 	combinations, complete := strategy.DeclarationCombinations(256)
 	if !complete {
-		combinations = []matrixmodel.Combination{{}}
+		combinations = []matrix.Combination{{}}
 		for _, item := range selectionValues(selection) {
 			property := runnerMatrixProperty(item.Source())
 			if property == "" {
 				continue
 			}
 			for _, candidate := range strategy.DeclarationReachable(property).Values {
-				combinations = append(combinations, (matrixmodel.Combination{}).With(property, candidate))
+				combinations = append(combinations, (matrix.Combination{}).With(property, candidate))
 			}
 		}
 	}
@@ -148,8 +148,8 @@ func LabelRejections(job workflowdecl.Job, customLabels LabelSet) []runner.Rejec
 			check.checkSelector(selector)
 		}
 	}
-	var distinct []runner.Rejection
-	seen := map[runner.Rejection]bool{}
+	var distinct []runnerapi.Rejection
+	seen := map[runnerapi.Rejection]bool{}
 	for _, rejection := range check.rejections {
 		if !seen[rejection] {
 			seen[rejection] = true
@@ -159,7 +159,7 @@ func LabelRejections(job workflowdecl.Job, customLabels LabelSet) []runner.Rejec
 	return distinct
 }
 
-func (rule *checker) checkDeclaredSelection(selection value.Value, combination matrixmodel.Combination) {
+func (rule *checker) checkDeclaredSelection(selection value.Value, combination matrix.Combination) {
 	labels := selectionLabels(selection, combination)
 	allowNull := hasMatrixReference(selection)
 	if len(labels) == 0 {
@@ -177,23 +177,23 @@ func (rule *checker) checkDeclaredSelection(selection value.Value, combination m
 	}
 }
 
-func (rule *checker) checkSelector(selector runner.Selector) ([]value.Value, bool) {
+func (rule *checker) checkSelector(selector runnerapi.Selector) ([]value.Value, bool) {
 	rule.compats = map[runnerOSCompat]labelFact{}
 	rule.unknownLabels = false
 	unknown := selector.Expression != "" || selector.Incomplete
 	if selector.Group != nil {
-		_, unresolved := selector.Group.Value.(runner.Expression)
+		_, unresolved := selector.Group.Value.(runnerapi.Expression)
 		unknown = unknown || unresolved
 	}
 	var labels []value.Value
 	for _, constraint := range selector.Labels {
 		switch term := constraint.Value.(type) {
-		case runner.Literal:
+		case runnerapi.Literal:
 			item := value.FromJSON(string(term), value.Origin{Span: value.Span{Start: constraint.Position}})
 			labels = append(labels, item)
 			fact, _ := knownLabel(item)
 			rule.checkCompat(rule.verifyRunnerLabel(fact), fact)
-		case runner.Expression:
+		case runnerapi.Expression:
 			unknown = true
 		}
 	}
@@ -255,11 +255,11 @@ func (rule *checker) checkCompat(compat runnerOSCompat, label labelFact) {
 	}
 }
 
-func (rule *checker) Errorf(position sourcepos.Position, format string, args ...any) {
-	rule.rejections = append(rule.rejections, runner.Rejection{Position: position, Reason: fmt.Sprintf(format, args...)})
+func (rule *checker) Errorf(position sourcetext.Position, format string, args ...any) {
+	rule.rejections = append(rule.rejections, runnerapi.Rejection{Position: position, Reason: fmt.Sprintf(format, args...)})
 }
 
-func selectionLabels(selection value.Value, combination matrixmodel.Combination) []value.Value {
+func selectionLabels(selection value.Value, combination matrix.Combination) []value.Value {
 	candidate := selection
 	if selection.State() == value.Dynamic {
 		if resolved, ok := resolveMatrixValue(selection, combination); ok {
@@ -284,7 +284,7 @@ func selectionLabels(selection value.Value, combination matrixmodel.Combination)
 	return expressionLabels(candidate, combination)
 }
 
-func expressionLabels(expression value.Value, combination matrixmodel.Combination) []value.Value {
+func expressionLabels(expression value.Value, combination matrix.Combination) []value.Value {
 	if expression.State() == value.Missing {
 		return nil
 	}
@@ -331,19 +331,19 @@ func knownLabel(candidate value.Value) (labelFact, bool) {
 }
 
 func runnerMatrixProperty(expression string) string {
-	var receiver exprsyntax.Node
+	var receiver syntax.Node
 	var property string
-	switch reference := exprsyntax.ParseAssignedExpression(strings.TrimSpace(expression)).(type) {
-	case *exprsyntax.ObjectDerefNode:
+	switch reference := syntax.ParseAssignedExpression(strings.TrimSpace(expression)).(type) {
+	case *syntax.ObjectDerefNode:
 		receiver, property = reference.Receiver, reference.Property
-	case *exprsyntax.IndexAccessNode:
-		key, literal := reference.Index.(*exprsyntax.StringNode)
+	case *syntax.IndexAccessNode:
+		key, literal := reference.Index.(*syntax.StringNode)
 		if !literal {
 			return ""
 		}
 		receiver, property = reference.Operand, key.Value
 	}
-	if context, variable := receiver.(*exprsyntax.VariableNode); variable && strings.EqualFold(context.Name, "matrix") {
+	if context, variable := receiver.(*syntax.VariableNode); variable && strings.EqualFold(context.Name, "matrix") {
 		return strings.ToLower(property)
 	}
 	return ""
@@ -374,7 +374,7 @@ func PlatformOf(selection value.Value) Platform {
 }
 
 func Labels(selection value.Value) []value.Value {
-	return selectionLabels(selection, matrixmodel.Combination{})
+	return selectionLabels(selection, matrix.Combination{})
 }
 
 func Hosted(selection value.Value) bool {

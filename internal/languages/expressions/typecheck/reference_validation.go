@@ -5,24 +5,24 @@ import (
 	"slices"
 	"strings"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/results/messages"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
 // validateReferences checks context names, availability and function signatures
 // before branch refinement. Execution reachability does not change those rules.
-func (sema *Checker) validateReferences(expr exprsyntax.Node) {
-	sema.callSignatures = make(map[*exprsyntax.FuncCallNode][]*exprfunctions.FuncSignature)
-	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
+func (sema *Checker) validateReferences(expr syntax.Node) {
+	sema.callSignatures = make(map[*syntax.FuncCallNode][]*functions.FuncSignature)
+	syntax.Visit(expr, func(node, _ syntax.Node, entering bool) {
 		if !entering {
 			return
 		}
-		if variable, ok := node.(*exprsyntax.VariableNode); ok {
+		if variable, ok := node.(*syntax.VariableNode); ok {
 			sema.validateContextReference(variable)
 			return
 		}
-		call, ok := node.(*exprsyntax.FuncCallNode)
+		call, ok := node.(*syntax.FuncCallNode)
 		if !ok {
 			return
 		}
@@ -46,7 +46,7 @@ func (sema *Checker) validateReferences(expr exprsyntax.Node) {
 	})
 }
 
-func (sema *Checker) validateContextReference(n *exprsyntax.VariableNode) {
+func (sema *Checker) validateContextReference(n *syntax.VariableNode) {
 	_, ok := sema.vars[n.Name]
 	if !ok {
 		if sigs, known := sema.funcs[n.Name]; known && len(sigs) > 0 {
@@ -91,7 +91,7 @@ func (sema *Checker) validateContextReference(n *exprsyntax.VariableNode) {
 	sema.checkAvailableContext(n)
 }
 
-func (sema *Checker) checkFunctionAvailability(n *exprsyntax.FuncCallNode) {
+func (sema *Checker) checkFunctionAvailability(n *syntax.FuncCallNode) {
 	availability, denied := sema.functionRestriction(n.Callee)
 	if !denied {
 		return
@@ -106,7 +106,7 @@ func (sema *Checker) checkFunctionAvailability(n *exprsyntax.FuncCallNode) {
 	)
 }
 
-func checkCallArity(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature) *Error {
+func checkCallArity(n *syntax.FuncCallNode, sig *functions.FuncSignature) *Error {
 	lp, la := len(sig.Params), len(n.Args)
 	if sig.MaxParams > 0 && la > sig.MaxParams {
 		return errorfAtCallee(argumentCount, n, "function %q takes at most %d arguments but %d arguments are given", n.Callee, sig.MaxParams, la)
@@ -120,13 +120,13 @@ func checkCallArity(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
 			sig.String(), atLeast, lp, la)
 	}
-	if sig.EvaluationPolicy == exprfunctions.EvaluateCase && la%2 == 0 {
+	if sig.EvaluationPolicy == functions.EvaluateCase && la%2 == 0 {
 		return errorfAtCallee(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", la)
 	}
 	return nil
 }
 
-func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunctions.FuncSignature {
+func (sema *Checker) resolveFunction(n *syntax.FuncCallNode) []*functions.FuncSignature {
 	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
@@ -134,10 +134,10 @@ func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunction
 		sigs, ok = overloads, true
 	}
 	if !ok {
-		functions := maps.Clone(sema.funcs)
-		maps.Copy(functions, sema.functionOverloads)
-		candidates := make([]string, 0, len(functions))
-		for name, signatures := range functions {
+		knownFunctions := maps.Clone(sema.funcs)
+		maps.Copy(knownFunctions, sema.functionOverloads)
+		candidates := make([]string, 0, len(knownFunctions))
+		for name, signatures := range knownFunctions {
 			if _, denied := sema.functionRestriction(name); denied {
 				continue
 			}
@@ -149,8 +149,8 @@ func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunction
 			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
 			return nil
 		}
-		ss := make([]string, 0, len(functions))
-		for n := range functions {
+		ss := make([]string, 0, len(knownFunctions))
+		for n := range knownFunctions {
 			ss = append(ss, n)
 		}
 		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, messages.SortedQuotes(ss))

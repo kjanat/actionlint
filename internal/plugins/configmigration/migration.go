@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -63,7 +63,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	if err != nil {
 		return nil, err
 	}
-	_, declaredLocally, err := configplugins.References(leaf.Value())
+	_, declaredLocally, err := plugins.References(leaf.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	}
 	content := migration.Content
 	if updatePlugins {
-		content, err = configplugins.EditManifest(migration.Path, migration.Content, refs)
+		content, err = plugins.EditManifest(migration.Path, migration.Content, refs)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ func (m *Migration) Apply(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	content, err := configplugins.EditManifest(m.Path, m.Content, resolved)
+	content, err := plugins.EditManifest(m.Path, m.Content, resolved)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 
 // MigrateSelection upgrades the local configs selection would read before
 // runtime plugin selection.
-func MigrateSelection(ctx context.Context, selection pluginselection.Selection, directory string, input inputmodel.Request, options installation.DefaultPluginOptions) error {
+func MigrateSelection(ctx context.Context, selection pluginselection.PluginSelection, directory string, input checkrequest.Request, options installation.DefaultPluginOptions) error {
 	if selection.Disabled || len(selection.Paths) != 0 {
 		return nil
 	}
@@ -247,7 +247,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 	}
 	starts := []string{directory}
 	switch {
-	case input.Kind == inputmodel.Files && len(input.Paths) != 0:
+	case input.Kind == checkrequest.Files && len(input.Paths) != 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -255,7 +255,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 			}
 			starts = append(starts, pluginselection.RepositorySearchStart(path))
 		}
-	case input.Kind == inputmodel.Stdin && input.Name != "" && input.Name != "<stdin>":
+	case input.Kind == checkrequest.Stdin && input.Name != "" && input.Name != "<stdin>":
 		path := input.Name
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(directory, path)
@@ -266,7 +266,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 			return err
 		}
 		starts = []string{filepath.Dir(path)}
-	case input.Kind == inputmodel.Stdin:
+	case input.Kind == checkrequest.Stdin:
 		return nil
 	}
 	seen := map[string]bool{}
@@ -284,7 +284,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 		if root == "" {
 			continue
 		}
-		path, err := configplugins.FindOrDefaultPath(filepath.Join(root, ".github"))
+		path, err := plugins.FindOrDefaultPath(filepath.Join(root, ".github"))
 		if err != nil {
 			return err
 		}
@@ -299,7 +299,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 		}{root, path})
 	}
 	if len(seen) > 1 {
-		// Check existing plugin scopes before planning migrations. pluginselection.Selection is
+		// Check existing plugin scopes before planning migrations. pluginselection.PluginSelection is
 		// read-only and catches active configs in repositories with no legacy file.
 		if _, err := selection.SelectForCache(ctx, directory, input); err != nil {
 			return err

@@ -4,13 +4,13 @@ import (
 	"cmp"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // FromWorkflow projects decoded workflow declarations into a report outline.
-func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool) Workflow {
-	outline := Workflow{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []Job{}}
+func FromWorkflow(path string, workflow *definition.Workflow, parseErrors bool) WorkflowOutline {
+	outline := WorkflowOutline{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []JobOutline{}}
 	if workflow == nil {
 		return outline
 	}
@@ -22,9 +22,9 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 	for _, event := range workflow.On {
 		outline.Triggers = append(outline.Triggers, event.EventName())
 	}
-	jobs := make([]Job, 0, len(workflow.Jobs))
+	jobs := make([]JobOutline, 0, len(workflow.Jobs))
 	for _, job := range workflow.Jobs {
-		record := Job{
+		record := JobOutline{
 			ID: outlineString(job.ID), Name: outlineString(job.Name), Start: outlinePosition(job.Pos),
 			Needs: []string{}, Steps: stepOutlines(job.Steps),
 		}
@@ -38,7 +38,7 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 		}
 		jobs = append(jobs, record)
 	}
-	slices.SortFunc(jobs, func(a, b Job) int {
+	slices.SortFunc(jobs, func(a, b JobOutline) int {
 		switch {
 		case a.Start != nil && b.Start != nil:
 			if order := cmp.Compare(a.Start.Line, b.Start.Line); order != 0 {
@@ -58,38 +58,35 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 	return outline
 }
 
-func stepOutlines(steps []*workflowlang.Step) []Step {
-	records := make([]Step, 0, len(steps))
+func stepOutlines(steps []*definition.Step) []StepOutline {
+	records := make([]StepOutline, 0, len(steps))
 	for _, step := range steps {
-		record := Step{
+		record := StepOutline{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
-			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
+			Start: outlinePosition(step.Pos), Kind: unknownStepKind, Uses: outlineString(step.DeclaredUses),
+		}
+		if step.Exec != nil {
+			record.Kind = step.Exec.Kind().String()
 		}
 		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecRun:
-			record.Kind = "run"
-		case *workflowlang.ExecAction:
-			record.Kind, record.Uses = "uses", outlineString(exec.Uses)
-		case *workflowlang.ExecWait:
-			record.Kind = "wait"
-		case *workflowlang.ExecCancel:
-			record.Kind = "cancel"
-		case *workflowlang.ExecParallel:
-			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
+		case *definition.ExecAction:
+			record.Uses = outlineString(exec.Uses)
+		case *definition.ExecParallel:
+			record.Steps = stepOutlines(exec.Steps)
 		}
 		records = append(records, record)
 	}
 	return records
 }
 
-func outlineString(value *workflowlang.String) string {
+func outlineString(value *definition.String) string {
 	if value == nil {
 		return ""
 	}
 	return value.Value
 }
 
-func outlinePosition(pos *sourcepos.Position) *sourcepos.Position {
+func outlinePosition(pos *sourcetext.Position) *sourcetext.Position {
 	if pos == nil {
 		return nil
 	}

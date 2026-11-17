@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
@@ -37,10 +37,10 @@ permissions: {}
 `
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheckForTest(t)}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheckForTest(t)}})}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,15 +55,15 @@ permissions: {}
 			t.Errorf("input missing: %s", path)
 		}
 	}
-	renderer, err := render.New("", "{{json .}}", false, buildinfo.Version, nil)
+	renderer, err := output.New("", "{{json .}}", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out strings.Builder
-	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+	if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
-	var findings []render.TemplateFields
+	var findings []output.TemplateFields
 	if err := json.Unmarshal([]byte(out.String()), &findings); err != nil {
 		t.Fatal(err)
 	}
@@ -112,10 +112,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\npermissions: {}\n")
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if tc.wantError {
 				if err == nil || !strings.Contains(err.Error(), "tools.shellcheck.config") {
 					t.Fatalf("expected config error, got %v", err)
@@ -156,11 +156,11 @@ jobs:
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
 	}) {
 		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
@@ -208,14 +208,14 @@ runs:
 			session := checking.Options{WorkingDir: root}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata checks lost: %v", result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
@@ -261,17 +261,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: {path: '`+checkout+"'}\n      - uses: ./"+prefix+"outer\n")
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata not analyzed: %v", result.Inputs)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
+			if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 				t.Fatalf("Windows composite source not resolved: %+v", result.Diagnostics)
 			}
 		})
@@ -306,14 +306,14 @@ runs:
 jobs:
   first:
 `+job+"  second:\n"+job)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("previous job checkout leaked into caller: %+v", result.Diagnostics)
 	}
 }

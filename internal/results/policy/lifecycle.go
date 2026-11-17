@@ -6,13 +6,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // assessLifecycle separates required findings before project suppressions run.
-func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Finding, authority map[*findingmodel.Finding]obligation) ([]*findingmodel.Finding, []*findingmodel.Finding, error) {
-	optional := make([]*findingmodel.Finding, 0, len(findings))
-	var required []*findingmodel.Finding
+func (processor Processor) assessLifecycle(p Policy, findings []*finding.Finding, authority map[*finding.Finding]obligation) ([]*finding.Finding, []*finding.Finding, error) {
+	optional := make([]*finding.Finding, 0, len(findings))
+	var required []*finding.Finding
 	for _, finding := range findings {
 		evidence := finding.LifecycleEvidence
 		if evidence == nil {

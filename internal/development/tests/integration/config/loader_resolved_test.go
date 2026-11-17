@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/kjanat/go-yaml/v4"
 )

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -80,7 +80,7 @@ func TestPluginPlanNestedRepositories(t *testing.T) {
 				inputFiles = strings.Join(paths, "\n")
 			}
 			env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": inputFiles, "INPUT_DISABLE-TOOLS": disable}
-			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			var stdout, stderr bytes.Buffer
 			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 0 {
 				t.Fatalf("PluginPlan returned %d: %s", code, &stderr)

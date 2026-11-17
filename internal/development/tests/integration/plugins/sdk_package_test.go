@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 // The package is optional for Go-only contributors. This check exercises the
@@ -61,7 +61,7 @@ export default defineProcessProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.ParsePluginManifest(data)
+	manifest, err := toolmanifest.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("SDK output is not a host provider: %v\n%s", err, data)
 	}
@@ -109,7 +109,7 @@ export default defineDocumentProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.ParsePluginManifest(data)
+	manifest, err := toolmanifest.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("callback manifest rejected: %v\n%s", err, data)
 	}
@@ -135,12 +135,12 @@ export default defineDocumentProvider({
 	content := "on: push\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n"
 	path := filepath.Join(runtimeDirectory, "workflow.yml")
 	sum := sha256.Sum256([]byte(content))
-	revision, err := sourcepos.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := sourcetext.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency := workflowfacts.Dependency{Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 6, Column: 30}}
-	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcepos.YAML, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
+	dependency := facts.Dependency{Reference: sourcetext.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcetext.Position{Line: 6, Column: 15}, End: sourcetext.Position{Line: 6, Column: 30}}
+	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcetext.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []facts.Dependency{dependency}}
 	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)

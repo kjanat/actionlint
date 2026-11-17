@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowCallCallbacksUseCapturedDefaultsIndependently(t *testing.T) {
@@ -24,15 +24,15 @@ jobs:
   inherited:
     uses: ./callee.yml
 `
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("caller", source, decoded, false, "").Workflow()
+	workflow := workflows.Bind("caller", source, decoded, false, "").Workflow()
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()
-	cache := workflowinputs.NewCache(root, nil)
+	cache := reusableworkflows.NewCache(root, nil)
 	cache.Store("./callee.yml", &calls.Metadata{JobPermissions: map[string]calls.PermissionScopeLevels{
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})

@@ -6,23 +6,23 @@ import (
 	"errors"
 	"strings"
 
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 )
 
 // Resolver reads workspace metadata and already-acquired repository metadata.
 // It projects both sources into the same immutable action definition.
 type Resolver struct {
 	ctx    context.Context
-	local  workspaceactions.ActionMetadataLookup
-	remote *actionremote.ResolvedActions
+	local  localactions.ActionMetadataLookup
+	remote *remote.ResolvedActions
 }
 
 // New binds action-definition lookup to one request and workspace execution scope.
 // A nil metadata source leaves its references unresolved.
-func New(ctx context.Context, local workspaceactions.ActionMetadataLookup, remote *actionremote.ResolvedActions) *Resolver {
+func New(ctx context.Context, local localactions.ActionMetadataLookup, remote *remote.ResolvedActions) *Resolver {
 	return &Resolver{ctx: ctx, local: local, remote: remote}
 }
 
@@ -34,7 +34,7 @@ func (r *Resolver) Lookup(spec string) (actionmeta.Definition, error) {
 		return actionmeta.Definition{}, err
 	}
 	localSpec := spec
-	if normalized, ok := references.SelfRepositoryLocal(spec); ok {
+	if normalized, ok := callreferences.SelfRepositoryLocal(spec); ok {
 		localSpec = normalized
 	}
 	if !strings.HasPrefix(localSpec, "./") {
@@ -44,10 +44,10 @@ func (r *Resolver) Lookup(spec string) (actionmeta.Definition, error) {
 		return actionmeta.Definition{}, nil
 	}
 	metadata, _, err := r.local.FindMetadata(spec)
-	if _, unresolved := errors.AsType[workspaceactions.UnresolvedError](err); unresolved {
+	if _, unresolved := errors.AsType[localactions.UnresolvedError](err); unresolved {
 		return actionmeta.Definition{}, nil
 	}
-	if _, mapping := errors.AsType[workspaceactions.MappingError](err); mapping {
+	if _, mapping := errors.AsType[localactions.MappingError](err); mapping {
 		return actionmeta.Definition{}, nil
 	}
 	if err != nil {

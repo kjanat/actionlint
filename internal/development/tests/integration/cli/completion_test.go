@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 )
 
 func TestCompletionProtocolWithFilename(t *testing.T) {
@@ -274,7 +274,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		t.Setenv("SHELL", "/usr/bin/fish")
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &cli.Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != commandstatus.ExitSuccessNoProblem {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != exitcode.ExitSuccessNoProblem {
 			t.Fatalf("exit status is %d. stderr:\n%s", status, stderr)
 		}
 		if !strings.Contains(stdout.String(), "# fish completion for actionlint") {
@@ -290,7 +290,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		}
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &cli.Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != commandstatus.ExitInvalidCommandOption {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != exitcode.ExitInvalidCommandOption {
 			t.Fatalf("exit status is %d. stdout:\n%s", status, stdout)
 		}
 		if !strings.Contains(stderr.String(), "cannot detect the current shell") {

@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
@@ -27,7 +27,7 @@ runs:
       working-directory: app
       run: . ./lib/check.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"-a"}}}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"-a"}}}})})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
@@ -36,7 +36,7 @@ runs:
 		t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 	}
 	testutil.AssertSourceFile(t, filepath.Join(root, finding.Path), path)
-	if finding.Start != (sourcepos.Position{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
+	if finding.Start != (sourcetext.Position{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}
 }
@@ -58,7 +58,7 @@ runs:
         . ./value.sh
         echo $VALUE
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
 	}

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -20,7 +20,7 @@ paths:
   '**':
     ignores: [something]
 `)
-	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

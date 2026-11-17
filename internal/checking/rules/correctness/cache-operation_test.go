@@ -3,21 +3,21 @@ package correctness
 import (
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestCacheOperationStepWithoutDeclaringJobUsesWorkflowMode(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\ncache-mode: read\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
+	workflow := workflows.Bind("test", source, decoded, false, "").Workflow()
 	check := CacheOperationChecks(workflow, nil)
 	// Composite action steps have no declaring workflow job.
-	if findings := check.Step(declaration.Step{}); len(findings) != 0 {
+	if findings := check.Step(workflows.Step{}); len(findings) != 0 {
 		t.Fatalf("absent step produced findings: %+v", findings)
 	}
 }
@@ -35,11 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{uses: actions/cache/save@v4}]
 `
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
+	workflow := workflows.Bind("test", source, decoded, false, "").Workflow()
 	writable, _ := workflow.Job("writable")
 	inherited, _ := workflow.Job("inherited")
 	check := CacheOperationChecks(workflow, nil)

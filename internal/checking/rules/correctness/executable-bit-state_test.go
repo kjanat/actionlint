@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -34,7 +34,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if len(parsed.SyntaxErrors) != 0 {
 				t.Fatal(parsed.SyntaxErrors)
 			}
-			_, _, snapshots := fixturedecl.NewCapturedSnapshots(t, capturefixture.CurrentDir(t))
+			_, _, snapshots := declarations.NewCapturedSnapshots(t, capturefixture.CurrentDir(t))
 			snapshot, err := snapshots.Document("workflow.yml", content, parsed)
 			if err != nil {
 				t.Fatal(err)
@@ -45,11 +45,11 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
 			}
-			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+			ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 			if err != nil {
 				t.Fatal(err)
 			}

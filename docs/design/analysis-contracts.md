@@ -6,7 +6,7 @@ The CLI and language server call the private checking code.
 
 ## Inputs and language behavior
 
-`internal/input/workspace` selects sources and configuration. `internal/input/source`
+`internal/input/workspace` selects sources and configuration. `internal/input/sourcetext`
 identifies the captured bytes and revision. A display path alone does not establish
 which source a finding or edit describes.
 
@@ -17,7 +17,7 @@ two calls to one action can have different inputs, reachable steps and findings.
 
 Expression syntax, types, values, function contracts, type checking and evaluation
 live in separate packages under `internal/languages/expressions`. JSON expression
-values use `internal/languages/json`. Parsing failure, unknown values, evaluation
+values use `internal/languages/runnerjson`. Parsing failure, unknown values, evaluation
 failure and rule findings are different outcomes. A function's declared return
 type does not disappear because one call fails during evaluation.
 
@@ -32,15 +32,18 @@ registrations derive from that catalogue. Bundled external tools supply their
 declarations through manifests.
 
 The declaration types, rule names, aliases, categories and maturities are
-defined in `internal/model/rules`. Packages under `internal/model`,
-`internal/input` and `internal/results` use them without importing
-`internal/checking`. Tool settings schemas, bundled tool provider manifests
-and plugin references are defined in `internal/model` too, so these packages
-do not depend on `internal/plugins` either.
+defined in `internal/model/rule`. Packages under `internal/model`,
+`internal/input`, `internal/results` and `internal/languages` use them without
+importing `internal/checking`. Tool settings schemas, tool provider manifests,
+output format names, plugin references and the checker contract in
+`internal/model/checkinputs` are defined in `internal/model` too, so these
+packages do not depend on `internal/plugins`, `internal/output`,
+`internal/cli` or `internal/lsp` either. `internal/checking` hosts plugins, so
+it may import `internal/plugins`; no `internal/plugins` package imports
+`internal/checking`.
 `TestLowerLayersDoNotDependOnHigherLayers` in
-`internal/development/tests/integration/layering` fails if production code in
-one of these packages imports `internal/checking` or `internal/plugins`,
-directly or through another package.
+`internal/development/tests/integration/layering` fails if production code
+breaks either rule, directly or through another package.
 
 `checking.ConfigurationRules` collects rule declarations for the CLI and editor
 integrations. Configuration loading receives these declarations as a
@@ -64,7 +67,7 @@ settings. The execution environment captures the assessment date once per check.
 
 ## Shared checker inputs
 
-`internal/checking/inputs.Checker` has two operations: `Descriptor` declares the
+`internal/model/checkinputs.Checker` has two operations: `Descriptor` declares the
 check and its required inputs; `CheckDocument` receives one captured source and
 returns findings together with an optional error. Implementations finish child
 work before returning and honor cancellation. The host can call a checker
@@ -75,10 +78,10 @@ graph. Declared scripts belong to the checked source; invoked scripts identify
 the action sources that supplied them. An analysis directory is not a filesystem
 grant. Read-only filesystems are supplied separately for one call.
 
-`internal/checking/scripts` prepares and executes script-check batches.
-`internal/plugins/execution/preparation` owns masking, shell preparation, language
+`internal/checking/scriptanalysis` prepares and executes script-check batches.
+`internal/plugins/pluginexecution/preparation` owns masking, shell preparation, language
 settings and mappings to the original source. Preparation does not launch tools.
-`internal/integrations/process` owns process limits and completion.
+`internal/integrations/hostprocess` owns process limits and completion.
 
 Analyzer inputs, descriptors and returned diagnostics have owned copies at the
 extension boundary. Each tool callback receives its own configuration copy.
@@ -92,8 +95,8 @@ defines the component checker contract. The host converts between that contract
 and its private checker inputs. `describe` returns metadata and input requirements;
 `analyze` returns diagnostics and an optional explanation of incomplete analysis.
 
-`internal/plugins/manifests` validates manifests. `internal/plugins/artifacts`
-resolves and verifies artifacts. `internal/plugins/execution` loads and invokes
+`internal/model/toolmanifest` validates manifests. `internal/plugins/artifacts`
+resolves and verifies artifacts. `internal/plugins/pluginexecution` loads and invokes
 components, core Wasm modules and native processes through their declared
 contracts. `internal/plugins/pluginregistry` resolves and verifies registry
 releases. `internal/plugins/installation` resolves and saves a project's plugin

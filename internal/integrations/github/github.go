@@ -24,7 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -160,7 +160,7 @@ func (g *GitHub) lookupCommitFile(ctx context.Context, ref actions.Reference, ki
 		return unavailableFile(availability.Failed()), nil
 	}
 	commit := strings.ToLower(ref.Ref())
-	record, exists, err := g.cached(ctx, ref, repofacts.ID{}, commit, filenames)
+	record, exists, err := g.cached(ctx, ref, repository.ID{}, commit, filenames)
 	if err != nil && ctx.Err() != nil {
 		return repositoryFile{}, ctx.Err()
 	}
@@ -169,7 +169,7 @@ func (g *GitHub) lookupCommitFile(ctx context.Context, ref actions.Reference, ki
 			return file, nil
 		}
 	}
-	file, err := g.fetchSelectedFile(ctx, ref, kind, filenames, repofacts.ID{}, commit, commit, actions.ObjectRoute(), time.Now().UTC().Format(time.RFC3339Nano))
+	file, err := g.fetchSelectedFile(ctx, ref, kind, filenames, repository.ID{}, commit, commit, actions.ObjectRoute(), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil || file.Available() || file.missing.Reason() != availability.InaccessibleReason || g.resolver == nil {
 		return file, err
 	}
@@ -202,7 +202,7 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 	if err != nil {
 		return unavailableError(err)
 	}
-	commit, object, route, missing := selectResolution(ref, kind, resolved, repofacts.ID{})
+	commit, object, route, missing := selectResolution(ref, kind, resolved, repository.ID{})
 	if missing != nil {
 		return unavailableFile(*missing), nil
 	}
@@ -228,7 +228,7 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 	return g.fetchSelectedFile(ctx, ref, kind, filenames, resolved.RepositoryID, commit, object, route, resolved.ObservedAt)
 }
 
-func selectResolution(ref actions.Reference, kind string, resolved references.ResolutionRecord, learned repofacts.ID) (string, string, actions.Route, *availability.Unavailability) {
+func selectResolution(ref actions.Reference, kind string, resolved references.ResolutionRecord, learned repository.ID) (string, string, actions.Route, *availability.Unavailability) {
 	invalid := availability.InvalidResolverResult()
 	if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID.Conflicts(learned) || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 {
 		return "", "", actions.Route{}, &invalid
@@ -248,20 +248,20 @@ func selectResolution(ref actions.Reference, kind string, resolved references.Re
 	return resolved.Commit, resolved.SelectedObject, route, nil
 }
 
-func selectedFile(ref actions.Reference, repository, kind string, id repofacts.ID, commit, object string, route actions.Route, observed string) (repositoryFile, bool) {
+func selectedFile(ref actions.Reference, repository, kind string, id repository.ID, commit, object string, route actions.Route, observed string) (repositoryFile, bool) {
 	identity, err := actions.NewIdentity(ref.Host(), repository, id, commit, ref.Directory())
 	if err == nil && kind != "action" {
 		return repositoryFile{reference: ref, identity: identity, observedAt: observed}, true
 	}
 	if err == nil {
-		if selection, err := actions.NewSelection(ref, identity, object, route, observed); err == nil {
+		if selection, err := actions.NewReferenceSelection(ref, identity, object, route, observed); err == nil {
 			return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: observed}, true
 		}
 	}
 	return repositoryFile{}, false
 }
 
-func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, id repofacts.ID, commit, object string, route actions.Route, observed string) (repositoryFile, error) {
+func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, id repository.ID, commit, object string, route actions.Route, observed string) (repositoryFile, error) {
 	filename, content, missing, err := g.fetchRawFile(ctx, ref, commit, kind, filenames)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
@@ -393,10 +393,10 @@ func commitObjectSHA(content []byte) string {
 	return ""
 }
 
-func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (repofacts.ID, string, *availability.Unavailability, error) {
+func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (repository.ID, string, *availability.Unavailability, error) {
 	content, missing, err := g.get(ctx, repositoryURL(ref), false)
 	if err != nil || missing != nil {
-		return repofacts.ID{}, "", missing, err
+		return repository.ID{}, "", missing, err
 	}
 	var repo struct {
 		ID      uint64 `json:"id"`
@@ -404,13 +404,13 @@ func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (repofac
 		Private *bool  `json:"private"`
 	}
 	if json.Unmarshal(content, &repo) == nil && strings.EqualFold(repo.Name, ref.Repository()) {
-		if id, err := repofacts.KnownID(repo.ID); err == nil {
+		if id, err := repository.KnownID(repo.ID); err == nil {
 			g.listings.observeVisibility(repo.Name, repo.Private)
 			return id, repo.Name, nil, nil
 		}
 	}
 	failed := availability.Failed()
-	return repofacts.ID{}, "", &failed, nil
+	return repository.ID{}, "", &failed, nil
 }
 
 func repositoryURL(ref actions.Reference) string {
@@ -511,17 +511,17 @@ func unavailableError(err error) (repositoryFile, error) {
 }
 
 type cacheRecord struct {
-	Version      int          `json:"version"`
-	Host         string       `json:"host"`
-	Repository   string       `json:"repository"`
-	RepositoryID repofacts.ID `json:"repository_id,omitzero"`
-	Commit       string       `json:"commit"`
-	TagObject    string       `json:"tag_object,omitzero"`
-	Directory    string       `json:"directory"`
-	ObservedAt   string       `json:"observed_at"`
-	Filename     string       `json:"filename"`
-	Content      string       `json:"content"`
-	SHA256       string       `json:"sha256"`
+	Version      int           `json:"version"`
+	Host         string        `json:"host"`
+	Repository   string        `json:"repository"`
+	RepositoryID repository.ID `json:"repository_id,omitzero"`
+	Commit       string        `json:"commit"`
+	TagObject    string        `json:"tag_object,omitzero"`
+	Directory    string        `json:"directory"`
+	ObservedAt   string        `json:"observed_at"`
+	Filename     string        `json:"filename"`
+	Content      string        `json:"content"`
+	SHA256       string        `json:"sha256"`
 }
 
 const (
@@ -538,7 +538,7 @@ func (g *GitHub) bucket(ref actions.Reference, commit string) string {
 	return filepath.Join(g.cacheDir, digest(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory()))
 }
 
-func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repofacts.ID, object string, filenames []string) (cacheRecord, bool, error) {
+func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repository.ID, object string, filenames []string) (cacheRecord, bool, error) {
 	if g.cacheDir == "" {
 		return cacheRecord{}, false, nil
 	}
@@ -582,7 +582,7 @@ func (g *GitHub) offline(ctx context.Context, ref actions.Reference, filenames [
 	if g.cacheDir == "" {
 		return unavailableFile(availability.CacheMiss()), nil
 	}
-	record, exists, err := g.cached(ctx, ref, repofacts.ID{}, ref.Ref(), filenames)
+	record, exists, err := g.cached(ctx, ref, repository.ID{}, ref.Ref(), filenames)
 	if err != nil {
 		if ctx.Err() != nil {
 			return repositoryFile{}, ctx.Err()
@@ -604,9 +604,9 @@ func cachedRepositoryFile(ref actions.Reference, record cacheRecord) (repository
 	if err != nil {
 		return repositoryFile{}, false
 	}
-	var selection actions.Selection
+	var selection actions.ReferenceSelection
 	if record.Filename != "" {
-		if selection, err = actions.NewSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt); err != nil {
+		if selection, err = actions.NewReferenceSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt); err != nil {
 			return repositoryFile{}, false
 		}
 	}

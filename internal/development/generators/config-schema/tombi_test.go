@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestTombiRuleOptions(t *testing.T) {

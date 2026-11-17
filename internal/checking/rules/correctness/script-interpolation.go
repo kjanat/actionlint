@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	shellsyntax "mvdan.cc/sh/v3/syntax"
 )
 
@@ -33,8 +33,8 @@ var ScriptInterpolationRule = &define.Rule{
 
 // IsScalarInterpolation reports whether interpolation emits a boolean, number or null.
 // toJSON serializes these primitives without adding string quotes.
-func IsScalarInterpolation(node exprsyntax.Node, types exprlang.InferredTypes) bool {
-	if call, ok := node.(*exprsyntax.FuncCallNode); ok && strings.EqualFold(call.Callee, "toJSON") && len(call.Args) == 1 {
+func IsScalarInterpolation(node syntax.Node, types typecheck.InferredTypes) bool {
+	if call, ok := node.(*syntax.FuncCallNode); ok && strings.EqualFold(call.Callee, "toJSON") && len(call.Args) == 1 {
 		node = call.Args[0]
 	}
 	ty, known := types.TypeOf(node)
@@ -107,7 +107,7 @@ const (
 
 // ScriptInterpolation checks value characters and the script insertion context.
 // Callers omit it when a specific secret or untrusted-input finding exists.
-func ScriptInterpolation(expr exprsyntax.Node, ty exprtypes.Type, types exprlang.InferredTypes, position ScriptInsertionKind, safeReference func(exprsyntax.Node) bool) []*exprlang.Error {
+func ScriptInterpolation(expr syntax.Node, ty exprtypes.Type, types typecheck.InferredTypes, position ScriptInsertionKind, safeReference func(syntax.Node) bool) []*typecheck.Error {
 	scalarArgument := position == ShellArgumentInsertion
 	if ty.Kind() == exprtypes.KindString && IsScalarInterpolation(expr, types) {
 		if scalarArgument {
@@ -135,18 +135,18 @@ func ScriptInterpolation(expr exprsyntax.Node, ty exprtypes.Type, types exprlang
 	return unsafeScriptInterpolation(expr)
 }
 
-func unsafeScalarScriptInterpolation(expr exprsyntax.Node) []*exprlang.Error {
-	return []*exprlang.Error{interpolationIssue(expr,
+func unsafeScalarScriptInterpolation(expr syntax.Node) []*typecheck.Error {
+	return []*typecheck.Error{interpolationIssue(expr,
 		"interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead")}
 }
 
-func unsafeScriptInterpolation(expr exprsyntax.Node) []*exprlang.Error {
-	return []*exprlang.Error{interpolationIssue(expr,
+func unsafeScriptInterpolation(expr syntax.Node) []*typecheck.Error {
+	return []*typecheck.Error{interpolationIssue(expr,
 		"interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution")}
 }
 
-func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReference func(exprsyntax.Node) bool) bool {
-	if value, known := expreval.ConditionConstantValue(expr); known {
+func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
+	if value, known := evaluate.ConditionConstantValue(expr); known {
 		switch value := value.(type) {
 		case nil, bool, float64:
 			return scalarArgument
@@ -164,7 +164,7 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 	}
 	// Numeric identifiers and hashes need data-argument proofs. Actor names
 	// may contain glob characters.
-	switch strings.ToLower(exprsyntax.DisplayReference(expr)) {
+	switch strings.ToLower(syntax.DisplayReference(expr)) {
 	case "github.repository_owner":
 		return scalarArgument
 	case "github.sha", "github.run_id", "github.run_number", "github.run_attempt",
@@ -176,21 +176,21 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 		return true
 	}
 	switch n := expr.(type) {
-	case *exprsyntax.CompareOpNode, *exprsyntax.NotOpNode:
+	case *syntax.CompareOpNode, *syntax.NotOpNode:
 		return scalarArgument
-	case *exprsyntax.LogicalOpNode:
-		if value, known := expreval.ConditionConstantValue(n.Left); known {
-			if exprvalues.ExpressionTruthy(value) != (n.Kind == exprsyntax.LogicalOpNodeKindOr) {
+	case *syntax.LogicalOpNode:
+		if value, known := evaluate.ConditionConstantValue(n.Left); known {
+			if values.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 				return safeScriptExpression(n.Right, scalarArgument, safeReference)
 			}
 			return safeScriptExpression(n.Left, scalarArgument, safeReference)
 		}
-		if n.Kind == exprsyntax.LogicalOpNodeKindAnd {
+		if n.Kind == syntax.LogicalOpNodeKindAnd {
 			return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
 		}
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
-	case *exprsyntax.FuncCallNode:
-		if exprfunctions.IsStringPredicate(n.Callee) {
+	case *syntax.FuncCallNode:
+		if functions.IsStringPredicate(n.Callee) {
 			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "hashFiles") {
@@ -198,7 +198,7 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 		}
 		if strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
 			switch n.Args[0].(type) {
-			case *exprsyntax.CompareOpNode, *exprsyntax.NotOpNode:
+			case *syntax.CompareOpNode, *syntax.NotOpNode:
 				return scalarArgument
 			}
 		}
@@ -208,8 +208,8 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 		}
 		if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
 			for i := 0; i < len(n.Args)-1; i += 2 {
-				if value, known := expreval.ConditionConstantValue(n.Args[i]); known {
-					if !exprvalues.ExpressionTruthy(value) {
+				if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
+					if !values.ExpressionTruthy(value) {
 						continue
 					}
 					return safeScriptExpression(n.Args[i+1], scalarArgument, safeReference)
@@ -224,62 +224,62 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 	return false
 }
 
-func safeTruthyScriptResult(expr exprsyntax.Node, scalarArgument bool, safeReference func(exprsyntax.Node) bool) bool {
-	if value, known := expreval.ConditionConstantValue(expr); known {
-		if !exprvalues.ExpressionTruthy(value) {
+func safeTruthyScriptResult(expr syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
+	if value, known := evaluate.ConditionConstantValue(expr); known {
+		if !values.ExpressionTruthy(value) {
 			return true
 		}
 		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
-	n, ok := expr.(*exprsyntax.LogicalOpNode)
+	n, ok := expr.(*syntax.LogicalOpNode)
 	if !ok {
 		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
 	switch n.Kind {
-	case exprsyntax.LogicalOpNodeKindAnd:
+	case syntax.LogicalOpNodeKindAnd:
 		return safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
-	case exprsyntax.LogicalOpNodeKindOr:
+	case syntax.LogicalOpNodeKindOr:
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
-	case exprsyntax.LogicalOpNodeKindInvalid:
+	case syntax.LogicalOpNodeKindInvalid:
 		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
-func safeFalsyScriptResult(expr exprsyntax.Node, scalarArgument bool, safeReference func(exprsyntax.Node) bool) bool {
+func safeFalsyScriptResult(expr syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
 	if scalarArgument {
 		return true
 	}
-	if value, known := expreval.ConditionConstantValue(expr); known {
-		if exprvalues.ExpressionTruthy(value) {
+	if value, known := evaluate.ConditionConstantValue(expr); known {
+		if values.ExpressionTruthy(value) {
 			return true
 		}
 		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
-	n, ok := expr.(*exprsyntax.LogicalOpNode)
+	n, ok := expr.(*syntax.LogicalOpNode)
 	if !ok {
 		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
 	switch n.Kind {
-	case exprsyntax.LogicalOpNodeKindAnd:
+	case syntax.LogicalOpNodeKindAnd:
 		return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
-	case exprsyntax.LogicalOpNodeKindOr:
+	case syntax.LogicalOpNodeKindOr:
 		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
-	case exprsyntax.LogicalOpNodeKindInvalid:
+	case syntax.LogicalOpNodeKindInvalid:
 		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
 // Step outcomes/conclusions and dependency results use fixed status enums.
-func safeScriptStatusReference(node exprsyntax.Node, scalarArgument bool, safeReference func(exprsyntax.Node) bool) bool {
-	var receiver exprsyntax.Node
+func safeScriptStatusReference(node syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
+	var receiver syntax.Node
 	var property string
 	switch node := node.(type) {
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		receiver, property = node.Receiver, node.Property
-	case *exprsyntax.IndexAccessNode:
-		key, ok := node.Index.(*exprsyntax.StringNode)
+	case *syntax.IndexAccessNode:
+		key, ok := node.Index.(*syntax.StringNode)
 		if !ok {
 			return false
 		}
@@ -287,18 +287,18 @@ func safeScriptStatusReference(node exprsyntax.Node, scalarArgument bool, safeRe
 	default:
 		return false
 	}
-	var context exprsyntax.Node
+	var context syntax.Node
 	staticSelector := true
 	switch receiver := receiver.(type) {
-	case *exprsyntax.ObjectDerefNode:
+	case *syntax.ObjectDerefNode:
 		context = receiver.Receiver
-	case *exprsyntax.IndexAccessNode:
-		_, staticSelector = receiver.Index.(*exprsyntax.StringNode)
+	case *syntax.IndexAccessNode:
+		_, staticSelector = receiver.Index.(*syntax.StringNode)
 		context = receiver.Operand
 	default:
 		return false
 	}
-	variable, ok := context.(*exprsyntax.VariableNode)
+	variable, ok := context.(*syntax.VariableNode)
 	if !ok {
 		return false
 	}
@@ -319,7 +319,7 @@ func safeScriptStatusReference(node exprsyntax.Node, scalarArgument bool, safeRe
 	return scalarArgument || staticSelector && safeReference != nil && safeReference(receiver)
 }
 
-func interpolationIssue(node exprsyntax.Node, message string) *exprlang.Error {
-	span := exprsyntax.ExpressionSpan(node)
-	return &exprlang.Error{Rule: "script-interpolation", Code: "unknown-script-value", Message: message, Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column}
+func interpolationIssue(node syntax.Node, message string) *typecheck.Error {
+	span := syntax.ExpressionSpan(node)
+	return &typecheck.Error{Rule: "script-interpolation", Code: "unknown-script-value", Message: message, Offset: span.Start, EndOffset: span.End, Position: span.Position}
 }

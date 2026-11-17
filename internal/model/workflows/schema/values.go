@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // Shape describes evaluated expression values. Unlike

@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -37,17 +37,17 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 			reads.Add(1)
 		}
 		return os.ReadFile(path)
-	}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entryAlias}})
+	}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{entryAlias}})
 	if err != nil || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "deprecated-commands" {
 		t.Fatalf("disk selection conflicted with its open canonical source: result=%+v error=%v", result, err)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Reference == nil || finding.Reference.Revision != source.ContentDigest([]byte(unsaved)) || reads.Load() != 1 {
+	if finding.Reference == nil || finding.Reference.Revision != sourcetext.ContentDigest([]byte(unsaved)) || reads.Load() != 1 {
 		t.Fatalf("selected source was reread or used stale bytes: finding=%+v reads=%d", finding, reads.Load())
 	}
 	for _, path := range []string{entryAlias, realPath} {
 		captured, exists := result.CapturedSources[path]
-		if !exists || string(captured.Content) != unsaved || captured.Coordinates != source.YAML || !captured.CoordinatesAvailable || captured.Revision.Digest() != finding.Reference.Revision {
+		if !exists || string(captured.Content) != unsaved || captured.Coordinates != sourcetext.YAML || !captured.CoordinatesAvailable || captured.Revision.Digest() != finding.Reference.Revision {
 			t.Fatalf("sealed alias lost capture provenance: %q %+v", path, captured)
 		}
 	}

@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func repositoryWorkflowSource(t *testing.T, name string) []byte {
@@ -28,9 +28,9 @@ func repositoryWorkflowSource(t *testing.T, name string) []byte {
 	return source
 }
 
-func parseRepositoryWorkflow(t *testing.T, name string) *workflowlang.Workflow {
+func parseRepositoryWorkflow(t *testing.T, name string) *definition.Workflow {
 	t.Helper()
-	workflow, findings := workflowparser.ParseWorkflow(repositoryWorkflowSource(t, name))
+	workflow, findings := parser.ParseWorkflow(repositoryWorkflowSource(t, name))
 	if len(findings) != 0 || workflow == nil {
 		t.Fatalf("repository workflow rejected: %v", findings)
 	}
@@ -88,7 +88,7 @@ func TestKP2BWWindowsMatrix(t *testing.T) {
 	if !known || len(combinations) != 4 {
 		t.Fatalf("expected four known matrix combinations, got known=%v rows=%v", known, combinations)
 	}
-	action, ok := job.Steps[1].Exec.(*workflowlang.ExecAction)
+	action, ok := job.Steps[1].Exec.(*definition.ExecAction)
 	if !ok || len(action.InputInsertions) != 1 || action.InputInsertions[0].Expression == nil {
 		t.Fatalf("mise action's dynamic input insertion was not recognized: %+v", job.Steps[1])
 	}
@@ -156,8 +156,8 @@ func TestActupFlowNullWhitespace(t *testing.T) {
 	if mutated == string(source) {
 		t.Fatal("missing flow-null mutation target")
 	}
-	_, findings := workflowparser.ParseWorkflow([]byte(mutated))
-	if len(findings) != 1 || findings[0].Code != workflowparser.CodeFlowNull || findings[0].Line != 8 || findings[0].Column != 7 {
+	_, findings := parser.ParseWorkflow([]byte(mutated))
+	if len(findings) != 1 || findings[0].Code != parser.CodeFlowNull || findings[0].Position.Line != 8 || findings[0].Position.Column != 7 {
 		t.Fatalf("missing compatibility finding at the original flow key: %v", findings)
 	}
 }
@@ -170,7 +170,7 @@ func TestWikiDynamicMappingsAndAliasUses(t *testing.T) {
 		t.Fatalf("implicit flow mappings lost a step: %v", steps)
 	}
 	for i, want := range []string{"actions/checkout@v7", "kjanat/actionlint@v1"} {
-		action, ok := steps[i].Exec.(*workflowlang.ExecAction)
+		action, ok := steps[i].Exec.(*definition.ExecAction)
 		if !ok || action.Uses == nil || action.Uses.Value != want {
 			t.Fatalf("flow step %d lost uses %q: %+v", i, want, steps[i])
 		}
@@ -180,7 +180,7 @@ func TestWikiDynamicMappingsAndAliasUses(t *testing.T) {
 		t.Fatalf("dynamic environment insertion lost: %+v", publish.Env)
 	}
 	for i, want := range []string{"${{ fromJSON(vars.REPO) }}", "${{ fromJSON(vars.WIKI) }}"} {
-		action, ok := publish.Steps[i].Exec.(*workflowlang.ExecAction)
+		action, ok := publish.Steps[i].Exec.(*definition.ExecAction)
 		if !ok || action.Uses == nil || action.Uses.Value != "actions/checkout@v7" || action.InputsExpression == nil || action.InputsExpression.Value != want {
 			t.Fatalf("checkout %d lost its dynamic input mapping: %+v", i, publish.Steps[i])
 		}
@@ -221,7 +221,7 @@ func TestRunnyConditionExecution(t *testing.T) {
 		if step.If == nil {
 			t.Fatalf("condition missing from step %d", i)
 		}
-		enabled, known := workflowconditions.StepCondition(value.Condition(step.If.Value, value.Origin{}))
+		enabled, known := conditions.StepCondition(value.Condition(step.If.Value, value.Origin{}))
 		if !known || enabled != want[i] {
 			t.Errorf("step %d (%s): enabled=%v known=%v, want %v", i, step.If.Value, enabled, known, want[i])
 		}
@@ -257,7 +257,7 @@ func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
 	workflow := parseRepositoryWorkflow(t, "actions-rs")
 	roundTrip := workflow.Jobs["round-trip"]
 	for _, step := range roundTrip.Steps[1:] {
-		script, ok := step.Exec.(*workflowlang.ExecRun)
+		script, ok := step.Exec.(*definition.ExecRun)
 		if !ok || script.Run == nil || !strings.HasPrefix(script.Run.Value, "---\npackage.edition") || strings.Count(script.Run.Value, "\n---\n") != 1 {
 			t.Fatalf("Cargo frontmatter escaped the run scalar: %+v", step)
 		}

@@ -4,29 +4,29 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type typedExpr struct {
 	ty         exprtypes.Type
-	semantics  exprlang.ExpressionCheckResult
-	pos        source.Position
+	semantics  typecheck.ExpressionCheckResult
+	pos        sourcetext.Position
 	refinement expressionRefinement
 }
 
@@ -42,24 +42,24 @@ type Checker struct {
 	// The *Ty context types are nil while the context keeps its built-in type.
 	matrixTy          *exprtypes.ObjectType
 	matrixScriptSafe  map[string]scriptValueProof
-	scriptEnv         *workflowlang.Env
-	jobEnv            *workflowlang.Env
+	scriptEnv         *definition.Env
+	jobEnv            *definition.Env
 	stepsTy           *exprtypes.ObjectType
 	needsTy           *exprtypes.ObjectType
 	secretsTy         *exprtypes.ObjectType
 	inputsTy          *exprtypes.ObjectType
 	dispatchInputsTy  *exprtypes.ObjectType
 	jobsTy            *exprtypes.ObjectType
-	workflow          workflowdecl.Workflow
+	workflow          workflows.Workflow
 	eventTy           *exprtypes.ObjectType
-	expressionSource  *workflowlang.ScriptSource
-	scriptSources     map[source.Position]*workflowlang.ScriptSource
+	expressionSource  *definition.ScriptSource
+	scriptSources     map[sourcetext.Position]*definition.ScriptSource
 	expressionOffset  int
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
 	scriptInsertion   correctness.ScriptInsertionKind
-	scriptJob         workflowdecl.Job
+	scriptJob         workflows.Job
 	compositeScript   bool
 	jobReferences     *ReferenceNames
 }
@@ -72,7 +72,7 @@ type ReferenceNames struct {
 
 // Options selects expression diagnostics without repository configuration.
 type Options struct {
-	Semantics                 exprlang.Options
+	Semantics                 typecheck.Options
 	UnsoundTernary            bool
 	SuspiciousCoercion        bool
 	JoinLiteral               bool
@@ -81,12 +81,12 @@ type Options struct {
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool
 	ScriptInjectionDisabled   bool
-	JobReferences             func(workflowdecl.Job) ReferenceNames
+	JobReferences             func(workflows.Job) ReferenceNames
 }
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.
 type Dependencies struct {
-	Runners *runner.Knowledge
+	Runners *runners.Knowledge
 	// Action returns declared inputs, outputs and runtime for either reference origin.
 	// An absent definition means these declarations are unknown.
 	Action   func(string) (actionmeta.Definition, error)
@@ -107,14 +107,14 @@ func (rule *Checker) Configure(options Options) { rule.options = options }
 type report struct {
 	rule, code, message string
 	severity            string
-	start, end          source.Position
+	start, end          sourcetext.Position
 	// hasEnd records whether the expression mapped an inclusive end position.
 	hasEnd bool
 	fixes  []results.Fix
 }
 
-func (r report) finding() *findingmodel.Finding {
-	finding := findingmodel.At(&r.start, r.rule, r.message)
+func (r report) finding() *finding.Finding {
+	finding := finding.At(&r.start, r.rule, r.message)
 	finding.Code = r.code
 	finding.Severity = r.severity
 	for _, fix := range r.fixes {
@@ -129,7 +129,7 @@ func (r report) finding() *findingmodel.Finding {
 
 // Findings returns diagnostics accumulated during workflow expression checking.
 // The result is detached from the checker.
-func (rule *Checker) Findings() []*findingmodel.Finding { return rule.FindingsSince(0) }
+func (rule *Checker) Findings() []*finding.Finding { return rule.FindingsSince(0) }
 
 // FindingCount returns the number of diagnostics accumulated so far. Pass it to
 // FindingsSince to read only the diagnostics reported after this point.
@@ -137,22 +137,22 @@ func (rule *Checker) FindingCount() int { return len(rule.errs) }
 
 // FindingsSince returns diagnostics reported after mark, a prior FindingCount.
 // The result is detached from the checker.
-func (rule *Checker) FindingsSince(mark int) []*findingmodel.Finding {
+func (rule *Checker) FindingsSince(mark int) []*finding.Finding {
 	if mark >= len(rule.errs) {
 		return nil
 	}
-	findings := make([]*findingmodel.Finding, 0, len(rule.errs)-mark)
+	findings := make([]*finding.Finding, 0, len(rule.errs)-mark)
 	for _, r := range rule.errs[mark:] {
 		findings = append(findings, r.finding())
 	}
 	return findings
 }
 
-func (rule *Checker) Error(pos *source.Position, message string) {
+func (rule *Checker) Error(pos *sourcetext.Position, message string) {
 	rule.errs = append(rule.errs, report{rule: "expression", message: message, start: *pos})
 }
 
-func (rule *Checker) Errorf(pos *source.Position, format string, args ...any) {
+func (rule *Checker) Errorf(pos *sourcetext.Position, format string, args ...any) {
 	rule.Error(pos, fmt.Sprintf(format, args...))
 }
 

@@ -1,21 +1,19 @@
 package configuration
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // toolProvider is what configuration needs from a bundled tool provider.
 type toolProvider struct {
-	scope rulescope.ConfigurationScope
+	scope rule.ConfigurationScope
 	// schema validates inline tools.<name>.config settings; nil accepts any.
 	schema *toolsettings.Schema
 	// shorthands may be written directly under tools.<name>.
@@ -24,62 +22,39 @@ type toolProvider struct {
 	configFiles bool
 }
 
-// providerManifest is the part of a provider manifest configuration reads.
-// The manifest model in package provider imports the analyzer contract, which
-// configuration must not depend on, so configuration reads these fields from
-// the bundled data directly. TestToolProvidersMatchManifests keeps this view
-// equal to provider.Bundled.
-type providerManifest struct {
-	Scope            string                            `json:"scope"`
-	ConfigSchema     json.RawMessage                   `json:"config_schema"`
-	ConfigShorthands map[string]toolsettings.Shorthand `json:"config_shorthands"`
-	Process          *struct {
-		ConfigFiles *struct {
-			Names []string `json:"names"`
-		} `json:"config_files"`
-	} `json:"process"`
-}
-
 // toolProviders indexes the bundled tool providers by rule name. The
 // manifests are embedded build inputs, so a defect panics, as missing rule
 // metadata does.
 var toolProviders = sync.OnceValue(func() map[string]toolProvider {
+	bundled, err := toolmanifest.Bundled()
+	if err != nil {
+		panic(fmt.Sprintf("bundled tool providers: %v", err))
+	}
 	index := map[string]toolProvider{}
-	for _, name := range bundledproviders.Names() {
-		tool, err := loadToolProvider(name)
+	for _, manifest := range bundled {
+		tool, err := loadToolProvider(manifest)
 		if err != nil {
-			panic(fmt.Sprintf("bundled tool provider %s: %v", name, err))
+			panic(fmt.Sprintf("bundled tool provider %s: %v", manifest.Rule.Name, err))
 		}
-		index[name] = tool
+		index[manifest.Rule.Name] = tool
 	}
 	return index
 })
 
-func loadToolProvider(name string) (toolProvider, error) {
-	data, ok := bundledproviders.Manifest(name)
-	if !ok {
-		return toolProvider{}, errors.New("no manifest")
-	}
-	var manifest providerManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return toolProvider{}, err
-	}
-	tool, err := compileToolProvider(toolsettings.Settings{Schema: manifest.ConfigSchema, Shorthands: manifest.ConfigShorthands, ReadsFiles: manifest.Process != nil && manifest.Process.ConfigFiles != nil && len(manifest.Process.ConfigFiles.Names) > 0})
+func loadToolProvider(manifest toolmanifest.Manifest) (toolProvider, error) {
+	tool, err := compileToolProvider(manifest.Settings())
 	if err != nil {
 		return toolProvider{}, err
 	}
-	switch manifest.Scope {
-	case "composite":
-		tool.scope = rulescope.CompositeConfiguration
-	case "source":
-		tool.scope = rulescope.SourceConfiguration
-	default:
-		return toolProvider{}, fmt.Errorf("unknown scope %q", manifest.Scope)
+	scope, err := manifest.Scope.ConfigurationScope()
+	if err != nil {
+		return toolProvider{}, err
 	}
+	tool.scope = scope
 	return tool, nil
 }
 
-func compileToolProvider(settings toolsettings.Settings) (toolProvider, error) {
+func compileToolProvider(settings toolsettings.Spec) (toolProvider, error) {
 	settings = settings.Clone()
 	for name, shorthand := range settings.Shorthands {
 		if len(shorthand.Path) == 0 {

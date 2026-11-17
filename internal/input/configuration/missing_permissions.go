@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 type PermissionLocation string
@@ -29,7 +29,7 @@ func (locations *PermissionLocationList) DecodeConfig(value any) error {
 	_, scalarInput := value.(string)
 	if scalar, ok := value.(string); ok {
 		values = []string{scalar}
-	} else if err := binding.Decode(value, &values); err != nil {
+	} else if err := configdecode.Decode(value, &values); err != nil {
 		return fmt.Errorf("require-at must be a string or an array of locations: %w", err)
 	}
 	if len(values) == 0 {
@@ -47,7 +47,7 @@ func (locations *PermissionLocationList) DecodeConfig(value any) error {
 			if scalarInput {
 				return err
 			}
-			return binding.At(strconv.Itoa(i), err)
+			return configdecode.At(strconv.Itoa(i), err)
 		}
 		if !slices.Contains(result, location) {
 			result = append(result, location)
@@ -67,7 +67,7 @@ func (options *MissingPermissionsOptions) DecodeConfig(value any) error {
 	}
 	type plain MissingPermissionsOptions
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	*options = MissingPermissionsOptions(next)

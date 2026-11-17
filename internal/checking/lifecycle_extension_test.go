@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -49,13 +49,13 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		Sources:    []sourceUnit{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			check := define.Checks{
-				Step: func(step workflowdecl.Step) []reporting.StepFinding {
+				Step: func(step workflows.Step) []reporting.StepFinding {
 					if _, run := step.Run(); !run {
 						return nil
 					}
 					visitedScripts++
 					position, present := step.Position()
-					return []reporting.StepFinding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(position, present)), Step: step, LifecycleEvidence: &evidence}}
+					return []reporting.StepFinding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: sourcetext.ZeroIfNil(sourcetext.NilUnlessPresent(position, present)), Step: step, LifecycleEvidence: &evidence}}
 				},
 			}
 			return []workflowvisit.Rule{define.NewChecksVisitor(ConfigurationRules(), correctness.RuntimeLifecycleRule.Name, check)}

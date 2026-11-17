@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
@@ -38,7 +38,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				write(".github/workflows/callee.yml", "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n")
 				write(".github/workflows/ci.yml", "on: push\njobs:\n  build:\n    uses: ./.github/workflows/callee.yml\npermissions: {}\n")
 			}
-			run := func() []diagmodel.Diagnostic {
+			run := func() []results.Diagnostic {
 				t.Helper()
 				session := checking.Options{WorkingDir: root}
 				var err error
@@ -46,11 +46,11 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 					return repository.Snapshot{RunnerLabels: labels}
 				}
 
-				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Repository, Directory: ""})
+				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 				if err != nil {
 					t.Fatal(err)
 				}
-				return diagmodel.Diagnostics(result.Diagnostics)
+				return results.Diagnostics(result.Diagnostics)
 			}
 			if diagnostics := run(); len(diagnostics) != 0 {
 				t.Fatalf("valid baseline failed: %+v", diagnostics)
@@ -74,7 +74,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				wantPath = actionPath
 			}
 			diagnostics := run()
-			if !slices.ContainsFunc(diagnostics, func(d diagmodel.Diagnostic) bool {
+			if !slices.ContainsFunc(diagnostics, func(d results.Diagnostic) bool {
 				return strings.Contains(d.Message, want) && filepath.ToSlash(d.Path) == wantPath
 			}) {
 				t.Fatalf("expected a %s diagnostic containing %q after changing a dependency: %+v", wantPath, want, diagnostics)

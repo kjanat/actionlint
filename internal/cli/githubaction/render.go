@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -56,20 +56,20 @@ func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, 
 	default:
 		return "", fmt.Errorf("format %q has no compatibility renderer", format)
 	}
-	renderer, err := render.New("", template, false, buildinfo.Version, nil)
+	renderer, err := output.New("", template, false, buildinfo.Version, nil)
 	if err != nil {
 		return "", err
 	}
-	var output bytes.Buffer
-	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
+	var rendered bytes.Buffer
+	if err := renderer.Render(&rendered, output.FromAnalysis(*analysis)); err != nil {
 		return "", err
 	}
-	return output.String(), nil
+	return rendered.String(), nil
 }
 
 func renderOutcome(result *lintResult) (*lintOutcome, string, string) {
 	o := result.lintOutcome
-	if o.code != commandstatus.ExitSuccessNoProblem && o.code != commandstatus.ExitSuccessProblemFound {
+	if o.code != exitcode.ExitSuccessNoProblem && o.code != exitcode.ExitSuccessProblemFound {
 		return o, "", o.stderr + o.stdout
 	}
 	return o, strconv.Itoa(len(result.report.Diagnostics)), o.stdout

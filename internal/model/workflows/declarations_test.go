@@ -1,12 +1,12 @@
-package declaration
+package workflows
 
 import (
 	"strings"
 	"testing"
 
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestDeclarationProjectionPreservesKeySourceAndOrigin(t *testing.T) {
@@ -35,17 +35,17 @@ jobs:
           "${{ insert }}":
             inserted: inserted input
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
 	bound := Bind("declaration-source", source, workflow, false, "")
-	mappings, _ := bound.Declarations()
-	byScope := map[string]workflowfacts.Mapping{}
-	for _, mapping := range mappings {
+	sourceMappings, _ := bound.Declarations()
+	byScope := map[string]facts.Mapping{}
+	for _, mapping := range sourceMappings {
 		byScope[mapping.Scope] = mapping
 	}
-	assertEntry := func(scope, sourceKey, name string, state mapping.KeyState, evaluated bool) mapping.Declaration {
+	assertEntry := func(scope, sourceKey, name string, state mappings.KeyState, evaluated bool) mappings.Declaration {
 		t.Helper()
 		declaration, ok := byScope[scope]
 		if !ok {
@@ -60,32 +60,32 @@ jobs:
 			}
 		}
 		t.Fatalf("%s has no source key %q; entries=%#v", scope, sourceKey, declaration.Entries)
-		return mapping.Declaration{}
+		return mappings.Declaration{}
 	}
 
 	for _, scope := range []string{"env"} {
-		assertEntry(scope, "plain", "plain", mapping.KnownKey, false)
-		assertEntry(scope, "${{ 'constant' }}", "constant", mapping.KnownKey, false)
-		dynamic := assertEntry(scope, "${{ inputs.runtime_key }}", "", mapping.UnknownKey, false)
-		assertEntry(scope, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
+		assertEntry(scope, "plain", "plain", mappings.KnownKey, false)
+		assertEntry(scope, "${{ 'constant' }}", "constant", mappings.KnownKey, false)
+		dynamic := assertEntry(scope, "${{ inputs.runtime_key }}", "", mappings.UnknownKey, false)
+		assertEntry(scope, "${{ fromJSON('[]') }}", "", mappings.InvalidKey, false)
 		if byScope[scope].Complete || dynamic.Origin.Span.Start.Column != sourceColumn(source, `"${{ inputs.runtime_key }}"`) {
 			t.Fatalf("%s runtime key projection lost incompleteness or key position: %#v", scope, dynamic)
 		}
 	}
 	withScope := `jobs["build"].steps[0].with`
-	plain := assertEntry(withScope, "plain", "plain", mapping.KnownKey, false)
+	plain := assertEntry(withScope, "plain", "plain", mappings.KnownKey, false)
 	if plain.Origin.Span.Start.Column != sourceColumn(source, "plain: input value") || plain.Origin.Span.Start.Column == sourceColumn(source, "input value") {
 		t.Fatalf("action input start used value column, got %d", plain.Origin.Span.Start.Column)
 	}
-	assertEntry(withScope, "${{ 'constant' }}", "constant", mapping.KnownKey, false)
-	assertEntry(withScope, "${{ inputs.runtime_key }}", "", mapping.UnknownKey, false)
-	assertEntry(withScope, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
-	assertEntry(withScope, "inserted", "inserted", mapping.KnownKey, false)
-	matrix := assertEntry(`jobs["build"].strategy.matrix`, "${{ inputs.runtime_axis }}", "", mapping.UnknownKey, false)
+	assertEntry(withScope, "${{ 'constant' }}", "constant", mappings.KnownKey, false)
+	assertEntry(withScope, "${{ inputs.runtime_key }}", "", mappings.UnknownKey, false)
+	assertEntry(withScope, "${{ fromJSON('[]') }}", "", mappings.InvalidKey, false)
+	assertEntry(withScope, "inserted", "inserted", mappings.KnownKey, false)
+	matrix := assertEntry(`jobs["build"].strategy.matrix`, "${{ inputs.runtime_axis }}", "", mappings.UnknownKey, false)
 	if matrix.Origin.Span.Start.Column != sourceColumn(source, `"${{ inputs.runtime_axis }}"`) {
 		t.Fatalf("matrix key start = %d; want source key column %d", matrix.Origin.Span.Start.Column, sourceColumn(source, `"${{ inputs.runtime_axis }}"`))
 	}
-	assertEntry(`jobs["build"].strategy.matrix`, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
+	assertEntry(`jobs["build"].strategy.matrix`, "${{ fromJSON('[]') }}", "", mappings.InvalidKey, false)
 }
 
 func sourceColumn(source, fragment string) int {

@@ -4,19 +4,19 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func (rule *Checker) scopeExpressionSource(value string, pos *source.Position) func() {
+func (rule *Checker) scopeExpressionSource(value string, pos *sourcetext.Position) func() {
 	previous, offset := rule.expressionSource, rule.expressionOffset
 	rule.expressionSource, rule.expressionOffset = nil, 0
 	if pos != nil {
-		var source *workflowlang.ScriptSource
+		var source *definition.ScriptSource
 		if rule.workflow.Present() {
 			source = rule.workflow.ExpressionSources[*pos]
 		}
@@ -30,7 +30,7 @@ func (rule *Checker) scopeExpressionSource(value string, pos *source.Position) f
 	return func() { rule.expressionSource, rule.expressionOffset = previous, offset }
 }
 
-func (rule *Checker) expressionPosition(offset int, end bool) *source.Position {
+func (rule *Checker) expressionPosition(offset int, end bool) *sourcetext.Position {
 	source := rule.expressionSource
 	if source == nil || offset < 0 || offset > len(source.Value) {
 		return nil
@@ -46,7 +46,7 @@ func (rule *Checker) expressionPosition(offset int, end bool) *source.Position {
 }
 
 // scalarPosition returns the position of an optional scalar.
-func scalarPosition(s *workflowlang.String) *source.Position {
+func scalarPosition(s *definition.String) *sourcetext.Position {
 	if s == nil {
 		return nil
 	}
@@ -54,14 +54,14 @@ func scalarPosition(s *workflowlang.String) *source.Position {
 }
 
 func expressionLiteral(text string) (any, bool) {
-	expression := exprsyntax.ParseAssignedExpression(text)
+	expression := syntax.ParseAssignedExpression(text)
 	if expression == nil {
 		return nil, false
 	}
-	return expreval.ConditionConstantValue(expression)
+	return evaluate.ConditionConstantValue(expression)
 }
 
-func rawValuePosition(value workflowlang.RawYAMLValue) *source.Position {
+func rawValuePosition(value definition.RawYAMLValue) *sourcetext.Position {
 	if value == nil {
 		return nil
 	}

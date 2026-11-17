@@ -3,9 +3,9 @@ package suspicious
 import (
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestDuplicateWorkflowNameUsesSuppliedInventory(t *testing.T) {
@@ -26,11 +26,11 @@ func TestDuplicateWorkflowNameUsesSuppliedInventory(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			text := tc.source + "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-			parsed, errs := workflowparser.ParseWorkflow([]byte(text))
+			parsed, errs := parser.ParseWorkflow([]byte(text))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := declaration.Bind("checked", text, parsed, false, "").Workflow()
+			workflow := workflows.Bind("checked", text, parsed, false, "").Workflow()
 			findings := DuplicateWorkflowName(others, workflow)
 			if tc.message == "" {
 				if len(findings) != 0 {

@@ -5,20 +5,20 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // VisitWithOrigin annotates findings produced by a synchronous pass visit.
 // Asynchronous producers snapshot their own origins before scheduling work.
-func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin, hasIgnores bool, visit func() error) error {
+func VisitWithOrigin(pass workflowvisit.Pass, origin *finding.IgnoreOrigin, hasIgnores bool, visit func() error) error {
 	rule, ok := pass.(workflowvisit.Rule)
 	if !ok {
 		return visit()
 	}
 	before := rule.FindingCount()
-	defer rule.AnnotateSince(before, func(finding *findingmodel.Finding) {
-		if finding.Owner == nil && finding.Source.Content == nil {
-			finding.Owner = &findingmodel.Owner{Job: origin.Job, Step: origin.StepPosition}
+	defer rule.AnnotateSince(before, func(item *finding.Finding) {
+		if item.Owner == nil && item.Source.Content == nil {
+			item.Owner = &finding.Owner{Job: origin.Job, Step: origin.StepPosition}
 		}
 	})
 	// Metadata can have file-specific ignores even when its caller has none.
@@ -33,17 +33,17 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 
 	start := rule.FindingCount()
 	err := visit()
-	rule.AnnotateSince(start, func(finding *findingmodel.Finding) {
-		if !hasIgnores && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {
+	rule.AnnotateSince(start, func(item *finding.Finding) {
+		if !hasIgnores && (item.MetadataIdentity == nil || item.Source.Content == nil) {
 			return
 		}
-		if finding.Source.Content == nil && finding.IgnoreOrigin == nil {
-			finding.IgnoreOrigin = origin
-		} else if finding.Source.Content != nil && finding.IgnoreOrigin != nil {
+		if item.Source.Content == nil && item.IgnoreOrigin == nil {
+			item.IgnoreOrigin = origin
+		} else if item.Source.Content != nil && item.IgnoreOrigin != nil {
 			// Each invocation owns its origin; shared metadata never stores caller state.
-			inner := *finding.IgnoreOrigin
+			inner := *item.IgnoreOrigin
 			inner.Job = origin.Job
-			finding.IgnoreOrigin = &inner
+			item.IgnoreOrigin = &inner
 		}
 	})
 	return err
@@ -51,7 +51,7 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 
 // originParticipant snapshots context for asynchronous diagnostic producers.
 type originParticipant interface {
-	SetIgnoreOrigin(*findingmodel.IgnoreOrigin)
+	SetIgnoreOrigin(*finding.IgnoreOrigin)
 }
 
 func HasConfiguredIgnores(cfg *configuration.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

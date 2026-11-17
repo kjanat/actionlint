@@ -7,20 +7,20 @@ import (
 	"strings"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func checkoutManifestProvider(t *testing.T) actions.Provider {
 	t.Helper()
 	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	identity, err := actions.NewIdentity("github.com", "actions/checkout", repofacts.ID{}, commit, "")
+	identity, err := actions.NewIdentity("github.com", "actions/checkout", repository.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func checkoutManifestProvider(t *testing.T) actions.Provider {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, commit, route, "test-fixture")
+	selection, err := actions.NewReferenceSelection(reference, identity, commit, route, "test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,9 +125,9 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	t.Helper()
 	cache := newCapturedWorkflowCache(t, root, root, nil)
 	path := filepath.Join(root, dependency)
-	coordinates := source.YAML
+	coordinates := sourcetext.YAML
 	if filepath.Ext(path) == ".sh" {
-		coordinates = source.RawLF
+		coordinates = sourcetext.RawLF
 	}
 	// The synthetic producer observes bytes captured before traversal by the
 	// same owner used for workflow analysis and final publication.
@@ -135,16 +135,16 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if err != nil {
 		return nil, err
 	}
-	reference := source.NewReferenceIndex(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
+	reference := sourcetext.NewReferenceIndex(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
 	workflow := sourceUnit{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}
 	findings, err := checkWithCaches(t, t.Context(), analysisRequest{
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-			finding := findingmodel.At(&source.Position{Line: 1, Column: 1}, rule.Name(), "dependency finding")
+			finding := finding.At(&sourcetext.Position{Line: 1, Column: 1}, rule.Name(), "dependency finding")
 			finding.Path, finding.Source.Content = path, dependencySource.Bytes()
 			finding.Reference = &reference
-			finding.Source.RawScript = coordinates == source.RawLF
+			finding.Source.RawScript = coordinates == sourcetext.RawLF
 			rule.Report(finding)
 			return []workflowvisit.Rule{&rule}
 		},

@@ -7,8 +7,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -55,9 +55,9 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings) pluginselection.Selection {
+func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Options) pluginselection.PluginSelection {
 	// A tool disabled by --no-tool is not run by plugins either.
-	return pluginselection.WithTools(pluginselection.Selection{
+	return pluginselection.WithTools(pluginselection.PluginSelection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
 		Acquisition:  acquisition,
@@ -68,8 +68,8 @@ func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings)
 
 // defaultPlugins lets every bundled tool that runs its default command
 // receive a default plugin declaration.
-func (c checkInvocation) defaultPlugins(warning func(string)) plugininstall.DefaultPluginOptions {
-	options := plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Warning: warning}
+func (c checkInvocation) defaultPlugins(warning func(string)) installation.DefaultPluginOptions {
+	options := installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Warning: warning}
 	for _, id := range slices.Sorted(maps.Keys(c.Tools)) {
 		if selection := c.Tools[id]; selection.Command == id && implicitProcessOptions(selection.Process) {
 			options.Tools = append(options.Tools, id)
@@ -80,13 +80,13 @@ func (c checkInvocation) defaultPlugins(warning func(string)) plugininstall.Defa
 
 // Optional discovery is a default, not an explicit choice of a native checker.
 // Arguments, including those a retired flag adds, still opt into native use.
-func implicitProcessOptions(options *process.CommandOptions) bool {
+func implicitProcessOptions(options *hostprocess.CommandOptions) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&
 		len(options.Environment) == 0 && options.WorkingDir == ""
 }
 
-func selectedRulePlugins(ctx context.Context, selection pluginselection.Selection) (pluginselection.Sources, error) {
+func selectedRulePlugins(ctx context.Context, selection pluginselection.PluginSelection) (pluginselection.Sources, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return pluginselection.Sources{}, err

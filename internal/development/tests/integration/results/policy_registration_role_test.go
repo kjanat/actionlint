@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
@@ -32,7 +32,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy := resultpolicy.Policy{Path: "workflow.yml", Root: "."}
+			policy := policy.Policy{Path: "workflow.yml", Root: "."}
 			if _, err := publishFindings(t, policy, nil, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, map[string]*configuration.Config{"action.yml": cfg}); err != nil {
 				t.Fatal(err)
 			}
@@ -42,8 +42,8 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 
 func TestPublicationRejectsUnpreparedForeignSource(t *testing.T) {
 	t.Parallel()
-	batch := preparePublicationBatch(t, resultpolicy.Batch{InputPath: "workflow.yml", Sources: map[string][]byte{"action.yml": []byte("name: action\n")}}, nil, nil)
-	_, err := resultpolicy.Publish([]resultpolicy.Batch{batch}, nil)
+	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Sources: map[string][]byte{"action.yml": []byte("name: action\n")}}, nil, nil)
+	_, err := policy.Publish([]policy.Batch{batch}, nil)
 	if err == nil || !strings.Contains(err.Error(), "rule configuration was not prepared for source") {
 		t.Fatalf("missing source binding was accepted: %v", err)
 	}

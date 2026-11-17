@@ -4,16 +4,16 @@ import (
 	"maps"
 	"slices"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // ExpressionScope supplies GitHub context types and the availability for one
 // workflow field. Invocation-specific types can replace its initial types later.
 type ExpressionScope struct{ key string }
 
-func (scope ExpressionScope) NarrowContext(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+func (scope ExpressionScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return NarrowEventTypes(guard, truth, lookup)
 }
 
@@ -34,28 +34,28 @@ func (scope ExpressionScope) ContextNames() []string {
 	return slices.Clone(contexts)
 }
 
-func (scope ExpressionScope) FunctionAvailability() map[string]exprfunctions.Availability {
+func (scope ExpressionScope) FunctionAvailability() map[string]functions.Availability {
 	_, allowed := WorkflowKeyAvailability(scope.key)
 	return FunctionAvailability(allowed)
 }
 
 // FunctionAvailability resolves the generated location table against an explicit
 // list of permitted function names.
-func FunctionAvailability(allowed []string) map[string]exprfunctions.Availability {
-	availability := make(map[string]exprfunctions.Availability, len(SpecialFunctionNames))
+func FunctionAvailability(allowed []string) map[string]functions.Availability {
+	availability := make(map[string]functions.Availability, len(SpecialFunctionNames))
 	for name, locations := range SpecialFunctionNames {
-		availability[name] = exprfunctions.Availability{Allowed: slices.Contains(allowed, name), AvailableAt: slices.Clone(locations)}
+		availability[name] = functions.Availability{Allowed: slices.Contains(allowed, name), AvailableAt: slices.Clone(locations)}
 	}
 	return availability
 }
 
-func (scope ExpressionScope) FunctionOverloads() map[string][]*exprfunctions.FuncSignature {
+func (scope ExpressionScope) FunctionOverloads() map[string][]*functions.FuncSignature {
 	if scope.key != "jobs.<job_id>.if" {
 		return nil
 	}
-	overloads := make(map[string][]*exprfunctions.FuncSignature, 2)
+	overloads := make(map[string][]*functions.FuncSignature, 2)
 	for _, name := range []string{"success", "failure"} {
-		overloads[name] = append(slices.Clone(exprfunctions.Builtins[name].Signatures), &exprfunctions.FuncSignature{
+		overloads[name] = append(slices.Clone(functions.Builtins[name].Signatures), &functions.FuncSignature{
 			Name: name, Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.StringType()}, VariableLengthParams: true,
 		})
 	}

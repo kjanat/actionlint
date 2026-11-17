@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
@@ -27,7 +27,7 @@ func TestRequiredActionMetadataAndCoverage(t *testing.T) {
 		for _, missing := range []availability.Unavailability{availability.Offline(), availability.CacheMiss(), availability.LookupDisabled(), availability.Failed(), availability.NotFound()} {
 			result, err := Check(t.Context(), Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{cfg}, RemoteActions: metadataProvider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 				return actions.UnavailableManifest(missing), nil
-			})}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}"), Name: "workflow.yml"})
+			})}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}"), Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)
 			}

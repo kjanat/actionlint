@@ -1,13 +1,13 @@
 package executor
 
 import (
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // SourceInput constructs a check input header without execution facts.
-func SourceInput(document parsing.Document, path string, content []byte, reference source.Reference) checkinputs.AnalyzerInput {
-	return checkinputs.AnalyzerInput{Reference: reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Source}, Path: path, Content: string(content), Kind: document.Kind().String(), ParseStatus: document.ParseStatus()}
+func SourceInput(document parsing.Document, path string, content []byte, reference sourcetext.Reference) checkinputs.AnalyzerInput {
+	return checkinputs.AnalyzerInput{Reference: reference, AvailableInputs: []rule.InputKind{rule.Source}, Path: path, Content: string(content), Kind: document.Kind().String(), ParseStatus: document.ParseStatus()}
 }

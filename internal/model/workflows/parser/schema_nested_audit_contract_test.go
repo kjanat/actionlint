@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestSchemaNestedDisabledService(t *testing.T) {
@@ -19,7 +19,7 @@ jobs:
     steps:
       - run: echo test
 `
-	_, errs := workflowparser.ParseWorkflow([]byte(src))
+	_, errs := parser.ParseWorkflow([]byte(src))
 	if len(errs) != 0 {
 		t.Fatalf("documented empty service image rejected: %v", errs)
 	}
@@ -35,7 +35,7 @@ func TestSchemaNestedQuotedScalarTags(t *testing.T) {
 	} {
 		t.Run(field, func(t *testing.T) {
 			t.Parallel()
-			_, errs := workflowparser.ParseWorkflow([]byte(`on: push
+			_, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -62,8 +62,8 @@ jobs:
     steps:
       - run: echo test
 `
-	_, errs := workflowparser.ParseWorkflow([]byte(src))
-	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Line != 4 {
+	_, errs := parser.ParseWorkflow([]byte(src))
+	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Position.Line != 4 {
 		t.Fatalf("wanted missing cron diagnostic at second schedule entry, got %v", errs)
 	}
 }
@@ -76,7 +76,7 @@ func TestSchemaNestedWaitAllStaticValue(t *testing.T) {
 	}{{"", true}, {"true", true}, {"True", true}, {"false", false}, {"${{ true }}", false}, {"${{ fromJSON('true') }}", false}, {"${{ github.event_name == 'push' }}", false}} {
 		t.Run(value.text, func(t *testing.T) {
 			t.Parallel()
-			_, errs := workflowparser.ParseWorkflow([]byte(`on: push
+			_, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
 
 func TestSchemaNestedWorkflowDescription(t *testing.T) {
 	t.Parallel()
-	w, errs := workflowparser.ParseWorkflow([]byte(`description: Build reusable binaries
+	w, errs := parser.ParseWorkflow([]byte(`description: Build reusable binaries
 on: push
 jobs:
   test:

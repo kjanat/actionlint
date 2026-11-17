@@ -11,11 +11,11 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -124,7 +124,7 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 			}
 			delete(object, "$schema")
 			var file NetworkPolicyFile
-			if err := binding.Decode(object, &file); err != nil {
+			if err := configdecode.Decode(object, &file); err != nil {
 				return source, sourceError(err, source.Origins())
 			}
 			restriction := file.Restrictions.Network.MetadataMirrors
@@ -152,7 +152,7 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 		p.files = append(p.files, loaded.Files...)
 	}
 	var selected NetworkPolicyDefaults
-	if err := binding.Decode(defaults.Value(), &selected); err != nil {
+	if err := configdecode.Decode(defaults.Value(), &selected); err != nil {
 		return nil, err
 	}
 	p.defaults = selected.Network
@@ -182,7 +182,7 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (Resolve
 		resolved.Origins = map[string]configreport.Origin{}
 	}
 	setOrigin := func(key string, input document.Location) {
-		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Line, Column: input.Column}
+		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Value.Line, Column: input.Value.Column}
 	}
 	for key, absent := range map[string]bool{"services": requested.Services == nil, "allow-unknown-repositories": requested.AllowUnknownRepositories == nil} {
 		if input, ok := p.defaultOrigins["/network/metadata-mirrors/"+key]; absent && ok {

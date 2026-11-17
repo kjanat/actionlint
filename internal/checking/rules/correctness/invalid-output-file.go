@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -47,11 +47,11 @@ func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput
 		if script.Runtime == nil || !script.Runtime.ShellKnown {
 			continue
 		}
-		file, known := scriptmodel.KnownOutputFile(script.Text, script.Runtime.Shell)
+		file, known := scripts.KnownOutputFile(script.Text, script.Runtime.Shell)
 		if !known {
 			continue
 		}
-		problem := scriptmodel.NamedFileCommandError(file.Text)
+		problem := scripts.NamedFileCommandError(file.Text)
 		if problem == "" {
 			continue
 		}

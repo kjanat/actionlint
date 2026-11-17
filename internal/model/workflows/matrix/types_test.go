@@ -3,9 +3,9 @@ package matrix
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
@@ -25,12 +25,12 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
 			resolution := Resolve(workflow.Jobs["test"].Strategy)
-			inferred := map[sourcepos.Position]exprtypes.Type{}
+			inferred := map[sourcetext.Position]exprtypes.Type{}
 			for _, axis := range resolution.Axes() {
 				for _, candidate := range axis.Values {
 					inferred[candidate.Origin().Span.Start] = exprtypes.NumberType()
