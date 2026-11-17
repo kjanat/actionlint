@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 // Restoring one digest must satisfy every reference to those bytes, including
@@ -18,7 +18,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Parallel()
 	cache := t.TempDir()
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
-	backend := func(path string) *tools.Backend {
+	backend := func(path string) *tools.BackendSelection {
 		module, err := tools.NewModule(path)
 		if err != nil {
 			t.Fatal(err)
@@ -37,7 +37,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 				"ruff": {Backend: backend("sha256://" + c)},
 			}}},
 		}},
-		Acquisition: pluginacquisition.Options{UserCacheDir: cache},
+		Acquisition: dependencycache.Acquisition{UserCacheDir: cache},
 	}
 	plan, err := sources.CachePlan(t.Context())
 	if err != nil {

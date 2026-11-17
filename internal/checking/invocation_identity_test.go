@@ -50,7 +50,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	collector := &invocationCollector{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root,
-		Analyzers:  []checkinputs.Registration{{Analyzer: collector}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: collector}},
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ jobs:
 			collector := &invocationCollector{}
 			_, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
-				Analyzers:  []checkinputs.Registration{{Analyzer: collector}},
+				Analyzers:  []results.AnalyzerRegistration{{Analyzer: collector}},
 			}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)

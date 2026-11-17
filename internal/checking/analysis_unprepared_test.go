@@ -50,7 +50,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 				t.Fatalf("missing preparation error: %v", err)
 			}
 			var used []rule.Descriptor
-			findings, err := runDocumentAnalyzers(t.Context(), []checkinputs.Registration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
+			findings, err := runDocumentAnalyzers(t.Context(), []results.AnalyzerRegistration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
 			if err != nil || len(findings) != 1 || findings[0].Message != "reported source finding" {
 				t.Fatalf("source analyzer skipped: %v %v", findings, err)
 			}

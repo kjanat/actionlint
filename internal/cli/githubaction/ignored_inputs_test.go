@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 // TestToolInputsAreIgnored checks that the action reads neither the
@@ -24,7 +24,7 @@ func TestToolInputsAreIgnored(t *testing.T) {
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	maps.Copy(env, ignored)
 	var out strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &out, pluginacquisition.Options{}); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &out, dependencycache.Acquisition{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &out)
 	}
 	if strings.Contains(out.String(), "::warning::") {

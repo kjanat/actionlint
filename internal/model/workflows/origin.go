@@ -3,11 +3,23 @@ package workflows
 import (
 	"iter"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
+
+// IgnoreOrigin distinguishes executions of shared YAML anchors.
+// It never changes displayed locations or the scope of inline comments.
+type IgnoreOrigin struct {
+	StepPosition                *sourcetext.Position
+	Job, StepID, StepName, Uses string
+	// metadata uses the owning action's YAML location for inner selectors.
+	Metadata bool
+}
+
+func (origin *IgnoreOrigin) Matches(job, step, uses string) bool {
+	return (job == "" || job == origin.Job) && (step == "" || step == origin.StepID || step == origin.StepName) && (uses == "" || uses == origin.Uses)
+}
 
 func originSelector(s *definition.String) string {
 	if s == nil {
@@ -21,11 +33,11 @@ func originSelector(s *definition.String) string {
 
 // IgnoreOrigin returns the suppression selectors of the job. Each call
 // returns a new value the caller owns.
-func (j BoundJob) IgnoreOrigin() *finding.IgnoreOrigin {
+func (j BoundJob) IgnoreOrigin() *IgnoreOrigin {
 	if !j.Present() {
-		return &finding.IgnoreOrigin{}
+		return &IgnoreOrigin{}
 	}
-	origin := &finding.IgnoreOrigin{Job: j.ID.Text()}
+	origin := &IgnoreOrigin{Job: j.ID.Text()}
 	if j.WorkflowCall != nil {
 		origin.Uses = originSelector(j.WorkflowCall.Uses)
 	}
@@ -34,11 +46,11 @@ func (j BoundJob) IgnoreOrigin() *finding.IgnoreOrigin {
 
 // IgnoreOrigin returns the suppression selectors of the step declared in job.
 // Each call returns a new value the caller owns.
-func (s BoundStep) IgnoreOrigin(job string) *finding.IgnoreOrigin {
+func (s BoundStep) IgnoreOrigin(job string) *IgnoreOrigin {
 	if !s.Present() {
-		return &finding.IgnoreOrigin{Job: job}
+		return &IgnoreOrigin{Job: job}
 	}
-	origin := &finding.IgnoreOrigin{Job: job, StepID: originSelector(s.ID), StepName: originSelector(s.Name)}
+	origin := &IgnoreOrigin{Job: job, StepID: originSelector(s.ID), StepName: originSelector(s.Name)}
 	if position, ok := s.Position(); ok {
 		origin.StepPosition = &position
 	}

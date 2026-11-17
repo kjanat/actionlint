@@ -15,12 +15,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -35,7 +34,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		return nil, errors.New("private endpoint dialed")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	const endpoint = "https://127.0.0.1:8443/plugin.wasm"
 	source := endpoint + "#sha256=" + strings.Repeat("a", 64)
 	root := repositoryfixture.Directory(t)

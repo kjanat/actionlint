@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -14,11 +15,11 @@ func TestAcquisitionArtifactOptionsUseSelectedUserCache(t *testing.T) {
 	t.Parallel()
 	selected := t.TempDir()
 	connections := acquisitionhttp.Connections{Transport: &http.Transport{}}
-	options := pluginacquisition.Options{UserCacheDir: selected, Connections: connections}.ArtifactOptions()
+	options := pluginacquisition.ArtifactOptions(dependencycache.Acquisition{UserCacheDir: selected, Connections: connections})
 	if options.CacheDir != filepath.Join(selected, "actionlint", "artifacts") || options.Connections != connections || options.PullOCI == nil {
 		t.Fatalf("selected artifact options = %+v", options)
 	}
-	compiled := pluginacquisition.Options{UserCacheDir: selected}.CompiledModuleCacheDir()
+	compiled := pluginacquisition.CompiledModuleCacheDir(dependencycache.Acquisition{UserCacheDir: selected})
 	if compiled != filepath.Join(selected, "actionlint", "wazero") {
 		t.Fatalf("compiled module cache = %q", compiled)
 	}
@@ -33,7 +34,7 @@ func TestAcquisitionArtifactOptionsDefaultToHostUserCache(t *testing.T) {
 	if base, err := os.UserCacheDir(); err == nil {
 		want = filepath.Join(base, "actionlint", "artifacts")
 	}
-	options := pluginacquisition.Options{}.ArtifactOptions()
+	options := pluginacquisition.ArtifactOptions(dependencycache.Acquisition{})
 	if options.CacheDir != want || options.Connections != (acquisitionhttp.Connections{}) || options.PullOCI == nil {
 		t.Fatalf("default artifact options = %+v, want cache %q", options, want)
 	}

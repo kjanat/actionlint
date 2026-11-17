@@ -28,14 +28,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 
-	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
+	"actionlint.kjanat.dev/v2/internal/input/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
@@ -68,7 +68,7 @@ type analysisRequest struct {
 	ExecutionEnvironment
 	RemoteActions   actions.Provider
 	RemoteWorkflows reusableworkflows.Provider
-	Repository      func(context.Context, string) repository.Snapshot
+	Repository      func(context.Context, string) repository.Settings
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Sources            []workspace.InputFile
@@ -359,16 +359,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		root    string
 		mirrors references.MirrorAccess
 	}
-	workflows := map[workflowCacheKey]*reusableworkflows.Cache{}
+	workflows := map[workflowCacheKey]*reusableworkflows.MetadataCache{}
 	remoteWorkflows := make(map[references.MirrorAccess]*reusableworkflows.Remote)
 	session.workingDir = absPath(cwd)
-	session.repositories = make(map[string]repository.Snapshot)
+	session.repositories = make(map[string]repository.Settings)
 	for _, source := range request.Sources {
 		root := projectRoot(source.Project)
 		if _, exists := session.repositories[root]; exists {
 			continue
 		}
-		var facts repository.Snapshot
+		var facts repository.Settings
 		if request.Repository != nil && root != "" {
 			facts = request.Repository(lifetime, root)
 		}
@@ -413,7 +413,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		key := workflowCacheKey{root, mirrors}
 		wc, configured := workflows[key]
 		if !configured {
-			wc = reusableworkflows.NewCache(root, session.debugWriter())
+			wc = reusableworkflows.NewMetadataCache(root, session.debugWriter())
 			wc.SetRemote(remoteWorkflows[mirrors])
 			workflows[key] = wc
 		}

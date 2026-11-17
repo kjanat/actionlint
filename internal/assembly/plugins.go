@@ -24,17 +24,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options checking.Options, input checkrequest.Request, paths []string, acquisition pluginacquisition.Options) (result *report.Analysis, err error) {
+func CheckWithPluginPaths(ctx context.Context, options checking.Options, input checkrequest.Request, paths []string, acquisition dependencycache.Acquisition) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func CheckWithPlugins(ctx context.Context, options checking.Options, input check
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition pluginacquisition.Options) (needed workspace.ExternalToolRequirements, err error) {
+func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition dependencycache.Acquisition) (needed workspace.ExternalToolRequirements, err error) {
 	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err
@@ -181,7 +182,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 		}
 		if local.Files.Source != "" {
 			// Only now, after the check above, download the executable.
-			artifactOptions := l.Acquisition.ArtifactOptions()
+			artifactOptions := pluginacquisition.ArtifactOptions(l.Acquisition)
 			artifactOptions.Network = local.Network
 			fetched, err := local.Files.Materialize(ctx, artifactOptions)
 			if err != nil {
@@ -206,7 +207,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Analyzer: analyzer})
+			options.Analyzers = append(slices.Clone(options.Analyzers), results.AnalyzerRegistration{Analyzer: analyzer})
 			continue
 		}
 		selection := backends.ToolSelection{Command: name}

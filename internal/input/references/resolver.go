@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
@@ -32,28 +33,9 @@ type ResolutionRecord struct {
 	// SelectedObject and SelectedRef record an action profile's original object
 	// and exact lookup key. Optional for existing providers; metadata acquisition
 	// cannot infer a named route when these fields are omitted.
-	SelectedObject string         `json:"selected_object,omitempty"`
-	SelectedRef    string         `json:"selected_ref,omitempty"`
-	Network        *RequestReport `json:"network,omitempty"`
-}
-
-// RequestCounts reports actual attempts made by an external resolver. Host is an
-// authority without credentials, paths or queries. RequestKind is http, rest,
-// graphql, git or oci. Credentials is provided, absent or unknown and describes
-// whether credentials were supplied, regardless of whether the server accepted them.
-type RequestCounts struct {
-	Host        string `json:"host"`
-	RequestKind string `json:"request_kind"`
-	Credentials string `json:"credentials"`
-	Attempts    uint64 `json:"attempts"`
-	Failures    uint64 `json:"failures"`
-}
-
-// RequestReport reports a resolver's network activity. AllRequestsReported means every remote
-// attempt is included, including failed attempts. Omission does not mean zero.
-type RequestReport struct {
-	AllRequestsReported bool            `json:"all_requests_reported"`
-	Requests            []RequestCounts `json:"requests"`
+	SelectedObject string                    `json:"selected_object,omitempty"`
+	SelectedRef    string                    `json:"selected_ref,omitempty"`
+	Network        *accounting.RequestReport `json:"network,omitempty"`
 }
 
 type Resolver interface {

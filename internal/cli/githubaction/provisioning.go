@@ -11,17 +11,17 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
-func provisioningRequest(env func(string) string, acquisition pluginacquisition.Options) (*lintRequest, error) {
+func provisioningRequest(env func(string) string, acquisition dependencycache.Acquisition) (*lintRequest, error) {
 	in, err := parseInputs(environmentArgs(env))
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (req *lintRequest) pluginInput() checkrequest.Request {
 }
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
-func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition pluginacquisition.Options) int {
+func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition dependencycache.Acquisition) int {
 	ctx := context.Background()
 	req, err := provisioningRequest(env, acquisition)
 	if err == nil && req.configFile != "" {

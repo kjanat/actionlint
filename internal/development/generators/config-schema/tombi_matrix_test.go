@@ -83,7 +83,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		url      string
 	}
 	makeConsumer := func(ms []toolmanifest.Manifest) consumer {
-		providers := make([]configschema.ToolProvider, 0, len(ms))
+		providers := make([]toolsettings.Provider, 0, len(ms))
 		for _, m := range ms {
 			providers = append(providers, m.ConfigurationSchemaProvider())
 		}

@@ -87,7 +87,7 @@ func (c checkInvocation) runners() (runnerapi.Options, error) {
 	if kind == jsontext.KindNull {
 		content = ""
 	}
-	options.Snapshot = runnerapi.Snapshot{
+	options.Snapshot = runnerapi.RunnerSnapshot{
 		Content: content, Scope: snapshot.Scope, ObtainedAt: snapshot.ObtainedAt,
 		Freshness: snapshot.Freshness, Complete: snapshot.Complete,
 	}

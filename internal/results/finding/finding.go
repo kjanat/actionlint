@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -30,7 +31,7 @@ type Finding struct {
 	// reconciled across all invocations of the same captured source before publication.
 	UnusedSuppressionRule string
 	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
-	IgnoreOrigin *IgnoreOrigin
+	IgnoreOrigin *workflows.IgnoreOrigin
 	// owner is analysis provenance, populated independently of suppression settings.
 	Owner *Owner
 	// metadataFinding identifies a reusable validation finding independently of its caller.

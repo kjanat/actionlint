@@ -12,7 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"

@@ -9,20 +9,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Options {
-	return pluginacquisition.Options{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+func fixtureAcquisition(r *fixtureregistry.PluginRegistry) dependencycache.Acquisition {
+	return dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 }
 
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 
 func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	t.Parallel()
-	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Options{}, repositoryfixture.Directory(t), "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.Publish(t, "v1.0.0")
-	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 	root := repositoryfixture.Directory(t)
 	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {

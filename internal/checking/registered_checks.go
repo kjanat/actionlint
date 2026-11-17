@@ -7,8 +7,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // registeredChecks holds the document analyzers and script tools one check
@@ -16,7 +16,7 @@ import (
 // rules into. A check builds it once with registerChecks; configuration
 // loading, input selection and analysis all read the same value.
 type registeredChecks struct {
-	analyzers []checkinputs.Registration
+	analyzers []results.AnalyzerRegistration
 	tools     []contract.Registration
 	// registrations declares the analyzers' and tools' rules to configuration.
 	registrations []configuration.RuleRegistration
@@ -30,7 +30,7 @@ type registeredChecks struct {
 // the rule set they extend. Analyzers must not be nil, tool names must be
 // unique and must not name a native rule, and no added rule may reuse the
 // name of another rule.
-func registerChecks(analyzers []checkinputs.Registration, tools []contract.Registration) (*registeredChecks, error) {
+func registerChecks(analyzers []results.AnalyzerRegistration, tools []contract.Registration) (*registeredChecks, error) {
 	catalog, err := LoadConfigurationRules()
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func registerChecks(analyzers []checkinputs.Registration, tools []contract.Regis
 	var extensions []rule.Descriptor
 	var names []string
 	for _, analyzer := range analyzers {
-		if checkinputs.IsNilAnalyzer(analyzer.Analyzer) {
+		if results.IsNilAnalyzer(analyzer.Analyzer) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		descriptor := analyzer.Analyzer.Descriptor().Descriptor

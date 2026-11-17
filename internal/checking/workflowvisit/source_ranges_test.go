@@ -3,8 +3,8 @@ package workflowvisit_test
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestRuleDiagnosticSourceRange(t *testing.T) {

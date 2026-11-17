@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -19,7 +19,7 @@ import (
 // Sources and References must contain only sources accepted by final capture validation.
 type Batch struct {
 	Processor          Processor
-	Policy             Policy
+	Policy             DocumentInputs
 	Project, InputPath string
 	Source             sourcetext.Revision
 	Action             bool

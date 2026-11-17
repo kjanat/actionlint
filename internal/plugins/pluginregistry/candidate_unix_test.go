@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"golang.org/x/sys/unix"
 )
 
@@ -26,7 +26,7 @@ func TestCandidateRejectsFIFO(t *testing.T) {
 		var err error
 		if os.Getenv("ACTIONLINT_TEST_CANDIDATE_KIND") == "metadata" {
 			var client *Client
-			client, err = New(registry, pluginacquisition.Options{})
+			client, err = New(registry, dependencycache.Acquisition{})
 			if err == nil {
 				_, err = client.Search(t.Context(), "")
 			}

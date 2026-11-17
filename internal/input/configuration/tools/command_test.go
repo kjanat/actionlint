@@ -22,7 +22,7 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 		"wasm: {path: \"\"}":        "wasm backend requires a module path",
 		"wasm: {path: a, extra: 1}": "extra",
 	} {
-		var backend Backend
+		var backend BackendSelection
 		err := decodeBackendConfig([]byte(input), &backend)
 		if want == "" {
 			if err != nil {
@@ -34,7 +34,7 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 			t.Fatalf("%q: err=%v", input, err)
 		}
 	}
-	var backend Backend
+	var backend BackendSelection
 	if err := decodeBackendConfig([]byte("wasm: {path: ./engines/ruff.wasm}"), &backend); err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 		"process:\n    executable: ruff\n    args:\n        - --isolated\n    env:\n        MODE: strict\n",
 		"wasm:\n    path: engines/ruff.wasm\n",
 	} {
-		var backend Backend
+		var backend BackendSelection
 		if err := decodeBackendConfig([]byte(input), &backend); err != nil {
 			t.Fatal(err)
 		}

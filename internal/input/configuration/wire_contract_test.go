@@ -13,7 +13,7 @@ import (
 
 func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
 	t.Parallel()
-	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*Policy]()} {
+	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*PolicyConfig]()} {
 		if _, exists := typ.MethodByName("UnmarshalYAML"); exists {
 			t.Fatalf("%s owns decoding instead of its wire adapter", typ)
 		}
@@ -37,7 +37,7 @@ func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
 	}
 	initial := &Config{
 		Paths:  map[string]PathConfig{"**/*.yml": {Ignore: IgnorePatterns{regexp.MustCompile("message")}}},
-		Policy: Policy{RequireCommitHash: new(true)},
+		Policy: PolicyConfig{RequireCommitHash: new(true)},
 	}
 	encoded, err := rules.Marshal(initial)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestConfigGetterResultsDetached(t *testing.T) {
 	pattern := regexp.MustCompile("a|ab")
 	cfg := &Config{
 		Paths:  map[string]PathConfig{"**": {Ignore: IgnorePatterns{pattern}}},
-		Policy: Policy{RequireJobTimeout: RequireJobTimeout(30), RequirePermissions: permissions},
+		Policy: PolicyConfig{RequireJobTimeout: RequireJobTimeout(30), RequirePermissions: permissions},
 	}
 	timeout := cfg.RequiresJobTimeout()
 	if timeout == nil {

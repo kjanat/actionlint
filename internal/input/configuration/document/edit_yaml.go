@@ -7,7 +7,7 @@ import (
 
 	"github.com/kjanat/go-yaml/v4"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // setYAMLList replaces or appends the top-level member key. A flow-style root

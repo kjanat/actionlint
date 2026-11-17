@@ -92,7 +92,7 @@ func prepareRetentionBatch(t *testing.T, batch policy.Batch, notified, origin st
 	}
 	cfg := lifecycleRulesConfig(t, "lint: {rules: {correctness: {action: "+level+"}}}")
 	batch.Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
-	batch.Policy = preparePolicy(batch.Processor.RuleSet, cfg, policy.Policy{Path: batch.InputPath}, nil, batch.Findings)
+	batch.Policy = preparePolicy(batch.Processor.RuleSet, cfg, policy.DocumentInputs{Path: batch.InputPath}, nil, batch.Findings)
 	if origin != "" {
 		required, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: severity.Severity(notified)}}, origin)
 		if err != nil {

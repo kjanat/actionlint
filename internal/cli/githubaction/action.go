@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func actionVersion() string {
@@ -30,7 +30,7 @@ type action struct {
 	newID       func() string
 	timeout     time.Duration
 	result      *lintResult
-	acquisition pluginacquisition.Options
+	acquisition dependencycache.Acquisition
 }
 
 var resultNamesByExitCode = map[int]string{

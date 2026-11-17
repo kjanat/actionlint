@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // WithScriptInputs routes run steps through the registration and action inputs
@@ -108,7 +109,7 @@ func Configure(registration contract.Registration) contract.Registration {
 	}
 	registration.ConfiguredBackend = nil
 	if replace := registration.WithAnalyzer; replace != nil {
-		registration.WithAnalyzer = func(analyzer checkinputs.Registration) (contract.Registration, error) {
+		registration.WithAnalyzer = func(analyzer results.AnalyzerRegistration) (contract.Registration, error) {
 			replacement, err := replace(analyzer)
 			if err != nil {
 				return contract.Registration{}, err

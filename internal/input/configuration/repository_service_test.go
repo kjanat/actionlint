@@ -33,7 +33,7 @@ func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 			if err := config.DecodeConfig(tc.input); err != nil {
 				t.Fatal(err)
 			}
-			facts := config.Apply(repository.Snapshot{Service: host})
+			facts := config.Apply(repository.Settings{Service: host})
 			if facts.Service.Kind() != tc.kind || facts.Service.Version() != tc.version {
 				t.Fatalf("service = %v, want %s %s", facts.Service, tc.kind, tc.version)
 			}
@@ -45,7 +45,7 @@ func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 			if err := decoded.DecodeConfig(encoded); err != nil {
 				t.Fatal(err)
 			}
-			if next := decoded.Apply(repository.Snapshot{Service: host}); next.Service != facts.Service {
+			if next := decoded.Apply(repository.Settings{Service: host}); next.Service != facts.Service {
 				t.Fatalf("encoded service changed from %v to %v", facts.Service, next.Service)
 			}
 		})

@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -67,7 +67,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := localactions.NewCache(t.Context(), root, nil)
+	cache := localactions.NewManifestCache(t.Context(), root, nil)
 	actionCapture, err := snapshots.Capture(actionPath, actionContent, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)

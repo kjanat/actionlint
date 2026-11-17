@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,7 +27,7 @@ func referenceFinding() *Finding {
 		End:               sourcetext.Position{Line: 1, Column: 2},
 		Source:            results.DiagnosticSource{Content: []byte("source"), Suppression: &results.SuppressionOrigin{Path: "target", Lines: sourcetext.LineRange{First: 1, Last: 2}}},
 		SuppressionOrigin: &results.SuppressionOrigin{Path: "path"},
-		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &sourcetext.Position{Line: 3}, Job: "job"},
+		IgnoreOrigin:      &workflows.IgnoreOrigin{StepPosition: &sourcetext.Position{Line: 3}, Job: "job"},
 		Owner:             &Owner{Job: "job", Step: &sourcetext.Position{Line: 4}},
 		MetadataIdentity:  &MetadataIdentity{Visit: 5},
 	}

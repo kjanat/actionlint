@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 )
 
 func TestApplicabilityWireContract(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		wire string
-		want Applicability
+		want applicability.Applicability
 	}{
-		{`{}`, FixSuggested},
-		{`{"applicability":""}`, FixSuggested},
-		{`{"applicability":"suggested"}`, FixSuggested},
-		{`{"applicability":"safe"}`, FixSafe},
-		{`{"applicability":"unsafe"}`, FixUnsafe},
+		{`{}`, applicability.Suggested},
+		{`{"applicability":""}`, applicability.Suggested},
+		{`{"applicability":"suggested"}`, applicability.Suggested},
+		{`{"applicability":"safe"}`, applicability.Safe},
+		{`{"applicability":"unsafe"}`, applicability.Unsafe},
 	} {
 		for _, decode := range []func([]byte, *Fix) error{
 			func(data []byte, fix *Fix) error { return json.Unmarshal(data, fix) },
@@ -34,7 +36,7 @@ func TestApplicabilityWireContract(t *testing.T) {
 			if err := decode(data, &roundtrip); err != nil || roundtrip.Applicability != tc.want {
 				t.Fatalf("roundtrip %s: %v, %v", data, roundtrip.Applicability, err)
 			}
-			if fix.Applicability.Automatic() != (tc.want == FixSafe) {
+			if fix.Applicability.Automatic() != (tc.want == applicability.Safe) {
 				t.Fatalf("incorrect automatic application for %s", tc.wire)
 			}
 		}

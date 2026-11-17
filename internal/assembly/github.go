@@ -4,9 +4,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
-	"actionlint.kjanat.dev/v2/internal/integrations/github"
+	"actionlint.kjanat.dev/v2/internal/input/references/github"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // ResolverCommand names an executable that resolves remote dependencies over
@@ -22,7 +22,7 @@ type GitHubAccess struct {
 	Getenv func(string) string
 	// Acquisition supplies the cache directory and the HTTP connections used
 	// for action metadata and remote configuration.
-	Acquisition pluginacquisition.Options
+	Acquisition dependencycache.Acquisition
 	// Offline reads action metadata from the cache only and starts no resolver.
 	Offline  bool
 	Resolver ResolverCommand
@@ -51,7 +51,9 @@ func ConnectGitHub(options checking.Options, access GitHubAccess) (checking.Opti
 	if access.Offline {
 		mode = github.Offline
 	}
-	metadataOptions := github.EnvironmentOptions(mode, access.Getenv, access.Acquisition.UserCacheDir)
+	// Without a cache directory, metadata lookups run uncached.
+	cacheDirectory, _ := access.Acquisition.Directory()
+	metadataOptions := github.EnvironmentOptions(mode, access.Getenv, cacheDirectory)
 	metadataOptions.Transport = access.Acquisition.Connections.Transport
 	if mode == github.Online && access.Resolver.Command != "" {
 		resolver := access.Resolver

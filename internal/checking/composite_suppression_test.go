@@ -7,11 +7,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -45,8 +45,8 @@ jobs:
 permissions: {}
 `)
 	project := workspace.Identity(root)
-	actions := localactions.NewCache(t.Context(), projectRoot(project), nil)
-	workflows := reusableworkflows.NewCache(project.RootDir(), nil)
+	actions := localactions.NewManifestCache(t.Context(), projectRoot(project), nil)
+	workflows := reusableworkflows.NewMetadataCache(project.RootDir(), nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}, checks: testChecks(t, nil, nil)}
 	var fixture *declarations.CapturedSnapshots

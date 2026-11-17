@@ -42,8 +42,8 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				t.Helper()
 				session := checking.Options{WorkingDir: root}
 				var err error
-				session.Repository = func(context.Context, string) repository.Snapshot {
-					return repository.Snapshot{RunnerLabels: labels}
+				session.Repository = func(context.Context, string) repository.Settings {
+					return repository.Settings{RunnerLabels: labels}
 				}
 
 				result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})

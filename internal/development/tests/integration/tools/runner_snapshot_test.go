@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -64,7 +64,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 			if selection == "" {
 				selection = "desktop-pool"
 			}
-			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.Snapshot{
+			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.RunnerSnapshot{
 				Scope: "repo", Freshness: freshness, Complete: true,
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}

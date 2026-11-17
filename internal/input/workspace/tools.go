@@ -4,9 +4,9 @@ import (
 	"context"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
 // ToolOptions asks providers which tools are possible for a resolved configuration.

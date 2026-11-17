@@ -41,7 +41,7 @@ func scriptLiteralProof(value string) scriptValueProof {
 	return scriptUnsafe
 }
 
-func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
+func (rule *Visitor) safeScriptEnv(name string, argument bool) bool {
 	if rule.scriptEnv == nil {
 		return false
 	}
@@ -50,7 +50,7 @@ func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 	return known && scriptLiteralProof(text).safe(argument)
 }
 
-func (rule *Checker) safeScriptArgumentList(node syntax.Node) bool {
+func (rule *Visitor) safeScriptArgumentList(node syntax.Node) bool {
 	var values []string
 	var complete bool
 	if name, env := strings.CutPrefix(syntax.StaticReference(node), "env."); env {
@@ -72,7 +72,7 @@ func (rule *Checker) safeScriptArgumentList(node syntax.Node) bool {
 	return true
 }
 
-func (rule *Checker) matrixResolution(strategy *definition.Strategy) matrix.Resolution {
+func (rule *Visitor) matrixResolution(strategy *definition.Strategy) matrix.Resolution {
 	if strategy == nil {
 		return matrix.Resolution{}
 	}

@@ -14,9 +14,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -58,11 +58,11 @@ func writeRepository(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func analyzeRepository(t *testing.T, root string, plugin checkinputs.Analyzer) *report.Analysis {
+func analyzeRepository(t *testing.T, root string, plugin results.Analyzer) *report.Analysis {
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: plugin}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: plugin}}, SkipProjectConfig: true,
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
@@ -118,7 +118,7 @@ func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
 		"actionlint.yaml": "lint:\n  rules:\n    security:\n      pipe-to-shell: off\n",
 	})
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []checkinputs.Registration{{Analyzer: plugin}},
+		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []results.AnalyzerRegistration{{Analyzer: plugin}},
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "action.yml")}})
 	if err != nil {
 		t.Fatal(err)
@@ -406,7 +406,7 @@ func TestPartialOutcomePreservesFindings(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
 		t.Fatalf("application error=%v", err)
@@ -445,7 +445,7 @@ func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	checkError(err)
 	if result == nil || len(result.Diagnostics) != len(wantMessages) {

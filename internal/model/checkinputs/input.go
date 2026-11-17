@@ -1,45 +1,25 @@
-// Package checkinputs defines shared check inputs and the checks that consume them, independently of AST traversal,
-// executable tools, configuration discovery, and diagnostic rendering.
+// Package checkinputs defines shared check inputs, independently of AST
+// traversal, executable tools, configuration discovery, and diagnostic
+// rendering. The analyzers that consume them are results.Analyzer values.
 package checkinputs
 
 import (
-	"context"
 	"encoding/json"
 	"io/fs"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
 	rule.Declaration
 	InvocationDefinitions []commands.Definition
-}
-
-// Analyzer completes all work before returning. The host may call AnalyzeDocument
-// concurrently for different documents. Implementations must honor cancellation.
-// Findings may accompany an error when an analysis is incomplete.
-// Descriptor and AnalyzeDocument must not panic; the host does not recover analyzer panics.
-type Analyzer interface {
-	Descriptor() Descriptor
-	AnalyzeDocument(context.Context, AnalyzerInput) ([]results.Diagnostic, error)
-}
-
-// Registration supplies analyzer-specific configuration without exposing the
-// host's mutable configuration objects or rule registry.
-type Registration struct {
-	Analyzer Analyzer
-	Options  json.RawMessage
-	// Prepare acquires additional facts before checking. On failure it returns
-	// the usable partial input, so completed observations can still yield findings.
-	Prepare func(context.Context, AnalyzerInput) (AnalyzerInput, error)
 }
 
 // AnalyzerInput is one document and its shared analysis facts. Each analyzer receives

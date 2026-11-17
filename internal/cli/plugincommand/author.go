@@ -13,13 +13,14 @@ import (
 	"reflect"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 const (
@@ -72,7 +73,7 @@ type authoringCaseResult struct {
 }
 
 // Run validates the manifest without running its tool.
-func (r ValidateOptions) Run(ctx context.Context, streams commandio.Streams, _ pluginacquisition.Options) (int, error) {
+func (r ValidateOptions) Run(ctx context.Context, streams output.Streams, _ dependencycache.Acquisition) (int, error) {
 	manifest, programs, err := loadAuthorManifest(ctx, streams, r.Path)
 	if err == nil {
 		err = process.ValidateManifest(manifest, programs)
@@ -82,7 +83,7 @@ func (r ValidateOptions) Run(ctx context.Context, streams commandio.Streams, _ p
 		report.Error = err.Error()
 	}
 	if r.JSON {
-		if writeErr := commandio.WriteJSON(streams.Stdout, report); writeErr != nil {
+		if writeErr := output.WriteJSONRecord(streams.Stdout, report); writeErr != nil {
 			return 1, writeErr
 		}
 	} else if !report.Valid {
@@ -99,7 +100,7 @@ func (r ValidateOptions) Run(ctx context.Context, streams commandio.Streams, _ p
 }
 
 // Run applies the manifest transforms to fixtures without running its tool.
-func (r TestOptions) Run(ctx context.Context, streams commandio.Streams, _ pluginacquisition.Options) (int, error) {
+func (r TestOptions) Run(ctx context.Context, streams output.Streams, _ dependencycache.Acquisition) (int, error) {
 	manifest, programs, fixtures, err := loadAuthorTests(ctx, streams, r.Paths)
 	cases := []authoringCaseResult{}
 	report := authoringReport{SchemaVersion: 1, Valid: true, Cases: &cases}
@@ -124,7 +125,7 @@ func (r TestOptions) Run(ctx context.Context, streams commandio.Streams, _ plugi
 			}
 		}
 	}
-	if err := commandio.WriteJSON(streams.Stdout, report); err != nil {
+	if err := output.WriteJSONRecord(streams.Stdout, report); err != nil {
 		return 1, err
 	}
 	if !report.Valid {
@@ -133,7 +134,7 @@ func (r TestOptions) Run(ctx context.Context, streams commandio.Streams, _ plugi
 	return 0, nil
 }
 
-func loadAuthorManifest(ctx context.Context, streams commandio.Streams, path string) (toolmanifest.Manifest, toolmanifest.Programs, error) {
+func loadAuthorManifest(ctx context.Context, streams output.Streams, path string) (toolmanifest.Manifest, toolmanifest.Programs, error) {
 	if path == "-" {
 		data, err := readBounded(streams.Stdin, authoringManifestLimit)
 		if err != nil {
@@ -149,7 +150,7 @@ func loadAuthorManifest(ctx context.Context, streams commandio.Streams, path str
 		path = "actionlint-provider.json"
 	}
 	reader := boundedAuthoringReader(ctx, path)
-	return toolmanifest.ReadLocal(reader, path)
+	return localproviders.Read(reader, path)
 }
 
 func boundedAuthoringReader(ctx context.Context, manifestPath string) *files.Reader {
@@ -180,7 +181,7 @@ func readReaderBounded(reader *files.Reader, path string, limit int) ([]byte, er
 	return data, errors.Join(readErr, closeErr)
 }
 
-func loadAuthorTests(ctx context.Context, streams commandio.Streams, paths []string) (toolmanifest.Manifest, toolmanifest.Programs, []authoringFixture, error) {
+func loadAuthorTests(ctx context.Context, streams output.Streams, paths []string) (toolmanifest.Manifest, toolmanifest.Programs, []authoringFixture, error) {
 	if len(paths) == 2 {
 		manifest, programs, err := loadAuthorManifest(ctx, streams, paths[0])
 		if err != nil {

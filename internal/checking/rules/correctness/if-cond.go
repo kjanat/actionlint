@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -74,7 +74,7 @@ func conditionDiagnostics(value string, start sourcetext.Position) []results.Dia
 		if strings.HasPrefix(text, "${{") {
 			text = strings.TrimSpace(text[3 : len(text)-2])
 		}
-		if values.ExpressionTruthy(constant) {
+		if exprvalues.ExpressionTruthy(constant) {
 			return report(fmt.Sprintf("constant expression %q in condition is always truthy. remove the if: section", text))
 		}
 		return report(fmt.Sprintf("constant expression %q in condition is always falsy. this step or job will be skipped", text))

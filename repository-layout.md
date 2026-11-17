@@ -315,7 +315,6 @@ internal/plugins/
     └── process/                     Invoke process plugins through their protocol
 
 internal/integrations/
-├── github/                          GitHub REST/GraphQL requests and response interpretation
 ├── git/                             Repository and remote Git operations
 ├── http/                            Shared requests, authentication accounting and quota handling
 └── process/                         Subprocess startup, streams, exit status and cancellation
@@ -325,7 +324,7 @@ OCI artifacts distribute plugin files. Installation retrieves and caches them, a
 
 Installation supplies retrieved bytes and expected digests to artifact inspection. Inspection verifies those digests, locates or extracts the manifest, and passes its bytes to manifest validation. Manifest validation checks declarations against the protocol schema. Loading checks the selected executable against its declared contract before using it for checks. Failures at these steps are installation or plugin failures, not workflow findings.
 
-`integrations/github` calls GitHub's APIs. It supplies repository information to the input-loading operation. HTTP and Git access report their operations for network accounting; external resolvers must report the network operations they perform themselves.
+`input/references/github` calls GitHub's APIs. It implements the action and reusable-workflow providers that input loading uses, so it belongs to input rather than integrations. HTTP and Git access come from integrations and report their operations for network accounting; external resolvers must report the network operations they perform themselves.
 
 Plugin checks pass through the same rule selection and result processing as built-in checks. Protocol conversion supplies their declared inputs and translates their responses.
 

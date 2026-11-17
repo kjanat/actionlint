@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // NarrowEventTypes selects event payload variants that can reach the branch.
@@ -97,12 +97,12 @@ func eventGuardValue(node syntax.Node, variant exprtypes.EventVariant) (bool, bo
 				if _, exists := variant.Payload.Property("action"); exists {
 					return false, false
 				}
-				return values.CompareConditionValues(n.Kind, nil, text)
+				return exprvalues.CompareConditionValues(n.Kind, nil, text)
 			}
 		default:
 			return false, false
 		}
-		return values.CompareConditionValues(n.Kind, value, text)
+		return exprvalues.CompareConditionValues(n.Kind, value, text)
 	}
 	return false, false
 }

@@ -1,6 +1,6 @@
 package results
 
-import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
+import "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 
 // SuppressionOrigin identifies the YAML run declaration, as the Lines of
 // Path, that a suppression comment applies to. An empty Path means the

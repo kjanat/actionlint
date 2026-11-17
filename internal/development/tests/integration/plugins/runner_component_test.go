@@ -14,9 +14,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -48,7 +48,7 @@ func runnerFixtureRequest(t *testing.T) runnerapi.Request {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := runnerapi.Request{Target: "buildkite", Scope: "fixture", Snapshot: runnerapi.Snapshot{Content: string(data), Scope: "fixture", ObtainedAt: "2026-10-19T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}}
+	r := runnerapi.Request{Target: "buildkite", Scope: "fixture", Snapshot: runnerapi.RunnerSnapshot{Content: string(data), Scope: "fixture", ObtainedAt: "2026-10-19T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}}
 	for _, term := range []runnerapi.Term{runnerapi.Literal("buildkite-windows"), runnerapi.Literal("missing-queue"), runnerapi.Expression("${{ vars.RUNNER }}")} {
 		r.Selectors = append(r.Selectors, runnerapi.Selector{Labels: []runnerapi.Constraint{{Value: term, Position: sourcetext.Position{Line: 4, Column: 14}}}})
 	}
@@ -114,19 +114,19 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 	p := loadRunnerFixture(t)
 	for _, tc := range []struct {
 		name, shell string
-		snapshot    runnerapi.Snapshot
+		snapshot    runnerapi.RunnerSnapshot
 		wantShell   string
 	}{
 		{"resolved", "", runnerFixtureRequest(t).Snapshot, "pwsh"},
-		{"missing", "", runnerapi.Snapshot{}, ""},
-		{"explicit shell survives missing evidence", "shell: bash\n        ", runnerapi.Snapshot{}, "bash"},
+		{"missing", "", runnerapi.RunnerSnapshot{}, ""},
+		{"explicit shell survives missing evidence", "shell: bash\n        ", runnerapi.RunnerSnapshot{}, "bash"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-				Analyzers: []checkinputs.Registration{{Analyzer: observer}},
+				Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}},
 			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
 				t.Fatal(err)
@@ -160,7 +160,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, []workspace.InputFile{{
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}}}, []workspace.InputFile{{
 			Path:    "workflow.yml",
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 			Config:  cfg,

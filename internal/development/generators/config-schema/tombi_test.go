@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestTombiRuleOptions(t *testing.T) {
@@ -27,7 +28,7 @@ func TestTombiRuleOptions(t *testing.T) {
 			return generated, nil
 		}
 		return os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
-	}, []configschema.ToolProvider{{Rule: rule.Descriptor{
+	}, []toolsettings.Provider{{Rule: rule.Descriptor{
 		Name: "custom-check", Category: "conventions", Description: "Check a numeric limit",
 		OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
 	}}})

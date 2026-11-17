@@ -40,7 +40,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 	writeFixture(t, root, "middle/action.yml", "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: $/inner}]}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n")
 	collector := &callGraphCollector{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: collector}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: collector}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}

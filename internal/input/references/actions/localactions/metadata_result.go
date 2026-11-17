@@ -40,7 +40,7 @@ type metadataEntry struct {
 	reported bool
 }
 
-func (c *Cache) reportMetadataError(result MetadataResult) error {
+func (c *ManifestCache) reportMetadataError(result MetadataResult) error {
 	if result.cause == nil || result.cacheSpec == "" {
 		return result.cause
 	}

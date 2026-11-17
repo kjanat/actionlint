@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -50,7 +50,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
 			c := newCapturedWorkflowCache(t, "", "", nil)
-			r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), c, repository.Snapshot{})
+			r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), c, repository.Settings{})
 			j := &definition.Job{
 				WorkflowCall: &definition.WorkflowCall{
 					Uses: &definition.String{
@@ -96,7 +96,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 
 	c := newCapturedWorkflowCache(t, "", "", nil)
-	r := workflowCallVisitor(t, declarations.Workflow(w), c, repository.Snapshot{})
+	r := workflowCallVisitor(t, declarations.Workflow(w), c, repository.Settings{})
 
 	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
@@ -127,12 +127,12 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	if !available {
 		t.Fatal("captured workflow unavailable")
 	}
-	c := reusableworkflows.NewCache(cwd, nil)
+	c := reusableworkflows.NewMetadataCache(cwd, nil)
 	c.SetSources(t.Context(), store, cwd)
 	if err := c.Seed(snapshot); err != nil {
 		t.Fatal(err)
 	}
-	r := workflowCallVisitor(t, w, c, repository.Snapshot{})
+	r := workflowCallVisitor(t, w, c, repository.Settings{})
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)

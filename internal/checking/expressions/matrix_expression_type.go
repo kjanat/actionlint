@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
@@ -18,13 +18,13 @@ type expressionRefinement struct {
 // expressionType keeps finite matrix-dependent expressions precise without
 // choosing one row's value for another. Unknown or oversized matrices retain
 // the ordinary semantic checker's type.
-func (rule *Checker) expressionType(text string, evaluation values.EvaluationResult) expressionRefinement {
+func (rule *Visitor) expressionType(text string, evaluation exprvalues.EvaluationResult) expressionRefinement {
 	switch evaluation.State {
-	case values.EvaluationKnown:
+	case exprvalues.EvaluationKnown:
 		return expressionRefinement{ty: exprtypes.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
-	case values.EvaluationInvalid, values.EvaluationNotAttempted:
+	case exprvalues.EvaluationInvalid, exprvalues.EvaluationNotAttempted:
 		return expressionRefinement{state: value.Invalid}
-	case values.EvaluationUnknown:
+	case exprvalues.EvaluationUnknown:
 	}
 	if !rule.scriptJob.Present() {
 		return expressionRefinement{state: value.Dynamic}

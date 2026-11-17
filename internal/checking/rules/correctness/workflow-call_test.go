@@ -32,12 +32,12 @@ jobs:
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()
-	cache := reusableworkflows.NewCache(root, nil)
+	cache := reusableworkflows.NewMetadataCache(root, nil)
 	cache.Store("./callee.yml", &calls.Metadata{JobPermissions: map[string]calls.PermissionScopeLevels{
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})
 	var messages []string
-	check := WorkflowCallChecks(workflow, cache.Resolved(), repository.Snapshot{}, func(format string, args ...any) {
+	check := WorkflowCallChecks(workflow, cache.Resolved(), repository.Settings{}, func(format string, args ...any) {
 		messages = append(messages, fmt.Sprintf(format, args...))
 	})
 	if check.Workflow != nil || check.Step != nil {

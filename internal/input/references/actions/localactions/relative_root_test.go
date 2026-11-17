@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
@@ -23,7 +23,7 @@ func TestRelativeRepositoryRootUsesSessionWorkingDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	cache := NewCache(t.Context(), "repository", nil)
+	cache := NewManifestCache(t.Context(), "repository", nil)
 	var observed capture.CapturedDocument
 	cache.Configure(Options{Captures: store, Context: t.Context(), WorkingDir: base, OnDocument: func(captured capture.CapturedDocument, _ string, _ *actionmeta.Metadata, _ error) {
 		observed = captured

@@ -10,9 +10,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 

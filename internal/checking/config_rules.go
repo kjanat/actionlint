@@ -7,22 +7,22 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // ConfigurationRules returns the rule catalog: the built-in rules followed by
 // the bundled tool providers' rules, in the order users see them. The catalog
 // is built once per process and has no mutation operations; each caller
-// receives the same read-only values. It panics when the embedded provider
-// manifests are invalid, a build defect that LoadConfigurationRules returns as
-// an error.
+// receives the same read-only values.
+//
+// Invalid embedded provider manifests are a build defect that
+// TestBundledRuleCatalogLoads rejects. Should one ship, ConfigurationRules
+// returns the built-in rules alone, and LoadConfigurationRules, which every
+// check registers its rules through, reports the defect.
 func ConfigurationRules() configuration.RuleSet {
-	rules, err := LoadConfigurationRules()
-	if err != nil {
-		panic(err)
-	}
+	rules, _ := ruleCatalog()
 	return rules
 }
 
@@ -31,32 +31,44 @@ func ConfigurationRules() configuration.RuleSet {
 func LoadConfigurationRules() (configuration.RuleSet, error) { return ruleCatalog() }
 
 // ruleCatalog declares the bundled providers' rules after the built-in rules,
-// once per process.
+// once per process. When the bundled providers cannot be declared, it returns
+// the built-in rules with the error.
 var ruleCatalog = sync.OnceValues(func() (configuration.RuleSet, error) {
-	manifests, err := toolmanifest.Bundled()
+	declarations := make([]rule.Declaration, 0, len(builtins))
+	for _, builtin := range builtins {
+		declarations = append(declarations, builtin.Clone())
+	}
+	builtinRules, err := configuration.NewRuleSet(declarations)
 	if err != nil {
 		return configuration.RuleSet{}, err
 	}
-	declarations := make([]rule.Declaration, 0, len(builtins)+len(manifests))
-	for _, builtin := range builtins {
-		declarations = append(declarations, builtin.Clone())
+	manifests, err := toolmanifest.Bundled()
+	if err != nil {
+		return builtinRules, err
+	}
+	if err := configuration.BundledToolProvidersError(); err != nil {
+		return builtinRules, err
 	}
 	for _, manifest := range manifests {
 		scope, err := manifest.Scope.ConfigurationScope()
 		if err != nil {
-			return configuration.RuleSet{}, fmt.Errorf("bundled provider %s: %w", manifest.Rule.Name, err)
+			return builtinRules, fmt.Errorf("bundled provider %s: %w", manifest.Rule.Name, err)
 		}
 		declarations = append(declarations, rule.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true})
 	}
-	return configuration.NewRuleSet(declarations)
+	rules, err := configuration.NewRuleSet(declarations)
+	if err != nil {
+		return builtinRules, err
+	}
+	return rules, nil
 })
 
 // ConfigurationRegistrations declares the rules that analyzers and tool registrations add
 // to the built-in rule set, so configuration can name and configure them.
-func ConfigurationRegistrations(analyzers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
+func ConfigurationRegistrations(analyzers []results.AnalyzerRegistration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, analyzer := range analyzers {
-		if checkinputs.IsNilAnalyzer(analyzer.Analyzer) {
+		if results.IsNilAnalyzer(analyzer.Analyzer) {
 			continue
 		}
 		registrations = append(registrations, configuration.RuleRegistration{Declaration: analyzer.Analyzer.Descriptor().Clone(), Options: slices.Clone(analyzer.Options)})

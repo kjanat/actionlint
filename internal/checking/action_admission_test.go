@@ -41,7 +41,7 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 	source := []byte("name: recovered\ninputs: invalid\nruns: {using: composite, steps: [{run: echo $HI, shell: bash}]}\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
-		Analyzers: []checkinputs.Registration{
+		Analyzers: []results.AnalyzerRegistration{
 			{Analyzer: failedActionFactProbe{name: "failed-action-source", fact: rule.Source, calls: &sourceCalls}},
 			{Analyzer: failedActionFactProbe{name: "failed-action-scripts", fact: rule.Scripts, calls: &scriptCalls}},
 		},

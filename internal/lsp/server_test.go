@@ -15,8 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -80,7 +81,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				if !strings.Contains(doc.Text, "bad") {
 					continue
 				}
-				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sha256hex.Digest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
+				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: applicability.Safe, Revisions: map[string]string{path: sha256hex.Digest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
 			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {

@@ -9,12 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 // InitializeConfiguration verifies default plugin artifacts before creating configuration.
 // A failed resolution leaves the project unchanged.
-func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, root, version string, format configuration.FileFormat) (string, error) {
+func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, acquisition dependencycache.Acquisition, root, version string, format configuration.FileFormat) (string, error) {
 	path, err := projectConfigPath(root, "")
 	if err != nil {
 		return "", err

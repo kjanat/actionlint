@@ -6,13 +6,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 )
 
 func TestScriptRoutingUsesSharedInvocationLanguage(t *testing.T) {
 	t.Parallel()
-	registry, err := interpreters.New([]commands.Definition{{ID: "example/python", Language: "python", Options: []commands.Option{{Short: "u"}}}, {ID: "example/wrapper", Executables: []string{"actions-shell"}, Prefix: []string{"python"}, Delegate: "example/python"}})
+	registry, err := commands.NewWithShells([]commands.Definition{{ID: "example/python", Language: "python", Options: []commands.Option{{Short: "u"}}}, {ID: "example/wrapper", Executables: []string{"actions-shell"}, Prefix: []string{"python"}, Delegate: "example/python"}})
 	if err != nil {
 		t.Fatal(err)
 	}

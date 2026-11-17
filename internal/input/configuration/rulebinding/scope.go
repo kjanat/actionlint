@@ -43,16 +43,16 @@ type Registry struct {
 	sealed    bool
 }
 
-// Snapshot permits publication to read only decisions prepared before sealing.
-type Snapshot struct {
+// SealedRegistry permits publication to read only decisions prepared before sealing.
+type SealedRegistry struct {
 	namespace binding.Namespace
 	records   []*Rule
 }
 
 // Seal ends preparation. Existing scopes remain readable by completed tasks.
-func (r *Registry) Seal() *Snapshot {
+func (r *Registry) Seal() *SealedRegistry {
 	r.sealed = true
-	return &Snapshot{namespace: r.namespace, records: r.records}
+	return &SealedRegistry{namespace: r.namespace, records: r.records}
 }
 
 // NewRegistry creates an analysis-owned configuration binding registry.
@@ -67,7 +67,7 @@ func (r *Registry) add(execution, policy *configuration.Config) *Rule {
 }
 
 // Lookup returns a prepared decision without selecting configuration scope.
-func (r *Snapshot) Lookup(id binding.ID) (*Rule, bool) {
+func (r *SealedRegistry) Lookup(id binding.ID) (*Rule, bool) {
 	if r == nil {
 		return nil, false
 	}

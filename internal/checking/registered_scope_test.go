@@ -36,7 +36,7 @@ func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
 	for _, path := range []string{action, workflow} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: sourceScopedAnalyzer{}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: sourceScopedAnalyzer{}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}

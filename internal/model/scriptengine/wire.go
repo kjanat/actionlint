@@ -4,8 +4,8 @@ import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 )
 
 // wireDiagnostic is the JSON form of Diagnostic. Core JSON engines, native
@@ -32,9 +32,9 @@ type wirePosition struct {
 }
 
 type wireFix struct {
-	Applicability results.Applicability `json:"applicability,omitempty"`
-	Description   string                `json:"description,omitempty"`
-	Replacements  []wireReplacement     `json:"replacements"`
+	Applicability applicability.Applicability `json:"applicability,omitempty"`
+	Description   string                      `json:"description,omitempty"`
+	Replacements  []wireReplacement           `json:"replacements"`
 }
 
 type wireReplacement struct {

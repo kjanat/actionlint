@@ -1,8 +1,8 @@
 package typecheck
 
 import (
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // EvaluationResults supplies a syntax tree and its precomputed value results.
@@ -10,5 +10,5 @@ import (
 // a missing result differs from a recorded unknown result.
 type EvaluationResults interface {
 	Expression() syntax.Node
-	Result(syntax.Node) (values.EvaluationResult, bool)
+	Result(syntax.Node) (exprvalues.EvaluationResult, bool)
 }

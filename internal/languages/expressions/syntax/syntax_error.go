@@ -3,7 +3,7 @@ package syntax
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // SyntaxError reports a syntax failure and its range in the decoded expression text.

@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -84,11 +84,11 @@ jobs:
     uses: owner/repo/.github/workflows/ci.yml@main
 permissions: {}
 `
-	check := func(a checkinputs.Analyzer) []results.Diagnostic {
+	check := func(a results.Analyzer) []results.Diagnostic {
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)

@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // SubexpressionResults records constant results for one syntax tree. Conditional
@@ -15,14 +15,14 @@ import (
 // proved unused are absent; unknown context values are not substituted.
 type SubexpressionResults struct {
 	root   syntax.Node
-	byNode map[syntax.Node]values.EvaluationResult
+	byNode map[syntax.Node]exprvalues.EvaluationResult
 }
 
 // EvaluateSubexpressions records the root's demanded evaluation first. It then
 // inspects branches whose execution depends on unknown values, following the
 // shared function argument-demand contract. It does not evaluate skipped branches.
 func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
-	results := make(map[syntax.Node]values.EvaluationResult)
+	results := make(map[syntax.Node]exprvalues.EvaluationResult)
 	expressionResult(root, nil, nil, results)
 	skipped := make(map[syntax.Node]bool)
 	syntax.Visit(root, func(node, parent syntax.Node, entering bool) {
@@ -36,7 +36,7 @@ func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
 		if _, found := results[node]; found {
 			return
 		}
-		if results[parent].State != values.EvaluationUnknown || argumentSkipped(parent, node, results) {
+		if results[parent].State != exprvalues.EvaluationUnknown || argumentSkipped(parent, node, results) {
 			skipped[node] = true
 			return
 		}
@@ -45,7 +45,7 @@ func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
 	return SubexpressionResults{root: root, byNode: results}
 }
 
-func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]values.EvaluationResult) bool {
+func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]exprvalues.EvaluationResult) bool {
 	call, ok := parent.(*syntax.FuncCallNode)
 	if !ok {
 		return false
@@ -58,11 +58,11 @@ func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]values.Ev
 	for index, child := range call.Args {
 		arg := functions.CallArgument{Source: exprtypes.AnyType()}
 		switch result := results[child]; result.State {
-		case values.EvaluationKnown:
+		case exprvalues.EvaluationKnown:
 			arg.Source, arg.Value, arg.State = exprtypes.TypeOfJSONValue(result.Value), result.Value, functions.ArgumentKnown
-		case values.EvaluationInvalid, values.EvaluationNotAttempted:
+		case exprvalues.EvaluationInvalid, exprvalues.EvaluationNotAttempted:
 			arg.State = functions.ArgumentInvalid
-		case values.EvaluationUnknown:
+		case exprvalues.EvaluationUnknown:
 		}
 		args[index] = arg
 	}
@@ -72,7 +72,7 @@ func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]values.Ev
 
 // Result returns a detached value and whether this node has a recorded result. A missing
 // result means the branch was skipped or the node belongs to another tree.
-func (results SubexpressionResults) Result(node syntax.Node) (values.EvaluationResult, bool) {
+func (results SubexpressionResults) Result(node syntax.Node) (exprvalues.EvaluationResult, bool) {
 	result, found := results.byNode[node]
 	return result.Clone(), found
 }

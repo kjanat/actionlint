@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/windows"
@@ -58,7 +58,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 		"INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 	}
 	stdout.Reset()
-	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Options{}); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &stdout, dependencycache.Acquisition{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
 	var actionResult report.CheckResult

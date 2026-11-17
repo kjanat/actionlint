@@ -1,26 +1,26 @@
 package functions
 
-import "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 // EvaluationContext supplies argument values to a function implementation.
 // Argument evaluates a source argument at most once. Repeated requests return the
 // same observation. Implementations request only the arguments their operation needs.
 type EvaluationContext interface {
 	ArgumentCount() int
-	Argument(int) values.EvaluationResult
+	Argument(int) exprvalues.EvaluationResult
 }
 
 // Function stores overload contracts and one implementation for their operation.
 // A nil implementation means this constant evaluator cannot produce its result.
 type Function struct {
 	Signatures     []*FuncSignature
-	implementation func(EvaluationContext) values.EvaluationResult
+	implementation func(EvaluationContext) exprvalues.EvaluationResult
 	inspect        func([]ParameterMatch, *CallInspection)
 }
 
 // Evaluate validates argument count before requesting values from the context.
 // Unimplemented operations produce an unknown result without requesting arguments.
-func (function Function) Evaluate(context EvaluationContext) values.EvaluationResult {
+func (function Function) Evaluate(context EvaluationContext) exprvalues.EvaluationResult {
 	accepted := false
 	for _, signature := range function.Signatures {
 		if signature.AcceptsArgumentCount(context.ArgumentCount()) {
@@ -29,22 +29,22 @@ func (function Function) Evaluate(context EvaluationContext) values.EvaluationRe
 		}
 	}
 	if !accepted {
-		return values.EvaluationResult{State: values.EvaluationNotAttempted}
+		return exprvalues.EvaluationResult{State: exprvalues.EvaluationNotAttempted}
 	}
 	if function.implementation == nil {
-		return values.EvaluationResult{State: values.EvaluationUnknown}
+		return exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 	}
 	return function.implementation(context)
 }
 
-func knownValue(value any) values.EvaluationResult {
-	return values.EvaluationResult{State: values.EvaluationKnown, Value: value}
+func knownValue(value any) exprvalues.EvaluationResult {
+	return exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: value}
 }
 
-func unknownValue() values.EvaluationResult {
-	return values.EvaluationResult{State: values.EvaluationUnknown}
+func unknownValue() exprvalues.EvaluationResult {
+	return exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 }
 
-func invalidValue() values.EvaluationResult {
-	return values.EvaluationResult{State: values.EvaluationInvalid}
+func invalidValue() exprvalues.EvaluationResult {
+	return exprvalues.EvaluationResult{State: exprvalues.EvaluationInvalid}
 }

@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -23,7 +23,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/severity"
@@ -484,7 +483,7 @@ func scriptShell(script scriptanalysis.Unit) string {
 	}
 	registry := script.Interpreters
 	if registry == nil {
-		registry = interpreters.Builtin()
+		registry = commands.BuiltinShells()
 	}
 	invocation := registry.Analyze(shell.Name, shell.Implicit)
 	if invocation.Status == commands.Valid && invocation.Input == "file" && invocation.Language != "" {

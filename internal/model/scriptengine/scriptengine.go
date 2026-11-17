@@ -9,11 +9,11 @@ import (
 	"io/fs"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Backend checks sanitized snippets. Check must honor cancellation,
@@ -130,7 +130,7 @@ type Diagnostic struct {
 // Fix is one atomic alternative made of replacements in snippet coordinates.
 type Fix struct {
 	// Applicability defaults to review-required when an older engine omits it.
-	Applicability results.Applicability
+	Applicability applicability.Applicability
 	Description   string
 	Replacements  []Replacement
 }

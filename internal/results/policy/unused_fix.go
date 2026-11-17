@@ -1,8 +1,9 @@
 package policy
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
@@ -19,7 +20,7 @@ func (processor Processor) unusedSuppressionFix(content []byte, path string, ref
 	}
 	edit.Path = path
 	return results.Fix{
-		Description: "Remove unused suppression", Applicability: results.FixSafe,
+		Description: "Remove unused suppression", Applicability: applicability.Safe,
 		Revisions: map[string]string{path: ref.Revision}, Edits: []results.Edit{edit},
 	}, true
 }

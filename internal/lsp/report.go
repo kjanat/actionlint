@@ -9,9 +9,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
+	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -156,7 +157,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 				if edit, ok := suppression.Edit(captured.Content, target.Lines.First, d.Rule, allowed, checking.RuleNames()); ok {
 					edit.Path = alias
 					d.Fixes = append(d.Fixes, results.Fix{
-						Description: "Suppress " + d.Rule + " for this declaration", Applicability: results.FixSuggested,
+						Description: "Suppress " + d.Rule + " for this declaration", Applicability: applicability.Suggested,
 						Revisions: map[string]string{alias: captured.Revision.Digest()}, Edits: []results.Edit{edit},
 					})
 				}

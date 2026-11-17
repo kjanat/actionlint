@@ -11,7 +11,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 

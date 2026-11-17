@@ -7,15 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 // NewCache uses one source-capture store for metadata lookups and closes it when the test ends.
 // Without a supplied reader, lookups use the native filesystem reader.
-func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Reader) *localactions.Cache {
+func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Reader) *localactions.ManifestCache {
 	tb.Helper()
 	reader := files.New(tb.Context(), nil, nil)
 	if len(readers) != 0 {
@@ -27,7 +27,7 @@ func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Rea
 	if err != nil {
 		tb.Fatal(err)
 	}
-	cache := localactions.NewCache(tb.Context(), root, debug)
+	cache := localactions.NewManifestCache(tb.Context(), root, debug)
 	cache.Configure(localactions.Options{Captures: store, Context: tb.Context(), WorkingDir: root, Reader: reader, CustomReader: len(readers) != 0})
 	capturefixture.CloseCaptures(tb, store)
 	return cache

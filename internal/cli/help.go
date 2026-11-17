@@ -8,8 +8,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
-
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/output"
 
@@ -106,7 +104,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		if a.inv.Render.PrettyJSON {
 			out = &prettyJSONOutput{Writer: out, ctx: a.ctx, color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
-		if err := commandio.WriteJSON(out, describeCommand(c)); err != nil {
+		if err := output.WriteJSONRecord(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
 		}
 		return

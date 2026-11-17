@@ -15,7 +15,7 @@ import (
 
 // Run isolates each analyzer's input and joins all started work.
 // Findings and errors follow registration order.
-func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []checkinputs.Registration) ([]results.Diagnostic, error) {
+func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []results.AnalyzerRegistration) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ type PreparedRegistration struct {
 }
 
 type preparedRegistration struct {
-	analyzer        checkinputs.Analyzer
+	analyzer        results.Analyzer
 	prepare         func(context.Context, checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error)
 	descriptor      checkinputs.Descriptor
 	options         []byte
@@ -52,8 +52,8 @@ type preparedRegistration struct {
 }
 
 // Prepare validates a registration once for an exact set of available input kinds.
-func Prepare(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
-	if checkinputs.IsNilAnalyzer(registration.Analyzer) {
+func Prepare(registration results.AnalyzerRegistration, available []rule.InputKind) (PreparedRegistration, error) {
+	if results.IsNilAnalyzer(registration.Analyzer) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
 	descriptor := registration.Analyzer.Descriptor().Detached()
@@ -82,7 +82,7 @@ func Prepare(registration checkinputs.Registration, available []rule.InputKind) 
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
+func PrepareForwarding(registration results.AnalyzerRegistration, available []rule.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err

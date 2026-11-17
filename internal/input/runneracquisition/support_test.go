@@ -100,7 +100,7 @@ func TestRunnerSupportCandidateEvidenceAndDates(t *testing.T) {
 			t.Parallel()
 			w := runnerWorkflow(t, "queue")
 			snapshot := fmt.Sprintf(`{"runners":[%s]}`, inventoryEntries(tc.candidates))
-			opts := runnerapi.Options{Provider: "snapshot", Service: service(t, tc.kind, ""), AsOf: date(t, tc.day), Snapshot: runnerapi.Snapshot{Content: snapshot, Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}}
+			opts := runnerapi.Options{Provider: "snapshot", Service: service(t, tc.kind, ""), AsOf: date(t, tc.day), Snapshot: runnerapi.RunnerSnapshot{Content: snapshot, Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}}
 			k, err := Prepare(t.Context(), w.Snapshot, nil, opts, "scope")
 			if err != nil {
 				t.Fatal(err)
@@ -175,7 +175,7 @@ func TestSnapshotSupportOverridesBuiltinAndRespectsFreshness(t *testing.T) {
 	t.Parallel()
 	w := runnerWorkflow(t, "queue")
 	content := `{"runners":[{"name":"one","labels":["queue"],"hosting":"self-hosted","architecture":"arm"}],"support":{"dataset_status":{"dataset_id":"local","scope":"scope","freshness":"fresh","complete":true},"policies":[]}}`
-	opts := runnerapi.Options{Provider: "snapshot", Service: service(t, "github.com", ""), AsOf: date(t, "2026-12-08"), Snapshot: runnerapi.Snapshot{Content: content, Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}}
+	opts := runnerapi.Options{Provider: "snapshot", Service: service(t, "github.com", ""), AsOf: date(t, "2026-12-08"), Snapshot: runnerapi.RunnerSnapshot{Content: content, Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}}
 	k, err := Prepare(t.Context(), w.Snapshot, nil, opts, "scope")
 	if err != nil {
 		t.Fatal(err)

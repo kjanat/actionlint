@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -50,12 +50,12 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..", "..", "..", "input", "references", "reusableworkflows", "testdata", "reusable-workflows")
 
-	run := func(t *testing.T, cache *reusableworkflows.Cache) []string {
+	run := func(t *testing.T, cache *reusableworkflows.MetadataCache) []string {
 		t.Helper()
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)
 		}
-		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repository.Snapshot{})
+		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repository.Settings{})
 		if err := r.VisitWorkflowPre(declarations.Workflow(&definition.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -320,7 +320,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &definition.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repository.Snapshot{}))
+			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repository.Settings{}))
 			if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

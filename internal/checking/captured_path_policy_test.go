@@ -12,8 +12,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -81,7 +81,7 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 		}
 		return os.Symlink(second, alias)
 	}}
-	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
+	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
 	if err != nil || result == nil {
 		t.Fatalf("result available=%t error=%v", result != nil, err)
 	}

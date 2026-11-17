@@ -7,13 +7,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func Example_dependencyFacts() {
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: dependencypins.Analyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(`on: push
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: dependencypins.Analyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

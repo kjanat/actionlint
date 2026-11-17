@@ -5,10 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -27,13 +28,13 @@ func (a detailedAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerI
 func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 	t.Parallel()
 	const content = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: 'echo ok'}]\npermissions: {}\n"
-	base := results.Diagnostic{Rule: "detailed-check", Path: "ci.yml", Message: "same location and message", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Code: "A", Severity: "warning", Help: "help", Explanation: "explanation", DocumentationURL: "https://example.invalid/rule", Related: []results.Related{{Path: "ci.yml", Message: "related", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 1}}}, Fixes: []results.Fix{{Applicability: results.FixSafe, Description: "replace", Edits: []results.Edit{{Path: "ci.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Replacement: "on"}}}}}
+	base := results.Diagnostic{Rule: "detailed-check", Path: "ci.yml", Message: "same location and message", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Code: "A", Severity: "warning", Help: "help", Explanation: "explanation", DocumentationURL: "https://example.invalid/rule", Related: []results.Related{{Path: "ci.yml", Message: "related", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 1}}}, Fixes: []results.Fix{{Applicability: applicability.Safe, Description: "replace", Edits: []results.Edit{{Path: "ci.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 3}, Replacement: "on"}}}}}
 	second := base
 	second.Code = "B"
 	third := base
 	third.End = sourcetext.Position{Line: 2, Column: 1}
 	input := []results.Diagnostic{base, second, third}
-	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 		t.Fatalf("distinct diagnostics lost: %+v", result)
 	}
 	for _, d := range result.Diagnostics {
-		if d.Help != base.Help || d.Explanation != base.Explanation || d.DocumentationURL != base.DocumentationURL || len(d.Related) != 1 || d.Related[0].Revision.Document() != d.Reference.Document || d.Related[0].Revision.Digest() != d.Reference.Revision || d.Related[0].Coordinates != sourcetext.YAML || len(d.Fixes) != 1 || d.Fixes[0].Applicability != results.FixSafe {
+		if d.Help != base.Help || d.Explanation != base.Explanation || d.DocumentationURL != base.DocumentationURL || len(d.Related) != 1 || d.Related[0].Revision.Document() != d.Reference.Document || d.Related[0].Revision.Digest() != d.Reference.Revision || d.Related[0].Coordinates != sourcetext.YAML || len(d.Fixes) != 1 || d.Fixes[0].Applicability != applicability.Safe {
 			t.Fatalf("metadata lost: %+v", d)
 		}
 		unbound := d.Related[0]

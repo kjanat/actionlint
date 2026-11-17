@@ -33,7 +33,7 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 	if _, available := snapshot.WorkflowView(); !available {
 		return unknown, nil
 	}
-	hasSnapshot := options.Snapshot != (runnerapi.Snapshot{})
+	hasSnapshot := options.Snapshot != (runnerapi.RunnerSnapshot{})
 	switch options.Snapshot.Freshness {
 	case "":
 		options.Snapshot.Freshness = runnerapi.Missing

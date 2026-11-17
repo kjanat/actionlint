@@ -10,12 +10,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -134,7 +135,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 							for _, finding := range findings {
 								finding.Binding = scope.Rule(finding.Rule).ID()
 							}
-							resultPolicy := policy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
+							resultPolicy := policy.DocumentInputs{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
 							published, err := policy.Publish([]policy.Batch{{Processor: processor, Policy: resultPolicy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
 							var filtered []*finding.Finding
 							if len(published.Findings) > 0 {
@@ -200,7 +201,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 		t.Fatal("fixture source absent")
 	}
 	owner := &finding.Owner{Job: "test", Step: &position}
-	origin := &finding.IgnoreOrigin{Job: "test", StepPosition: &position}
+	origin := &workflows.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
 		"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {

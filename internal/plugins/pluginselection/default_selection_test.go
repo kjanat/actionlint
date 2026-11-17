@@ -9,8 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -29,7 +29,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 			if err := os.WriteFile(path, []byte("{}"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{tool}, Acquisition: pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{tool}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
 			selected, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 			if err != nil {
 				t.Fatal(err)
@@ -97,7 +97,7 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})
-			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, DisabledTools: tc.disabled, Acquisition: pluginacquisition.Options{UserCacheDir: t.TempDir()}}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, DisabledTools: tc.disabled, Acquisition: dependencycache.Acquisition{UserCacheDir: t.TempDir()}}
 			selected, err := selection.ResolveForRules(ctx, root)
 			if errors.Is(err, network.ErrOffline) != tc.wantMissing {
 				t.Fatalf("selection error=%v, want missing offline plugin=%t", err, tc.wantMissing)
@@ -121,7 +121,7 @@ func TestResolveForRulesHonorsInheritedDefaultSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})
-	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: leaf, DefaultTools: []string{"shellcheck"}, Acquisition: pluginacquisition.Options{UserCacheDir: t.TempDir()}}
+	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: leaf, DefaultTools: []string{"shellcheck"}, Acquisition: dependencycache.Acquisition{UserCacheDir: t.TempDir()}}
 	selected, err := selection.ResolveForRules(ctx, root)
 	if err != nil || len(selected.Paths) != 0 {
 		t.Fatalf("inherited disabled tool: paths=%v error=%v", selected.Paths, err)

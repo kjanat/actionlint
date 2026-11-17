@@ -19,7 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -181,7 +181,7 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 	err.EndAt(end)
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
-		origin := &finding.IgnoreOrigin{}
+		origin := &workflows.IgnoreOrigin{}
 		if step.ID != nil {
 			origin.StepID = step.ID.Value
 		}
@@ -209,7 +209,7 @@ func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
 	err.EndAt(end)
-	err.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
+	err.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -530,7 +530,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 			Message: problem.Message, Start: problem.Start, End: problem.End,
 		})
 		item.Source.Content = meta.Source
-		item.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
+		item.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 		rule.errs = append(rule.errs, item)
 	}
 }

@@ -5,9 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestIgnoreOriginReadsSelectorValuesAndPosition(t *testing.T) {
@@ -27,7 +26,7 @@ func TestIgnoreOriginReadsSelectorValuesAndPosition(t *testing.T) {
 				t.Fatal("owned job unavailable")
 			}
 			view := slices.Collect(job.Steps())[0]
-			want := finding.IgnoreOrigin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, StepPosition: &sourcetext.Position{Line: 3, Column: 7}}
+			want := IgnoreOrigin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, StepPosition: &sourcetext.Position{Line: 3, Column: 7}}
 			origin := view.IgnoreOrigin("Build")
 			if !reflect.DeepEqual(*origin, want) {
 				t.Fatalf("origin = %+v; want %+v", origin, want)
@@ -38,7 +37,7 @@ func TestIgnoreOriginReadsSelectorValuesAndPosition(t *testing.T) {
 			}
 		})
 	}
-	if got := (BoundStep{}).IgnoreOrigin("Build"); *got != (finding.IgnoreOrigin{Job: "Build"}) {
+	if got := (BoundStep{}).IgnoreOrigin("Build"); *got != (IgnoreOrigin{Job: "Build"}) {
 		t.Fatalf("missing step origin = %+v", got)
 	}
 }
@@ -59,13 +58,13 @@ func TestJobIgnoreOriginReadsUsesSelector(t *testing.T) {
 			if !present {
 				t.Fatal("owned job unavailable")
 			}
-			want := finding.IgnoreOrigin{Job: "Build", Uses: tc.want}
+			want := IgnoreOrigin{Job: "Build", Uses: tc.want}
 			if got := view.IgnoreOrigin(); *got != want {
 				t.Fatalf("job origin = %+v; want %+v", got, want)
 			}
 		})
 	}
-	if got := (BoundJob{}).IgnoreOrigin(); *got != (finding.IgnoreOrigin{}) {
+	if got := (BoundJob{}).IgnoreOrigin(); *got != (IgnoreOrigin{}) {
 		t.Fatalf("missing job origin = %+v", got)
 	}
 }

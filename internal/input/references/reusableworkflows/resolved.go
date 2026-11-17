@@ -8,10 +8,10 @@ import (
 )
 
 // ResolvedWorkflows reads acquired metadata without loading manifests or changing the cache.
-type ResolvedWorkflows struct{ cache *Cache }
+type ResolvedWorkflows struct{ cache *MetadataCache }
 
 // Resolved supplies a lookup-only view. Preparation can add metadata before checks run.
-func (c *Cache) Resolved() *ResolvedWorkflows { return &ResolvedWorkflows{cache: c} }
+func (c *MetadataCache) Resolved() *ResolvedWorkflows { return &ResolvedWorkflows{cache: c} }
 
 // LookupForCall returns acquired metadata or an input failure using the caller's
 // reference spelling. A nil result means no definition was acquired for this call.

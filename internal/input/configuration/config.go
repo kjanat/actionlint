@@ -17,10 +17,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
@@ -96,10 +96,10 @@ func (p *PathConfig) DecodeConfig(value any) error {
 	return nil
 }
 
-// Policy configures checks for cache safety and repository conventions.
+// PolicyConfig configures checks for cache safety and repository conventions.
 // Cache checks default to enabled; repository conventions are opt-in.
 // Omission and null select the default.
-type Policy struct {
+type PolicyConfig struct {
 	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
@@ -355,7 +355,7 @@ type Config struct {
 	//
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
-	Policy Policy `yaml:"-"`
+	Policy PolicyConfig `yaml:"-"`
 }
 
 // PathConfigs returns settings matching a path relative to the project root.

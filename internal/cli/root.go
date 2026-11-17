@@ -7,8 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -86,7 +85,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root.SetIn(a.streams.Stdin)
 	a.root.SetOut(a.streams.Stdout)
 	a.root.SetErr(a.streams.Stderr)
-	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return arguments.UsageError{Cause: err} })
+	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return exitcode.UsageError{Cause: err} })
 	a.root.SetHelpFunc(a.help)
 	a.root.PersistentFlags().BoolVar(&a.opts.networkStats, "network-stats", false, "Write grouped network accounting as JSON to stderr")
 	annotateFlag(a.root.PersistentFlags(), "network-stats", "Output")

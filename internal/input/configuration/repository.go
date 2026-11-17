@@ -43,9 +43,9 @@ type RepositoryConfig struct {
 }
 
 // Apply overlays explicit selections after configuration inheritance is resolved.
-func (r RepositoryConfig) Apply(host repository.Snapshot) repository.Snapshot {
+func (r RepositoryConfig) Apply(host repository.Settings) repository.Settings {
 	if r.reset {
-		host = repository.Snapshot{}
+		host = repository.Settings{}
 	}
 	if r.service != nil {
 		host.Service = *r.service
@@ -280,7 +280,7 @@ func repositoryService(value any) (services.Service, error) {
 }
 
 // RepositoryFacts returns facts independently of the diagnostic preset.
-func RepositoryFacts(cfg *Config, host repository.Snapshot) repository.Snapshot {
+func RepositoryFacts(cfg *Config, host repository.Settings) repository.Settings {
 	if cfg == nil {
 		return host
 	}
@@ -288,24 +288,24 @@ func RepositoryFacts(cfg *Config, host repository.Snapshot) repository.Snapshot 
 }
 
 // Facts returns only the repository overrides declared by this document.
-func (cfg *Config) Facts() repository.Snapshot { return RepositoryFacts(cfg, repository.Snapshot{}) }
+func (cfg *Config) Facts() repository.Settings { return RepositoryFacts(cfg, repository.Settings{}) }
 
 // VariableNames and SecretNames preserve nil for unavailable name sets.
-func VariableNames(facts repository.Snapshot) []string {
+func VariableNames(facts repository.Settings) []string {
 	if variables, ok := facts.Variables.Value(); ok {
 		return variables.Names()
 	}
 	return nil
 }
 
-func SecretNames(facts repository.Snapshot) []string {
+func SecretNames(facts repository.Settings) []string {
 	if secrets, ok := facts.Secrets.Value(); ok {
 		return secrets.Values()
 	}
 	return nil
 }
 
-func RunnerLabels(facts repository.Snapshot) []string {
+func RunnerLabels(facts repository.Settings) []string {
 	if labels, ok := facts.RunnerLabels.Value(); ok {
 		return slices.Clone(labels.Values())
 	}

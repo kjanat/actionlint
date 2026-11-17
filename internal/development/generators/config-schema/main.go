@@ -290,7 +290,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return mapping
-	case reflect.TypeFor[tools.Backend]():
+	case reflect.TypeFor[tools.BackendSelection]():
 		return definitionRef("backend")
 	case reflect.TypeFor[configuration.PermissionLocationList]():
 		values := []any{}

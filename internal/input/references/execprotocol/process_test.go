@@ -76,7 +76,7 @@ func TestResolverProcessHelper(t *testing.T) {
 		result.Tree = strings.Repeat("b", 40)
 	}
 	if mode == "network" {
-		result.Network = &references.RequestReport{AllRequestsReported: true, Requests: []references.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}
+		result.Network = &accounting.RequestReport{AllRequestsReported: true, Requests: []accounting.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(6)

@@ -15,14 +15,14 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -189,7 +189,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, pluginacquisition.Options{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Options{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 			}
 			return backend, nil
 		},
-	}, nil, pluginacquisition.Options{})
+	}, nil, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 			<-release
 			return &editorTestBackend{}, nil
 		},
-	}, nil, pluginacquisition.Options{})
+	}, nil, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +390,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Options{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (scriptengine.Backend, error) { loads.Add(1); return engine, nil }}, nil, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}

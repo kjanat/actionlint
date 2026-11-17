@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -22,7 +23,7 @@ import (
 
 func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	t.Parallel()
-	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
+	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	manifest := toolmanifest.Manifest{
 		SchemaVersion: 1, ID: "migration-fixture", Version: "1.0.0", Role: toolmanifest.RoleDocument,
 		Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess, Preparation: "generic",
@@ -36,7 +37,7 @@ func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	}
 	sum := sha256.Sum256(data)
 	digest := hex.EncodeToString(sum[:])
-	if err := (artifacts.Store{Dir: acquisition.ArtifactOptions().CacheDir}).Publish(t.Context(), digest, data); err != nil {
+	if err := (artifacts.Store{Dir: pluginacquisition.ArtifactOptions(acquisition).CacheDir}).Publish(t.Context(), digest, data); err != nil {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)

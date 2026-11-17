@@ -12,9 +12,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -65,7 +65,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := NewCache(cacheRoot, nil)
+			cache := NewMetadataCache(cacheRoot, nil)
 			cache.SetSources(t.Context(), store, base)
 			if err := cache.Seed(snapshot); err != nil {
 				t.Fatal(err)

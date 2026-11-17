@@ -31,7 +31,7 @@ const HostInterface = host.InterfaceName
 // SourceAnnotationsInterface provides optional, source-local YAML comments.
 const SourceAnnotationsInterface = sourceannotations.InterfaceName
 
-// Plugin is a loaded component. It implements checkinputs.Analyzer. Calls are
+// Plugin is a loaded component. It implements results.Analyzer. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
 	reservedRules rule.Names

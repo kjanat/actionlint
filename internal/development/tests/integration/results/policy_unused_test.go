@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -33,7 +33,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte(tc.source), AdditionalRules: []string{"plugin-rule"}}, nil, tc.findings, nil, nil)
+			findings, err := publishFindings(t, policy.DocumentInputs{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte(tc.source), AdditionalRules: []string{"plugin-rule"}}, nil, tc.findings, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,7 +76,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*finding.Finding{{Rule: tc.canonical, Start: sourcetext.Position{Line: 1}}}, nil, nil)
+				findings, err := publishFindings(t, policy.DocumentInputs{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*finding.Finding{{Rule: tc.canonical, Start: sourcetext.Position{Line: 1}}}, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -94,7 +94,7 @@ func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
 		t.Run(selector, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: echo ok # ignore[" + selector + "]\n")
-			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, nil,
+			findings, err := publishFindings(t, policy.DocumentInputs{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, nil,
 				[]*finding.Finding{{Rule: "missing-permissions", Start: sourcetext.Position{Line: 1}}}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -123,7 +123,7 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 				t.Fatal(err)
 			}
 			item := &finding.Finding{Rule: "job-timeout", Path: path, Start: sourcetext.Position{Line: 1}}
-			got, err := publishFindings(t, policy.Policy{Path: path, ConfigPath: path, Root: root}, cfg, []*finding.Finding{item}, nil, nil)
+			got, err := publishFindings(t, policy.DocumentInputs{Path: path, ConfigPath: path, Root: root}, cfg, []*finding.Finding{item}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -155,7 +155,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte("run: echo hi # ignore expression-reference\n")}, cfg, nil, nil, nil)
+		findings, err := publishFindings(t, policy.DocumentInputs{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte("run: echo hi # ignore expression-reference\n")}, cfg, nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

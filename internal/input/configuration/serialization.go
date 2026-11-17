@@ -5,7 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
-type policyWire Policy
+type policyWire PolicyConfig
 
 // Unmarshal reads YAML configuration and applies the shared migrations and validation.
 func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {

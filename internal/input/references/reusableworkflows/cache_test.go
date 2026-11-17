@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
@@ -586,7 +586,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 
 func TestReusableWorkflowNullCache(t *testing.T) {
 	t.Parallel()
-	c := &ASTComparisonCache{Cache: NewCache("", io.Discard)}
+	c := &ASTComparisonCache{MetadataCache: NewMetadataCache("", io.Discard)}
 	e := &definition.WorkflowCallEvent{Inputs: []*definition.WorkflowCallEventInput{}}
 
 	// This should do nothing
@@ -802,7 +802,7 @@ func TestCacheDoesNotRegisterSiblingRepository(t *testing.T) {
 
 func TestCacheWithoutRepositoryIgnoresInvalidReference(t *testing.T) {
 	t.Parallel()
-	cache := NewCache("", nil)
+	cache := NewMetadataCache("", nil)
 	if _, err := cache.Resolved().LookupForCall("./"); err != nil {
 		t.Fatal(err)
 	}

@@ -37,7 +37,7 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 	cause := errors.New("scanner unavailable")
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []checkinputs.Registration{{Analyzer: suppressionCompletionProbe{cause}}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: suppressionCompletionProbe{cause}}},
 	}, []workspace.InputFile{
 		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\npermissions: {}\n")},
 		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\npermissions: {}\n")},

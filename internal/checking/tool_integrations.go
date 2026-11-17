@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -17,7 +18,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		return options, err
 	}
 	options.Tools = slices.Clone(options.Tools)
-	remaining := make([]checkinputs.Registration, 0, len(options.Analyzers))
+	remaining := make([]results.AnalyzerRegistration, 0, len(options.Analyzers))
 	seen := make(map[string]bool, len(occupiedTools))
 	for _, name := range occupiedTools {
 		seen[name] = true
@@ -57,7 +58,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			if tool.WithAnalyzer == nil {
 				return options, fmt.Errorf("tool %q cannot use a document analyzer", descriptor.Tool)
 			}
-			replacement, err := tool.WithAnalyzer(checkinputs.Registration{Analyzer: registration.Analyzer, Options: slices.Clone(registration.Options)})
+			replacement, err := tool.WithAnalyzer(results.AnalyzerRegistration{Analyzer: registration.Analyzer, Options: slices.Clone(registration.Options)})
 			if err != nil {
 				return options, err
 			}
@@ -73,9 +74,9 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 	return options, nil
 }
 
-func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
+func validateAnalyzerRegistrations(registrations []results.AnalyzerRegistration) error {
 	for _, registration := range registrations {
-		if checkinputs.IsNilAnalyzer(registration.Analyzer) {
+		if results.IsNilAnalyzer(registration.Analyzer) {
 			return errors.New("nil analyzer registration")
 		}
 	}

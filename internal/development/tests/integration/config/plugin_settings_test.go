@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -53,7 +53,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := &settingsAnalyzer{}
-			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: a}}}, []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}}, []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -73,7 +73,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &settingsAnalyzer{}
-	request := checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: a}}}
+	request := checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}}
 	requestSources := []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}
 	if _, err := checking.Analyze(t.Context(), request, requestSources); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
 		t.Fatalf("invalid options were executed: calls=%d err=%v", a.calls, err)

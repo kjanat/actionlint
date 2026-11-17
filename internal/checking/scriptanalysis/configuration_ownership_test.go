@@ -57,7 +57,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	effective, _ := lifecycle.ParseDate("2026-12-01")
 	publication := policy.Batch{
 		Processor: policy.Processor{RuleSet: rules},
-		Policy:    policy.Policy{Path: "ci.yml", Scope: scope, Bindings: registry.Seal()},
+		Policy:    policy.DocumentInputs{Path: "ci.yml", Scope: scope, Bindings: registry.Seal()},
 		Findings: []*finding.Finding{{
 			Rule: "runtime-check", Message: "future retirement", Binding: scope.Rule("runtime-check").ID(),
 			LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Kind: lifecycle.SupportEnds, Name: "example", AsOf: asOf, Effective: effective},

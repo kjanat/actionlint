@@ -9,25 +9,26 @@ import (
 	"fmt"
 	"os/exec"
 	"slices"
-	"sync"
 	"time"
-
-	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 // Process invokes a literal executable using the bounded JSON protocol. No shell
 // interpolation or credential discovery occurs. Each session caches exact
 // requests, including consumer kind and expected repository identity.
 type Process struct {
+	command processCommand
+	cached  *references.CachedResolver
+}
+
+// processCommand runs one provider process per resolution, without caching.
+type processCommand struct {
 	executable string
 	arguments  []string
 	timeout    time.Duration
-	mu         sync.Mutex
-	cache      map[references.Request]references.ResolutionRecord
-	pending    map[references.Request]*pendingResolution
 }
 
 // defaultProcessTimeout bounds one provider run when NewProcess gets no timeout.
@@ -39,13 +40,11 @@ func NewProcess(executable string, arguments []string, timeout time.Duration) *P
 	if timeout == 0 {
 		timeout = defaultProcessTimeout
 	}
-	return &Process{executable: executable, arguments: slices.Clone(arguments), timeout: timeout}
+	return newProcess(processCommand{executable: executable, arguments: slices.Clone(arguments), timeout: timeout})
 }
 
-type pendingResolution struct {
-	done   chan struct{}
-	result references.ResolutionRecord
-	err    error
+func newProcess(command processCommand) *Process {
+	return &Process{command: command, cached: references.NewCachedResolver(command)}
 }
 
 // boundedOutput collects provider stdout and fails the write that would take
@@ -64,56 +63,21 @@ func (b *boundedOutput) Write(p []byte) (int, error) {
 }
 
 func (p *Process) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
-	if err := ctx.Err(); err != nil {
-		return references.ResolutionRecord{}, err
-	}
-	p.mu.Lock()
-	cached, exists := p.cache[request]
-	if exists {
-		p.mu.Unlock()
-		accounting.RecordResolverCall(ctx, nil, true)
-		return cached, nil
-	}
-	if call, exists := p.pending[request]; exists {
-		p.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return references.ResolutionRecord{}, ctx.Err()
-		case <-call.done:
-			if err := ctx.Err(); err != nil {
-				return references.ResolutionRecord{}, err
-			}
-			accounting.RecordResolverCall(ctx, nil, true)
-			return call.result, call.err
-		}
-	}
-	if p.pending == nil {
-		p.pending = make(map[references.Request]*pendingResolution)
-	}
-	call := &pendingResolution{done: make(chan struct{})}
-	p.pending[request] = call
-	p.mu.Unlock()
-
-	result, err := p.resolve(ctx, request)
-	p.mu.Lock()
-	call.result, call.err = result, err
-	if err == nil {
-		if p.cache == nil {
-			p.cache = make(map[references.Request]references.ResolutionRecord)
-		}
-		p.cache[request] = call.result
-	}
-	delete(p.pending, request)
-	close(call.done)
-	p.mu.Unlock()
-	return result, err
+	return p.cached.Resolve(ctx, request)
 }
 
-func (p *Process) resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
+// NewSession returns a resolver for the same command with an empty cache.
+func (p *Process) NewSession() references.Resolver {
+	command := p.command
+	command.arguments = slices.Clone(command.arguments)
+	return newProcess(command)
+}
+
+func (c processCommand) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	if err := network.RequireOnline(ctx); err != nil {
 		return references.ResolutionRecord{}, err
 	}
-	var receipt *references.RequestReport
+	var receipt *accounting.RequestReport
 	defer func() { accounting.RecordResolverCall(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
 		return references.ResolutionRecord{}, errors.New("unsupported resolution request")
@@ -122,9 +86,9 @@ func (p *Process) resolve(ctx context.Context, request references.Request) (refe
 	if err != nil {
 		return references.ResolutionRecord{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, p.executable, p.arguments...)
+	command := exec.CommandContext(ctx, c.executable, c.arguments...)
 	command.WaitDelay = time.Second
 	command.Stdin = bytes.NewReader(data)
 	output := &boundedOutput{limit: 2 << 20}
@@ -144,8 +108,4 @@ func (p *Process) resolve(ctx context.Context, request references.Request) (refe
 	}
 
 	return result, nil
-}
-
-func (p *Process) NewSession() references.Resolver {
-	return &Process{executable: p.executable, arguments: slices.Clone(p.arguments), timeout: p.timeout}
 }

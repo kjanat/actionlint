@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
@@ -44,7 +43,7 @@ func TestRecordedBashErrexit(t *testing.T) {
 	if len(outputs) != len(cases) {
 		t.Fatalf("capture has %d cases, expected %d", len(outputs), len(cases))
 	}
-	registry := interpreters.Builtin()
+	registry := commands.BuiltinShells()
 	invocation := registry.Analyze("bash", false)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

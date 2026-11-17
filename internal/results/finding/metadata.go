@@ -1,6 +1,6 @@
 package finding
 
-import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
+import "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 
 // MetadataKey identifies an action metadata finding by document, message and
 // start. Start is zero when the finding has no source position.

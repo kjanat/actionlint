@@ -61,7 +61,7 @@ analyze-types = true
 forbid        = [
   { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through files.Reader" },
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through files.Reader" },
-  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/input/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
+  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/base/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
   { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
 ]
 
@@ -125,7 +125,7 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|input/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|base/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
 text    = "files\\.(Reader|Disk|ProbeDir)"
 linters = ["forbidigo"]
 
@@ -135,7 +135,7 @@ text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/input/files/nameindex/index\.go$'
+path    = '^internal/input/nameindex/index\.go$'
 text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 
@@ -150,7 +150,7 @@ linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
 
 # testing.AllocsPerRun panics while a parallel test runs.
 [[linters.exclusions.rules]]
-path    = '^internal/(model/checkinputs/input_selection_cost|input/sourcetext/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
+path    = '^internal/(model/checkinputs/input_selection_cost|base/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
 text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
 linters = ["paralleltest"]
 

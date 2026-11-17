@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -21,7 +21,7 @@ func TestReportedPhysicalPathIsRelativeToAliasedCheckout(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings := []*finding.Finding{{Rule: "expression-type", Path: filepath.Join(physical, "scripts", "lib.sh"), Start: sourcetext.Position{Line: 1}}}
-	p := preparePolicy(processor.RuleSet, config, policy.Policy{Path: "ci.yml", Root: checkout, WorkingDir: checkout}, nil, findings)
+	p := preparePolicy(processor.RuleSet, config, policy.DocumentInputs{Path: "ci.yml", Root: checkout, WorkingDir: checkout}, nil, findings)
 	got, err := publishFindings(processor, p, findings, nil)
 	if err != nil || len(got) != 1 || got[0].Path != filepath.Join("scripts", "lib.sh") {
 		t.Fatalf("reported path=%+v error=%v, want scripts/lib.sh", got, err)
@@ -48,7 +48,7 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 			t.Fatal(err)
 		}
 		findings := []*finding.Finding{{Rule: "expression-type", Path: path, Start: sourcetext.Position{Line: 1}}}
-		p := preparePolicy(processor.RuleSet, config, policy.Policy{Path: path, ConfigPath: path, Root: checkout, ProjectRoot: checkout, WorkingDir: checkout}, nil, findings)
+		p := preparePolicy(processor.RuleSet, config, policy.DocumentInputs{Path: path, ConfigPath: path, Root: checkout, ProjectRoot: checkout, WorkingDir: checkout}, nil, findings)
 		got, err := publishFindings(processor, p, findings, nil)
 		if err != nil {
 			t.Fatal(err)

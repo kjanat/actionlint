@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
@@ -44,10 +44,10 @@ tools: {shellcheck: false}
 			}
 			getenv := func(name string) string { return env[name] }
 			var plan, errors, output strings.Builder
-			if code := PluginPlan(getenv, &plan, &errors, pluginacquisition.Options{}); code != exitcode.ExitSuccessNoProblem {
+			if code := PluginPlan(getenv, &plan, &errors, dependencycache.Acquisition{}); code != exitcode.ExitSuccessNoProblem {
 				t.Fatalf("plugin plan failed: %d %s", code, errors.String())
 			}
-			if code := Main(getenv, &output, pluginacquisition.Options{}); code != exitcode.ExitSuccessNoProblem {
+			if code := Main(getenv, &output, dependencycache.Acquisition{}); code != exitcode.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
 			}
 			var result report.CheckResult
@@ -95,7 +95,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
 			}
 			var output strings.Builder
-			if code := Main(func(name string) string { return env[name] }, &output, pluginacquisition.Options{}); code != exitcode.ExitSuccessProblemFound {
+			if code := Main(func(name string) string { return env[name] }, &output, dependencycache.Acquisition{}); code != exitcode.ExitSuccessProblemFound {
 				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
 			}
 			var result report.CheckResult
@@ -200,7 +200,7 @@ tools: {shellcheck: false}
 				}
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
-				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, pluginacquisition.Options{})
+				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, dependencycache.Acquisition{})
 				if got.code != exitcode.ExitSuccessNoProblem || code != exitcode.ExitSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}

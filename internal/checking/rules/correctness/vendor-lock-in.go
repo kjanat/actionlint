@@ -5,6 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -76,7 +77,7 @@ func VendorLockIn(w workflows.BoundWorkflow, uses *definition.String, target str
 			end, endOK := source.EndPos(1, ref.PrefixLength()+1)
 			if startOK && endOK {
 				finding.Fixes = []results.Fix{{
-					Description: "Remove the GitHub URL prefix", Applicability: results.FixSafe,
+					Description: "Remove the GitHub URL prefix", Applicability: applicability.Safe,
 					Edits: []results.Edit{{Start: *start, End: *end}},
 				}}
 			}

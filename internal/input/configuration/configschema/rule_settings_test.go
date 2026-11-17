@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
@@ -12,7 +14,7 @@ func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
 	custom.Rule.Name = "custom-check"
 	bundled := installed(false)
 	bundled.Rule.Name, bundled.Rule.Category = "shellcheck", "correctness"
-	data, err := Document(moduleRoot, []ToolProvider{custom, bundled})
+	data, err := Document(moduleRoot, []toolsettings.Provider{custom, bundled})
 	if err != nil {
 		t.Fatal(err)
 	}

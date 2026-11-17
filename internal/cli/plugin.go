@@ -7,9 +7,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -55,7 +55,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Options) pluginselection.PluginSelection {
+func (c checkInvocation) pluginSelection(acquisition dependencycache.Acquisition) pluginselection.PluginSelection {
 	// A tool disabled by --no-tool is not run by plugins either.
 	return pluginselection.WithTools(pluginselection.PluginSelection{
 		RuleSet: checking.ConfigurationRules(),
