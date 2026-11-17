@@ -92,7 +92,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := filepath.Join(t.TempDir(), "schema.json")
-		if err := os.WriteFile(path, b, 0600); err != nil {
+		if err := os.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		u := (&url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(path), "/")}).String()

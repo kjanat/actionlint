@@ -56,7 +56,7 @@ type switchCase struct {
 }
 type switchCases map[string]*switchCase
 
-func (sc switchCases) Add(key string, ctx []string, sp []string) {
+func (sc switchCases) Add(key string, ctx, sp []string) {
 	k := strings.Join(ctx, "🐶") + "🐱" + strings.Join(sp, "🐶")
 	if c, ok := sc[k]; ok {
 		c.cond = append(c.cond, key)

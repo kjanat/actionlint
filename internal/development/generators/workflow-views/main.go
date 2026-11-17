@@ -362,10 +362,10 @@ func main() {
 			panic(err)
 		}
 		target := filepath.Join(os.Args[2], file)
-		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			panic(err)
 		}
-		if err := os.WriteFile(target, formatted, 0644); err != nil {
+		if err := os.WriteFile(target, formatted, 0o644); err != nil {
 			panic(err)
 		}
 	}

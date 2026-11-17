@@ -48,7 +48,8 @@ func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 	metadata := configschema.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
 	rules, err := (RuleSet{}).WithRegisteredRules(
 		RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
-		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata})
+		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

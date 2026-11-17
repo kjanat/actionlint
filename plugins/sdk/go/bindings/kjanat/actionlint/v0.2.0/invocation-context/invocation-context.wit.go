@@ -686,7 +686,7 @@ type Summary struct {
 //go:nosplit
 func Describe() (result cm.Result[SummaryShape, Summary, string]) {
 	wasmimport_Describe(&result)
-	return
+	return result
 }
 
 // Calls represents the imported function "calls".
@@ -698,11 +698,11 @@ func Describe() (result cm.Result[SummaryShape, Summary, string]) {
 //	calls: func(offset: u32, limit: u32) -> result<list<call>, string>
 //
 //go:nosplit
-func Calls(offset uint32, limit uint32) (result cm.Result[cm.List[Call], cm.List[Call], string]) {
+func Calls(offset, limit uint32) (result cm.Result[cm.List[Call], cm.List[Call], string]) {
 	offset0 := uint32(offset)
 	limit0 := uint32(limit)
 	wasmimport_Calls(uint32(offset0), uint32(limit0), &result)
-	return
+	return result
 }
 
 // Scripts represents the imported function "scripts".
@@ -710,11 +710,11 @@ func Calls(offset uint32, limit uint32) (result cm.Result[cm.List[Call], cm.List
 //	scripts: func(offset: u32, limit: u32) -> result<list<script-occurrence>, string>
 //
 //go:nosplit
-func Scripts(offset uint32, limit uint32) (result cm.Result[cm.List[ScriptOccurrence], cm.List[ScriptOccurrence], string]) {
+func Scripts(offset, limit uint32) (result cm.Result[cm.List[ScriptOccurrence], cm.List[ScriptOccurrence], string]) {
 	offset0 := uint32(offset)
 	limit0 := uint32(limit)
 	wasmimport_Scripts(uint32(offset0), uint32(limit0), &result)
-	return
+	return result
 }
 
 // CallByID represents the imported function "call-by-id".
@@ -728,7 +728,7 @@ func Scripts(offset uint32, limit uint32) (result cm.Result[cm.List[ScriptOccurr
 func CallByID(id OccurrenceID) (result cm.Result[OptionCallShape, cm.Option[Call], string]) {
 	id0, id1 := cm.LowerString(id)
 	wasmimport_CallByID((*uint8)(id0), uint32(id1), &result)
-	return
+	return result
 }
 
 // ScriptByID represents the imported function "script-by-id".
@@ -739,5 +739,5 @@ func CallByID(id OccurrenceID) (result cm.Result[OptionCallShape, cm.Option[Call
 func ScriptByID(id OccurrenceID) (result cm.Result[OptionScriptOccurrenceShape, cm.Option[ScriptOccurrence], string]) {
 	id0, id1 := cm.LowerString(id)
 	wasmimport_ScriptByID((*uint8)(id0), uint32(id1), &result)
-	return
+	return result
 }

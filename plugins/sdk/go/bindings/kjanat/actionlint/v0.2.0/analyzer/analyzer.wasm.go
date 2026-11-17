@@ -9,7 +9,7 @@ package analyzer
 func wasmexport_Describe() (result *Descriptor) {
 	result_ := Exports.Describe()
 	result = &result_
-	return
+	return result
 }
 
 //go:wasmexport kjanat:actionlint/analyzer@0.2.0#analyze
@@ -18,5 +18,5 @@ func wasmexport_Analyze(input *Input) (result *Outcome) {
 	input_ := *input
 	result_ := Exports.Analyze(input_)
 	result = &result_
-	return
+	return result
 }

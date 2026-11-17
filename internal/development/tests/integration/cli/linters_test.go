@@ -100,7 +100,7 @@ func TestLinterCommandSpellings(t *testing.T) {
 func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
 	t.Parallel()
 	input := filepath.Join(t.TempDir(), "input.yml")
-	if err := os.WriteFile(input, []byte(commandGoodWorkflow), 0600); err != nil {
+	if err := os.WriteFile(input, []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {

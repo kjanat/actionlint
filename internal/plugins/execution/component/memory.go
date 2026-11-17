@@ -19,7 +19,7 @@ type memoryBudget struct {
 	limit, used uint64
 }
 
-func (b *memoryBudget) Allocate(_ uint64, maximum uint64) experimental.LinearMemory {
+func (b *memoryBudget) Allocate(_, maximum uint64) experimental.LinearMemory {
 	return &budgetMemory{budget: b, maximum: maximum}
 }
 

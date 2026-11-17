@@ -31,7 +31,7 @@ func TestFixVendorLockIn(t *testing.T) {
 				before += "permissions: {}\n"
 				before = strings.ReplaceAll(before, "\n", ending)
 				after := strings.Replace(before, strings.ReplaceAll(tc.scalar, "\n", ending), strings.ReplaceAll(tc.fixed, "\n", ending), 1)
-				if err := os.WriteFile(path, []byte(before), 0600); err != nil {
+				if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				args := []string{"fix", "--norc", path}

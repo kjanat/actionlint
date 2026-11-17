@@ -14,17 +14,17 @@ func TestPublishNewReport(t *testing.T) {
 			t.Parallel()
 			existing := name == "existing"
 			root := filepath.Join(t.TempDir(), "reports with spaces é")
-			if err := os.Mkdir(root, 0700); err != nil {
+			if err := os.Mkdir(root, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			source, destination := filepath.Join(root, "temporary"), filepath.Join(root, "report.json")
-			if err := os.WriteFile(source, []byte("completed report"), 0600); err != nil {
+			if err := os.WriteFile(source, []byte("completed report"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			want := "completed report"
 			if existing {
 				want = "existing report"
-				if err := os.WriteFile(destination, []byte(want), 0600); err != nil {
+				if err := os.WriteFile(destination, []byte(want), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}

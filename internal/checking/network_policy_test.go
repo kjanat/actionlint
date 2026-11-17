@@ -13,7 +13,7 @@ import (
 func TestNetworkPolicyAppliesToPreparedSources(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "policy.toml")
-	if err := os.WriteFile(path, []byte("[restrictions.network.metadata-mirrors]\nexclude-services = ['jsdelivr']\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("[restrictions.network.metadata-mirrors]\nexclude-services = ['jsdelivr']\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", path)

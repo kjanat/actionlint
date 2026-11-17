@@ -92,10 +92,10 @@ func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 		"plugins/check/index.json": []byte(`{"source":"candidate","name":"github.com/publisher/plugin/check","plugin_id":"github.com/publisher/plugin/check","versions":[{"version":"v1.0.0","record":"versions/v1.json"}]}`),
 	} {
 		file := filepath.Join(dir, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(file, value, 0600); err != nil {
+		if err := os.WriteFile(file, value, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,10 +127,10 @@ func (f ociCandidateFixture) writeRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	file := filepath.Join(f.dir, "plugins", "check", "versions", "v1.json")
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(file, data, 0600); err != nil {
+	if err := os.WriteFile(file, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -287,7 +287,7 @@ func TestCandidateOCICacheRejectsCorruptionWithoutFetching(t *testing.T) {
 				t.Fatal(err)
 			}
 			digest := map[string]string{"root": f.root.Hex(), "manifest": f.manifest.Hex(), "primary": f.primary.Hex()}[corrupted]
-			if err := os.WriteFile(filepath.Join(f.options.CacheDir, digest), []byte("corrupt"), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(f.options.CacheDir, digest), []byte("corrupt"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			before := f.registry.Fetches(f.root) + f.registry.Fetches(f.manifest) + f.registry.Fetches(f.primary)

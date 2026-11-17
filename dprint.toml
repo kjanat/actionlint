@@ -1,4 +1,5 @@
 #:schema dprint.schema.json
+# format through npx @kjanat/fmt -- [files...]
 
 incremental = true
 newLineKind = "lf"
@@ -28,6 +29,15 @@ excludes    = [
   "**/schemas/ruff/**",
   "docs/releases/**/*.md"
 ]
+
+[gofumpt]
+langVersion = "go1.27"
+modulePath  = "actionlint.kjanat.dev/v2"
+
+[gofumpt.extra]
+groupParams   = true
+balanceCalls  = true
+clotheReturns = true
 
 [exec]
 cwd = "${configDir}"
