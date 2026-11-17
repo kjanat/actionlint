@@ -491,7 +491,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
 		'upkeep.yml:go-toolchain': 'bun,npm:runner-run',
-		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor,npm:runner-run',
+		'package-previews.yml:publish': 'go,bun,uv,yamllint,zizmor,npm:runner-run',
 		'changelog-release.yml:publish': 'bun,npm:runner-run',
 		'pages.yml:build': 'go,node,npm,bun,pandoc,npm:runner-run',
 		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc,npm:runner-run',
@@ -692,16 +692,20 @@ test('artifact consumers require a successful producer and stop on cancellation'
 		assert.ok(typeof job.if === 'string', `${name} needs an explicit status condition`);
 		const expression = job.if.replace(/^\$\{\{\s*|\s*\}\}$/g, '');
 		for (const [result, cancelledRun, expected] of cases) {
-			const enabled = runInNewContext(expression, {
-				cancelled: () => cancelledRun,
-				success: () => false,
-				needs: { [job.needs]: { result } },
-				github: {
-					repository: 'kjanat/actionlint',
-					event_name: 'pull_request',
-					event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+			const enabled = runInNewContext(
+				expression,
+				{
+					cancelled: () => cancelledRun,
+					success: () => false,
+					needs: { [job.needs]: { result } },
+					github: {
+						repository: 'kjanat/actionlint',
+						event_name: 'pull_request',
+						event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+					},
 				},
-			}, { timeout: 100 });
+				{ timeout: 100 },
+			);
 			assert.equal(enabled, expected, `${name}: producer=${result}, cancelled=${cancelledRun}`);
 		}
 	}
@@ -753,15 +757,19 @@ test('preview consumers share the successful CI snapshot and cannot trigger sepa
 		]
 	) {
 		// This condition uses only operators shared by JavaScript and GitHub expressions.
-		const enabled = runInNewContext(docker.if, {
-			cancelled: () => false,
-			needs: { 'release-snapshot': { result: 'success' } },
-			github: {
-				repository,
-				event_name: eventName,
-				event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+		const enabled = runInNewContext(
+			docker.if,
+			{
+				cancelled: () => false,
+				needs: { 'release-snapshot': { result: 'success' } },
+				github: {
+					repository,
+					event_name: eventName,
+					event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+				},
 			},
-		}, { timeout: 100 });
+			{ timeout: 100 },
+		);
 		assert.equal(enabled, expected, `${repository} ${eventName} ${headRepository}`);
 	}
 	assert.deepEqual(docker.permissions, { contents: 'read', packages: 'write' });
