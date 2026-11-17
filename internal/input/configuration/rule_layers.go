@@ -1,6 +1,10 @@
 package configuration
 
-import "actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+import (
+	"maps"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
+)
 
 // normalizeRuleLocations gives named settings one merge key across accepted
 // category spellings. Group defaults stay in their declared groups because
@@ -9,6 +13,11 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 	rules := field(lint, "rules")
 	if !isMapping(rules) {
 		return lint, nil
+	}
+	for category, group := range members(rules) {
+		if err := validateRuleAliases(ruleSet, category, maps.All(members(group))); err != nil {
+			return nil, err
+		}
 	}
 	nextRules := cloneMapping(rules)
 	changed := false

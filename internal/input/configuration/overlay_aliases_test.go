@@ -31,7 +31,37 @@ func TestDeferredOverlayRejectsConflictingRuleAliases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := final.Overlaid(nil, nil, []configuration.Overlay{overlay}); err == nil || !strings.Contains(err.Error(), "conflicts with lint.rules.correctness.check-alpha") {
+	if _, _, err := final.Overlaid(nil, nil, []configuration.Overlay{overlay}); err == nil || !strings.Contains(err.Error(), "duplicate rule aliases") {
 		t.Fatalf("deferred overlay dropped a conflicting alias: %v", err)
+	}
+}
+
+func TestDeferredOverlayRejectsRegisteredRuleAliases(t *testing.T) {
+	t.Parallel()
+	beforePlugins, err := configuration.NewRuleSet(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	final, err := beforePlugins.WithRegisteredRules(configuration.RuleRegistration{
+		Declaration: rule.Declaration{
+			Descriptor: rule.Descriptor{Name: "check-alpha", Aliases: []rule.Alias{{Name: "old-alpha"}}, Category: "correctness", Maturity: "stable"},
+			Scope:      rule.SourceConfiguration,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, category := range []string{"plugins", "correctness"} {
+		t.Run(category, func(t *testing.T) {
+			t.Parallel()
+			source := []byte("lint: {rules: {" + category + ": {check-alpha: warn, old-alpha: error}}}")
+			overlay, err := beforePlugins.ParseOverlayBeforePlugins("config", source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := final.Overlaid(nil, nil, []configuration.Overlay{overlay}); err == nil || !strings.Contains(err.Error(), "duplicate rule aliases") {
+				t.Fatalf("registered rule lost conflicting settings in %s: %v", category, err)
+			}
+		})
 	}
 }

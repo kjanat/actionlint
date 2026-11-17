@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -405,13 +406,11 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 			if group.Preset() != "" && !group.Preset().Valid() {
 				return fmt.Errorf("invalid preset %q in lint.rules.%s", group.Preset(), category)
 			}
-			names := map[string]string{}
+			if err := validateRuleAliases(ruleSet, category, group.Rules()); err != nil {
+				return err
+			}
 			for spelling, setting := range group.Rules() {
 				name := ruleSet.ResolveAlias(spelling)
-				if previous, duplicate := names[name]; duplicate {
-					return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
-				}
-				names[name] = spelling
 				descriptor, known := index[name]
 				if !known {
 					return fmt.Errorf("unknown rule %q in lint.rules.%s", name, category)
@@ -444,6 +443,18 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func validateRuleAliases[V any](ruleSet RuleSet, category string, settings iter.Seq2[string, V]) error {
+	names := map[string]string{}
+	for spelling := range settings {
+		name := ruleSet.ResolveAlias(spelling)
+		if previous, duplicate := names[name]; duplicate {
+			return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
+		}
+		names[name] = spelling
 	}
 	return nil
 }
