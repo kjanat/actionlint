@@ -16,7 +16,7 @@ func TestDependencySettingsInheritanceAndOverrides(t *testing.T) {
 		"base.toml":       "[lint.dependencies]\nfail-on-all = true\nfail-on-categories = ['security']\nfail-on-rules = ['example/CODE']\n",
 		"actionlint.toml": "extends = ['base.toml']\n[lint.dependencies]\nfail-on-all = false\nfail-on-categories = []\n[[overrides]]\nincludes = ['release.yml']\n[overrides.lint.dependencies]\nfail-on-all = true\nfail-on-rules = []\n",
 	} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

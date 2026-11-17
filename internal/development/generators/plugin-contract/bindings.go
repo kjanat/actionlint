@@ -64,6 +64,10 @@ func generateBindings(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("order binding %s: %w", relative, err)
 		}
+		data, err = shareListBindings(data)
+		if err != nil {
+			return fmt.Errorf("share list binding %s: %w", relative, err)
+		}
 		data, err = format.Source(data, format.Options{})
 		if err != nil {
 			return fmt.Errorf("format binding %s: %w", relative, err)

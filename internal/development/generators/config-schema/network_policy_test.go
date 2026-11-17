@@ -61,7 +61,7 @@ func TestNetworkPolicySchema(t *testing.T) {
 			}
 		})
 	}
-	for _, name := range []string{"schemas/policy/network.schema.json", "internal/input/configuration/schema/assets/schemas/policy/network.schema.json"} {
+	for _, name := range []string{"schemas/policy/network.schema.json"} {
 		content, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)

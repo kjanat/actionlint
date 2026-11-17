@@ -129,7 +129,7 @@ sources = [
   "internal/plugins/execution/preparation/**/*.go",
   "schemas/**"
 ]
-outputs = ["actionlint.schema.json", "internal/input/configuration/schema/assets/**/*.json"]
+outputs = ["actionlint.schema.json", "schemas/policy/network.schema.json"]
 run     = "go run ./internal/development/generators/config-schema"
 
 ["generate:rules"]

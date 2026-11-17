@@ -32,7 +32,7 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 	section := binary.AppendUvarint([]byte{0}, uint64(len(payload)))
 	section = append(section, payload...)
 	path := filepath.Join(t.TempDir(), "spoofed.wasm")
-	if err := os.WriteFile(path, append(raw, section...), 0600); err != nil {
+	if err := os.WriteFile(path, append(raw, section...), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := corewasm.Load(t.Context(), path, corewasm.Options{})

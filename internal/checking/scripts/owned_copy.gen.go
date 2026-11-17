@@ -3,7 +3,8 @@
 package scripts
 
 import (
-	scripts "actionlint.kjanat.dev/v2/internal/model/scripts"
+	slices "slices"
+
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	finding "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -42,7 +43,7 @@ func (ctx *ownedCopyContext) copyOwnedUnit(in Unit) Unit {
 	out.Content = ctx.copyOwnedInternedBytes(in.Content)
 	out.Origin = ctx.copyOwnedValue_b455585ef54c0fa7055fb0e2b9ec5236(in.Origin)
 	out.Owner = ctx.copyOwnedValue_488883a8c9e16b542a80654da9eff6cf(in.Owner)
-	out.Environment = ctx.copyOwnedValue_c2a36226f8cc305c232c272e5bcbfb2a(in.Environment)
+	out.Environment = slices.Clone(in.Environment)
 	return out
 }
 
@@ -76,17 +77,6 @@ func (ctx *ownedCopyContext) copyOwnedValue_488883a8c9e16b542a80654da9eff6cf(in 
 	}
 	out := ctx.copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(*in)
 	return (*finding.Owner)(&out)
-}
-
-func (ctx *ownedCopyContext) copyOwnedValue_c2a36226f8cc305c232c272e5bcbfb2a(in []scripts.EnvironmentNames) []scripts.EnvironmentNames {
-	if in == nil {
-		return nil
-	}
-	out := make([]scripts.EnvironmentNames, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(in finding.IgnoreOrigin) finding.IgnoreOrigin {

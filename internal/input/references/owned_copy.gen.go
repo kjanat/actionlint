@@ -3,24 +3,13 @@
 package references
 
 import (
-	jsontext "encoding/json/jsontext"
+	slices "slices"
 )
 
 func copyOwnedResult(in Result) Result {
 	out := in
-	out.FetchLog = copyOwnedValue_a444abdefe1e016ece06c7b5b352a563(in.FetchLog)
+	out.FetchLog = slices.Clone(in.FetchLog)
 	out.Network = copyOwnedValue_5874d3dd0ddca5523b4ff43712269c49(in.Network)
-	return out
-}
-
-func copyOwnedValue_a444abdefe1e016ece06c7b5b352a563(in jsontext.Value) jsontext.Value {
-	if in == nil {
-		return nil
-	}
-	out := make(jsontext.Value, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
 	return out
 }
 
@@ -34,17 +23,6 @@ func copyOwnedValue_5874d3dd0ddca5523b4ff43712269c49(in *RequestReport) *Request
 
 func copyOwnedRequestReport_503121ed805d9755e1349a99278b7a7f(in RequestReport) RequestReport {
 	out := in
-	out.Requests = copyOwnedValue_5373f892e5858dffc0d93cb0138b7f7e(in.Requests)
-	return out
-}
-
-func copyOwnedValue_5373f892e5858dffc0d93cb0138b7f7e(in []RequestCounts) []RequestCounts {
-	if in == nil {
-		return nil
-	}
-	out := make([]RequestCounts, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
+	out.Requests = slices.Clone(in.Requests)
 	return out
 }

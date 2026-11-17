@@ -74,7 +74,7 @@ test('mise follows workspace dependencies and isolates the standalone reference 
 	}
 	for (
 		const file of [
-			'internal/input/configuration/schema/assets/test-change.json',
+			'schemas.go',
 			'internal/plugins/execution/component/testdata/plugins/test-change.wasm',
 			'internal/checking/test_change.go',
 			'schemas/test-change.json',

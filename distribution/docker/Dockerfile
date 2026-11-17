@@ -4,7 +4,7 @@ ARG ALPINE_VER=3.24
 FROM --platform=$BUILDPLATFORM golang:${GOLANG_VER} AS builder
 WORKDIR /go/src/app
 COPY go.mod go.sum ./
-COPY actionlint.schema.json ./
+COPY actionlint.schema.json schemas.go ./
 COPY schemas schemas/
 COPY cmd cmd/
 COPY internal internal/

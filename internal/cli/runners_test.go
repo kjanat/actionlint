@@ -31,10 +31,10 @@ func TestRunnerProviderCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("runners.json", data, 0600); err != nil {
+	if err := os.WriteFile("runners.json", data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("actionlint.yaml", []byte("repository: {runners: []}\n"), 0600); err != nil {
+	if err := os.WriteFile("actionlint.yaml", []byte("repository: {runners: []}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
@@ -54,7 +54,7 @@ func TestRunnerSnapshotValidation(t *testing.T) {
 	t.Parallel()
 	for _, content := range []string{`{"freshness":"current"}`, `{"freshness":"fresh","typo":true}`, `null`, `{`} {
 		file := filepath.Join(t.TempDir(), "snapshot.json")
-		if err := os.WriteFile(file, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(file, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := (checkInvocation{RunnerSnapshot: file}).runners(); err == nil {
@@ -69,10 +69,10 @@ func TestGitHubRunnerSnapshotCLI(t *testing.T) {
 		"scope": "fixture", "freshness": "fresh", "complete": true,
 		"content": {"runners":[{"name":"desktop","labels":["desktop-pool"],"os":"windows","default_shell":"pwsh"}]}
 	}`)
-	if err := os.WriteFile("runners.json", data, 0600); err != nil {
+	if err := os.WriteFile("runners.json", data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("actionlint.yaml", []byte("repository: {runners: []}\n"), 0600); err != nil {
+	if err := os.WriteFile("actionlint.yaml", []byte("repository: {runners: []}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

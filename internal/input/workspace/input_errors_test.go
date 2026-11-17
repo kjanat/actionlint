@@ -29,7 +29,7 @@ func TestStdinReadFailure(t *testing.T) {
 func TestMissingInputPaths(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	if err := os.Mkdir(filepath.Join(root, "existing"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(root, "existing"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{filepath.Join("existing", "missing.yaml"), filepath.Join("missing", "workflow.yaml"), filepath.Join(root, "missing.yaml"), filepath.Join(root, "missing", "workflow.yaml")} {

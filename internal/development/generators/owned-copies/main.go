@@ -329,6 +329,30 @@ func (g *generator) expression(t types.Type, value string) (string, error) {
 	if !needsCopy {
 		return value, nil
 	}
+	var element types.Type
+	var library string
+	switch container := t.Underlying().(type) {
+	case *types.Slice:
+		element, library = container.Elem(), "slices"
+	case *types.Map:
+		mutableKey, err := g.mutable(container.Key(), map[types.Type]bool{})
+		if err != nil {
+			return "", err
+		}
+		if mutableKey {
+			return "", fmt.Errorf("map %s has mutable keys", typeKey(t))
+		}
+		element, library = container.Elem(), "maps"
+	}
+	if element != nil {
+		mutableElement, err := g.mutable(element, map[types.Type]bool{})
+		if err != nil {
+			return "", err
+		}
+		if !mutableElement {
+			return g.qualifier(types.NewPackage(library, library)) + ".Clone(" + value + ")", nil
+		}
+	}
 	name, err := g.helper(t)
 	if err != nil {
 		return "", err

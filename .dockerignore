@@ -4,6 +4,7 @@
 !go.mod
 !go.sum
 !actionlint.schema.json
+!schemas.go
 !schemas
 !schemas/**
 !cmd

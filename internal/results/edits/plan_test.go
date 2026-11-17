@@ -34,7 +34,7 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(t.TempDir(), "source.yml")
-			if err := os.WriteFile(path, content, 0600); err != nil {
+			if err := os.WriteFile(path, content, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			_, err := Build(t.Context(), []results.Diagnostic{{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: tc.revision}, Edits: tc.edits(path)}}}}, files.New(t.Context(), nil, nil), false)
@@ -64,7 +64,7 @@ func TestRemoteFixesDoNotPreventLocalEdits(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	content := []byte("hello\n")
-	if err := os.WriteFile(path, content, 0600); err != nil {
+	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const remote = "https://github.com/example/action/blob/abc/action.yml"

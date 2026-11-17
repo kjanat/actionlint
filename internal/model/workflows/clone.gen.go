@@ -13,6 +13,7 @@ func (b *builder) cloneActionInputMapping(in *workflowlang.ActionInputMapping) *
 		return nil
 	}
 	out := new(workflowlang.ActionInputMapping)
+	*out = *in
 	if in.Inputs != nil {
 		out.Inputs = make(map[string]*workflowlang.Input, len(in.Inputs))
 		for key1, value1 := range in.Inputs {
@@ -34,8 +35,8 @@ func (b *builder) cloneBool(in *workflowlang.Bool) *workflowlang.Bool {
 		return nil
 	}
 	out := new(workflowlang.Bool)
+	*out = *in
 	b.boolNodes = append(b.boolNodes, out)
-	out.Value = in.Value
 	out.Expression = b.cloneString(in.Expression)
 	out.Pos = b.clonePos(in.Pos)
 	return out
@@ -46,7 +47,7 @@ func (b *builder) cloneCacheMode(in *workflowlang.CacheMode) *workflowlang.Cache
 		return nil
 	}
 	out := new(workflowlang.CacheMode)
-	out.Kind = in.Kind
+	*out = *in
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
@@ -56,6 +57,7 @@ func (b *builder) cloneConcurrency(in *workflowlang.Concurrency) *workflowlang.C
 		return nil
 	}
 	out := new(workflowlang.Concurrency)
+	*out = *in
 	out.Expression = b.cloneString(in.Expression)
 	out.Group = b.cloneString(in.Group)
 	out.CancelInProgress = b.cloneBool(in.CancelInProgress)
@@ -69,6 +71,7 @@ func (b *builder) cloneContainer(in *workflowlang.Container) *workflowlang.Conta
 		return nil
 	}
 	out := new(workflowlang.Container)
+	*out = *in
 	b.containerNodes = append(b.containerNodes, out)
 	out.Expression = b.cloneString(in.Expression)
 	out.Image = b.cloneString(in.Image)
@@ -100,6 +103,7 @@ func (b *builder) cloneCredentials(in *workflowlang.Credentials) *workflowlang.C
 		return nil
 	}
 	out := new(workflowlang.Credentials)
+	*out = *in
 	out.Username = b.cloneString(in.Username)
 	out.Password = b.cloneString(in.Password)
 	out.Expression = b.cloneString(in.Expression)
@@ -112,6 +116,7 @@ func (b *builder) cloneDefaults(in *workflowlang.Defaults) *workflowlang.Default
 		return nil
 	}
 	out := new(workflowlang.Defaults)
+	*out = *in
 	out.Run = b.cloneDefaultsRun(in.Run)
 	out.Pos = b.clonePos(in.Pos)
 	return out
@@ -122,6 +127,7 @@ func (b *builder) cloneDefaultsRun(in *workflowlang.DefaultsRun) *workflowlang.D
 		return nil
 	}
 	out := new(workflowlang.DefaultsRun)
+	*out = *in
 	b.defaultsRunNodes = append(b.defaultsRunNodes, out)
 	out.Expression = b.cloneString(in.Expression)
 	out.Shell = b.cloneString(in.Shell)
@@ -135,11 +141,11 @@ func (b *builder) cloneDispatchInput(in *workflowlang.DispatchInput) *workflowla
 		return nil
 	}
 	out := new(workflowlang.DispatchInput)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Description = b.cloneString(in.Description)
 	out.Required = b.cloneBool(in.Required)
 	out.Default = b.cloneString(in.Default)
-	out.Type = in.Type
 	if in.Options != nil {
 		out.Options = make([]*workflowlang.String, len(in.Options))
 		for i5 := range in.Options {
@@ -154,6 +160,7 @@ func (b *builder) cloneEnv(in *workflowlang.Env) *workflowlang.Env {
 		return nil
 	}
 	out := new(workflowlang.Env)
+	*out = *in
 	b.envNodes = append(b.envNodes, out)
 	if in.Vars != nil {
 		out.Vars = make(map[string]*workflowlang.EnvVar, len(in.Vars))
@@ -176,6 +183,7 @@ func (b *builder) cloneEnvVar(in *workflowlang.EnvVar) *workflowlang.EnvVar {
 		return nil
 	}
 	out := new(workflowlang.EnvVar)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	return out
@@ -186,6 +194,7 @@ func (b *builder) cloneEnvironment(in *workflowlang.Environment) *workflowlang.E
 		return nil
 	}
 	out := new(workflowlang.Environment)
+	*out = *in
 	out.Expression = b.cloneString(in.Expression)
 	out.Name = b.cloneString(in.Name)
 	out.URL = b.cloneString(in.URL)
@@ -199,6 +208,7 @@ func (b *builder) cloneExecAction(in *workflowlang.ExecAction) *workflowlang.Exe
 		return nil
 	}
 	out := new(workflowlang.ExecAction)
+	*out = *in
 	b.execActionNodes = append(b.execActionNodes, out)
 	out.Uses = b.cloneString(in.Uses)
 	if in.Inputs != nil {
@@ -216,8 +226,6 @@ func (b *builder) cloneExecAction(in *workflowlang.ExecAction) *workflowlang.Exe
 	}
 	out.Entrypoint = b.cloneString(in.Entrypoint)
 	out.Args = b.cloneString(in.Args)
-	out.EntrypointEvaluated = in.EntrypointEvaluated
-	out.ArgsEvaluated = in.ArgsEvaluated
 	if in.InputNameExpressions != nil {
 		out.InputNameExpressions = make([]*workflowlang.String, len(in.InputNameExpressions))
 		for i10 := range in.InputNameExpressions {
@@ -232,6 +240,7 @@ func (b *builder) cloneExecCancel(in *workflowlang.ExecCancel) *workflowlang.Exe
 		return nil
 	}
 	out := new(workflowlang.ExecCancel)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	return out
 }
@@ -241,6 +250,7 @@ func (b *builder) cloneExecParallel(in *workflowlang.ExecParallel) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.ExecParallel)
+	*out = *in
 	if in.Steps != nil {
 		out.Steps = make([]*workflowlang.Step, len(in.Steps))
 		for i11 := range in.Steps {
@@ -255,6 +265,7 @@ func (b *builder) cloneExecRun(in *workflowlang.ExecRun) *workflowlang.ExecRun {
 		return nil
 	}
 	out := new(workflowlang.ExecRun)
+	*out = *in
 	out.Run = b.cloneString(in.Run)
 	out.Source = b.cloneScriptSource(in.Source)
 	out.Shell = b.cloneString(in.Shell)
@@ -268,13 +279,13 @@ func (b *builder) cloneExecWait(in *workflowlang.ExecWait) *workflowlang.ExecWai
 		return nil
 	}
 	out := new(workflowlang.ExecWait)
+	*out = *in
 	if in.Names != nil {
 		out.Names = make([]*workflowlang.String, len(in.Names))
 		for i12 := range in.Names {
 			out.Names[i12] = b.cloneString(in.Names[i12])
 		}
 	}
-	out.All = in.All
 	out.AllPos = b.clonePos(in.AllPos)
 	return out
 }
@@ -284,7 +295,7 @@ func (b *builder) cloneFloat(in *workflowlang.Float) *workflowlang.Float {
 		return nil
 	}
 	out := new(workflowlang.Float)
-	out.Value = in.Value
+	*out = *in
 	out.Expression = b.cloneString(in.Expression)
 	out.Pos = b.clonePos(in.Pos)
 	return out
@@ -295,6 +306,7 @@ func (b *builder) cloneImageVersionEvent(in *workflowlang.ImageVersionEvent) *wo
 		return nil
 	}
 	out := new(workflowlang.ImageVersionEvent)
+	*out = *in
 	if in.Types != nil {
 		out.Types = make([]*workflowlang.String, len(in.Types))
 		for i13 := range in.Types {
@@ -322,6 +334,7 @@ func (b *builder) cloneInput(in *workflowlang.Input) *workflowlang.Input {
 		return nil
 	}
 	out := new(workflowlang.Input)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	out.Source = b.cloneScriptSource(in.Source)
@@ -333,9 +346,8 @@ func (b *builder) cloneInt(in *workflowlang.Int) *workflowlang.Int {
 		return nil
 	}
 	out := new(workflowlang.Int)
-	out.Value = in.Value
+	*out = *in
 	out.Expression = b.cloneString(in.Expression)
-	out.TruncatedFrom = in.TruncatedFrom
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
@@ -345,6 +357,7 @@ func (b *builder) cloneJob(in *workflowlang.Job) *workflowlang.Job {
 		return nil
 	}
 	out := new(workflowlang.Job)
+	*out = *in
 	b.jobs = append(b.jobs, out)
 	out.ID = b.cloneString(in.ID)
 	out.Name = b.cloneString(in.Name)
@@ -392,6 +405,7 @@ func (b *builder) cloneMatrix(in *workflowlang.Matrix) *workflowlang.Matrix {
 		return nil
 	}
 	out := new(workflowlang.Matrix)
+	*out = *in
 	if in.Insertions != nil {
 		out.Insertions = make([]*workflowlang.Matrix, len(in.Insertions))
 		for i19 := range in.Insertions {
@@ -416,6 +430,7 @@ func (b *builder) cloneMatrixAssign(in *workflowlang.MatrixAssign) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.MatrixAssign)
+	*out = *in
 	out.Key = b.cloneString(in.Key)
 	out.Value = b.cloneRawYAMLValue(in.Value)
 	return out
@@ -426,7 +441,7 @@ func (b *builder) cloneMatrixCombination(in *workflowlang.MatrixCombination) *wo
 		return nil
 	}
 	out := new(workflowlang.MatrixCombination)
-	out.Evaluated = in.Evaluated
+	*out = *in
 	if in.Assigns != nil {
 		out.Assigns = make(map[string]*workflowlang.MatrixAssign, len(in.Assigns))
 		for key21, value21 := range in.Assigns {
@@ -442,8 +457,8 @@ func (b *builder) cloneMatrixCombinations(in *workflowlang.MatrixCombinations) *
 		return nil
 	}
 	out := new(workflowlang.MatrixCombinations)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
-	out.Evaluated = in.Evaluated
 	if in.Combinations != nil {
 		out.Combinations = make([]*workflowlang.MatrixCombination, len(in.Combinations))
 		for i22 := range in.Combinations {
@@ -459,7 +474,7 @@ func (b *builder) cloneMatrixRow(in *workflowlang.MatrixRow) *workflowlang.Matri
 		return nil
 	}
 	out := new(workflowlang.MatrixRow)
-	out.Evaluated = in.Evaluated
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	if in.Values != nil {
 		out.Values = make([]workflowlang.RawYAMLValue, len(in.Values))
@@ -476,6 +491,7 @@ func (b *builder) cloneOutput(in *workflowlang.Output) *workflowlang.Output {
 		return nil
 	}
 	out := new(workflowlang.Output)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	return out
@@ -486,6 +502,7 @@ func (b *builder) clonePermissionScope(in *workflowlang.PermissionScope) *workfl
 		return nil
 	}
 	out := new(workflowlang.PermissionScope)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	return out
@@ -496,6 +513,7 @@ func (b *builder) clonePermissions(in *workflowlang.Permissions) *workflowlang.P
 		return nil
 	}
 	out := new(workflowlang.Permissions)
+	*out = *in
 	out.All = b.cloneString(in.All)
 	if in.Scopes != nil {
 		out.Scopes = make(map[string]*workflowlang.PermissionScope, len(in.Scopes))
@@ -512,8 +530,7 @@ func (b *builder) clonePos(in *workflowlang.Pos) *workflowlang.Pos {
 		return nil
 	}
 	out := new(workflowlang.Pos)
-	out.Line = in.Line
-	out.Col = in.Col
+	*out = *in
 	return out
 }
 
@@ -522,6 +539,7 @@ func (b *builder) cloneRawYAMLArray(in *workflowlang.RawYAMLArray) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.RawYAMLArray)
+	*out = *in
 	if in.Elems != nil {
 		out.Elems = make([]workflowlang.RawYAMLValue, len(in.Elems))
 		for i25 := range in.Elems {
@@ -537,6 +555,7 @@ func (b *builder) cloneRawYAMLObject(in *workflowlang.RawYAMLObject) *workflowla
 		return nil
 	}
 	out := new(workflowlang.RawYAMLObject)
+	*out = *in
 	if in.Props != nil {
 		out.Props = make(map[string]workflowlang.RawYAMLValue, len(in.Props))
 		for key26, value26 := range in.Props {
@@ -552,8 +571,7 @@ func (b *builder) cloneRawYAMLString(in *workflowlang.RawYAMLString) *workflowla
 		return nil
 	}
 	out := new(workflowlang.RawYAMLString)
-	out.Value = in.Value
-	out.Tag = in.Tag
+	*out = *in
 	out.Position = b.clonePos(in.Position)
 	return out
 }
@@ -563,6 +581,7 @@ func (b *builder) cloneRepositoryDispatchEvent(in *workflowlang.RepositoryDispat
 		return nil
 	}
 	out := new(workflowlang.RepositoryDispatchEvent)
+	*out = *in
 	if in.Types != nil {
 		out.Types = make([]*workflowlang.String, len(in.Types))
 		for i27 := range in.Types {
@@ -578,6 +597,7 @@ func (b *builder) cloneRunner(in *workflowlang.Runner) *workflowlang.Runner {
 		return nil
 	}
 	out := new(workflowlang.Runner)
+	*out = *in
 	b.runnerNodes = append(b.runnerNodes, out)
 	out.Expression = b.cloneString(in.Expression)
 	if in.Labels != nil {
@@ -596,9 +616,7 @@ func (b *builder) cloneScalarComment(in *workflowlang.ScalarComment) *workflowla
 		return nil
 	}
 	out := new(workflowlang.ScalarComment)
-	out.Text = in.Text
-	out.Pos = in.Pos
-	out.Trailing = in.Trailing
+	*out = *in
 	return out
 }
 
@@ -607,6 +625,7 @@ func (b *builder) cloneScheduleEntry(in *workflowlang.ScheduleEntry) *workflowla
 		return nil
 	}
 	out := new(workflowlang.ScheduleEntry)
+	*out = *in
 	out.Cron = b.cloneString(in.Cron)
 	out.Timezone = b.cloneString(in.Timezone)
 	return out
@@ -617,6 +636,7 @@ func (b *builder) cloneScheduledEvent(in *workflowlang.ScheduledEvent) *workflow
 		return nil
 	}
 	out := new(workflowlang.ScheduledEvent)
+	*out = *in
 	if in.Schedules != nil {
 		out.Schedules = make([]*workflowlang.ScheduleEntry, len(in.Schedules))
 		for i29 := range in.Schedules {
@@ -632,23 +652,10 @@ func (b *builder) cloneScriptSource(in *workflowlang.ScriptSource) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.ScriptSource)
-	out.ContentStart = in.ContentStart
-	out.ScalarEnd = in.ScalarEnd
-	out.Value = in.Value
+	*out = *in
 	out.Lines = slices.Clone(in.Lines)
-	if in.Spans != nil {
-		out.Spans = make([]workflowlang.ScriptSourceSpan, len(in.Spans))
-		for i30 := range in.Spans {
-			out.Spans[i30] = in.Spans[i30]
-		}
-	}
-	out.Literal = in.Literal
-	if in.Comments != nil {
-		out.Comments = make([]workflowlang.ScalarComment, len(in.Comments))
-		for i31 := range in.Comments {
-			out.Comments[i31] = in.Comments[i31]
-		}
-	}
+	out.Spans = slices.Clone(in.Spans)
+	out.Comments = slices.Clone(in.Comments)
 	return out
 }
 
@@ -657,12 +664,7 @@ func (b *builder) cloneScriptSourceSpan(in *workflowlang.ScriptSourceSpan) *work
 		return nil
 	}
 	out := new(workflowlang.ScriptSourceSpan)
-	out.Start = in.Start
-	out.End = in.End
-	out.YamlLine = in.YamlLine
-	out.YamlColumn = in.YamlColumn
-	out.YamlEndColumn = in.YamlEndColumn
-	out.YamlEndLine = in.YamlEndLine
+	*out = *in
 	return out
 }
 
@@ -671,6 +673,7 @@ func (b *builder) cloneService(in *workflowlang.Service) *workflowlang.Service {
 		return nil
 	}
 	out := new(workflowlang.Service)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Container = b.cloneContainer(in.Container)
 	return out
@@ -681,10 +684,11 @@ func (b *builder) cloneServices(in *workflowlang.Services) *workflowlang.Service
 		return nil
 	}
 	out := new(workflowlang.Services)
+	*out = *in
 	if in.Value != nil {
 		out.Value = make(map[string]*workflowlang.Service, len(in.Value))
-		for key32, value32 := range in.Value {
-			out.Value[key32] = b.cloneService(value32)
+		for key30, value30 := range in.Value {
+			out.Value[key30] = b.cloneService(value30)
 		}
 	}
 	out.Expression = b.cloneString(in.Expression)
@@ -697,6 +701,7 @@ func (b *builder) cloneSnapshot(in *workflowlang.Snapshot) *workflowlang.Snapsho
 		return nil
 	}
 	out := new(workflowlang.Snapshot)
+	*out = *in
 	out.Expression = b.cloneString(in.Expression)
 	out.ImageName = b.cloneString(in.ImageName)
 	out.Version = b.cloneString(in.Version)
@@ -709,13 +714,7 @@ func (b *builder) cloneSourceScalar(in *workflowlang.SourceScalar) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.SourceScalar)
-	out.HasSource = in.HasSource
-	out.Evaluated = in.Evaluated
-	out.Kind = in.Kind
-	out.Tag = in.Tag
-	out.Value = in.Value
-	out.Pos = in.Pos
-	out.End = in.End
+	*out = *in
 	return out
 }
 
@@ -724,6 +723,7 @@ func (b *builder) cloneStep(in *workflowlang.Step) *workflowlang.Step {
 		return nil
 	}
 	out := new(workflowlang.Step)
+	*out = *in
 	b.steps = append(b.steps, out)
 	out.ID = b.cloneString(in.ID)
 	out.If = b.cloneString(in.If)
@@ -743,6 +743,7 @@ func (b *builder) cloneStrategy(in *workflowlang.Strategy) *workflowlang.Strateg
 		return nil
 	}
 	out := new(workflowlang.Strategy)
+	*out = *in
 	b.strategyNodes = append(b.strategyNodes, out)
 	out.Expression = b.cloneString(in.Expression)
 	out.Matrix = b.cloneMatrix(in.Matrix)
@@ -757,11 +758,9 @@ func (b *builder) cloneString(in *workflowlang.String) *workflowlang.String {
 		return nil
 	}
 	out := new(workflowlang.String)
+	*out = *in
 	b.stringNodes = append(b.stringNodes, out)
-	out.Value = in.Value
-	out.Quoted = in.Quoted
 	out.Pos = b.clonePos(in.Pos)
-	out.SourceScalar = in.SourceScalar
 	return out
 }
 
@@ -770,11 +769,12 @@ func (b *builder) cloneWebhookEvent(in *workflowlang.WebhookEvent) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.WebhookEvent)
+	*out = *in
 	out.Hook = b.cloneString(in.Hook)
 	if in.Types != nil {
 		out.Types = make([]*workflowlang.String, len(in.Types))
-		for i33 := range in.Types {
-			out.Types[i33] = b.cloneString(in.Types[i33])
+		for i31 := range in.Types {
+			out.Types[i31] = b.cloneString(in.Types[i31])
 		}
 	}
 	out.Branches = b.cloneWebhookEventFilter(in.Branches)
@@ -785,8 +785,8 @@ func (b *builder) cloneWebhookEvent(in *workflowlang.WebhookEvent) *workflowlang
 	out.PathsIgnore = b.cloneWebhookEventFilter(in.PathsIgnore)
 	if in.Workflows != nil {
 		out.Workflows = make([]*workflowlang.String, len(in.Workflows))
-		for i34 := range in.Workflows {
-			out.Workflows[i34] = b.cloneString(in.Workflows[i34])
+		for i32 := range in.Workflows {
+			out.Workflows[i32] = b.cloneString(in.Workflows[i32])
 		}
 	}
 	out.Pos = b.clonePos(in.Pos)
@@ -798,11 +798,12 @@ func (b *builder) cloneWebhookEventFilter(in *workflowlang.WebhookEventFilter) *
 		return nil
 	}
 	out := new(workflowlang.WebhookEventFilter)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	if in.Values != nil {
 		out.Values = make([]*workflowlang.String, len(in.Values))
-		for i35 := range in.Values {
-			out.Values[i35] = b.cloneString(in.Values[i35])
+		for i33 := range in.Values {
+			out.Values[i33] = b.cloneString(in.Values[i33])
 		}
 	}
 	return out
@@ -813,10 +814,11 @@ func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflo
 		return nil
 	}
 	out := new(workflowlang.Workflow)
+	*out = *in
 	if in.ExpressionSources != nil {
 		out.ExpressionSources = make(map[workflowlang.Pos]*workflowlang.ScriptSource, len(in.ExpressionSources))
-		for key36, value36 := range in.ExpressionSources {
-			out.ExpressionSources[key36] = b.cloneScriptSource(value36)
+		for key34, value34 := range in.ExpressionSources {
+			out.ExpressionSources[key34] = b.cloneScriptSource(value34)
 		}
 	}
 	out.Name = b.cloneString(in.Name)
@@ -824,8 +826,8 @@ func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflo
 	out.RunName = b.cloneString(in.RunName)
 	if in.On != nil {
 		out.On = make([]workflowlang.Event, len(in.On))
-		for i37 := range in.On {
-			out.On[i37] = b.cloneEvent(in.On[i37])
+		for i35 := range in.On {
+			out.On[i35] = b.cloneEvent(in.On[i35])
 		}
 	}
 	out.OnPos = b.clonePos(in.OnPos)
@@ -836,8 +838,8 @@ func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflo
 	out.Concurrency = b.cloneConcurrency(in.Concurrency)
 	if in.Jobs != nil {
 		out.Jobs = make(map[string]*workflowlang.Job, len(in.Jobs))
-		for key38, value38 := range in.Jobs {
-			out.Jobs[key38] = b.cloneJob(value38)
+		for key36, value36 := range in.Jobs {
+			out.Jobs[key36] = b.cloneJob(value36)
 		}
 	}
 	out.Pos = b.clonePos(in.Pos)
@@ -849,20 +851,20 @@ func (b *builder) cloneWorkflowCall(in *workflowlang.WorkflowCall) *workflowlang
 		return nil
 	}
 	out := new(workflowlang.WorkflowCall)
+	*out = *in
 	out.Uses = b.cloneString(in.Uses)
 	if in.Inputs != nil {
 		out.Inputs = make(map[string]*workflowlang.WorkflowCallInput, len(in.Inputs))
-		for key39, value39 := range in.Inputs {
-			out.Inputs[key39] = b.cloneWorkflowCallInput(value39)
+		for key37, value37 := range in.Inputs {
+			out.Inputs[key37] = b.cloneWorkflowCallInput(value37)
 		}
 	}
 	if in.Secrets != nil {
 		out.Secrets = make(map[string]*workflowlang.WorkflowCallSecret, len(in.Secrets))
-		for key40, value40 := range in.Secrets {
-			out.Secrets[key40] = b.cloneWorkflowCallSecret(value40)
+		for key38, value38 := range in.Secrets {
+			out.Secrets[key38] = b.cloneWorkflowCallSecret(value38)
 		}
 	}
-	out.InheritSecrets = in.InheritSecrets
 	return out
 }
 
@@ -871,22 +873,23 @@ func (b *builder) cloneWorkflowCallEvent(in *workflowlang.WorkflowCallEvent) *wo
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallEvent)
+	*out = *in
 	if in.Inputs != nil {
 		out.Inputs = make([]*workflowlang.WorkflowCallEventInput, len(in.Inputs))
-		for i41 := range in.Inputs {
-			out.Inputs[i41] = b.cloneWorkflowCallEventInput(in.Inputs[i41])
+		for i39 := range in.Inputs {
+			out.Inputs[i39] = b.cloneWorkflowCallEventInput(in.Inputs[i39])
 		}
 	}
 	if in.Secrets != nil {
 		out.Secrets = make(map[string]*workflowlang.WorkflowCallEventSecret, len(in.Secrets))
-		for key42, value42 := range in.Secrets {
-			out.Secrets[key42] = b.cloneWorkflowCallEventSecret(value42)
+		for key40, value40 := range in.Secrets {
+			out.Secrets[key40] = b.cloneWorkflowCallEventSecret(value40)
 		}
 	}
 	if in.Outputs != nil {
 		out.Outputs = make(map[string]*workflowlang.WorkflowCallEventOutput, len(in.Outputs))
-		for key43, value43 := range in.Outputs {
-			out.Outputs[key43] = b.cloneWorkflowCallEventOutput(value43)
+		for key41, value41 := range in.Outputs {
+			out.Outputs[key41] = b.cloneWorkflowCallEventOutput(value41)
 		}
 	}
 	out.Pos = b.clonePos(in.Pos)
@@ -898,12 +901,11 @@ func (b *builder) cloneWorkflowCallEventInput(in *workflowlang.WorkflowCallEvent
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallEventInput)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Description = b.cloneString(in.Description)
 	out.Default = b.cloneString(in.Default)
 	out.Required = b.cloneBool(in.Required)
-	out.Type = in.Type
-	out.ID = in.ID
 	return out
 }
 
@@ -912,6 +914,7 @@ func (b *builder) cloneWorkflowCallEventOutput(in *workflowlang.WorkflowCallEven
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallEventOutput)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Description = b.cloneString(in.Description)
 	out.Value = b.cloneString(in.Value)
@@ -923,6 +926,7 @@ func (b *builder) cloneWorkflowCallEventSecret(in *workflowlang.WorkflowCallEven
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallEventSecret)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Description = b.cloneString(in.Description)
 	out.Required = b.cloneBool(in.Required)
@@ -934,6 +938,7 @@ func (b *builder) cloneWorkflowCallInput(in *workflowlang.WorkflowCallInput) *wo
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallInput)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	return out
@@ -944,6 +949,7 @@ func (b *builder) cloneWorkflowCallSecret(in *workflowlang.WorkflowCallSecret) *
 		return nil
 	}
 	out := new(workflowlang.WorkflowCallSecret)
+	*out = *in
 	out.Name = b.cloneString(in.Name)
 	out.Value = b.cloneString(in.Value)
 	return out
@@ -954,10 +960,11 @@ func (b *builder) cloneWorkflowDispatchEvent(in *workflowlang.WorkflowDispatchEv
 		return nil
 	}
 	out := new(workflowlang.WorkflowDispatchEvent)
+	*out = *in
 	if in.Inputs != nil {
 		out.Inputs = make(map[string]*workflowlang.DispatchInput, len(in.Inputs))
-		for key44, value44 := range in.Inputs {
-			out.Inputs[key44] = b.cloneDispatchInput(value44)
+		for key42, value42 := range in.Inputs {
+			out.Inputs[key42] = b.cloneDispatchInput(value42)
 		}
 	}
 	out.Pos = b.clonePos(in.Pos)

@@ -2,19 +2,12 @@
 
 package rules
 
+import (
+	maps "maps"
+)
+
 func copyOwnedGroup(in Group) Group {
 	out := in
-	out.rules = copyOwnedValue_e6b670822c5a6f32a6cc3747654aeea4(in.rules)
-	return out
-}
-
-func copyOwnedValue_e6b670822c5a6f32a6cc3747654aeea4(in map[string]Setting) map[string]Setting {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]Setting, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
+	out.rules = maps.Clone(in.rules)
 	return out
 }

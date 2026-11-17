@@ -3,7 +3,7 @@
 package inputs
 
 import (
-	jsontext "encoding/json/jsontext"
+	slices "slices"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	commands "actionlint.kjanat.dev/v2/internal/model/commands"
@@ -13,17 +13,17 @@ import (
 
 func copyOwnedInput(in Input) Input {
 	out := in
-	out.AvailableInputs = copyOwnedValue_a98b98d3e3a0ba153eb25af308567970(in.AvailableInputs)
-	out.Options = copyOwnedValue_a444abdefe1e016ece06c7b5b352a563(in.Options)
+	out.AvailableInputs = slices.Clone(in.AvailableInputs)
+	out.Options = slices.Clone(in.Options)
 	out.Scripts = copyOwnedValue_8c2d42081d6aa99a9ff3d69b2dcba0ca(in.Scripts)
 	out.Invoked = copyOwnedValue_8c2d42081d6aa99a9ff3d69b2dcba0ca(in.Invoked)
 	out.ActionInputs = copyOwnedValue_3957e907ce270e1ee6f46987d04faf8f(in.ActionInputs)
-	out.SelectedScripts = copyOwnedValue_0f5032dac67f6c5b721a6ad8ce225ef0(in.SelectedScripts)
+	out.SelectedScripts = slices.Clone(in.SelectedScripts)
 	out.Mappings = copyOwnedValue_af7332f132c73a2a02720d5025c89d84(in.Mappings)
-	out.Dependencies = copyOwnedValue_6247d249018e1119e9d6d0edf110b723(in.Dependencies)
-	out.ResolvedDependencies = copyOwnedValue_617a0b12688e5b821dc0a46c368270c8(in.ResolvedDependencies)
-	out.Files = copyOwnedValue_06ddc35f89314df3a30fbc108d16d293(in.Files)
-	out.SourceRoots = copyOwnedValue_1d427514f57d16be316d54a123904d2f(in.SourceRoots)
+	out.Dependencies = slices.Clone(in.Dependencies)
+	out.ResolvedDependencies = slices.Clone(in.ResolvedDependencies)
+	out.Files = slices.Clone(in.Files)
+	out.SourceRoots = slices.Clone(in.SourceRoots)
 	return out
 }
 
@@ -43,35 +43,13 @@ func copyOwnedCallGraphData(in CallGraphData) CallGraphData {
 
 func copyOwnedCall(in Call) Call {
 	out := in
-	out.Ancestry = copyOwnedValue_0f5032dac67f6c5b721a6ad8ce225ef0(in.Ancestry)
+	out.Ancestry = slices.Clone(in.Ancestry)
 	return out
 }
 
 func copyOwnedScriptOccurrence(in ScriptOccurrence) ScriptOccurrence {
 	out := in
-	out.Ancestry = copyOwnedValue_0f5032dac67f6c5b721a6ad8ce225ef0(in.Ancestry)
-	return out
-}
-
-func copyOwnedValue_a98b98d3e3a0ba153eb25af308567970(in []rule.InputKind) []rule.InputKind {
-	if in == nil {
-		return nil
-	}
-	out := make([]rule.InputKind, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_a444abdefe1e016ece06c7b5b352a563(in jsontext.Value) jsontext.Value {
-	if in == nil {
-		return nil
-	}
-	out := make(jsontext.Value, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
+	out.Ancestry = slices.Clone(in.Ancestry)
 	return out
 }
 
@@ -97,17 +75,6 @@ func copyOwnedValue_3957e907ce270e1ee6f46987d04faf8f(in []ActionInput) []ActionI
 	return out
 }
 
-func copyOwnedValue_0f5032dac67f6c5b721a6ad8ce225ef0(in []OccurrenceID) []OccurrenceID {
-	if in == nil {
-		return nil
-	}
-	out := make([]OccurrenceID, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
 func copyOwnedValue_af7332f132c73a2a02720d5025c89d84(in []facts.Mapping) []facts.Mapping {
 	if in == nil {
 		return nil
@@ -119,57 +86,13 @@ func copyOwnedValue_af7332f132c73a2a02720d5025c89d84(in []facts.Mapping) []facts
 	return out
 }
 
-func copyOwnedValue_6247d249018e1119e9d6d0edf110b723(in []facts.Dependency) []facts.Dependency {
-	if in == nil {
-		return nil
-	}
-	out := make([]facts.Dependency, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_617a0b12688e5b821dc0a46c368270c8(in []facts.ResolvedDependency) []facts.ResolvedDependency {
-	if in == nil {
-		return nil
-	}
-	out := make([]facts.ResolvedDependency, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_06ddc35f89314df3a30fbc108d16d293(in []FileSystem) []FileSystem {
-	if in == nil {
-		return nil
-	}
-	out := make([]FileSystem, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_1d427514f57d16be316d54a123904d2f(in []SourceRoot) []SourceRoot {
-	if in == nil {
-		return nil
-	}
-	out := make([]SourceRoot, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
 func copyOwnedDescriptor_985dd41517f164f2713eab7b878b699b(in rule.Descriptor) rule.Descriptor {
 	out := in
 	out.DefaultEnabled = copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in.DefaultEnabled)
-	out.Aliases = copyOwnedValue_ee3501eb10190b3db28cf28cadd7c937(in.Aliases)
-	out.OptionsSchema = copyOwnedValue_a444abdefe1e016ece06c7b5b352a563(in.OptionsSchema)
-	out.Examples = copyOwnedValue_12281fee53b70c3b6fbf0751b47086f9(in.Examples)
-	out.RequiredInputs = copyOwnedValue_a98b98d3e3a0ba153eb25af308567970(in.RequiredInputs)
+	out.Aliases = slices.Clone(in.Aliases)
+	out.OptionsSchema = slices.Clone(in.OptionsSchema)
+	out.Examples = slices.Clone(in.Examples)
+	out.RequiredInputs = slices.Clone(in.RequiredInputs)
 	return out
 }
 
@@ -211,7 +134,7 @@ func copyOwnedScript_094a2ffe083a610c0c74fff33280c461(in Script) Script {
 	out.Declaration = copyOwnedDeclaration_9851ece59dfac4167985ecae35dbf999(in.Declaration)
 	out.Occurrence = copyOwnedScriptOccurrence(in.Occurrence)
 	out.Runtime = copyOwnedValue_9d383f1d3b80e41e3942e4cb7c78216b(in.Runtime)
-	out.Environment = copyOwnedValue_c2a36226f8cc305c232c272e5bcbfb2a(in.Environment)
+	out.Environment = slices.Clone(in.Environment)
 	return out
 }
 
@@ -223,7 +146,7 @@ func copyOwnedActionInput_b0d4d991eae818e4578296b123174976(in ActionInput) Actio
 
 func copyOwnedMapping_dde8c40e029a564111b72896b3ea9ae7(in facts.Mapping) facts.Mapping {
 	out := in
-	out.Entries = copyOwnedValue_b4861b6e137ed3c7036d0e0fcd508f0d(in.Entries)
+	out.Entries = slices.Clone(in.Entries)
 	return out
 }
 
@@ -235,42 +158,20 @@ func copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in *bool) *bool {
 	return (*bool)(&out)
 }
 
-func copyOwnedValue_ee3501eb10190b3db28cf28cadd7c937(in []rule.Alias) []rule.Alias {
-	if in == nil {
-		return nil
-	}
-	out := make([]rule.Alias, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_12281fee53b70c3b6fbf0751b47086f9(in []rule.Example) []rule.Example {
-	if in == nil {
-		return nil
-	}
-	out := make([]rule.Example, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
 func copyOwnedDefinition_b2c9b0e796b4e38073673c39340f07da(in commands.Definition) commands.Definition {
 	out := in
-	out.Executables = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Executables)
-	out.Prefix = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Prefix)
+	out.Executables = slices.Clone(in.Executables)
+	out.Prefix = slices.Clone(in.Prefix)
 	out.Options = copyOwnedValue_f8816292f2c693f9baa89b7f9a8336ed(in.Options)
-	out.DefaultArguments = copyOwnedValue_4af101177fe720bf0766557228231c42(in.DefaultArguments)
-	out.ImplicitArguments = copyOwnedValue_4af101177fe720bf0766557228231c42(in.ImplicitArguments)
+	out.DefaultArguments = slices.Clone(in.DefaultArguments)
+	out.ImplicitArguments = slices.Clone(in.ImplicitArguments)
 	return out
 }
 
 func copyOwnedDeclaration_9851ece59dfac4167985ecae35dbf999(in scripts.Declaration) scripts.Declaration {
 	out := in
-	out.Spans = copyOwnedValue_932526f7ea666128d38f0263cf012170(in.Spans)
-	out.Comments = copyOwnedValue_fdc36b7e949b95eab98953432e680e85(in.Comments)
+	out.Spans = slices.Clone(in.Spans)
+	out.Comments = slices.Clone(in.Comments)
 	return out
 }
 
@@ -280,39 +181,6 @@ func copyOwnedValue_9d383f1d3b80e41e3942e4cb7c78216b(in *scripts.Execution) *scr
 	}
 	out := *in
 	return (*scripts.Execution)(&out)
-}
-
-func copyOwnedValue_c2a36226f8cc305c232c272e5bcbfb2a(in []scripts.EnvironmentNames) []scripts.EnvironmentNames {
-	if in == nil {
-		return nil
-	}
-	out := make([]scripts.EnvironmentNames, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_b4861b6e137ed3c7036d0e0fcd508f0d(in []facts.Entry) []facts.Entry {
-	if in == nil {
-		return nil
-	}
-	out := make([]facts.Entry, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_4af101177fe720bf0766557228231c42(in []string) []string {
-	if in == nil {
-		return nil
-	}
-	out := make([]string, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
 }
 
 func copyOwnedValue_f8816292f2c693f9baa89b7f9a8336ed(in []commands.Option) []commands.Option {
@@ -326,30 +194,8 @@ func copyOwnedValue_f8816292f2c693f9baa89b7f9a8336ed(in []commands.Option) []com
 	return out
 }
 
-func copyOwnedValue_932526f7ea666128d38f0263cf012170(in []scripts.Span) []scripts.Span {
-	if in == nil {
-		return nil
-	}
-	out := make([]scripts.Span, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_fdc36b7e949b95eab98953432e680e85(in []facts.SourceComment) []facts.SourceComment {
-	if in == nil {
-		return nil
-	}
-	out := make([]facts.SourceComment, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
 func copyOwnedOption_eeb7e42c7290f35988fc456324ceb61c(in commands.Option) commands.Option {
 	out := in
-	out.Choices = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Choices)
+	out.Choices = slices.Clone(in.Choices)
 	return out
 }

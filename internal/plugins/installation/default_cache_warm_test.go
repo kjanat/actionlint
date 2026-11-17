@@ -17,7 +17,7 @@ func TestCacheWarmDownloadsDefaultEnginesWithoutScripts(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	root := t.TempDir()
 	config := filepath.Join(root, "actionlint.yaml")
-	if err := os.WriteFile(config, []byte("{}"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	selection := installation.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DefaultTools: []string{"ruff"}, Acquisition: installation.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
