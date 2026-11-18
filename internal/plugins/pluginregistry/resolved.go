@@ -29,7 +29,6 @@ func (l ResolvedPlugins) Validate() error {
 		names[name], ids[p.PluginID] = true, true
 		if p.Alias != "" {
 			registry, _ := registryURL(p.Registry)
-			registry.Host = strings.ToLower(registry.Host)
 			key := registry.String() + "\n" + p.Alias
 			if aliases[key] {
 				return fmt.Errorf("duplicate plugin alias %q in registry %s", p.Alias, p.Registry)

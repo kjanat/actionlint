@@ -22,6 +22,24 @@ func TestNormalizeHTTPSIdentity(t *testing.T) {
 	}
 }
 
+func TestNormalizeHTTPSCanonicalAuthority(t *testing.T) {
+	t.Parallel()
+	for name, want := range map[string]string{
+		"https://example.test:443/base.toml":   "https://example.test/base.toml",
+		"https://example.test:0443/base.toml":  "https://example.test/base.toml",
+		"https://BÜCHER.example/base.toml":     "https://xn--bcher-kva.example/base.toml",
+		"https://[0:0::1]:8443/base.toml?v=1":  "https://[::1]:8443/base.toml?v=1",
+		"https://example.test:08443/base.toml": "https://example.test:8443/base.toml",
+	} {
+		if got, err := NormalizeAddress(name); err != nil || got != want {
+			t.Errorf("NormalizeAddress(%q) = %q, %v; want %q", name, got, err, want)
+		}
+	}
+	if got, err := NormalizeAddress("https://under_score.example/base.toml"); err == nil {
+		t.Errorf("accepted undialable host as %q", got)
+	}
+}
+
 func TestRejectInvalidSchemeAndEmptyFragment(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"https://example.test/a.yaml#", "https://:443/a.yaml", "http:/example.test/a.yaml", "file:/tmp/a.yaml"} {

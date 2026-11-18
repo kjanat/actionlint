@@ -183,18 +183,64 @@ func TestCandidateBinding(t *testing.T) {
 
 func TestRegistryPreservesIPv6Zone(t *testing.T) {
 	t.Parallel()
-	for _, source := range []string{
-		"https://[FE80::1%25Ethernet]/",
-		"https://[FE80::1%25Ethernet]:443/catalog/",
+	for source, want := range map[string]string{
+		"https://[FE80::1%25Ethernet]/":             "https://[fe80::1%25Ethernet]/",
+		"https://[FE80::1%25Ethernet]:443/catalog/": "https://[fe80::1%25Ethernet]/catalog/",
+		"https://[FE80::1%25Ethernet]:8443/":        "https://[fe80::1%25Ethernet]:8443/",
 	} {
 		ref, err := New("owner/repo", "v1", source)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := strings.Replace(source, "FE80", "fe80", 1)
 		if ref.Registry() != want {
 			t.Fatalf("registry=%q, want %q", ref.Registry(), want)
 		}
+	}
+}
+
+func TestRegistryCanonicalAuthority(t *testing.T) {
+	t.Parallel()
+	for source, want := range map[string]string{
+		"https://Catalogue.Example/":             "https://catalogue.example/",
+		"https://catalogue.example:443/":         "https://catalogue.example/",
+		"https://catalogue.example:0443/":        "https://catalogue.example/",
+		"https://catalogue.example:08443/":       "https://catalogue.example:8443/",
+		"https://bücher.example/":                "https://xn--bcher-kva.example/",
+		"https://BÜCHER.example/":                "https://xn--bcher-kva.example/",
+		"https://catalogue.example./":            "https://catalogue.example./",
+		"https://[0:0:0:0:0:0:0:1]/":             "https://[::1]/",
+		"https://[::FFFF:192.0.2.1]:443/catalog": "https://[::ffff:192.0.2.1]/catalog/",
+	} {
+		ref, err := New("owner/repo", "v1", source)
+		if err != nil {
+			t.Fatalf("%s: %v", source, err)
+		}
+		if ref.Registry() != want {
+			t.Errorf("registry %q = %q, want %q", source, ref.Registry(), want)
+		}
+	}
+	for _, source := range []string{"https://catalogue.example:65536/", "https://under_score.example/"} {
+		if _, err := New("owner/repo", "v1", source); err == nil {
+			t.Errorf("accepted registry %q", source)
+		}
+	}
+}
+
+func TestDirectURLCanonicalAuthority(t *testing.T) {
+	t.Parallel()
+	pin := "#sha256=" + strings.Repeat("ab", 32)
+	want := "https://xn--bcher-kva.example/plugin.wasm" + pin
+	for _, source := range []string{"https://BÜCHER.example:443/plugin.wasm", "https://bücher.example:0443/plugin.wasm"} {
+		ref, err := ParsePluginReference(source + pin)
+		if err != nil {
+			t.Fatalf("%s: %v", source, err)
+		}
+		if ref.DirectSource() != want {
+			t.Errorf("direct source %q = %q, want %q", source, ref.DirectSource(), want)
+		}
+	}
+	if _, err := ParsePluginReference("https://under_score.example/plugin.wasm" + pin); err == nil {
+		t.Error("accepted direct URL host that the transport cannot dial")
 	}
 }
 

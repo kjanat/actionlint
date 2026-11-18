@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
 var (
@@ -76,7 +78,11 @@ func parseOCI(source string, allowTag bool) (OCIReference, error) {
 		// The source is not echoed: its host part may hold credentials.
 		return OCIReference{}, errors.New("invalid OCI reference: use oci://<host>/<repository>@sha256:<64 hex digits>")
 	}
-	ref := OCIReference{host: strings.ToLower(host)}
+	canonical, err := canonicalOCIHost(host)
+	if err != nil {
+		return OCIReference{}, errors.New("invalid OCI reference: use oci://<host>/<repository>@sha256:<64 hex digits>")
+	}
+	ref := OCIReference{host: canonical}
 	if repository, digest, found := strings.Cut(path, "@"); found {
 		hexDigest, ok := strings.CutPrefix(digest, "sha256:")
 		if !ok || CheckDigest(hexDigest) != nil {
@@ -101,16 +107,33 @@ func parseOCI(source string, allowTag bool) (OCIReference, error) {
 	return ref, nil
 }
 
+func canonicalOCIHost(host string) (string, error) {
+	u := url.URL{Host: host}
+	name, err := endpoint.Host(u.Hostname())
+	if err != nil {
+		return "", err
+	}
+	authority, err := endpoint.Of(&url.URL{Scheme: ociScheme(name), Host: endpoint.HostPort(name, u.Port())})
+	if err != nil {
+		return "", err
+	}
+	return authority.URLHost(), nil
+}
+
+func ociScheme(host string) string {
+	ip, err := netip.ParseAddr(host)
+	if strings.EqualFold(host, "localhost") || err == nil && ip.IsLoopback() {
+		return "http"
+	}
+	return "https"
+}
+
 // Endpoint returns the HTTP authority used by the OCI client. Loopback sources
 // use plain HTTP like Docker; public-only policy still rejects their addresses.
 func (r OCIReference) Endpoint() *url.URL {
-	endpoint := &url.URL{Scheme: "https", Host: r.host}
-	host := endpoint.Hostname()
-	ip, err := netip.ParseAddr(host)
-	if strings.EqualFold(host, "localhost") || err == nil && ip.IsLoopback() {
-		endpoint.Scheme = "http"
-	}
-	return endpoint
+	u := &url.URL{Host: r.host}
+	u.Scheme = ociScheme(u.Hostname())
+	return u
 }
 
 // NormalizeSource roots filesystem paths in directory while preserving URI

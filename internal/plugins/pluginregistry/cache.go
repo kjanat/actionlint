@@ -48,7 +48,6 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 			if !exists || !sameRelease(pin, selected) {
 				return Pin{}, errors.New("cached plugin selection has no matching verified release")
 			}
-			// Equivalent registry spellings can have different cache directories.
 			selected.Registry = pin.Registry
 			return selected, nil
 		}

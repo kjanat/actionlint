@@ -97,7 +97,9 @@ actionlint check
 The repository names above are placeholders; `search` shows what is actually published. The catalogue may be empty.
 Use `--registry https://example.org/catalogue/` on search, versions or install to select another compatible registry.
 Registry metadata requests stay within that HTTPS origin and catalogue directory. Artifact URLs must match the
-registered GitHub release or GitLab generic package.
+registered GitHub release or GitLab generic package. actionlint writes each registry URL in one canonical form: a
+lowercase ASCII host or canonical IP address, without the default port. Equivalent spellings share one declaration
+and one cache.
 
 Installation updates the root `plugins` list in your existing `.github/actionlint.yaml` (also `.yml`, `.json`
 or `.toml`), creating `.github/actionlint.yaml` when no config exists:

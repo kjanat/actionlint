@@ -163,8 +163,7 @@ func (p Pin) Matches(ref pluginreference.Reference) bool {
 	return strings.EqualFold(p.Name, ref.Name())
 }
 
-// SameRegistry compares catalogue endpoints with case-insensitive hosts and
-// case-sensitive paths.
+// SameRegistry compares the canonical spellings of two catalogue endpoints.
 func SameRegistry(left, right string) bool {
 	a, err := registryURL(left)
 	if err != nil {
@@ -174,7 +173,7 @@ func SameRegistry(left, right string) bool {
 	if err != nil {
 		return false
 	}
-	return a.Scheme == b.Scheme && sameRegistryHost(a, b) && a.Path == b.Path
+	return a.String() == b.String()
 }
 
 func numericID(value string) bool {

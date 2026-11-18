@@ -364,3 +364,32 @@ func TestCacheLookupsCountHitsAndMissesWithoutRequests(t *testing.T) {
 		t.Fatalf("hits=%d misses=%d attempts=%d, want 2, 1 and 0", group.CacheHits, group.CacheMisses, group.Attempts)
 	}
 }
+
+func TestRequestKeysUseCanonicalAuthority(t *testing.T) {
+	t.Parallel()
+	ctx, s := TrackRequests(t.Context())
+	transport := TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return response(200, http.Header{}, ""), nil
+	}))
+	for _, address := range []string{
+		"https://example.test/a", "https://EXAMPLE.test:443/b", "https://example.test:0443/c",
+		"https://user@example.test/d", "https://Under_Score.example/e",
+	} {
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := transport.RoundTrip(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got.Body.Close()
+	}
+	hosts := map[string]uint64{}
+	for _, counts := range s.Statistics().Requests {
+		hosts[counts.Host] += counts.Attempts
+	}
+	if len(hosts) != 2 || hosts["example.test"] != 4 || hosts["under_score.example"] != 1 {
+		t.Fatalf("request hosts = %v, want 4 attempts for example.test and 1 for under_score.example", hosts)
+	}
+}

@@ -65,17 +65,18 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 		count, index   int
 		version        string
 		invalid        bool
+		declared       string
 	}{
-		{"publisher/plugin", third, 1, 0, "v1", false},
-		{"publisher/plugin", "", 2, -1, "", true},
-		{"publisher/plugin", third, 2, -1, "", true},
-		{"publisher/plugin", second, 2, 1, "v2", false},
-		{"publisher/plugin", "https://second.example:443/", 2, 1, "v2", false},
-		{"check", third, 1, -1, "latest", false},
-		{"check", third, 2, -1, "latest", false},
-		{"check", second, 2, 1, "v2", false},
-		{"check", "https://second.example:443/", 2, 1, "v2", false},
-		{"check", "", 2, -1, "", true},
+		{"publisher/plugin", third, 1, 0, "v1", false, third},
+		{"publisher/plugin", "", 2, -1, "", true, ""},
+		{"publisher/plugin", third, 2, -1, "", true, ""},
+		{"publisher/plugin", second, 2, 1, "v2", false, second},
+		{"publisher/plugin", "https://second.example:443/", 2, 1, "v2", false, second},
+		{"check", third, 1, -1, "latest", false, third},
+		{"check", third, 2, -1, "latest", false, third},
+		{"check", second, 2, 1, "v2", false, second},
+		{"check", "https://second.example:443/", 2, 1, "v2", false, second},
+		{"check", "", 2, -1, "", true, ""},
 	} {
 		t.Run(test.name+test.registry, func(t *testing.T) {
 			t.Parallel()
@@ -92,7 +93,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || ref.Version() != test.version || ref.Registry() != test.registry {
+			if err != nil || ref.Version() != test.version || ref.Registry() != test.declared {
 				t.Fatalf("selection: %+v, %v", ref, err)
 			}
 			index, err := plugincommand.RequestedPluginIndex(ref, test.registry, refs)
