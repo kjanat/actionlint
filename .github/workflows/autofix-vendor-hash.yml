@@ -76,7 +76,7 @@ jobs:
         if: needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true'
         id: beepboop
         uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
-        with: { purpose: autofix-vendor-hash, permission-contents: write }
+        with: { permission-contents: write }
       - name: Commit the vendor hash and report it to CI
         if: ${{ !cancelled() }}
         env:
