@@ -82,6 +82,13 @@ func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options 
 	published := map[string]Document{}
 	publishedSources := map[string]Document{}
 	completedAnalyses := make(chan analysisResult, 1)
+	type discoveryResult struct {
+		id    json.RawMessage
+		paths []string
+		err   error
+	}
+	completedDiscoveries := make(chan discoveryResult)
+	discoveries := make(map[string]context.CancelFunc)
 	generation := 0
 	stop := func() {}
 	var workers sync.WaitGroup
@@ -124,6 +131,19 @@ serve:
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case result := <-completedDiscoveries:
+			key := string(result.id)
+			discoveries[key]()
+			delete(discoveries, key)
+			var rpcErr any
+			if errors.Is(result.err, context.Canceled) || shutdown {
+				rpcErr = map[string]any{"code": -32800, "message": "discovery cancelled"}
+			} else if result.err != nil {
+				rpcErr = map[string]any{"code": -32602, "message": result.err.Error()}
+			}
+			if err := respond(result.id, result.paths, rpcErr); err != nil {
+				return err
+			}
 		case result := <-completedAnalyses:
 			analysis, analysisErr, currentGeneration := currentAnalysis(result, generation, shutdown)
 			if !currentGeneration {
@@ -283,23 +303,44 @@ serve:
 					}
 					continue serve
 				}
-				paths, err := options.Discover(ctx, params.Paths, params.NoIgnore)
-				if err != nil {
-					if err := reject(err); err != nil {
+				key := string(m.ID)
+				if _, pending := discoveries[key]; pending {
+					if err := reject(errors.New("discovery request ID is already in use")); err != nil {
 						return err
 					}
 					continue serve
 				}
-				if err := respond(m.ID, paths, nil); err != nil {
-					return err
-				}
+				work, cancelDiscovery := context.WithCancel(ctx)
+				discoveries[key] = cancelDiscovery
+				workers.Go(func() {
+					paths, err := options.Discover(work, params.Paths, params.NoIgnore)
+					if work.Err() != nil {
+						err = work.Err()
+					}
+					select {
+					case completedDiscoveries <- discoveryResult{m.ID, paths, err}:
+					case <-ctx.Done():
+					}
+				})
 			case "shutdown":
 				shutdown = true
 				stop()
+				for _, cancelDiscovery := range discoveries {
+					cancelDiscovery()
+				}
 				if err := respond(m.ID, nil, nil); err != nil {
 					return err
 				}
-			case "initialized", "$/cancelRequest":
+			case "$/cancelRequest":
+				var params struct {
+					ID json.RawMessage `json:"id"`
+				}
+				if jsonv2.Unmarshal(m.Params, &params) == nil {
+					if cancelDiscovery := discoveries[string(params.ID)]; cancelDiscovery != nil {
+						cancelDiscovery()
+					}
+				}
+			case "initialized":
 			case "textDocument/didOpen":
 				var p struct {
 					TextDocument Document `json:"textDocument"`

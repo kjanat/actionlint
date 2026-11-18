@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -62,14 +63,34 @@ func DocumentFile(ctx context.Context, path string, reader *files.Reader, option
 	if err != nil {
 		return false, err
 	}
-	if options.NoIgnore || repositoryRoot(directory, reader.Filesystem()) == "" {
-		return true, nil
-	}
-	filter, err := gitFilterWithQuery(ctx, directory, reader, options.QueryGit)
+	filter, err := documentGitFilter(ctx, directory, reader, options)
 	if err != nil {
 		return false, err
 	}
+	if filter == nil {
+		return true, nil
+	}
 	return filter.manifests[filter.key(filepath.Base(path))], nil
+}
+
+func documentGitFilter(ctx context.Context, path string, reader *files.Reader, options Discovery) (*gitFilter, error) {
+	if options.NoIgnore {
+		return nil, nil
+	}
+	if repositoryRoot(path, reader.Filesystem()) == "" {
+		if options.QueryGit == nil {
+			return nil, nil
+		}
+		// A scoped host may not expose the repository's .git directory.
+		_, err := options.QueryGit(ctx, path, "rev-parse", "--show-toplevel")
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not locate the Git work tree for %q: %w", path, err)
+		}
+	}
+	return gitFilterWithQuery(ctx, path, reader, options.QueryGit)
 }
 
 // Documents discovers action manifests and conventional workflows. Git metadata
@@ -86,12 +107,10 @@ func Documents(ctx context.Context, root string, reader *files.Reader, options D
 	}
 	newScope := func(path string) (scope, error) {
 		s := scope{root: path}
-		if !options.NoIgnore && repositoryRoot(path, reader.Filesystem()) != "" {
-			var err error
-			s.filter, err = gitFilterWithQuery(ctx, path, reader, options.QueryGit)
-			if err != nil {
-				return s, fmt.Errorf("could not apply Git ignore rules in %q: %w", path, err)
-			}
+		var err error
+		s.filter, err = documentGitFilter(ctx, path, reader, options)
+		if err != nil {
+			return s, fmt.Errorf("could not apply Git ignore rules in %q: %w", path, err)
 		}
 		return s, nil
 	}

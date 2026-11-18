@@ -90,6 +90,7 @@ func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitF
 }
 
 // GitQuery executes a local metadata query selected by the Go discoverer.
+// A work-tree lookup outside a repository returns fs.ErrNotExist.
 type GitQuery func(context.Context, string, ...string) (gitcommand.Output, error)
 
 func gitFilterWithQuery(ctx context.Context, root string, reader *files.Reader, query GitQuery) (*gitFilter, error) {

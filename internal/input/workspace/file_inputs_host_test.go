@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
@@ -18,6 +19,14 @@ import (
 type discoveryFilesystem struct {
 	files.DiskFilesystem
 	directories []string
+	scope       string
+}
+
+func (f *discoveryFilesystem) Stat(path string) (fs.FileInfo, error) {
+	if f.scope != "" && path != f.scope && !strings.HasPrefix(path, f.scope+string(filepath.Separator)) {
+		return nil, fs.ErrNotExist
+	}
+	return f.DiskFilesystem.Stat(path)
 }
 
 func (f *discoveryFilesystem) ReadDir(path string) ([]fs.DirEntry, error) {
@@ -48,6 +57,22 @@ func TestDiscoveryUsesHostFilesystemAndGitQueries(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("ignored/\n.github/workflows/ignored.yml\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	t.Run("Git applies ignores from above the host scope", func(t *testing.T) {
+		t.Parallel()
+		scope := filepath.Join(root, ".github", "workflows")
+		query := func(ctx context.Context, directory string, args ...string) (gitcommand.Output, error) {
+			return gitcommand.Query(ctx, git, directory, nil, args...)
+		}
+		for _, input := range []string{scope, filepath.Join(scope, "*.yml")} {
+			selected, err := workspace.FindFilesWithFilesystem(t.Context(), []string{input}, false, &discoveryFilesystem{scope: scope}, query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(selected.Files) != 1 || selected.Files[0].Path != filepath.Join(scope, "build.yml") {
+				t.Fatalf("selected files for %q: %+v; want only build.yml", input, selected.Files)
+			}
+		}
+	})
 	for _, noIgnore := range []bool{false, true} {
 		t.Run(map[bool]string{false: "ignored files excluded", true: "ignored files included"}[noIgnore], func(t *testing.T) {
 			t.Parallel()

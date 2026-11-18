@@ -127,8 +127,9 @@ failed operations so the client can display an analysis error.
 ## Scope and verification
 
 The browser server analyzes opened YAML files and local dependencies supplied by
-the host. It does not discover files, load project configuration, download remote
-actions or launch native plugins. Completions cover the same subset as the native
+the host. Call `client.discover` to select files before opening them. Opening a
+document does not start a scan. The browser server does not load project
+configuration, download remote actions or launch native plugins. Completions cover the same subset as the native
 server; hover and navigation are not implemented. Multiple workspace roots need
 separate server instances.
 

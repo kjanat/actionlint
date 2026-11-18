@@ -60,7 +60,7 @@ func hostRequest(ctx context.Context, method string, params any) (js.Value, erro
 }
 
 func serve(ctx context.Context, in io.Reader, out io.Writer) error {
-	var workspace lsp.WorkspaceURIs
+	var workspace, namespace lsp.WorkspaceURIs
 	var tools []string
 	var platform string
 	return lsp.ServeWithOptions(ctx, in, out, lsp.Options{
@@ -86,7 +86,7 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 				root = "file:///workspace"
 			}
 			var err error
-			workspace, err = lsp.NewWorkspaceURIs(root, "/workspace")
+			workspace, namespace, err = workspacePaths(root)
 			if err != nil {
 				return err
 			}
@@ -103,14 +103,14 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		URIFromPath: workspace.URI,
 		Complete:    lsp.CompleteDocument,
 		Discover: func(ctx context.Context, paths []string, noIgnore bool) ([]string, error) {
-			return (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).discover(ctx, paths, noIgnore)
+			return (hostFilesystem{ctx: ctx, workspace: workspace, namespace: namespace, platform: platform}).discover(ctx, paths, noIgnore)
 		},
 		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (analysis lsp.Analysis, err error) {
 			selections := registry.ToolSelections{}
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
 			}
-			options := checking.Options{WorkingDir: "/workspace", SkipProjectConfig: true, Tools: registry.Registrations(selections)}
+			options := checking.Options{WorkingDir: workspace.Directory(), SkipProjectConfig: true, Tools: registry.Registrations(selections)}
 			options.ReadFile = (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).ReadFile
 			// The browser selects no plugins; assembly still composes the
 			// bundled tools as it does for the native entry points.

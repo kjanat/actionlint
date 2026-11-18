@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
+	"path"
 	"slices"
 	"strings"
 	"syscall/js"
@@ -21,8 +23,24 @@ import (
 type hostFilesystem struct {
 	ctx       context.Context
 	workspace lsp.WorkspaceURIs
+	namespace lsp.WorkspaceURIs
 	platform  string
 }
+
+func workspacePaths(rootURI string) (workspace, namespace lsp.WorkspaceURIs, err error) {
+	root, err := url.Parse(rootURI)
+	if err != nil {
+		return workspace, namespace, err
+	}
+	workspace, err = lsp.NewWorkspaceURIs(rootURI, path.Join("/workspace", path.Clean(root.Path)))
+	if err != nil {
+		return workspace, namespace, err
+	}
+	root.Path, root.RawPath = "/", ""
+	namespace, err = lsp.NewWorkspaceURIs(root.String(), "/workspace")
+	return workspace, namespace, err
+}
+
 type hostFileInfo struct {
 	Filename string `json:"name"`
 	Kind     string `json:"kind"`
@@ -178,10 +196,14 @@ func (h hostFilesystem) queryGit(ctx context.Context, root string, args ...strin
 	if err := decodeHost(value, &response); err != nil {
 		return gitcommand.Output{}, err
 	}
+	workTree := len(args) == 2 && args[0] == "rev-parse" && args[1] == "--show-toplevel"
+	if response.ExitCode == 0 && workTree && response.Path == "" {
+		return gitcommand.Output{}, errors.New("Git work-tree response requires a path URI")
+	}
 	if response.Path != "" {
-		if path, err := h.workspace.Path(response.Path); err == nil {
+		if path, err := h.namespace.Path(response.Path); err == nil {
 			response.Stdout = path + "\n"
-		} else if len(args) > 1 && args[1] == "--show-toplevel" {
+		} else if workTree {
 			return gitcommand.Output{}, err
 		}
 	}
