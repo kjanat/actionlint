@@ -53,3 +53,4 @@ commitish
 !internal/checking/cachepolicy
 /custom-gcl*
 *.exe
+/_*
