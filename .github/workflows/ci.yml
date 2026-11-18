@@ -79,7 +79,7 @@ jobs:
     env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck" }
     steps:
       - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
-      - &GoGomod { uses: *SetupGo, with: *GoMod }
+      - { uses: *SetupGo, with: *GoMod }
       - &Uv { uses: *SetupUv, with: *NoCache }
       - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
@@ -420,32 +420,40 @@ jobs:
             with: { files: distribution/docker/Dockerfile }
   action:
     needs: [changes, checks]
-    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
+    if: ${{ !cancelled() && needs.checks.result == 'success' }}
     name: GitHub Action
     strategy:
       fail-fast: true
       matrix: { os: [ubuntu-latest, macos-latest, windows-latest] }
-    runs-on: ${{ matrix.os }}
+    # Keep every required platform check present without allocating its native runner when unselected.
+    runs-on: ${{ (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) && matrix.os || 'ubuntu-slim' }}
     timeout-minutes: 20
-    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,npm:runner-run" }
+    env: {
+      MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,npm:runner-run",
+      CI_ACTION: "${{ needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action'] }}",
+    }
+    outputs: { selected: "${{ env.CI_ACTION }}" }
     steps:
       - uses: *ActionsCheckout
+        if: &ActionSelected env.CI_ACTION == 'true'
         with: { fetch-depth: 0, persist-credentials: false }
       # Parallel setup steps race while the runner rewrites event.json on Windows.
-      - *GoGomod
-      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools, env: *MiseTemp }
+      - { uses: *SetupGo, if: *ActionSelected, with: *GoMod }
+      - { name: Install the project Node.js and npm versions, if: *ActionSelected, uses: *SetupMise, with: *TestTools, env: *MiseTemp }
       - name: Install JavaScript Action build dependencies
+        if: *ActionSelected
         # Packaging also runs when JavaScript-only tests are not selected.
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Test the JavaScript runtime and release packaging
-        if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
+        if: ${{ !cancelled() && env.CI_ACTION == 'true' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
         run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test
       - name: Validate the staged release configuration
-        if: runner.os == 'Linux'
+        if: env.CI_ACTION == 'true' && runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: check }
       - name: Prepare the ordinary binary and release action
+        if: *ActionSelected
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}
           GIT_AUTHOR_NAME: Action release test
@@ -468,10 +476,12 @@ jobs:
           test -f .actionlint-action-test/cmd/actionlint/main.go
           (cd .actionlint-action-test && sha256sum --check SHA256SUMS)
       - name: Check Git-tag version fallback
+        if: *ActionSelected
         run: env -u ACTIONLINT_VERSION run actionlint-action:build --out-dir "${RUNNER_TEMP}/actionlint-action-fallback";
           cmp "${RUNNER_TEMP}/actionlint-action-fallback/action.mjs" "${RUNNER_TEMP}/actionlint-action/action/action.mjs"
       - name: Install an explicit historical version
         id: setup-version
+        if: *ActionSelected
         uses: ./.actionlint-action-test
         env: { ACTIONLINT_ACTION_BINARY: "" }
         with:
@@ -480,10 +490,12 @@ jobs:
           install-only: true
           shellcheck: false
       - name: Check the installed version and prepare a version file
+        if: *ActionSelected
         run: actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0';
           printf 'nodejs 24.0.0\nactionlint 1.17.0\n' > .actionlint-action-test/.tool-versions
       - name: Install from a tool version file
         id: setup-version-file
+        if: *ActionSelected
         uses: ./.actionlint-action-test
         env: { ACTIONLINT_ACTION_BINARY: "" }
         with:
@@ -492,6 +504,7 @@ jobs:
           install-only: true
           shellcheck: false
       - name: Check setup outputs and the surviving binary
+        if: *ActionSelected
         env:
           VERSION_OUTPUTS: ${{ toJSON(steps.setup-version.outputs) }}
           VERSION_FILE_OUTPUTS: ${{ toJSON(steps.setup-version-file.outputs) }}
@@ -515,10 +528,12 @@ jobs:
           rm .actionlint-action-test/.tool-versions
       - name: Exercise the action through the real runner
         id: smoke
+        if: *ActionSelected
         # ./ loads the candidate release tree generated in this job's workspace.
         uses: ./.actionlint-action-test
         with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, format: json, sarif: true }
       - name: Exercise inline configuration
+        if: *ActionSelected
         uses: ./.actionlint-action-test
         with:
           files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
@@ -526,16 +541,19 @@ jobs:
           annotations: false
           summary: false
       - name: Exercise shared configuration
+        if: *ActionSelected
         shell: bash
         run: |
           mkdir -p .github
           printf 'plugins: []\nconfig-variables: []\n' > .github/actionlint.yaml
       - name: Lint with shared configuration
+        if: *ActionSelected
         uses: ./.actionlint-action-test
         with:
           files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
           config-file: .github/actionlint.yaml
       - name: Exercise advisory review without a token
+        if: *ActionSelected
         uses: ./.actionlint-action-test
         with:
           files: internal/development/tests/integration/workflow/testdata/err/one_error.yaml
@@ -552,7 +570,7 @@ jobs:
             ${{ steps.smoke.outputs.result-file }}
             ${{ steps.smoke.outputs.report-sarif }}
       - name: Save Linux candidate for Dockerless runner
-        if: runner.os == 'Linux'
+        if: env.CI_ACTION == 'true' && runner.os == 'Linux'
         uses: *UploadAction
         with:
           name: actionlint-linux-candidate
@@ -560,6 +578,7 @@ jobs:
             ${{ runner.temp }}/actionlint-action/action/
             ${{ runner.temp }}/actionlint-test
       - name: Check runner outputs and input compatibility
+        if: *ActionSelected
         env:
           EXIT_CODE: ${{ steps.smoke.outputs.exit-code }}
           RESULT: ${{ steps.smoke.outputs.result }}
@@ -571,12 +590,13 @@ jobs:
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
       - name: Verify bundled plugins and real cache restoration
+        if: *ActionSelected
         uses: ./.github/actions/test-action
         with:
           action-directory: ${{ runner.temp }}/actionlint-action/action
           binary: ${{ env.ACTIONLINT_ACTION_BINARY }}
       - name: Check exported actionlint from PowerShell
-        if: runner.os == 'Windows'
+        if: env.CI_ACTION == 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
           actionlint -version
@@ -588,29 +608,22 @@ jobs:
     if: ${{ !cancelled() && needs.action.result == 'success' }}
     runs-on: ubuntu-slim
     timeout-minutes: 10
+    env: { CI_ACTION: "${{ needs.action.outputs.selected }}" }
     steps:
-      - *ActCheckNocred
+      - { uses: *ActionsCheckout, if: *ActionSelected, with: *NoCreds }
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: *ActionSelected
         with: { name: actionlint-linux-candidate, path: .actionlint-slim-test }
       - name: Restore executable permission
+        if: *ActionSelected
         run: chmod +x .actionlint-slim-test/actionlint-test
       - name: Lint on a Dockerless runner
         id: slim
+        if: *ActionSelected
         uses: ./.actionlint-slim-test/actionlint-action/action
         env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
         with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, shellcheck: false }
       - name: Verify Dockerless result
+        if: *ActionSelected
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
         run: test "${RESULT}" = success
-  action-result:
-    name: GitHub Action
-    needs: [action, action-slim]
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 1
-    steps:
-      - name: Require all Action platforms to pass
-        env: { RESULT: "${{ needs.action.result }}", SLIM_RESULT: "${{ needs.action-slim.result }}" }
-        run: |
-          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then exit 0; fi
-          test "${RESULT}" = success && test "${SLIM_RESULT}" = success
