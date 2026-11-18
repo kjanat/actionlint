@@ -2,21 +2,29 @@
 
 The graph shows which modules depend on which forks. Solid arrows are module
 requirements; dotted arrows are indirect requirements in actionlint's root module.
-Versions are those selected by the consuming modules.
+Renovate updates the version labels in the same pull requests as the Go modules.
 
 ```mermaid
 flowchart LR
+    %% renovate: depName=github.com/kjanat/go-yaml/v4
     A[actionlint] --> Y["kjanat/go-yaml/v4<br/>v4.0.0-rc.7"]
-    A --> W["kjanat/wacogo<br/>v0.2.3"]
-    A --> Z["kjanat/wazero<br/>v1.11.1"]
-    A --> G["kjanat/go-modules<br/>v0.9.1"]
+    %% renovate: depName=github.com/kjanat/wacogo
+    A --> W["kjanat/wacogo<br/>v0.3.1"]
+    %% renovate: depName=github.com/kjanat/wazero
+    A --> Z["kjanat/wazero<br/>v1.12.2"]
+    %% renovate: depName=github.com/kjanat/go-modules
+    A --> G["kjanat/go-modules<br/>v0.10.0"]
     W --> G
     W --> Z
     G --> Z
+    %% renovate: depName=go.bytecodealliance.org/cm
     G --> CM["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
     E[Go plugin SDK] --> CM
+    %% renovate: depName=github.com/invopop/jsonschema
     A --> J["invopop/jsonschema<br/>v0.14.0"]
+    %% renovate: depName=github.com/pb33f/ordered-map/v2
     J --> O["pb33f/ordered-map/v2<br/>v2.3.2"]
+    %% renovate: depName=github.com/pb33f/go-yaml
     O --> P["pb33f/go-yaml<br/>v0.1.1"]
     A -. indirect pin .-> P
 ```

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "forkProcessing": "enabled",
+  "enabledManagers": [
+    "gomod",
+    "custom.regex"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^docs\\/go-forks\\.md$/"
+      ],
+      "matchStrings": [
+        "%% renovate: depName=(?<depName>[^\\s]+)\\r?\\n[^\\r\\n]*?<br/>(?<currentValue>v[0-9][0-9A-Za-z.+-]*)"
+      ],
+      "datasourceTemplate": "go",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "*"
+      ],
+      "enabled": false
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/kjanat/go-yaml/v4"
+      ],
+      "enabled": true,
+      "groupName": "github.com/kjanat/go-yaml/v4",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/kjanat/wacogo"
+      ],
+      "enabled": true,
+      "groupName": "github.com/kjanat/wacogo",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/kjanat/wazero"
+      ],
+      "enabled": true,
+      "groupName": "github.com/kjanat/wazero",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/kjanat/go-modules"
+      ],
+      "enabled": true,
+      "groupName": "github.com/kjanat/go-modules",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "go.bytecodealliance.org/cm"
+      ],
+      "enabled": true,
+      "groupName": "go.bytecodealliance.org/cm",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/invopop/jsonschema"
+      ],
+      "enabled": true,
+      "groupName": "github.com/invopop/jsonschema",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/pb33f/ordered-map/v2"
+      ],
+      "enabled": true,
+      "groupName": "github.com/pb33f/ordered-map/v2",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/pb33f/go-yaml"
+      ],
+      "enabled": true,
+      "groupName": "github.com/pb33f/go-yaml",
+      "minimumGroupSize": 2
+    }
+  ]
+}
