@@ -355,7 +355,7 @@ func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []p
 			if ref.DirectSource() != "" || registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
 				continue
 			}
-			client, err := pluginregistry.NewWithGrant(ref.Registry(), pluginregistry.StatusOptions{Network: project.StatusOptions.Network, Acquisition: project.StatusOptions.Acquisition})
+			client, err := pluginregistry.NewWithGrant(ref, pluginregistry.StatusOptions{Network: project.StatusOptions.Network, Acquisition: project.StatusOptions.Acquisition})
 			if err != nil {
 				return -1, err
 			}

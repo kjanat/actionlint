@@ -310,7 +310,7 @@ func (l ResolvedPlugins) RefreshDeclaredStatuses(ctx context.Context, refs []plu
 			continue
 		}
 		seen[directory] = true
-		client, err := NewWithGrant(registry, options)
+		client, err := NewWithGrant(ref, options)
 		if err != nil {
 			return err
 		}

@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -30,7 +31,11 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
-	client, err := pluginregistry.NewWithGrant("https://127.0.0.1:8443/catalogue/", pluginregistry.StatusOptions{Acquisition: acquisition})
+	declaration, err := pluginreference.New(fixtureregistry.FixturePluginName, "latest", "https://127.0.0.1:8443/catalogue/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := pluginregistry.NewWithGrant(declaration, pluginregistry.StatusOptions{Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +68,11 @@ func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", []byte(`{"schema_version":1,"plugins":[]}`))
-	client, err := pluginregistry.NewWithGrant(fixtureregistry.FixtureRegistryURL, pluginregistry.StatusOptions{Acquisition: registryAcquisition(registry)})
+	declaration, err := pluginreference.New(fixtureregistry.FixturePluginName, "latest", fixtureregistry.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := pluginregistry.NewWithGrant(declaration, pluginregistry.StatusOptions{Acquisition: registryAcquisition(registry)})
 	if err != nil {
 		t.Fatal(err)
 	}

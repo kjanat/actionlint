@@ -78,6 +78,43 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 	}
 }
 
+func TestPluginProjectSavesDeclaredRegistryOffline(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := pin
+	selected.Registry = "https://catalogue.example:443/"
+	project.Releases = pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{selected}}
+	ref, err := pluginreference.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
+	resolved, err := project.ResolvedDeclarations(t.Context(), []pluginreference.Reference{ref})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(registry.Requests()) != requests {
+		t.Fatalf("saving a cached release contacted the registry: %v", registry.Requests()[requests:])
+	}
+	if len(resolved) != 1 || !resolved[0].Equal(ref) {
+		t.Fatalf("resolved declarations = %v, want %v", resolved, ref)
+	}
+}
+
 func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	t.Parallel()
 	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), dependencycache.Acquisition{}, repositoryfixture.Directory(t), "")
