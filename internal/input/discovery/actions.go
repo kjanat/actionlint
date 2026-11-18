@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 
@@ -88,17 +86,30 @@ type gitFilter struct {
 }
 
 func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitFilter, error) {
-	git, err := execabs.LookPath("git")
-	if err != nil {
-		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
+	return gitFilterWithQuery(ctx, root, reader, nil)
+}
+
+// GitQuery executes a local metadata query selected by the Go discoverer.
+// A work-tree lookup outside a repository returns fs.ErrNotExist.
+type GitQuery func(context.Context, string, ...string) (gitcommand.Output, error)
+
+func gitFilterWithQuery(ctx context.Context, root string, reader *files.Reader, query GitQuery) (*gitFilter, error) {
+	if query == nil {
+		git, err := execabs.LookPath("git")
+		if err != nil {
+			return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
+		}
+		query = func(ctx context.Context, root string, args ...string) (gitcommand.Output, error) {
+			return gitcommand.Query(ctx, git, root, gitEnvironment(), args...)
+		}
 	}
 	run := func(optional bool, args ...string) ([]byte, error) {
-		output, err := gitcommand.Query(ctx, git, root, gitEnvironment(), args...)
+		output, err := query(ctx, root, args...)
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
 		}
 		message := strings.TrimSpace(string(output.Stderr))
-		var exit *exec.ExitError
+		var exit interface{ ExitCode() int }
 		// git config exits 1 without output when a key is unset.
 		if optional && message == "" && errors.As(err, &exit) && exit.ExitCode() == 1 {
 			return nil, nil
@@ -175,13 +186,13 @@ func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitF
 	for _, location := range read {
 		// Git for Windows prints configured paths with forward slashes.
 		location = filepath.Clean(location)
-		if info, err := os.Stat(location); err == nil && info.Mode().IsRegular() {
+		if info, err := reader.Filesystem().Stat(location); err == nil && info.Mode().IsRegular() {
 			reader.Record(location)
 		}
 	}
 	filter := &gitFilter{
 		manifests: map[string]bool{}, ignored: map[string]bool{},
-		ignoreCase: settings.ignoreCase, precompose: settings.precompose && runtime.GOOS == "darwin",
+		ignoreCase: settings.ignoreCase, precompose: settings.precompose && reader.Filesystem().Platform() == "darwin",
 	}
 	for name := range bytes.SplitSeq(manifests, []byte{0}) {
 		if len(name) > 0 {

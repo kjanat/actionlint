@@ -67,6 +67,72 @@ func TestUnsupportedRequestsReceiveMethodNotFound(t *testing.T) {
 	}
 }
 
+func TestShutdownCancelsPendingDiscovery(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	in, client := io.Pipe()
+	receive, out := io.Pipe()
+	defer client.Close()
+	defer receive.Close()
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		defer out.Close()
+		done <- ServeWithOptions(ctx, in, out, Options{
+			Analyze: func(context.Context, map[string]Document) (Analysis, error) { return Analysis{}, nil },
+			Discover: func(ctx context.Context, _ []string, _ bool) ([]string, error) {
+				close(started)
+				<-ctx.Done()
+				close(cancelled)
+				return nil, ctx.Err()
+			},
+		})
+	}()
+	reader := bufio.NewReader(receive)
+	send := func(method string, id, params json.RawMessage) {
+		t.Helper()
+		if err := WriteRPCMessage(client, RPCMessage{JSONRPC: "2.0", ID: id, Method: method, Params: params}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func() map[string]any {
+		t.Helper()
+		msg, err := readEnvelope(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return msg
+	}
+	send("initialize", json.RawMessage("1"), json.RawMessage("{}"))
+	read()
+	send("actionlint/discover", json.RawMessage("2"), json.RawMessage(`{"paths":["file:///repo"]}`))
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal("discovery never started")
+	}
+	send("shutdown", json.RawMessage("3"), nil)
+	shutdown := read()
+	if shutdown["id"] != float64(3) || shutdown["error"] != nil {
+		t.Fatalf("expected a successful shutdown response, got %+v", shutdown)
+	}
+	discovery := read()
+	if discovery["id"] != float64(2) || discovery["error"] == nil {
+		t.Fatalf("expected cancellation of discovery, got %+v", discovery)
+	}
+	send("exit", nil, nil)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-cancelled:
+	default:
+		t.Fatal("discovery did not observe cancellation")
+	}
+}
+
 func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	t.Parallel()
 	in, client := io.Pipe()

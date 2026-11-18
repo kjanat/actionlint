@@ -13,12 +13,16 @@ import (
 
 // RepositoryRoot returns the nearest directory containing .git, or "" outside a repository.
 func RepositoryRoot(start string) string {
+	return repositoryRoot(start, files.DiskFilesystem{})
+}
+
+func repositoryRoot(start string, filesystem files.Filesystem) string {
 	dir, err := filepath.Abs(start)
 	if err != nil {
 		return ""
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+		if _, err := filesystem.Stat(filepath.Join(dir, ".git")); err == nil {
 			return dir
 		}
 		parent := filepath.Dir(dir)

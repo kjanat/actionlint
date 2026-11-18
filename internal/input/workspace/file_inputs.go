@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
@@ -41,22 +40,26 @@ func ExpandHome(path string) (string, error) {
 	return filepath.Join(home, path[2:]), nil
 }
 
-// fileIdentity deduplicates physical files, retaining the selected display path.
-func fileIdentity(path string) string {
-	path = absPath(path)
-	if physical, err := filepath.EvalSymlinks(path); err == nil {
-		path = physical
-	}
-	if runtime.GOOS == "windows" {
-		path = strings.ToLower(path)
-	}
-	return path
-}
-
 // FindFiles expands directory arguments and shell-style *, ? and [] globs.
 // Literal file arguments bypass Git ignore rules. Set noIgnore to include ignored
 // directory and glob matches. Each directory and physical file is visited at most once.
 func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelection, error) {
+	return FindFilesWithFilesystem(ctx, paths, noIgnore, files.DiskFilesystem{}, nil)
+}
+
+// FindFilesWithFilesystem applies the same selection policy to host filesystem operations.
+// A nil query executes local Git commands to apply repository ignore rules.
+func FindFilesWithFilesystem(ctx context.Context, paths []string, noIgnore bool, filesystem files.Filesystem, query discovery.GitQuery) (FileSelection, error) {
+	identity := func(path string) string {
+		path = absPath(path)
+		if physical, err := filesystem.EvalSymlinks(path); err == nil {
+			path = physical
+		}
+		if filesystem.Platform() == "windows" {
+			path = strings.ToLower(path)
+		}
+		return path
+	}
 	var candidates []File
 	explicit := make(map[string]bool)
 	for _, path := range paths {
@@ -67,9 +70,9 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 		if err != nil {
 			return FileSelection{}, err
 		}
-		info, statErr := os.Stat(path)
+		info, statErr := filesystem.Stat(path)
 		if statErr != nil && strings.ContainsAny(path, "*?[") {
-			matches, err := filepath.Glob(path)
+			matches, err := filesystem.Glob(path)
 			if err != nil {
 				return FileSelection{}, fmt.Errorf("invalid input glob %q: %w", path, err)
 			}
@@ -84,14 +87,14 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 		literal := statErr != nil || !info.IsDir()
 		candidates = append(candidates, File{Path: path, Explicit: literal})
 		if literal {
-			explicit[fileIdentity(path)] = true
+			explicit[identity(path)] = true
 		}
 	}
 	listed := &InputFiles{}
-	reader := files.New(ctx, nil, listed.Add)
+	reader := files.NewFilesystem(ctx, filesystem, listed.Add)
 	seen, directories := make(map[string]bool), make(map[string]bool)
-	options := discovery.Discovery{NoIgnore: noIgnore, Repositories: true, SkipDirectory: func(path string) bool {
-		key := fileIdentity(path)
+	options := discovery.Discovery{NoIgnore: noIgnore, Repositories: true, QueryGit: query, SkipDirectory: func(path string) bool {
+		key := identity(path)
 		if directories[key] {
 			return true
 		}
@@ -100,7 +103,7 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 	}}
 	var files []File
 	add := func(file File) {
-		key := fileIdentity(file.Path)
+		key := identity(file.Path)
 		if seen[key] || !file.Explicit && explicit[key] {
 			return
 		}
@@ -119,7 +122,7 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 		if err != nil {
 			return FileSelection{}, err
 		}
-		info, err := os.Lstat(path)
+		info, err := filesystem.Lstat(path)
 		if err != nil {
 			return FileSelection{}, err
 		}
@@ -134,11 +137,11 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 				literal = literal || absPath(expanded) == path
 			}
 			if literal {
-				info, err = os.Stat(path)
+				info, err = filesystem.Stat(path)
 				if err != nil {
 					return FileSelection{}, err
 				}
-			} else if target, err := os.Stat(path); err != nil {
+			} else if target, err := filesystem.Stat(path); err != nil {
 				return FileSelection{}, err
 			} else if target.IsDir() {
 				continue
