@@ -38,6 +38,9 @@ type Execution struct {
 	// OutputLimit bounds combined stdout/stderr bytes while the child runs.
 	// Zero preserves the caller's existing capture behavior.
 	OutputLimit int64
+	// busyRetryWait replaces the pause after ETXTBSY. Tests use it to release
+	// the executable after the first busy start and before the retry.
+	busyRetryWait func(context.Context, time.Duration) error
 }
 
 func (e *Execution) Run(ctx context.Context) ([]byte, error) {
@@ -71,12 +74,12 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 		if cmd.Process != nil || !executableBusy(err) || delay > 160*time.Millisecond {
 			break
 		}
-		timer := time.NewTimer(delay)
-		select {
-		case <-timer.C:
-		case <-runContext.Done():
-			timer.Stop()
-			return nil, 0, runContext.Err()
+		wait := waitForBusyRetry
+		if e.busyRetryWait != nil {
+			wait = e.busyRetryWait
+		}
+		if err := wait(runContext, delay); err != nil {
+			return nil, 0, err
 		}
 	}
 
@@ -116,6 +119,22 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("%s exited with status 0, which the tool does not report", e.Cmd)
 	}
 	return stdout, 0, nil
+}
+
+// waitForBusyRetry pauses before another attempt to start a busy executable.
+// It returns the context error when that context is done.
+func waitForBusyRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	select {
+	case <-timer.C:
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		timer.Stop()
+		return ctx.Err()
+	}
 }
 
 func (e *Execution) command(ctx context.Context, args, unsetEnv []string) *exec.Cmd {
