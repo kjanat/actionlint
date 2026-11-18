@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -51,38 +52,32 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	// The child command and the status checks work on detached copies, so the
 	// caller's slices are never shared with os/exec or the filters below.
 	args, unsetEnv, exitCodes := slices.Clone(e.Args), slices.Clone(e.UnsetEnv), slices.Clone(e.ExitCodes)
-	cmd := exec.CommandContext(runContext, e.Cmd, args...)
-	cmd.Dir = e.Dir
-	cmd.Stderr = nil
-	switch {
-	case !e.InheritEnvironment:
-		// A non-nil empty slice keeps os/exec from inheriting the host environment.
-		cmd.Env = append([]string{}, e.Env...)
-	case len(e.Env) > 0 || len(unsetEnv) > 0:
-		cmd.Env = append(cmd.Environ(), e.Env...)
-	}
-	if len(unsetEnv) > 0 && cmd.Env != nil {
-		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
-			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(unsetEnv, func(unset string) bool {
-				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
-			})
-		})
-	}
-	// Let os/exec start the reader before copying stdin. Writing the whole script
-	// before Start can fill the pipe and deadlock, even with a single worker.
-	cmd.Stdin = strings.NewReader(e.Stdin)
 
 	var stdout []byte
 	var capturedStderr []byte
 	var err error
-	switch {
-	case e.OutputLimit > 0:
-		stdout, capturedStderr, err = boundedCommandOutput(cmd, e.OutputLimit, e.CombineOutput, cancel)
-	case e.CombineOutput:
-		stdout, err = cmd.CombinedOutput()
-	default:
-		stdout, err = cmd.Output()
+	for delay := 5 * time.Millisecond; ; delay *= 2 {
+		cmd := e.command(runContext, args, unsetEnv)
+		switch {
+		case e.OutputLimit > 0:
+			stdout, capturedStderr, err = boundedCommandOutput(cmd, e.OutputLimit, e.CombineOutput, cancel)
+		case e.CombineOutput:
+			stdout, err = cmd.CombinedOutput()
+		default:
+			stdout, err = cmd.Output()
+		}
+		// A concurrent fork can briefly retain a write descriptor for a
+		// freshly published executable until the child reaches exec.
+		if cmd.Process != nil || !executableBusy(err) || delay > 160*time.Millisecond {
+			break
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-timer.C:
+		case <-runContext.Done():
+			timer.Stop()
+			return nil, 0, runContext.Err()
+		}
 	}
 
 	if err != nil {
@@ -121,6 +116,30 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("%s exited with status 0, which the tool does not report", e.Cmd)
 	}
 	return stdout, 0, nil
+}
+
+func (e *Execution) command(ctx context.Context, args, unsetEnv []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, e.Cmd, args...)
+	cmd.Dir = e.Dir
+	switch {
+	case !e.InheritEnvironment:
+		// A non-nil empty slice keeps os/exec from inheriting the host environment.
+		cmd.Env = append([]string{}, e.Env...)
+	case len(e.Env) > 0 || len(unsetEnv) > 0:
+		cmd.Env = append(cmd.Environ(), e.Env...)
+	}
+	if len(unsetEnv) > 0 && cmd.Env != nil {
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return slices.ContainsFunc(unsetEnv, func(unset string) bool {
+				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
+			})
+		})
+	}
+	// Let os/exec start the reader before copying stdin. Writing the whole script
+	// before Start can fill the pipe and deadlock, even with a single worker.
+	cmd.Stdin = strings.NewReader(e.Stdin)
+	return cmd
 }
 
 // ProcessPool limits concurrent processes to avoid exhausting operating system

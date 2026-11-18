@@ -26,11 +26,12 @@ func ProbeDir(path string) ([]fs.DirEntry, error) {
 }
 
 type Reader struct {
-	root     *os.Root
-	ctx      context.Context
-	contents Contents
-	exists   func(string) error
-	record   func(path string)
+	filesystem Filesystem
+	root       *os.Root
+	ctx        context.Context
+	contents   Contents
+	exists     func(string) error
+	record     func(path string)
 }
 
 func New(ctx context.Context, contents Contents, record func(path string)) *Reader {
@@ -50,11 +51,11 @@ func New(ctx context.Context, contents Contents, record func(path string)) *Read
 	if record == nil {
 		record = func(string) {}
 	}
-	return &Reader{ctx: ctx, contents: contents, exists: exists, record: record}
+	return &Reader{ctx: ctx, contents: contents, exists: exists, record: record, filesystem: DiskFilesystem{}}
 }
 
 func (r *Reader) Mapped(name func(path string) string) *Reader {
-	return &Reader{root: r.root, ctx: r.ctx, contents: r.contents, exists: r.exists, record: func(path string) { r.record(name(path)) }}
+	return &Reader{root: r.root, ctx: r.ctx, contents: r.contents, exists: r.exists, filesystem: r.filesystem, record: func(path string) { r.record(name(path)) }}
 }
 
 // NewRooted reads paths relative to root and rejects paths outside it. The caller
@@ -62,6 +63,7 @@ func (r *Reader) Mapped(name func(path string) string) *Reader {
 func NewRooted(ctx context.Context, root *os.Root, record func(string)) *Reader {
 	reader := New(ctx, root.ReadFile, record)
 	reader.root = root
+	reader.filesystem = rootedFilesystem{root}
 	reader.exists = func(name string) error {
 		_, err := root.Stat(name)
 		return err
@@ -105,7 +107,16 @@ func (r *Reader) Open(path string) (*os.File, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	open := os.Open
+	opener, ok := r.filesystem.(interface {
+		Open(string) (*os.File, error)
+	})
+	if r.root == nil && !ok {
+		return nil, &fs.PathError{Op: "open", Path: path, Err: fs.ErrInvalid}
+	}
+	var open func(string) (*os.File, error)
+	if ok {
+		open = opener.Open
+	}
 	if r.root != nil {
 		open = r.root.Open
 	}
@@ -124,7 +135,7 @@ func (r *Reader) ReadDir(path string) ([]fs.DirEntry, error) {
 	var entries []fs.DirEntry
 	var err error
 	if r.root == nil {
-		entries, err = os.ReadDir(path)
+		entries, err = r.filesystem.ReadDir(path)
 	} else {
 		var directory *os.File
 		directory, err = r.root.Open(path)
@@ -145,7 +156,7 @@ func (r *Reader) WalkDir(root string, fn fs.WalkDirFunc) error {
 	if err := r.ctx.Err(); err != nil {
 		return err
 	}
-	lstat := os.Lstat
+	lstat := r.filesystem.Lstat
 	if r.root != nil {
 		lstat = r.root.Lstat
 	}

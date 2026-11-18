@@ -47,6 +47,15 @@ func TestRootedReader(t *testing.T) {
 		t.Fatalf("read observations missing: %v", recorded)
 	}
 	for _, name := range []string{"../outside", filepath.Dir(directory)} {
+		if _, err := reader.Filesystem().ReadFile(name); err == nil {
+			t.Errorf("Filesystem.ReadFile accepted %s", name)
+		}
+		if _, err := reader.Filesystem().Stat(name); err == nil {
+			t.Errorf("Filesystem.Stat accepted %s", name)
+		}
+		if _, err := reader.Filesystem().ReadDir(name); err == nil {
+			t.Errorf("Filesystem.ReadDir accepted %s", name)
+		}
 		if _, err := reader.ReadFile(name); err == nil {
 			t.Errorf("ReadFile accepted %s", name)
 		}

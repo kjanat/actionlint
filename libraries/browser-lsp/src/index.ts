@@ -39,9 +39,20 @@ export type {
 	WorkspaceEdit,
 } from 'vscode-languageserver-protocol';
 
-export { type BrowserHost, provideBrowserHost, ReadFileRequest, RunToolRequest } from '#host';
+export {
+	type BrowserHost,
+	type FileMetadata,
+	type FilesystemRequest,
+	type FilesystemResponse,
+	type GitQueryParams,
+	type GitQueryResult,
+	provideBrowserHost,
+	ReadFileRequest,
+	RunToolRequest,
+} from '#host';
 
 export interface BrowserLanguageClient {
+	discover(paths: string[], noIgnore?: boolean): Promise<string[]>;
 	connection: ProtocolConnection;
 	initialize(): Promise<InitializeResult>;
 	open(uri: string, text: string, version: number): Promise<void>;
@@ -55,6 +66,7 @@ export interface BrowserLanguageClient {
 }
 
 export interface BrowserClientOptions {
+	platform?: 'windows' | 'darwin' | 'linux';
 	/** Absolute workspace URI. Virtual schemes such as vscode-vfs are supported. */
 	rootURI: string;
 	/** Bundled tool IDs whose commands the host can run. Omission disables external tools. */
@@ -124,7 +136,7 @@ export function createBrowserLanguageClient(
 						},
 						workspace: { workspaceEdit: { documentChanges: true } },
 					},
-					initializationOptions: { tools: options.tools ?? [] },
+					initializationOptions: { tools: options.tools ?? [], platform: options.platform },
 				});
 				await connection.sendNotification(InitializedNotification.type, {});
 				initialized = true;
@@ -133,6 +145,9 @@ export function createBrowserLanguageClient(
 				dispose();
 				throw error;
 			}
+		},
+		discover(paths: string[], noIgnore = false): Promise<string[]> {
+			return connection.sendRequest('actionlint/discover', { paths, noIgnore });
 		},
 		open(uri: string, text: string, version: number) {
 			return connection.sendNotification(DidOpenTextDocumentNotification.type, {
