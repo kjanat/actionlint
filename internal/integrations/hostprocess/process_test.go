@@ -695,3 +695,16 @@ func TestProcessPoolWaitIncludesForkCallbacks(t *testing.T) {
 		}
 	})
 }
+
+func TestWaitForBusyRetryReturnsCancellation(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	// A zero delay makes the timer ready together with cancellation. Either
+	// select branch must return the context error.
+	for range 32 {
+		if err := waitForBusyRetry(ctx, 0); !errors.Is(err, context.Canceled) {
+			t.Fatalf("got %v, want context.Canceled", err)
+		}
+	}
+}
