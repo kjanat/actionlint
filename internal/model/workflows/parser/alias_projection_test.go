@@ -138,13 +138,13 @@ func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/project=%t", tc.name, project), func(t *testing.T) {
 				t.Parallel()
 				defer func() {
-					if recover() == nil {
-						t.Fatal("malformed internal source graph did not fail loudly")
+					if got := recover(); got != "parser: nil node in YAML alias graph" {
+						t.Fatalf("expected explicit nil-node panic, got %v", got)
 					}
 				}()
 				report := func(*codec.Node, YamlAliasDiagnostic, string) {}
 				if project {
-					projectAliasTestGraph(tc.root, report)
+					projectYAMLAliases(tc.root, nil)
 				} else {
 					ValidateYAMLAliases(tc.root, report)
 				}

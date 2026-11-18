@@ -16,7 +16,7 @@ in
 buildGoModule {
   pname = "actionlint";
   inherit src version;
-  vendorHash = "sha256-iUdqYLkau2ug3T5WIqD4KxsCxP12fkvhiDoLj1sqwec=";
+  vendorHash = "sha256-QLUogKyH/qbCcoblzcY0I20u4ZVSs75iaMMcFTp0/bY=";
   subPackages = [ "cmd/actionlint" ];
 
   env.CGO_ENABLED = 0;
