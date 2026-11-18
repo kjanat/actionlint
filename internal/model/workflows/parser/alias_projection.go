@@ -19,6 +19,14 @@ const (
 	yamlAliasDiagnosticUndeclared
 )
 
+// A nil node is a broken internal graph, not a YAML diagnostic. Panic
+// explicitly instead of relying on an OS fault from a nil dereference.
+func requireYAMLAliasNode(node *codec.Node) {
+	if node == nil {
+		panic("parser: nil node in YAML alias graph")
+	}
+}
+
 // projectYAMLAliases builds a detached parser graph and alias-use provenance.
 // Shared declarations remain shared within the projection; source nodes never change.
 // root must be a complete, non-nil, structurally valid graph from codec.Parse.
@@ -26,6 +34,7 @@ func projectYAMLAliases(root *codec.Node, uses []yamlAliasUse) (*codec.Node, map
 	copies := map[*codec.Node]*codec.Node{}
 	var clone func(*codec.Node) *codec.Node
 	clone = func(node *codec.Node) *codec.Node {
+		requireYAMLAliasNode(node)
 		if existing, found := copies[node]; found {
 			return existing
 		}
@@ -117,6 +126,7 @@ func inspectYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAlias
 			anchors[n] = u
 		}
 		for i, c := range n.Content {
+			requireYAMLAliasNode(c)
 			if c.Kind != codec.AliasNode {
 				resolve(c)
 				continue
@@ -141,6 +151,7 @@ func inspectYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAlias
 			u.defined = true
 		}
 	}
+	requireYAMLAliasNode(root)
 	resolve(root)
 
 	for _, n := range declarations {
