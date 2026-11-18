@@ -14,9 +14,52 @@ jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
     with: { profile: ci }
+  nix-vendor-hash:
+    name: Wait for the Nix vendor hash
+    if: >-
+      github.repository == 'kjanat/actionlint' && github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.id == github.event.repository.id &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch &&
+      (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
+    runs-on: ubuntu-slim
+    timeout-minutes: 7
+    permissions: { contents: read, pull-requests: read, statuses: read }
+    outputs: { superseded: "${{ steps.wait.outputs.superseded }}" }
+    steps:
+      - name: Wait for autofix before running the Nix matrix
+        id: wait
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pull="repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}"
+          files=$(gh api --paginate "${pull}/files" --jq '.[].filename')
+          grep -Eq '^(go\.mod|go\.sum)$' <<< "${files}" || exit 0
+          for ((attempt=0; attempt<36; attempt++)); do
+            current=$(gh api "${pull}" --jq 'select(.state == "open") | .head.sha')
+            if [[ "${current}" != "${HEAD_SHA}" ]]; then
+              echo 'superseded=true' >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+            status=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" \
+              --jq '[.[] | select(.context == "autofix/vendor-hash")][0].state // empty')
+            case "${status}" in
+              success) exit 0 ;;
+              failure|error) echo 'The Nix vendor hash autofix failed.' >&2; exit 1 ;;
+              *) sleep 10 ;;
+            esac
+          done
+          echo 'Timed out waiting for the Nix vendor hash autofix.' >&2
+          exit 1
   nix:
-    needs: [changes, checks]
-    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['nix']) }}
+    needs: [changes, checks, nix-vendor-hash]
+    if: >-
+      ${{ !cancelled() && needs.checks.result == 'success' &&
+      (needs.nix-vendor-hash.result == 'success' || needs.nix-vendor-hash.result == 'skipped') &&
+      needs.nix-vendor-hash.outputs.superseded != 'true' &&
+      (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['nix']) }}
     uses: $/.github/workflows/nix.yml
   unit-tests:
     needs: [changes, checks]

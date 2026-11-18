@@ -584,7 +584,11 @@ test('expensive CI jobs wait for selected checks while unselected checks can be 
 	}
 	for (const name of ['unit-tests', 'race', 'nix', 'wasm', 'release-snapshot', 'plugins', 'docker', 'action']) {
 		const job = yamlMapping(jobs[name]);
-		assert.deepEqual(job.needs, ['changes', 'checks'], name);
+		assert.deepEqual(
+			job.needs,
+			name === 'nix' ? ['changes', 'checks', 'nix-vendor-hash'] : ['changes', 'checks'],
+			name,
+		);
 		assert.ok(typeof job.if === 'string');
 		assert.ok(job.if.startsWith("${{ !cancelled() && needs.checks.result == 'success'"), name);
 	}

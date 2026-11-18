@@ -1,0 +1,145 @@
+name: Autofix Nix vendor hash
+on:
+  workflow_run: { workflows: [autofix.ci], types: [in_progress] }
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  prepare:
+    if: >-
+      github.repository == 'kjanat/actionlint' && github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.id == github.event.repository.id
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: read, pull-requests: read, statuses: read }
+    outputs:
+      number: ${{ steps.select.outputs.number }}
+      hash: ${{ steps.hash.outputs.hash }}
+      changed: ${{ steps.hash.outputs.changed }}
+    steps:
+      - name: Find the dependency pull request
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          pulls=$(gh api --method GET "repos/${GITHUB_REPOSITORY}/pulls" \
+            -f state=open -f head="${GITHUB_REPOSITORY_OWNER}:${HEAD_BRANCH}" -f base="${BASE_BRANCH}")
+          number=$(jq -r --arg sha "${HEAD_SHA}" --arg repo "${GITHUB_REPOSITORY}" '
+            .[] | select(.head.sha == $sha and .head.repo.full_name == $repo)
+            | select(.user.login == "renovate[bot]" or .user.login == "dependabot[bot]") | .number
+          ' <<< "${pulls}")
+          [[ -n "${number}" ]] || exit 0
+          files=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${number}/files" --jq '.[].filename')
+          grep -Eq '^(go\.mod|go\.sum)$' <<< "${files}" || exit 0
+          status=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/statuses?per_page=100" \
+            --jq '[.[] | select(.context == "autofix/vendor-hash")][0].state // empty')
+          [[ "${status}" != success ]] || exit 0
+          echo "number=${number}" >> "${GITHUB_OUTPUT}"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: steps.select.outputs.number != ''
+        with: { ref: "${{ github.event.workflow_run.head_sha }}", persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        if: steps.select.outputs.number != ''
+        with: { go-version-file: go.mod, cache: false }
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
+        if: steps.select.outputs.number != ''
+      - name: Calculate the Nix vendor hash
+        id: hash
+        if: steps.select.outputs.number != ''
+        env: { CGO_ENABLED: "0", GOTOOLCHAIN: local }
+        run: |
+          set -euo pipefail
+          temporary=$(mktemp -d)
+          trap 'rm -rf -- "${temporary}"' EXIT
+          go mod vendor -o "${temporary}/vendor"
+          hash=$(nix hash path --type sha256 --sri "${temporary}/vendor")
+          [[ "${hash}" =~ ^sha256-[A-Za-z0-9+/]{43}=$ ]]
+          changed=true
+          if grep -Fxq "  vendorHash = \"${hash}\";" distribution/nix/package.nix; then changed=false; fi
+          printf 'hash=%s\nchanged=%s\n' "${hash}" "${changed}" >> "${GITHUB_OUTPUT}"
+
+  commit:
+    if: ${{ !cancelled() && needs.prepare.outputs.number != '' }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: { contents: read, id-token: write, pull-requests: read, statuses: write }
+    steps:
+      - name: Get a Beepboop commit token
+        if: needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true'
+        id: beepboop
+        uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
+        with: { purpose: autofix-vendor-hash, permission-contents: write }
+      - name: Commit the vendor hash and report it to CI
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEEPBOOP_TOKEN: ${{ steps.beepboop.outputs.token }}
+          PR_NUMBER: ${{ needs.prepare.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          VENDOR_HASH: ${{ needs.prepare.outputs.hash }}
+          CHANGED: ${{ needs.prepare.outputs.changed }}
+        run: |
+          set -euo pipefail
+          pull="repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}"
+          live_head() { gh api "${pull}" --jq 'select(.state == "open") | .head.sha'; }
+          report() {
+            gh api "repos/${GITHUB_REPOSITORY}/statuses/$1" --silent \
+              -f state="$2" -f context=autofix/vendor-hash -f description="$3" \
+              -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          current=$(live_head)
+          [[ "${current}" == "${HEAD_SHA}" ]] || exit 0
+
+          temporary=$(mktemp -d)
+          cleanup() {
+            status=$?
+            rm -rf -- "${temporary}"
+            if (( status != 0 )); then
+              current=$(live_head)
+              if [[ "${current}" == "${HEAD_SHA}" ]]; then
+                report "${HEAD_SHA}" failure 'Nix vendor hash autofix failed'
+              fi
+            fi
+          }
+          trap cleanup EXIT
+          [[ "${VENDOR_HASH}" =~ ^sha256-[A-Za-z0-9+/]{43}=$ ]]
+          if [[ "${CHANGED}" == false ]]; then
+            report "${HEAD_SHA}" success 'Nix vendor hash is current'
+            exit 0
+          fi
+          [[ "${CHANGED}" == true && -n "${BEEPBOOP_TOKEN}" ]]
+          path=distribution/nix/package.nix
+          gh api --method GET "repos/${GITHUB_REPOSITORY}/contents/${path}" -f ref="${HEAD_SHA}" --jq .content \
+            | base64 --decode > "${temporary}/package.nix"
+          matches=$(grep -Ec '^[[:space:]]*vendorHash = "sha256-[A-Za-z0-9+/]{43}=";$' "${temporary}/package.nix")
+          [[ "${matches}" == 1 ]]
+          sed -E "s|^([[:space:]]*vendorHash = )\"sha256-[A-Za-z0-9+/]{43}=\";|\1\"${VENDOR_HASH}\";|" \
+            "${temporary}/package.nix" > "${temporary}/updated.nix"
+          contents=$(base64 -w0 "${temporary}/updated.nix")
+          query="mutation(\$input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: \$input) { commit { oid } } }"
+          jq -n --arg query "${query}" --arg repository "${GITHUB_REPOSITORY}" --arg branch "${HEAD_BRANCH}" \
+            --arg head "${HEAD_SHA}" --arg path "${path}" --arg contents "${contents}" '
+              {query: $query, variables: {input: {
+                branch: {repositoryNameWithOwner: $repository, branchName: $branch},
+                expectedHeadOid: $head,
+                message: {headline: "chore: refresh Nix vendor hash"},
+                fileChanges: {additions: [{path: $path, contents: $contents}]}
+              }}}
+            ' > "${temporary}/commit.json"
+          if ! commit=$(GH_TOKEN="${BEEPBOOP_TOKEN}" gh api graphql --input "${temporary}/commit.json" \
+            --jq .data.createCommitOnBranch.commit.oid); then
+            current=$(live_head)
+            [[ "${current}" != "${HEAD_SHA}" ]] && exit 0
+            exit 1
+          fi
+          [[ "${commit}" =~ ^[0-9a-f]{40}$ ]]
+          report "${commit}" success 'Nix vendor hash updated'
