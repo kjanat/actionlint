@@ -198,7 +198,7 @@ func (h hostFilesystem) queryGit(ctx context.Context, root string, args ...strin
 	}
 	workTree := len(args) == 2 && args[0] == "rev-parse" && args[1] == "--show-toplevel"
 	if response.ExitCode == 0 && workTree && response.Path == "" {
-		return gitcommand.Output{}, errors.New("Git work-tree response requires a path URI")
+		return gitcommand.Output{}, errors.New("work-tree response from Git requires a path URI")
 	}
 	if response.Path != "" {
 		if path, err := h.namespace.Path(response.Path); err == nil {
