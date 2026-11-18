@@ -31,7 +31,10 @@ func validatePluginInterfaces(data []byte, roles extensionRoleSet) error {
 	if component == nil {
 		return errors.New("missing component type")
 	}
-	instance := component.NewInstance(nil)
+	instance, err := component.NewInstance(nil)
+	if err != nil {
+		return fmt.Errorf("validate component contract: %w", err)
+	}
 	if roles.analyzer {
 		if err := expectedAnalyzerInterface().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
