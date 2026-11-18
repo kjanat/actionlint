@@ -55,6 +55,14 @@ Other bundlers must copy `worker.js`, its JavaScript imports, `wasm_exec.js` and
 `server.wasm` together. Serve JavaScript as modules and Wasm as `application/wasm`.
 No Node.js runtime, subprocess or analysis service is needed in the browser.
 
+## Discover workflow and action files
+
+`client.discover(uris, noIgnore)` selects files with actionlint's Go discoverer, including Git ignore rules, nested repositories and explicit-file handling. Pass absolute file URIs for the selected files, directories or glob patterns. The result contains the selected file URIs.
+
+Discovery requires two additional host operations: `filesystem` supplies directory entries, metadata and canonical paths; `gitQuery` executes the read-only Git metadata queries requested by Go. File contents use the existing `readFile` operation. Go retains glob expansion, workflow/action selection and ignore policy. Existing editor clients that only open documents do not need to provide them.
+
+Set the client's `platform` to `windows`, `darwin` or `linux` so discovery uses the host's filename comparison behavior. The host must enforce its own filesystem scope and permitted Git operations.
+
 ## Connect a VS Code web extension
 
 The worker speaks standard LSP over `postMessage`. Pass it directly to

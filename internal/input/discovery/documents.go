@@ -13,6 +13,7 @@ import (
 
 // Discovery selects workflow and action files from the filesystem.
 type Discovery struct {
+	QueryGit GitQuery
 	NoIgnore bool
 	// Repositories enters nested repositories, applying their own Git rules.
 	Repositories bool
@@ -41,7 +42,7 @@ func DocumentFile(ctx context.Context, path string, reader *files.Reader, option
 	if !isManifest(filepath.Base(path)) && !IsWorkflow(path) {
 		return false, nil
 	}
-	info, err := os.Lstat(path)
+	info, err := reader.Filesystem().Lstat(path)
 	if err != nil {
 		return false, err
 	}
@@ -49,7 +50,7 @@ func DocumentFile(ctx context.Context, path string, reader *files.Reader, option
 		if info.Mode()&os.ModeSymlink == 0 || !IsWorkflow(path) {
 			return false, nil
 		}
-		target, err := os.Stat(path)
+		target, err := reader.Filesystem().Stat(path)
 		if err != nil {
 			return false, err
 		}
@@ -57,14 +58,14 @@ func DocumentFile(ctx context.Context, path string, reader *files.Reader, option
 			return false, nil
 		}
 	}
-	directory, err := filepath.EvalSymlinks(filepath.Dir(path))
+	directory, err := reader.Filesystem().EvalSymlinks(filepath.Dir(path))
 	if err != nil {
 		return false, err
 	}
-	if options.NoIgnore || RepositoryRoot(directory) == "" {
+	if options.NoIgnore || repositoryRoot(directory, reader.Filesystem()) == "" {
 		return true, nil
 	}
-	filter, err := newGitFilter(ctx, directory, reader)
+	filter, err := gitFilterWithQuery(ctx, directory, reader, options.QueryGit)
 	if err != nil {
 		return false, err
 	}
@@ -75,7 +76,7 @@ func DocumentFile(ctx context.Context, path string, reader *files.Reader, option
 // and directory symlinks are never traversed. A nested repository starts its own
 // ignore scope, after the parent's ignore rules permit entering that directory.
 func Documents(ctx context.Context, root string, reader *files.Reader, options Discovery) ([]string, error) {
-	physical, err := filepath.EvalSymlinks(root)
+	physical, err := reader.Filesystem().EvalSymlinks(root)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +86,9 @@ func Documents(ctx context.Context, root string, reader *files.Reader, options D
 	}
 	newScope := func(path string) (scope, error) {
 		s := scope{root: path}
-		if !options.NoIgnore && RepositoryRoot(path) != "" {
+		if !options.NoIgnore && repositoryRoot(path, reader.Filesystem()) != "" {
 			var err error
-			s.filter, err = newGitFilter(ctx, path, reader)
+			s.filter, err = gitFilterWithQuery(ctx, path, reader, options.QueryGit)
 			if err != nil {
 				return s, fmt.Errorf("could not apply Git ignore rules in %q: %w", path, err)
 			}
@@ -143,7 +144,7 @@ func Documents(ctx context.Context, root string, reader *files.Reader, options D
 			if current.filter != nil && current.filter.ignored[key] {
 				return filepath.SkipDir
 			}
-			if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+			if _, err := reader.Filesystem().Stat(filepath.Join(path, ".git")); err == nil {
 				if !options.Repositories {
 					return filepath.SkipDir
 				}
@@ -173,7 +174,7 @@ func Documents(ctx context.Context, root string, reader *files.Reader, options D
 			if !workflow || entry.Type()&os.ModeSymlink == 0 {
 				return nil
 			}
-			target, err := os.Stat(path)
+			target, err := reader.Filesystem().Stat(path)
 			if err != nil {
 				return err
 			}

@@ -38,6 +38,7 @@ func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, co
 // Nil URI converters use local file URIs. Initialize runs before any document
 // request, so a host can configure its virtual workspace from client parameters.
 type Options struct {
+	Discover    func(context.Context, []string, bool) ([]string, error)
 	Analyze     Analyze
 	Complete    Complete
 	Initialize  func(json.RawMessage) error
@@ -242,6 +243,9 @@ serve:
 				}
 				initialized = true
 				capabilities := map[string]any{"positionEncoding": "utf-16", "textDocumentSync": map[string]any{"openClose": true, "change": 2}, "codeActionProvider": true}
+				if options.Discover != nil {
+					capabilities["experimental"] = map[string]any{"actionlintDiscover": true}
+				}
 				if options.Complete != nil {
 					capabilities["completionProvider"] = map[string]any{"triggerCharacters": []string{".", "[", "'"}}
 				}
@@ -259,6 +263,36 @@ serve:
 				continue
 			}
 			switch m.Method {
+			case "actionlint/discover":
+				if len(m.ID) == 0 {
+					continue serve
+				}
+				if options.Discover == nil {
+					if err := respond(m.ID, nil, map[string]any{"code": -32601, "message": "discovery is not available in this host"}); err != nil {
+						return err
+					}
+					continue serve
+				}
+				var params struct {
+					Paths    []string `json:"paths"`
+					NoIgnore bool     `json:"noIgnore"`
+				}
+				if err := jsonv2.Unmarshal(m.Params, &params); err != nil {
+					if err := reject(err); err != nil {
+						return err
+					}
+					continue serve
+				}
+				paths, err := options.Discover(ctx, params.Paths, params.NoIgnore)
+				if err != nil {
+					if err := reject(err); err != nil {
+						return err
+					}
+					continue serve
+				}
+				if err := respond(m.ID, paths, nil); err != nil {
+					return err
+				}
 			case "shutdown":
 				shutdown = true
 				stop()

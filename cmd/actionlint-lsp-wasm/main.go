@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"slices"
 	"strconv"
 	"sync/atomic"
@@ -63,6 +62,7 @@ func hostRequest(ctx context.Context, method string, params any) (js.Value, erro
 func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	var workspace lsp.WorkspaceURIs
 	var tools []string
+	var platform string
 	return lsp.ServeWithOptions(ctx, in, out, lsp.Options{
 		Initialize: func(raw json.RawMessage) error {
 			var params struct {
@@ -71,7 +71,8 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 					URI string `json:"uri"`
 				} `json:"workspaceFolders"`
 				Options struct {
-					Tools []string `json:"tools"`
+					Tools    []string `json:"tools"`
+					Platform string   `json:"platform"`
 				} `json:"initializationOptions"`
 			}
 			if err := json.Unmarshal(raw, &params); err != nil {
@@ -95,36 +96,22 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 				}
 			}
 			tools = slices.Clone(params.Options.Tools)
+			platform = params.Options.Platform
 			return nil
 		},
 		PathFromURI: workspace.Path,
 		URIFromPath: workspace.URI,
 		Complete:    lsp.CompleteDocument,
+		Discover: func(ctx context.Context, paths []string, noIgnore bool) ([]string, error) {
+			return (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).discover(ctx, paths, noIgnore)
+		},
 		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (analysis lsp.Analysis, err error) {
 			selections := registry.ToolSelections{}
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
 			}
 			options := checking.Options{WorkingDir: "/workspace", SkipProjectConfig: true, Tools: registry.Registrations(selections)}
-			options.ReadFile = func(path string) ([]byte, error) {
-				uri := workspace.URI(path)
-				if uri == "" {
-					return nil, &fs.PathError{Op: "read", Path: path, Err: fs.ErrPermission}
-				}
-				value, err := hostRequest(ctx, "actionlint/readFile", struct {
-					URI string `json:"uri"`
-				}{uri})
-				if err != nil {
-					return nil, err
-				}
-				if value.IsNull() || value.IsUndefined() {
-					return nil, &fs.PathError{Op: "read", Path: path, Err: fs.ErrNotExist}
-				}
-				if value.Type() != js.TypeString {
-					return nil, errors.New("workspace file response must be text or null")
-				}
-				return []byte(value.String()), nil
-			}
+			options.ReadFile = (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).ReadFile
 			// The browser selects no plugins; assembly still composes the
 			// bundled tools as it does for the native entry points.
 			session, err := assembly.Open(ctx, options, pluginselection.Sources{})
