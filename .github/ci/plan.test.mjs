@@ -692,16 +692,20 @@ test('artifact consumers require a successful producer and stop on cancellation'
 		assert.ok(typeof job.if === 'string', `${name} needs an explicit status condition`);
 		const expression = job.if.replace(/^\$\{\{\s*|\s*\}\}$/g, '');
 		for (const [result, cancelledRun, expected] of cases) {
-			const enabled = runInNewContext(expression, {
-				cancelled: () => cancelledRun,
-				success: () => false,
-				needs: { [job.needs]: { result } },
-				github: {
-					repository: 'kjanat/actionlint',
-					event_name: 'pull_request',
-					event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+			const enabled = runInNewContext(
+				expression,
+				{
+					cancelled: () => cancelledRun,
+					success: () => false,
+					needs: { [job.needs]: { result } },
+					github: {
+						repository: 'kjanat/actionlint',
+						event_name: 'pull_request',
+						event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+					},
 				},
-			}, { timeout: 100 });
+				{ timeout: 100 },
+			);
 			assert.equal(enabled, expected, `${name}: producer=${result}, cancelled=${cancelledRun}`);
 		}
 	}
@@ -731,6 +735,16 @@ test('preview consumers share the successful CI snapshot and cannot trigger sepa
 		const publish = yamlMapping(yamlMapping(workflow.jobs).publish);
 		assert.ok(Array.isArray(publish.steps));
 		const consumer = publish.steps.map(step => yamlMapping(step));
+		if (name === 'package-previews') {
+			const setupGo = consumer.findIndex(step => String(step.uses).startsWith('actions/setup-go@'));
+			const registryChecks = consumer.flatMap((step, index) =>
+				String(step.uses).startsWith('kjanat/actionlint-registry/check@') ? [index] : []
+			);
+			const buildBrowser = consumer.findIndex(step => step.run === 'bun run --cwd libraries/browser-lsp build');
+			assert.ok(registryChecks.length > 0 && registryChecks.every(index => index < setupGo));
+			assert.equal(yamlMapping(consumer[setupGo]?.with)['go-version-file'], 'go.mod');
+			assert.ok(buildBrowser > setupGo && consumer.findIndex(step => step.id === 'publish') > buildBrowser);
+		}
 		const download = consumer.find(step =>
 			typeof step.uses === 'string' && step.uses.startsWith('actions/download-artifact@')
 		);
@@ -753,15 +767,19 @@ test('preview consumers share the successful CI snapshot and cannot trigger sepa
 		]
 	) {
 		// This condition uses only operators shared by JavaScript and GitHub expressions.
-		const enabled = runInNewContext(docker.if, {
-			cancelled: () => false,
-			needs: { 'release-snapshot': { result: 'success' } },
-			github: {
-				repository,
-				event_name: eventName,
-				event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+		const enabled = runInNewContext(
+			docker.if,
+			{
+				cancelled: () => false,
+				needs: { 'release-snapshot': { result: 'success' } },
+				github: {
+					repository,
+					event_name: eventName,
+					event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+				},
 			},
-		}, { timeout: 100 });
+			{ timeout: 100 },
+		);
 		assert.equal(enabled, expected, `${repository} ${eventName} ${headRepository}`);
 	}
 	assert.deepEqual(docker.permissions, { contents: 'read', packages: 'write' });

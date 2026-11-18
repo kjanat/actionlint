@@ -83,11 +83,17 @@ jobs:
           kind: manifest
           allow-config-processes: true
           report: ${{ runner.temp }}/zizmor-candidate.json
-      - name: Publish CLI, SDK and example package previews
+      - name: Set up Go for the browser language server
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod, cache: false }
+      - name: Build the browser language server
+        run: bun run --cwd libraries/browser-lsp build
+      - name: Publish CLI, browser, SDK and example package previews
         id: publish
         continue-on-error: true
         run: bun run --bun pkg-pr-new publish --bun --packageManager=bun --previewVersion
           './distribution/npm/dist/*'
+          ./libraries/browser-lsp
           ./libraries/github-changelog
           ./plugins/sdk/typescript
           ./plugins/examples/typescript
