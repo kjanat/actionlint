@@ -26,12 +26,14 @@ func (f *discoveryFilesystem) ReadDir(path string) ([]fs.DirEntry, error) {
 }
 
 func TestDiscoveryUsesHostFilesystemAndGitQueries(t *testing.T) {
+	t.Parallel()
+
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Skip("git is not installed")
 	}
 	root := t.TempDir()
-	if output, err := exec.Command(git, "init", "-q", root).CombinedOutput(); err != nil {
+	if output, err := exec.CommandContext(t.Context(), git, "init", "-q", root).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	for _, name := range []string{".github/workflows/build.yml", ".github/workflows/ignored.yml", "actions/nested/action.yaml", "ignored/action.yml", "other.yaml"} {
@@ -48,6 +50,8 @@ func TestDiscoveryUsesHostFilesystemAndGitQueries(t *testing.T) {
 	}
 	for _, noIgnore := range []bool{false, true} {
 		t.Run(map[bool]string{false: "ignored files excluded", true: "ignored files included"}[noIgnore], func(t *testing.T) {
+			t.Parallel()
+
 			filesystem := &discoveryFilesystem{}
 			queries := 0
 			query := func(ctx context.Context, root string, args ...string) (gitcommand.Output, error) {
