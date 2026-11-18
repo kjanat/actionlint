@@ -48,6 +48,8 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 			if !exists || !sameRelease(pin, selected) {
 				return Pin{}, errors.New("cached plugin selection has no matching verified release")
 			}
+			// Equivalent registry spellings can have different cache directories.
+			selected.Registry = pin.Registry
 			return selected, nil
 		}
 	}
@@ -140,6 +142,7 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 	if !SameRegistry(pin.Registry, c.base.String()) || pin.Name != name || pin.Version != version || pin.Selector != version || pin.Origin != "" {
 		return Pin{}, false, errors.New("cached registry release disagrees with its authority or requested identity")
 	}
+	pin.Registry = c.base.String()
 	return pin, true, nil
 }
 
