@@ -116,7 +116,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams output.Streams, acquis
 		if err != nil {
 			return 0, err
 		}
-		if err := selected.RefreshStatuses(ctx, project.StatusOptions); err != nil {
+		if err := selected.RefreshDeclaredStatuses(ctx, project.Manifest.References, project.StatusOptions); err != nil {
 			return 0, err
 		}
 		if err := pluginregistry.Sync(ctx, selected, acquisition); err != nil {

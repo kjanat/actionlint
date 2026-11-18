@@ -32,6 +32,9 @@ func NewWorkspaceURIs(rootURI, directory string) (WorkspaceURIs, error) {
 	return WorkspaceURIs{root: *root, directory: filepath.Clean(directory)}, nil
 }
 
+// Directory is the host path corresponding to the workspace root URI.
+func (w *WorkspaceURIs) Directory() string { return w.directory }
+
 // Path resolves a document URI within this workspace to its virtual host path.
 func (w *WorkspaceURIs) Path(uri string) (string, error) {
 	u, err := url.Parse(uri)

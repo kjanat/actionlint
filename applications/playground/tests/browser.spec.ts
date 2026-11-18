@@ -79,7 +79,10 @@ async function open(page: Page, source: string): Promise<void> {
 }
 
 async function edit(page: Page, source: string): Promise<void> {
-	await page.locator('.cm-content').fill(source);
+	const editor = page.locator('.cm-content');
+	await editor.press('ControlOrMeta+a');
+	await page.keyboard.insertText(source);
+	await expect(editor.locator('.cm-line')).toHaveText(source.split('\n'));
 }
 
 test('built playground uses real ShellCheck ranges, suppressions and shell selection', async ({ page }) => {

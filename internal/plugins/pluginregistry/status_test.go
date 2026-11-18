@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -95,17 +96,33 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{pin}}
+	ref, err := pluginreference.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := []pluginreference.Reference{ref, ref}
 	artifacts := artifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
 	statuses := pluginregistry.StatusOptions{Acquisition: fixtureAcquisition(registry)}
 	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
 		t.Fatal(err)
 	}
+	// Equivalent endpoint spellings must not replace the declared request URL.
+	alternate := pin
+	alternate.Registry = "https://catalogue.example:443/"
+	selected := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{alternate}}
+	requests := len(registry.Requests())
+	if err := selected.RefreshDeclaredStatuses(t.Context(), refs, statuses); err != nil {
+		t.Fatal(err)
+	}
+	if got := registry.Requests()[requests:]; len(got) != 1 || got[0] != fixtureregistry.FixtureRegistryURL+"statuses.json" {
+		t.Fatalf("status refresh requests = %v, want one request to the declared registry", got)
+	}
 	publishStatuses(t, registry, releaseStatus(pin, pluginregistry.ReleaseWithdrawn))
-	if err := lock.RefreshStatuses(t.Context(), statuses); err != nil {
+	if err := lock.RefreshDeclaredStatuses(t.Context(), refs, statuses); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetOffline(true)
-	requests := len(registry.Requests())
+	requests = len(registry.Requests())
 	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
 		t.Fatalf("withdrawal broke existing cached lock: %v", err)
 	}
@@ -114,13 +131,13 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	}
 	var warnings []string
 	options := pluginregistry.StatusOptions{Warning: func(message string) { warnings = append(warnings, message) }, Acquisition: fixtureAcquisition(registry)}
-	if err := lock.RefreshStatuses(t.Context(), options); err != nil || len(warnings) != 2 ||
+	if err := lock.RefreshDeclaredStatuses(t.Context(), refs, options); err != nil || len(warnings) != 2 ||
 		!strings.Contains(warnings[0], "could not refresh") || !strings.Contains(warnings[1], "withdrawn") {
 		t.Fatalf("offline refresh: %v %v", err, warnings)
 	}
 	registry.SetOffline(false)
 	publishStatuses(t, registry, releaseStatus(pin, pluginregistry.ReleaseRevoked))
-	if err := lock.RefreshStatuses(t.Context(), options); err == nil || !strings.Contains(err.Error(), "revoked") {
+	if err := lock.RefreshDeclaredStatuses(t.Context(), refs, options); err == nil || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("revocation did not block lock: %v", err)
 	}
 	// A stale/empty later snapshot cannot erase known revoked bytes.
