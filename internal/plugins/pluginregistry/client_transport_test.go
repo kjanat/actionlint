@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -61,6 +62,18 @@ func TestCatalogueTransportLimits(t *testing.T) {
 	}
 }
 
+func TestSameAuthorityRejectsNonHTTPEndpoints(t *testing.T) {
+	t.Parallel()
+	https := &url.URL{Scheme: "https", Host: "example.org"}
+	local := &url.URL{Scheme: "file", Path: "/catalogue/"}
+	if sameAuthority(https, local) || sameAuthority(local, https) || sameAuthority(local, local) {
+		t.Fatal("matched a file endpoint as an HTTP authority")
+	}
+	if !sameAuthority(https, &url.URL{Scheme: "https", Host: "EXAMPLE.org:443"}) {
+		t.Fatal("rejected an equivalent HTTPS authority")
+	}
+}
+
 func TestCatalogueRedirectHostCasing(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -70,6 +83,9 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 		{name: "default port omitted", base: "https://EXAMPLE.org:443/catalogue/", target: "https://example.org/catalogue/index.json", allowed: true},
 		{name: "default port explicit", base: "https://example.org/catalogue/", target: "https://EXAMPLE.org:443/catalogue/index.json", allowed: true},
 		{name: "IPv6 default port", base: "https://[::1]:443/catalogue/", target: "https://[::1]/catalogue/index.json", allowed: true},
+		{name: "port leading zeros", base: "https://example.org/catalogue/", target: "https://example.org:0443/catalogue/index.json", allowed: true},
+		{name: "IDNA spelling", base: "https://bücher.example/catalogue/", target: "https://xn--bcher-kva.example/catalogue/index.json", allowed: true},
+		{name: "undialable host", base: "https://example.org/catalogue/", target: "https://under_score.example/catalogue/index.json"},
 		{name: "default to custom port", base: "https://example.org:443/catalogue/", target: "https://example.org:8443/catalogue/index.json"},
 		{name: "default port downgrade", base: "https://example.org:443/catalogue/", target: "http://example.org:443/catalogue/index.json"},
 		{name: "lowercase", target: "https://example.org:8443/catalogue/index.json", allowed: true},

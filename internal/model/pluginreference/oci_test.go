@@ -41,6 +41,33 @@ func TestNormalizeSource(t *testing.T) {
 	}
 }
 
+func TestOCICanonicalHost(t *testing.T) {
+	t.Parallel()
+	digest := "@sha256:" + strings.Repeat("ab", 32)
+	for source, want := range map[string]string{
+		"oci://GHCR.io/owner/provider":             "oci://ghcr.io/owner/provider",
+		"oci://localhost:05000/owner/provider":     "oci://localhost:5000/owner/provider",
+		"oci://ghcr.io:443/owner/provider":         "oci://ghcr.io/owner/provider",
+		"oci://ghcr.io:80/owner/provider":          "oci://ghcr.io:80/owner/provider",
+		"oci://localhost:80/owner/provider":        "oci://localhost/owner/provider",
+		"oci://127.0.0.1:443/owner/provider":       "oci://127.0.0.1:443/owner/provider",
+		"oci://[0:0:0:0:0:0:0:1]:5000/owner/image": "oci://[::1]:5000/owner/image",
+	} {
+		ref, err := ParseOCI(source + digest)
+		if err != nil {
+			t.Fatalf("%s: %v", source, err)
+		}
+		if got := ref.String(); got != want+digest {
+			t.Errorf("ParseOCI(%q) = %q, want %q", source, got, want+digest)
+		}
+	}
+	for _, source := range []string{"oci://registry.example:65536/owner/provider", "oci://-registry.example/owner/provider"} {
+		if _, err := ParseOCI(source + digest); err == nil {
+			t.Errorf("accepted OCI host in %q", source)
+		}
+	}
+}
+
 // A cache locator cannot carry another location or a second digest.
 func TestCandidateCacheRejectsInvalidURI(t *testing.T) {
 	t.Parallel()

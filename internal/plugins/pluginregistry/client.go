@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"path"
 	"slices"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
@@ -47,6 +47,11 @@ func registryURL(raw string) (*url.URL, error) {
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" || strings.Contains(u.Path, "\\") {
 		return nil, errors.New("registry must be an HTTPS directory URL without credentials, query or fragment")
 	}
+	authority, err := endpoint.Of(u)
+	if err != nil {
+		return nil, errors.New("registry must be an HTTPS directory URL without credentials, query or fragment")
+	}
+	u.Host = authority.URLHost()
 	u.Path = strings.TrimSuffix(path.Clean("/"+strings.TrimPrefix(u.Path, "/")), "/") + "/"
 	u.RawPath = ""
 	return u, nil
@@ -100,24 +105,16 @@ func newClient(u *url.URL, grant acquisitionhttp.Grant, options StatusOptions) (
 }
 
 func (c *Client) contains(u *url.URL) bool {
-	return u.Scheme == c.base.Scheme && sameRegistryHost(u, c.base) && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(u.Path, "\\") && strings.HasPrefix(path.Clean(u.Path), c.base.Path)
+	return sameAuthority(u, c.base) && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(u.Path, "\\") && strings.HasPrefix(path.Clean(u.Path), c.base.Path)
 }
 
-func sameRegistryHost(a, b *url.URL) bool {
-	port := func(u *url.URL) string {
-		if p := u.Port(); p != "" {
-			return p
-		}
-		return "443"
-	}
-	if port(a) != port(b) {
+func sameAuthority(a, b *url.URL) bool {
+	left, err := endpoint.Of(a)
+	if err != nil {
 		return false
 	}
-	if address, err := netip.ParseAddr(a.Hostname()); err == nil {
-		other, err := netip.ParseAddr(b.Hostname())
-		return err == nil && address == other
-	}
-	return strings.EqualFold(a.Hostname(), b.Hostname())
+	right, err := endpoint.Of(b)
+	return err == nil && left == right
 }
 
 func get[T *Catalog | *manifest | *record | *StatusSnapshot](ctx context.Context, c *Client, path string, target T) error {

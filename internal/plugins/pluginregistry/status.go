@@ -101,11 +101,10 @@ func (s StatusSnapshot) validate() error {
 }
 
 func statusDirectory(registry string, options StatusOptions) (string, error) {
-	endpoint, err := registryURL(registry)
+	canonical, err := registryURL(registry)
 	if err != nil {
 		return "", err
 	}
-	endpoint.Host = strings.ToLower(endpoint.Host)
 	base := options.CacheDir
 	if base == "" {
 		base, err = pluginacquisition.RegistryCacheDir(options.Acquisition)
@@ -113,7 +112,7 @@ func statusDirectory(registry string, options StatusOptions) (string, error) {
 			return "", err
 		}
 	}
-	absolute, err := filepath.Abs(filepath.Join(base, sha256hex.Digest([]byte(endpoint.String()))))
+	absolute, err := filepath.Abs(filepath.Join(base, sha256hex.Digest([]byte(canonical.String()))))
 	if err != nil {
 		return "", err
 	}

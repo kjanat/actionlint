@@ -9,19 +9,14 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"strconv"
-	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
-
-	"golang.org/x/net/idna"
 )
-
-type authority struct{ scheme, host, port string }
 
 // Grant authorizes private addresses for one explicitly selected authority.
 // Its zero value grants nothing. Grants contain no URLs, credentials or queries.
-type Grant struct{ endpoint authority }
+type Grant struct{ endpoint endpoint.Authority }
 
 // ExplicitEndpoint records invocation-owned endpoint selection. Repository
 // declarations must not call this function to grant themselves network access.
@@ -40,45 +35,18 @@ func (g Grant) Allows(endpoint *url.URL) bool {
 	return err == nil && selected == g.endpoint
 }
 
-func authorityOf(endpoint *url.URL) (authority, error) {
-	if endpoint == nil || endpoint.User != nil || endpoint.Opaque != "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Hostname() == "" {
-		return authority{}, ErrInvalidEndpoint
-	}
-	// Callers may construct url.URL directly; reject malformed authority
-	// syntax before Port can mistake an invalid explicit port for no port.
-	if _, err := url.Parse(endpoint.String()); err != nil {
-		return authority{}, ErrInvalidEndpoint
-	}
-	host := endpoint.Hostname()
-	if ip, err := netip.ParseAddr(host); err == nil {
-		host = ip.String()
-	} else {
-		ascii, err := idna.Lookup.ToASCII(host)
-		if err != nil {
-			return authority{}, ErrInvalidEndpoint
-		}
-		// Preserve a trailing dot: an absolute DNS name must not grant the
-		// corresponding search-relative name access to private addresses.
-		host = strings.ToLower(ascii)
-	}
-	port := endpoint.Port()
-	if port == "" {
-		port = "80"
-		if endpoint.Scheme == "https" {
-			port = "443"
-		}
-	}
-	number, err := strconv.ParseUint(port, 10, 16)
+func authorityOf(u *url.URL) (endpoint.Authority, error) {
+	selected, err := endpoint.Of(u)
 	if err != nil {
-		return authority{}, ErrInvalidEndpoint
+		return endpoint.Authority{}, ErrInvalidEndpoint
 	}
-	return authority{scheme: endpoint.Scheme, host: host, port: strconv.FormatUint(number, 10)}, nil
+	return selected, nil
 }
 
 type resolver func(context.Context, string, string) ([]netip.Addr, error)
 
 type transport struct {
-	initial authority
+	initial endpoint.Authority
 	grant   Grant
 	base    http.RoundTripper
 	lookup  resolver
@@ -154,7 +122,7 @@ func (t *transport) roundTrip(request *http.Request) (*http.Response, error) {
 	return response, err
 }
 
-func (t *transport) prepare(request *http.Request, selected authority, original *http.Transport) (*http.Request, *http.Transport, error) {
+func (t *transport) prepare(request *http.Request, selected endpoint.Authority, original *http.Transport) (*http.Request, *http.Transport, error) {
 	if err := request.Context().Err(); err != nil {
 		return nil, nil, err
 	}
@@ -179,7 +147,7 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 	if proxy != nil && (proxy.Scheme != "http" || request.URL.Scheme != "https") {
 		return nil, nil, ErrUnsupportedProxy
 	}
-	addresses, err := t.publicAddresses(request.Context(), selected.host)
+	addresses, err := t.publicAddresses(request.Context(), selected.Host)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,7 +156,7 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 	if checked.TLSClientConfig == nil {
 		checked.TLSClientConfig = &tls.Config{}
 	}
-	checked.TLSClientConfig.ServerName = selected.host
+	checked.TLSClientConfig.ServerName = selected.Host
 	baseDial := checked.DialContext
 	if baseDial == nil {
 		dialer := &net.Dialer{}
@@ -203,7 +171,7 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			connection, err := baseDial(ctx, network, net.JoinHostPort(ip.String(), selected.port))
+			connection, err := baseDial(ctx, network, net.JoinHostPort(ip.String(), selected.Port))
 			if err == nil {
 				return connection, nil
 			}
@@ -214,7 +182,7 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 		return nil, ErrConnectionFailed
 	}
 	cloned := request.Clone(request.Context())
-	cloned.URL.Host = net.JoinHostPort(addresses[0].String(), selected.port)
+	cloned.URL.Host = net.JoinHostPort(addresses[0].String(), selected.Port)
 	if cloned.Host == "" {
 		cloned.Host = request.URL.Host
 	}

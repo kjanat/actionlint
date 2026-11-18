@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
 type (
@@ -92,6 +94,11 @@ func requestKeys(request *http.Request) (groupKey, quotaKey, uint64) {
 		operation.Purpose = "acquisition"
 	}
 	host := strings.ToLower(request.URL.Host)
+	target := *request.URL
+	target.User = nil
+	if authority, err := endpoint.Of(&target); err == nil {
+		host = authority.URLHost()
+	}
 	kind := operation.RequestKind
 	if kind == "" {
 		kind = HTTP

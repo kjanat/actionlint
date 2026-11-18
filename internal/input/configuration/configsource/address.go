@@ -7,6 +7,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
 // IsRemoteAddress reports whether name uses the HTTPS configuration source scheme.
@@ -32,7 +34,11 @@ func NormalizeAddress(name string) (string, error) {
 		if u.User != nil || strings.Contains(name, "#") || strings.ContainsAny(name, "\\\r\n") {
 			return "", fmt.Errorf("HTTPS config source %q cannot contain credentials, fragments or backslashes", name)
 		}
-		u.Host = strings.ToLower(u.Host)
+		authority, err := endpoint.Of(u)
+		if err != nil {
+			return "", fmt.Errorf("config source %q requires a local file or an absolute HTTPS URL", name)
+		}
+		u.Host = authority.URLHost()
 		return u.String(), nil
 	}
 	return filepath.Abs(name)

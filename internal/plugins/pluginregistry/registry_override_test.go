@@ -76,3 +76,15 @@ func TestRegistryURLRequiresHostname(t *testing.T) {
 		}
 	}
 }
+
+func TestRegistryURLRequiresDialableAuthority(t *testing.T) {
+	t.Parallel()
+	for _, registry := range []string{"https://under_score.example/", "https://catalogue.example:65536/"} {
+		if _, err := pluginregistry.New(registry, dependencycache.Acquisition{}); err == nil {
+			t.Errorf("accepted undialable endpoint %q", registry)
+		}
+		if pluginregistry.SameRegistry(registry, registry) {
+			t.Errorf("SameRegistry accepted undialable endpoint %q", registry)
+		}
+	}
+}

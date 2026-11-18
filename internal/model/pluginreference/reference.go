@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
 // DefaultRegistry is the public actionlint plugin catalogue.
@@ -190,7 +192,11 @@ func directURL(value string) (Reference, error) {
 	if !prefixed || !ok {
 		return Reference{}, errors.New("direct plugin URL requires #sha256=<64 hex digits>")
 	}
-	u.Host = strings.ToLower(u.Host)
+	authority, err := endpoint.Of(u)
+	if err != nil {
+		return Reference{}, errors.New("direct plugin URL must use HTTPS without credentials")
+	}
+	u.Host = authority.URLHost()
 	u.Fragment, u.RawFragment = "", ""
 	name := u.String()
 	u.Fragment = "sha256=" + digest
@@ -242,11 +248,11 @@ func New(name, version, registry string) (Reference, error) {
 		strings.Contains(u.Path, "\\") || strings.Contains(registry, "#") {
 		return Reference{}, errors.New("plugin registry must be an HTTPS directory URL without credentials, query or fragment")
 	}
-	host, zone, scoped := strings.Cut(u.Host, "%")
-	u.Host = strings.ToLower(host)
-	if scoped {
-		u.Host += "%" + zone
+	authority, err := endpoint.Of(u)
+	if err != nil {
+		return Reference{}, errors.New("plugin registry must be an HTTPS directory URL without credentials, query or fragment")
 	}
+	u.Host = authority.URLHost()
 	u.Path = strings.TrimSuffix(path.Clean("/"+strings.TrimPrefix(u.Path, "/")), "/") + "/"
 	u.RawPath = ""
 	return Reference{name: name, version: version, registry: u.String()}, nil
