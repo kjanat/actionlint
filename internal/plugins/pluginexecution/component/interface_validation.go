@@ -31,33 +31,37 @@ func validatePluginInterfaces(data []byte, roles extensionRoleSet) error {
 	if component == nil {
 		return errors.New("missing component type")
 	}
+	instance, err := component.NewInstance(nil)
+	if err != nil {
+		return fmt.Errorf("validate component contract: %w", err)
+	}
 	if roles.analyzer {
-		if err := expectedAnalyzerInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedAnalyzerInterface().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
 		}
 	}
 	if roles.referenceResolver {
-		if err := expectedReferenceResolverInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedReferenceResolverInterface().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible reference resolver interface: %w", err)
 		}
 	}
 	if roles.toolIntegration {
-		if err := expectedToolIntegrationInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedToolIntegrationInterface().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible tool integration contract: %w", err)
 		}
 	}
 	if roles.templateEffects != nil {
-		if err := roles.templateEffects.expectedType().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := roles.templateEffects.expectedType().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible %s contract: %w", roles.templateEffects.interfaceName(), err)
 		}
 	}
 	if roles.runner != nil {
-		if err := roles.runner.expectedType().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := roles.runner.expectedType().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)
 		}
 	}
 	if roles.script != nil {
-		if err := roles.script.expectedType().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := roles.script.expectedType().CheckInstantiation(map[string]any{"plugin": instance}); err != nil {
 			return fmt.Errorf("incompatible %s contract: %w", roles.script.interfaceName(), err)
 		}
 	}
