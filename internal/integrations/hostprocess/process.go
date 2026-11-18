@@ -122,8 +122,7 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 }
 
 // waitForBusyRetry pauses before another attempt to start a busy executable.
-// A timer that is ready at the same time as cancellation still returns the
-// context error, so the next start cannot replace it with a lookup error.
+// It returns the context error when that context is done.
 func waitForBusyRetry(ctx context.Context, delay time.Duration) error {
 	timer := time.NewTimer(delay)
 	select {
