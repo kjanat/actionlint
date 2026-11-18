@@ -1,0 +1,12 @@
+{
+  "name": "@kjanat-actionlint/component-contract-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.42.0",
+    "typescript": "6.0.3"
+  }
+}

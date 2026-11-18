@@ -18,6 +18,7 @@
     "libraries",
     "applications/github-action",
     "plugins/sdk/typescript",
+    "plugins/protocol/typescript",
     "applications/playground",
     "**/testdata/**",
     "**/dist/**",
