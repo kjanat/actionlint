@@ -98,7 +98,7 @@ func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Re
 			continue
 		}
 		if digest := ref.CandidateDigest(); digest != "" {
-			client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
+			client, err := pluginregistry.NewWithGrant(ref, p.StatusOptions)
 			if err != nil {
 				return pluginregistry.ResolvedPlugins{}, err
 			}
@@ -109,7 +109,7 @@ func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Re
 			selected.Plugins = append(selected.Plugins, pin)
 			continue
 		}
-		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(ref, p.StatusOptions)
 		if err != nil {
 			return pluginregistry.ResolvedPlugins{}, err
 		}
@@ -131,6 +131,7 @@ func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Re
 // Existing immutable identity checks still apply to every replacement.
 func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Reference) error {
 	selected := make([]pluginregistry.Pin, 0, len(refs))
+	clients := make([]*pluginregistry.Client, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
 			if toolmanifest.IsLocalManifest(source) {
@@ -157,7 +158,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			}
 			continue
 		}
-		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(ref, p.StatusOptions)
 		if err != nil {
 			return err
 		}
@@ -190,6 +191,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			return err
 		}
 		selected = append(selected, pin)
+		clients = append(clients, client)
 	}
 	next := pluginregistry.ResolvedPlugins{Plugins: selected}
 	if err := next.Validate(); err != nil {
@@ -217,17 +219,13 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 	}
-	for _, pin := range next.Plugins {
+	for i, pin := range next.Plugins {
 		if pin.Origin != "candidate" {
 			continue
 		}
-		client, err := pluginregistry.NewWithGrant(pin.Registry, p.StatusOptions)
-		if err != nil {
-			return err
-		}
 		options := p.artifactOptions()
 		options.PullOCI = oci.Cached
-		if err := client.RememberCandidate(ctx, pin, options); err != nil {
+		if err := clients[i].RememberCandidate(ctx, pin, options); err != nil {
 			return err
 		}
 	}
@@ -242,7 +240,7 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin pluginregistry
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
 			continue
 		}
-		client, err := pluginregistry.NewWithGrant(configured.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(configured, p.StatusOptions)
 		if err != nil {
 			return err
 		}
@@ -291,7 +289,7 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreferen
 			resolved = append(resolved, ref)
 			continue
 		}
-		client, err := pluginregistry.NewWithGrant(selected.Registry, p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(ref, p.StatusOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -309,9 +307,9 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreferen
 		}
 		var declaration pluginreference.Reference
 		if selected.Origin == "candidate" {
-			declaration, err = pluginreference.NewCandidate(selected.Name, selected.Version, selected.Registry, selected.SHA256)
+			declaration, err = pluginreference.NewCandidate(selected.Name, selected.Version, ref.Registry(), selected.SHA256)
 		} else {
-			declaration, err = pluginreference.New(selected.Name, selected.Version, selected.Registry)
+			declaration, err = pluginreference.New(selected.Name, selected.Version, ref.Registry())
 		}
 		if err != nil {
 			return nil, err

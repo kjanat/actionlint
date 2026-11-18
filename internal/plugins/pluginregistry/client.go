@@ -69,11 +69,11 @@ func New(raw string, acquisition dependencycache.Acquisition) (*Client, error) {
 	return newClient(u, grant, StatusOptions{Acquisition: acquisition})
 }
 
-// NewWithGrant constructs a registry client without deriving private-network
-// authority from raw. A zero options.Network grant permits only public
-// destination addresses.
-func NewWithGrant(raw string, options StatusOptions) (*Client, error) {
-	u, err := registryURL(raw)
+// NewWithGrant constructs a client for the registry that declaration names,
+// without deriving private-network authority from it. A zero options.Network
+// grant permits only public destination addresses.
+func NewWithGrant(declaration pluginreference.Reference, options StatusOptions) (*Client, error) {
+	u, err := registryURL(declaration.Registry())
 	if err != nil {
 		return nil, err
 	}
