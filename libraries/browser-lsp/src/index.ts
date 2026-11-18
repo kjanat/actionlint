@@ -41,7 +41,7 @@ export type {
 
 export {
 	type BrowserHost,
- type FileMetadata,
+	type FileMetadata,
 	type FilesystemRequest,
 	type FilesystemResponse,
 	type GitQueryParams,
