@@ -1,10 +1,15 @@
 package pluginregistry_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestCachedPluginSelector(t *testing.T) {
@@ -34,5 +39,48 @@ func TestCachedPluginSelector(t *testing.T) {
 	got, err := client.ResolveCached(ctx, fixtureregistry.FixturePluginName, "latest")
 	if err != nil || got != updated {
 		t.Fatalf("cached refresh=%+v error=%v", got, err)
+	}
+}
+
+func TestCachedRegistryUsesClientAuthority(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", emptyComponent)
+	client := registryClient(t, registry)
+	pin, err := client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache, err := pluginacquisition.RegistryCacheDir(fixtureAcquisition(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache = filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)))
+	for _, entry := range []struct{ directory, selector string }{
+		{"selections", "latest"},
+		{"releases", pin.Version},
+	} {
+		cached := pin
+		cached.Selector = entry.selector
+		cached.Registry = "https://catalogue.example:443/"
+		data, err := json.Marshal(cached)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := sha256hex.Digest([]byte(pin.Name+"\n"+entry.selector)) + ".json"
+		if err := os.WriteFile(filepath.Join(cache, entry.directory, name), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true})
+	requests := len(registry.Requests())
+	if got, err := client.ResolveCached(ctx, pin.Name, "latest"); err != nil || got != pin {
+		t.Fatalf("cached selection registry = %q, want %q; error = %v", got.Registry, pin.Registry, err)
+	}
+	if got, err := client.Lookup(ctx, pin.Name, pin.Version); err != nil || got.Registry != pin.Registry {
+		t.Fatalf("cached release registry = %q, want %q; error = %v", got.Registry, pin.Registry, err)
+	}
+	if len(registry.Requests()) != requests {
+		t.Fatal("cached records should work offline")
 	}
 }

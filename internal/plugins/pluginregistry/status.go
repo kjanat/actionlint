@@ -290,18 +290,19 @@ func (l ResolvedPlugins) CheckStatuses(ctx context.Context, options StatusOption
 	return nil
 }
 
-// RefreshStatuses updates cached policy during explicit install/update/sync
-// operations. An unavailable registry produces a warning and uses cached policy.
-func (l ResolvedPlugins) RefreshStatuses(ctx context.Context, options StatusOptions) error {
+// RefreshDeclaredStatuses refreshes policy from the current declarations before
+// checking selected releases. An unavailable registry falls back to cached policy.
+func (l ResolvedPlugins) RefreshDeclaredStatuses(ctx context.Context, refs []pluginreference.Reference, options StatusOptions) error {
 	if err := l.Validate(); err != nil {
 		return err
 	}
 	seen := map[string]bool{}
-	for _, pin := range l.Plugins {
-		if pin.Origin == "candidate" {
+	for _, ref := range refs {
+		registry := ref.Registry()
+		if ref.DirectSource() != "" || strings.HasPrefix(registry, "file:") {
 			continue
 		}
-		directory, err := statusDirectory(pin.Registry, options)
+		directory, err := statusDirectory(registry, options)
 		if err != nil {
 			return err
 		}
@@ -309,7 +310,7 @@ func (l ResolvedPlugins) RefreshStatuses(ctx context.Context, options StatusOpti
 			continue
 		}
 		seen[directory] = true
-		client, err := NewWithGrant(pin.Registry, options)
+		client, err := NewWithGrant(registry, options)
 		if err != nil {
 			return err
 		}
@@ -317,7 +318,7 @@ func (l ResolvedPlugins) RefreshStatuses(ctx context.Context, options StatusOpti
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			options.warn(fmt.Sprintf("could not refresh plugin statuses from %s; using cached status: %v", pin.Registry, err))
+			options.warn(fmt.Sprintf("could not refresh plugin statuses from %s; using cached status: %v", registry, err))
 		}
 	}
 	return l.CheckStatuses(ctx, options)
