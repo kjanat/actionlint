@@ -11,7 +11,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/itchyny/gojq v0.12.19
-	github.com/kjanat/go-modules v0.9.3
+	github.com/kjanat/go-modules v0.10.0
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7
 	github.com/kjanat/wacogo v0.3.1
 	github.com/kjanat/wazero v1.12.2
@@ -29,12 +29,12 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/tidwall/jsonc v0.3.3
 	github.com/yuin/goldmark v1.8.6
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
-	golang.org/x/tools v0.51.0
+	golang.org/x/tools v0.52.0
 	mvdan.cc/gofumpt v0.12.0
 	mvdan.cc/sh/v3 v3.14.1
 )
@@ -47,13 +47,13 @@ require (
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
-	github.com/regclient/regclient v0.11.5 // indirect
-	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/ulikunitz/xz v0.5.15 // indirect
-	github.com/urfave/cli/v3 v3.3.8 // indirect
+	github.com/regclient/regclient v0.11.7 // indirect
+	github.com/sirupsen/logrus v1.10.2 // indirect
+	github.com/ulikunitz/xz v0.5.17 // indirect
+	github.com/urfave/cli/v3 v3.14.0 // indirect
 	go.bytecodealliance.org/cm v0.3.0 // indirect
 )
 

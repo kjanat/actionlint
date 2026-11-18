@@ -7,9 +7,9 @@ Versions are those selected by the consuming modules.
 ```mermaid
 flowchart LR
     A[actionlint] --> Y["kjanat/go-yaml/v4<br/>v4.0.0-rc.7"]
-    A --> W["kjanat/wacogo<br/>v0.2.3"]
-    A --> Z["kjanat/wazero<br/>v1.11.1"]
-    A --> G["kjanat/go-modules<br/>v0.9.1"]
+    A --> W["kjanat/wacogo<br/>v0.3.1"]
+    A --> Z["kjanat/wazero<br/>v1.12.2"]
+    A --> G["kjanat/go-modules<br/>v0.10.0"]
     W --> G
     W --> Z
     G --> Z
