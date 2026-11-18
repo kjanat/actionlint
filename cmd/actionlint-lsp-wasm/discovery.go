@@ -157,10 +157,10 @@ func (g discoveryGlobFilesystem) ReadDir(path string) ([]fs.DirEntry, error) {
 }
 func (h hostFilesystem) Platform() string { return h.platform }
 
-type hostGitExit int
+type hostGitExitError int
 
-func (e hostGitExit) Error() string { return fmt.Sprintf("git exited with status %d", e) }
-func (e hostGitExit) ExitCode() int { return int(e) }
+func (e hostGitExitError) Error() string { return fmt.Sprintf("git exited with status %d", e) }
+func (e hostGitExitError) ExitCode() int { return int(e) }
 func (h hostFilesystem) queryGit(ctx context.Context, root string, args ...string) (gitcommand.Output, error) {
 	value, err := hostRequest(ctx, "actionlint/gitQuery", struct {
 		URI  string   `json:"uri"`
@@ -187,7 +187,7 @@ func (h hostFilesystem) queryGit(ctx context.Context, root string, args ...strin
 	}
 	output := gitcommand.Output{Stdout: []byte(response.Stdout), Stderr: []byte(response.Stderr)}
 	if response.ExitCode != 0 {
-		return output, hostGitExit(response.ExitCode)
+		return output, hostGitExitError(response.ExitCode)
 	}
 	return output, nil
 }
