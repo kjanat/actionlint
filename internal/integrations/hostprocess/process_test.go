@@ -49,28 +49,24 @@ func TestProcessRunConcurrently(t *testing.T) {
 		t.Skip("this test is flaky on Windows")
 	}
 
-	p := NewProcessPool(t.Context(), 5)
-	sleep := testSkipIfNoCommand(t, p, "sleep")
-
-	start := time.Now()
-	for range 5 {
-		sleep.Run([]string{"0.1"}, "", func(b []byte, err error) error {
+	const commands = 5
+	markers := t.TempDir()
+	p := NewProcessPool(t.Context(), commands)
+	sh := testSkipIfNoCommand(t, p, "sh")
+	script := `touch "$1/$2"; tries=0; while [ "$(ls "$1" | wc -l)" -lt "$3" ]; do tries=$((tries+1)); if [ "$tries" -gt 3000 ]; then exit 1; fi; sleep 0.01; done`
+	for i := range commands {
+		sh.Run([]string{"-c", script, "sh", markers, strconv.Itoa(i), strconv.Itoa(commands)}, "", func(b []byte, err error) error {
 			if err != nil {
-				t.Error(err)
+				t.Errorf("command %d did not see all %d commands running at once: %v", i, commands, err)
 				return err
 			}
 			return nil
 		})
 	}
-	if err := sleep.Wait(); err != nil {
+	if err := sh.Wait(); err != nil {
 		t.Fatal(err)
 	}
 	p.Wait()
-
-	sec := time.Since(start).Seconds()
-	if sec >= 0.5 {
-		t.Fatalf("commands did not run concurrently. running five `sleep 0.1` commands took %v seconds", sec)
-	}
 }
 
 func TestProcessCancelStopsRunningCommand(t *testing.T) {
