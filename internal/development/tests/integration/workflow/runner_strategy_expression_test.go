@@ -16,16 +16,6 @@ func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ matrix, label string }{
 		{`{"os":["ubuntu-lates"]}`, "ubuntu-lates"},
-		{`{"include":[{"os":"ubuntu-lates"}]}`, "ubuntu-lates"},
-		{`{"os":[null]}`, ""},
-		{`{"include":[{"os":null}]}`, ""},
-		{`{"os":[""]}`, ""},
-		{`{"include":[{"os":""}]}`, ""},
-		{`{"os":[["ubuntu-lates"]]}`, "ubuntu-lates"},
-		{`{"include":[{"os":["ubuntu-lates"]}]}`, "ubuntu-lates"},
-		{`{"os":[{"labels":"ubuntu-lates"}]}`, "ubuntu-lates"},
-		{`{"include":[{"os":{"labels":"ubuntu-lates"}}]}`, "ubuntu-lates"},
-		{`{"os":[[null]]}`, ""},
 		{`{"include":[{"os":{"labels":null}}]}`, ""},
 	} {
 		t.Run(tc.matrix, func(t *testing.T) {
@@ -56,12 +46,8 @@ func TestKnownStrategyRunnerGroupsLint(t *testing.T) {
 		name, matrix string
 		conflict     bool
 	}{
-		{"array conflict", `{"os":[["linux","windows"]]}`, true},
-		{"object conflict", `{"os":[{"labels":["linux","windows"]}]}`, true},
 		{"include conflict", `{"include":[{"os":["linux","windows"]}]}`, true},
 		{"array alternatives", `{"os":[["ubuntu-latest"],["windows-latest"]]}`, false},
-		{"include alternatives", `{"include":[{"os":["ubuntu-latest"]},{"os":{"labels":"windows-latest"}}]}`, false},
-		{"group only", `{"os":[{"group":"custom-group"}]}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

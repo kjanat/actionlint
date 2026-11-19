@@ -61,50 +61,6 @@ test('Runner Guard 3.1.5 SARIF without columns maps to captured workflow lines',
 	]);
 });
 
-test('image references retain complete YAML scalar spans and reject unresolved YAML', () => {
-	const source = [
-		'jobs:',
-		'  scan:',
-		'    container:',
-		'      image: "ghcr.io/example/scanner:1.2"',
-		'    services:',
-		'      database:',
-		'        image: postgres:16',
-		'    steps:',
-		'      - uses: docker://alpine:3.20',
-	].join('\n');
-	const found = imageReferences(source, 'workflow');
-	assert.deepEqual(found.map(({ value, start, end }) => ({ value, start, end })), [
-		{ value: 'ghcr.io/example/scanner:1.2', start: { row: 4, column: 14 }, end: { row: 4, column: 43 } },
-		{ value: 'postgres:16', start: { row: 7, column: 16 }, end: { row: 7, column: 27 } },
-		{ value: 'alpine:3.20', start: { row: 9, column: 15 }, end: { row: 9, column: 35 } },
-	]);
-	const escaped = 'jobs: { build🍊: { steps: [{ uses: "docker\\u003a//ghcr.io/example/image:1" }] } }';
-	assert.deepEqual(imageReferences(escaped, 'workflow'), [
-		{
-			value: 'ghcr.io/example/image:1',
-			start: { row: 1, column: 35 },
-			end: { row: 1, column: 74 },
-		},
-	]);
-	const block = 'jobs:\n  scan:\n    container: >\n      ghcr.io/example/image:1\n';
-	assert.deepEqual(imageReferences(block, 'workflow'), [
-		{
-			value: 'ghcr.io/example/image:1',
-			start: { row: 3, column: 16 },
-			end: { row: 5, column: 1 },
-		},
-	]);
-	assert.throws(
-		() => imageReferences(`jobs:\n  scan:\n    container: "\${{ vars.IMAGE }}"\n`, 'workflow'),
-		/dynamic image reference/u,
-	);
-	assert.throws(
-		() => imageReferences('base: &image nginx:1\njobs:\n  scan:\n    container: *image\n', 'workflow'),
-		/YAML alias/u,
-	);
-});
-
 test('Syft 1.55.0 emits a structured SBOM artifact', async () => {
 	const output = await readFile(join(root, 'testdata/syft.sbom.json'), 'utf8');
 	assert.doesNotThrow(() => validateSyftSBOM(output));

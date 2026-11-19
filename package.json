@@ -54,7 +54,7 @@
     "vscode-languageserver-textdocument": "^1",
     "yaml-language-server": "https://pkg.pr.new/kjanat/yaml-language-server/yaml-language-server@a438106"
   },
-  "packageManager": "bun@1.4.4",
+  "packageManager": "bun@1.4.5",
   "devEngines": {
     "packageManager": [
       {
@@ -73,9 +73,10 @@
   "allowScripts": {
     "@actions/github-script": false,
     "core-js": false,
-    "tsc-rs@0.8.0": true
+    "tsc-rs": true
   },
   "catalog": {
-    "@kjanat/dreamcli": "^5.0.0"
+    "@kjanat/dreamcli": "^5.0.0",
+    "ansispeck": "^0.4.3"
   }
 }
