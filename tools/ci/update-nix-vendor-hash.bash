@@ -16,6 +16,9 @@ set_hash() {
 	sed -i "s#^  vendorHash = \"$1\";\$#  vendorHash = \"$2\";#" "${package}"
 }
 
+# Lock inputs whose flake.nix entry changed; other inputs stay pinned.
+nix flake lock
+
 log=$(mktemp)
 set_hash "${current}" "${fake}"
 trap 'set_hash "${fake}" "${current}"; rm -f "${log}"' EXIT
