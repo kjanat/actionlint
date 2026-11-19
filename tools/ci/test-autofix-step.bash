@@ -67,16 +67,16 @@ leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 
 # Exercise selection against real Git trees, including added and removed inputs.
 expect_inputs() {
-	local base=$1 head=$2 tables=$3 readme=$4
+	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false}
 	local output
 	: >"${GITHUB_OUTPUT}"
 	bash "${inputs_script}" "${base}" "${head}"
 	output=$(cat "${GITHUB_OUTPUT}")
-	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s' "${tables}" "${readme}")" ]]
+	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s' "${tables}" "${readme}" "${nix}")" ]]
 }
 
 check_input() {
-	local path=$1 tables=$2 readme=$3
+	local path=$1 tables=$2 readme=$3 nix=${4:-false}
 	local base head directory
 	base=$(git write-tree)
 	directory=$(dirname "${path}")
@@ -84,8 +84,8 @@ check_input() {
 	echo fixture >"${path}"
 	git add --all
 	head=$(git write-tree)
-	expect_inputs "${base}" "${head}" "${tables}" "${readme}"
-	expect_inputs "${head}" "${base}" "${tables}" "${readme}"
+	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}"
+	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}"
 }
 
 check_input docs/unrelated.md false false
@@ -116,9 +116,14 @@ check_input docs/screenshots/demo-workflow.yaml false false
 check_input docs/screenshots/actionlint.yaml false false
 check_input tools/docs/readme-demo.mjs false true
 check_input README.md false true
-check_input go.mod true true
-check_input .github/workflows/autofix.yml true true
-check_input tools/ci/autofix-inputs.bash true true
+check_input go.mod true true true
+check_input go.sum true true true
+check_input .github/workflows/autofix.yml true true true
+check_input tools/ci/autofix-inputs.bash true true true
+check_input flake.nix false false true
+check_input flake.lock false false true
+check_input distribution/nix/package.nix false false true
+check_input tools/ci/update-nix-vendor-hash.bash false false true
 tree=$(git write-tree)
 expect_inputs "${tree}" "${tree}" false false
 
