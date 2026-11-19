@@ -1,9 +1,6 @@
 package tools_test
 
 import (
-	"fmt"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -84,28 +81,4 @@ jobs:
 			}
 		})
 	}
-}
-
-func TestKnownShellCommandHelper(t *testing.T) {
-	t.Parallel()
-	index := -1
-	for i, arg := range os.Args {
-		if arg == "--" {
-			index = i + 1
-			break
-		}
-	}
-	if index < 0 || index >= len(os.Args) {
-		return
-	}
-	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
-		t.Fatal(err)
-	}
-	switch os.Args[index] {
-	case "shellcheck":
-		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"shellcheck invoked"}]}`)
-	default:
-		t.Fatalf("unexpected helper %q", os.Args[index])
-	}
-	os.Exit(0)
 }
