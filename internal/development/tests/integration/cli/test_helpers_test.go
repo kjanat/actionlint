@@ -54,7 +54,7 @@ func workingDirectoryPath(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if relative, err := filepath.Rel(directory, path); err == nil {
+	if relative, err := filepath.Rel(directory, path); err == nil && len(relative) <= len(path) {
 		return relative
 	}
 	return path

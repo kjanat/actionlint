@@ -80,6 +80,26 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 	}
 }
 
+func TestConfigInitFarLabelIsAbsolute(t *testing.T) {
+	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
+	repository, err := filepath.EvalSymlinks(commandTestRepo(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repositoryPrefixLength := len(repository) + 1
+	deep := filepath.Join(repository, strings.Repeat("x/", repositoryPrefixLength/len("../")+1))
+	if err := os.MkdirAll(deep, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(deep)
+	got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--hyperlinks=never")
+	want := "Created " + filepath.Join(repository, ".github", "actionlint.yaml") + "\n"
+	if got.Status != 0 || got.Stdout != want || got.Stderr != "" {
+		t.Fatalf("%+v; want %q", got, want)
+	}
+}
+
 func TestConfigInitThroughRepositoryAlias(t *testing.T) {
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	acquisition := registryAcquisition(registry)
