@@ -54,7 +54,7 @@ require (
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	github.com/urfave/cli/v3 v3.14.0 // indirect
-	go.bytecodealliance.org/cm v0.3.0 // indirect
+	go.bytecodealliance.org/cm v0.7.0 // indirect
 )
 
 tool (

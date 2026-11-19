@@ -18,7 +18,7 @@ flowchart LR
     W --> Z
     G --> Z
     %% renovate: depName=go.bytecodealliance.org/cm
-    G --> CM["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
+    G --> CM["go.bytecodealliance.org/cm<br/>v0.7.0 · upstream"]
     E[Go plugin SDK] --> CM
     %% renovate: depName=github.com/invopop/jsonschema
     A --> J["invopop/jsonschema<br/>v0.14.0"]
