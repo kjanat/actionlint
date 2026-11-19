@@ -28,6 +28,25 @@ func TestReportedPhysicalPathIsRelativeToAliasedCheckout(t *testing.T) {
 	}
 }
 
+func TestReportedPathOutsideWorkingDirectoryWithoutAlias(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	working := filepath.Join(directory, "work")
+	path := filepath.Join(directory, "action.yml")
+	processor := policy.Processor{RuleSet: checking.ConfigurationRules()}
+	config, err := processor.RuleSet.ParseConfig([]byte("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := []*finding.Finding{{Rule: "expression-type", Path: path, Start: sourcetext.Position{Line: 1}}}
+	prepared := preparePolicy(processor.RuleSet, config, policy.DocumentInputs{Path: "ci.yml", Root: working, WorkingDir: working}, nil, findings)
+	got, err := publishFindings(processor, prepared, findings, nil)
+	want := filepath.Join("..", "action.yml")
+	if err != nil || len(got) != 1 || got[0].Path != want {
+		t.Fatalf("reported path=%+v error=%v, want %q", got, err, want)
+	}
+}
+
 func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
