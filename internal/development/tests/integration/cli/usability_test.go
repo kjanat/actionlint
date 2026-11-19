@@ -87,7 +87,8 @@ func TestConfigInitFarLabelIsAbsolute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deep := filepath.Join(append([]string{repository}, strings.Split(strings.Repeat("nested/", 40), "/")...)...)
+	repositoryPrefixLength := len(repository) + 1
+	deep := filepath.Join(repository, strings.Repeat("x/", repositoryPrefixLength/len("../")+1))
 	if err := os.MkdirAll(deep, 0o700); err != nil {
 		t.Fatal(err)
 	}

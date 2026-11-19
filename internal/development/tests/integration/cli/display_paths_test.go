@@ -13,7 +13,7 @@ import (
 func TestDisplayPathsPreferShorterSpelling(t *testing.T) {
 	dir := t.TempDir()
 	working := filepath.Join(dir, "work")
-	deep := filepath.Join(append([]string{working}, strings.Split(strings.Repeat("nested/", 40), "/")...)...)
+	deep := filepath.Join(working, strings.Repeat("x/", len(dir)/len("../")+1))
 	if err := os.MkdirAll(deep, 0o700); err != nil {
 		t.Fatal(err)
 	}

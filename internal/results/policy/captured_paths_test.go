@@ -67,7 +67,7 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 func TestReportedPathPrefersShorterSpellingOutsideWorkingDirectory(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
-	working := filepath.Join(append([]string{directory, "work"}, strings.Split(strings.Repeat("nested/", 40), "/")...)...)
+	working := filepath.Join(directory, "work", strings.Repeat("x/", len(directory)/len("../")+1))
 	processor := policy.Processor{RuleSet: checking.ConfigurationRules()}
 	config, err := checking.ConfigurationRules().ParseConfig([]byte("{}"))
 	if err != nil {
