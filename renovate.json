@@ -83,7 +83,9 @@
         "go.bytecodealliance.org/cm"
       ],
       "enabled": true,
-      "allowedVersions": "<0.4.0",
+      "overrideDatasource": "github-tags",
+      "overridePackageName": "bytecodealliance/go-modules",
+      "extractVersion": "^cm/(?<version>v.+)$",
       "groupName": "go.bytecodealliance.org/cm",
       "minimumGroupSize": 2
     },
