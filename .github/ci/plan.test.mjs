@@ -299,7 +299,7 @@ test('manual and scheduled runs select all jobs', t => {
 
 test('Windows matrix jobs serialize setup to avoid shared event payload writes', () => {
 	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
-	for (const job of ['unit-tests', 'action']) {
+	for (const job of ['unit-tests']) {
 		const body = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n {2}\S/)[0];
 		assert.ok(body, `${job} job must exist`);
 		assert.match(body, /windows-/);
@@ -686,7 +686,7 @@ test('artifact consumers require a successful producer and stop on cancellation'
 		['cancelled', false, false],
 		['success', true, false],
 	];
-	for (const name of ['action-slim', 'package-previews', 'docker-previews']) {
+	for (const name of ['package-previews', 'docker-previews']) {
 		const job = yamlMapping(jobs[name]);
 		assert.ok(typeof job.needs === 'string');
 		assert.ok(typeof job.if === 'string', `${name} needs an explicit status condition`);

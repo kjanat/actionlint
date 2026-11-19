@@ -298,9 +298,9 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012788"
 provenance = "github-attestations"
 
 [[tools.kprint]]
-version = "0.61.0"
+version = "0.64.1"
 backend = "npm:@kprint/kprint"
-specifiers = ["0.61.0"]
+specifiers = ["0.64.1"]
 
 [[tools.markscribe]]
 version = "0.8.1"
