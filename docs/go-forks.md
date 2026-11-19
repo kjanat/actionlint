@@ -25,7 +25,7 @@ flowchart LR
     %% renovate: depName=github.com/pb33f/ordered-map/v2
     J --> O["pb33f/ordered-map/v2<br/>v2.3.2"]
     %% renovate: depName=github.com/pb33f/go-yaml
-    O --> P["pb33f/go-yaml<br/>v0.1.1"]
+    O --> P["pb33f/go-yaml<br/>v0.2.0"]
     A -. indirect pin .-> P
 ```
 
