@@ -16,23 +16,25 @@ set_hash() {
 	sed -i "s#^  vendorHash = \"$1\";\$#  vendorHash = \"$2\";#" "${package}"
 }
 
+log=$(mktemp)
 set_hash "${current}" "${fake}"
-trap 'set_hash "${fake}" "${current}"' EXIT
+trap 'set_hash "${fake}" "${current}"; rm -f "${log}"' EXIT
 
 system=$(nix eval --impure --raw --expr builtins.currentSystem)
-if log=$(nix build --no-link --no-update-lock-file ".#packages.${system}.default.goModules" 2>&1); then
+# Show the build as it runs; the log file keeps the reported hash.
+if nix build --no-link --no-update-lock-file --print-build-logs ".#packages.${system}.default.goModules" 2>&1 | tee "${log}"; then
 	echo "goModules built with a fake vendorHash; cannot determine the real hash" >&2
 	exit 1
 fi
 
-got=$(sed -nE 's/^[[:space:]]*got:[[:space:]]*(sha256-[A-Za-z0-9+/=]+)[[:space:]]*$/\1/p' <<<"${log}" | tail -n 1)
+got=$(sed -nE 's/^[[:space:]]*got:[[:space:]]*(sha256-[A-Za-z0-9+/=]+)[[:space:]]*$/\1/p' "${log}" | tail -n 1)
 if [[ -z "${got}" ]]; then
-	# The build failed for a reason other than the hash.
-	printf '%s\n' "${log}" >&2
+	echo "goModules failed for a reason other than the vendor hash; see the build output above" >&2
 	exit 1
 fi
 
 trap - EXIT
+rm -f "${log}"
 set_hash "${fake}" "${got}"
 if [[ "${got}" != "${current}" ]]; then
 	echo "Updated vendorHash: ${current} -> ${got}"
