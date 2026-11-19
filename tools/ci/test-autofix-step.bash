@@ -67,16 +67,16 @@ leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 
 # Exercise selection against real Git trees, including added and removed inputs.
 expect_inputs() {
-	local base=$1 head=$2 tables=$3 readme=$4
+	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false}
 	local output
 	: >"${GITHUB_OUTPUT}"
 	bash "${inputs_script}" "${base}" "${head}"
 	output=$(cat "${GITHUB_OUTPUT}")
-	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s' "${tables}" "${readme}")" ]]
+	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s' "${tables}" "${readme}" "${nix}")" ]]
 }
 
 check_input() {
-	local path=$1 tables=$2 readme=$3
+	local path=$1 tables=$2 readme=$3 nix=${4:-false}
 	local base head directory
 	base=$(git write-tree)
 	directory=$(dirname "${path}")
@@ -84,41 +84,48 @@ check_input() {
 	echo fixture >"${path}"
 	git add --all
 	head=$(git write-tree)
-	expect_inputs "${base}" "${head}" "${tables}" "${readme}"
-	expect_inputs "${head}" "${base}" "${tables}" "${readme}"
+	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}"
+	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}"
 }
 
 check_input docs/unrelated.md false false
-check_input internal/input/references/actions/remote/remote.go true true
-check_input internal/development/generators/action-metadata/main.go true true
-check_input internal/development/generators/event-triggers/main.go true true
+check_input internal/input/references/actions/remote/remote.go true true true
+check_input internal/development/generators/action-metadata/main.go true true true
+check_input internal/development/generators/event-triggers/main.go true true true
 check_input tools/generate/webhook-payloads/main.mts true false
 check_input internal/model/contexts/events/payload_catalogue.json true true
 check_input package.json true false
 check_input bun.lock true false
-check_input internal/development/generators/expression-contexts/main.go true true
-check_input internal/model/contexts/availability.gen.go true true
-check_input internal/model/actionmeta/availability.gen.go true true
-check_input internal/model/actionmeta/runtimes.gen.go true true
-check_input internal/checking/rules/correctness/events.go true true
-check_input internal/checking/executor/expressions/check.go true true
-check_input popular_actions.go false false
-check_input internal/checking/rule_index.go true true
-check_input internal/checking/rule_registry.go true true
+check_input internal/development/generators/expression-contexts/main.go true true true
+check_input internal/model/contexts/availability.gen.go true true true
+check_input internal/model/actionmeta/availability.gen.go true true true
+check_input internal/model/actionmeta/runtimes.gen.go true true true
+check_input internal/checking/rules/correctness/events.go true true true
+check_input internal/checking/executor/expressions/check.go true true true
+check_input popular_actions.go false false true
+check_input internal/checking/rule_index.go true true true
+check_input internal/checking/rule_registry.go true true true
 check_input docs/rules.md true false
-check_input internal/development/generators/rule-docs/main.go true true
-check_input internal/development/generators/action-metadata/runtimes.go true true
-check_input internal/model/actionmeta/metadata.go true true
-check_input cmd/actionlint/main.go false true
-check_input internal/languages/expressions/typecheck/check.go false true
+check_input internal/development/generators/rule-docs/main.go true true true
+check_input internal/development/generators/action-metadata/runtimes.go true true true
+check_input internal/model/actionmeta/metadata.go true true true
+check_input cmd/actionlint/main.go false true true
+check_input internal/languages/expressions/typecheck/check.go false true true
 check_input mise.lock false true
 check_input docs/screenshots/demo-workflow.yaml false false
 check_input docs/screenshots/actionlint.yaml false false
 check_input tools/docs/readme-demo.mjs false true
 check_input README.md false true
-check_input go.mod true true
-check_input .github/workflows/autofix.yml true true
-check_input tools/ci/autofix-inputs.bash true true
+check_input go.mod true true true
+check_input go.sum true true true
+check_input .github/workflows/autofix.yml true true true
+check_input tools/ci/autofix-inputs.bash true true true
+check_input flake.nix false false true
+check_input flake.lock false false true
+check_input distribution/nix/package.nix false false true
+check_input tools/ci/update-nix-vendor-hash.bash false false true
+check_input plugins/sdk/go/plugin.go false false false
+check_input plugins/examples/insecure-download/main.go false false false
 tree=$(git write-tree)
 expect_inputs "${tree}" "${tree}" false false
 

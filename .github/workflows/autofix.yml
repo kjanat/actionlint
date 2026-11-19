@@ -25,6 +25,9 @@ on:
       - "distribution/docker/Dockerfile.*"
       - "go.mod"
       - "go.sum"
+      - "flake.nix"
+      - "flake.lock"
+      - "distribution/nix/**"
       - "tasks.toml"
       - "!testdata/**"
       - "!**/testdata/**"
@@ -61,6 +64,13 @@ jobs:
             base=${BASE_SHA}
           fi
           bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
+      - name: Install Nix for the Go vendor hash
+        if: steps.inputs.outputs.nix == 'true'
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
+      - name: Update the Nix Go vendor hash
+        id: nix
+        if: steps.inputs.outputs.nix == 'true'
+        run: bash tools/ci/autofix-step.bash bash tools/ci/update-nix-vendor-hash.bash
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
@@ -106,6 +116,7 @@ jobs:
       - name: Describe applied fixes
         id: fixes
         env:
+          NIX_CHANGED: ${{ steps.nix.outputs.changed }}
           MODERNIZE_CHANGED: ${{ steps.modernize.outputs.changed }}
           SCHEMA_CHANGED: ${{ steps.schema.outputs.changed }}
           TABLES_CHANGED: ${{ steps.tables.outputs.changed }}
@@ -113,6 +124,7 @@ jobs:
           FORMAT_CHANGED: ${{ steps.format.outputs.changed }}
         run: |
           changes=()
+          if [[ "${NIX_CHANGED}" == true ]]; then changes+=('update Nix vendor hash'); fi
           if [[ "${MODERNIZE_CHANGED}" == true ]]; then changes+=('modernize Go'); fi
           if [[ "${SCHEMA_CHANGED}" == true ]]; then changes+=('regenerate configuration schema'); fi
           if [[ "${TABLES_CHANGED}" == true ]]; then changes+=('regenerate Go tables'); fi

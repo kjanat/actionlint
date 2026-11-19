@@ -2,9 +2,9 @@
   description = "GitHub Actions workflow linter";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-  # Use the Go 1.27.4 recipe with the cached dependencies from nixpkgs-unstable.
+  # Go 1.27.4 as Hydra built it on staging-next, so Linux fetches it from cache.nixos.org.
   inputs.nixpkgs-go = {
-    url = "github:NixOS/nixpkgs/6f0c298a612204a69074aee91d87dc397d767d3e";
+    url = "github:NixOS/nixpkgs/294345d17e2f91dcfaa12cd7025dbd459a2eaea2";
     flake = false;
   };
 
@@ -33,7 +33,12 @@
       goFor =
         pkgs:
         let
-          go = pkgs.callPackage (nixpkgs-go + "/pkgs/development/compilers/go/${goMajor}.${goMinor}.nix") { };
+          # Hydra's staging-next jobset builds Linux only; Darwin builds the same recipe locally.
+          go =
+            if pkgs.stdenv.hostPlatform.isLinux then
+              (import nixpkgs-go { inherit (pkgs.stdenv.hostPlatform) system; })."go_${goMajor}_${goMinor}"
+            else
+              pkgs.callPackage (nixpkgs-go + "/pkgs/development/compilers/go/${goMajor}.${goMinor}.nix") { };
         in
         assert go.version == goVersion;
         go;
