@@ -83,6 +83,7 @@
         "go.bytecodealliance.org/cm"
       ],
       "enabled": true,
+      "allowedVersions": "<0.4.0",
       "groupName": "go.bytecodealliance.org/cm",
       "minimumGroupSize": 2
     },
