@@ -10,7 +10,7 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 		if [[ "${path}" == internal/* || "${path}" == cmd/actionlint/* ]]; then
 			readme=true
 		fi
-		# The vendor tree follows the root module's imports, not only go.mod.
+		# Imports in root-module sources decide which packages Nix vendors.
 		if [[ "${path}" == *.go && "${path}" != plugins/examples/insecure-download/* && "${path}" != plugins/sdk/go/* ]]; then
 			nix=true
 		fi

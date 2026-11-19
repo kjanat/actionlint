@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Compute the Go vendor hash from scratch and write it into the package.
-# A fake hash forces Nix to rebuild the module derivation: with the real
-# hash, an old output in the store or a cache would satisfy the build and
-# hide a stale value.
+# A fake vendorHash makes Nix rebuild goModules and report the real hash,
+# even when an output for the current hash is already in the store.
 package=${1:-distribution/nix/package.nix}
 fake=sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
