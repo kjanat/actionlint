@@ -28,6 +28,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
+	"actionlint.kjanat.dev/v2/internal/base/displaypath"
 	"actionlint.kjanat.dev/v2/internal/base/files"
 
 	"actionlint.kjanat.dev/v2/internal/input/nameindex"
@@ -537,12 +538,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		sourceStates[row.Document] = row.State
 	}
 	for _, document := range documents.list() {
-		path := document.DocumentPath()
-		if filepath.IsAbs(path) {
-			if relative, relErr := filepath.Rel(session.workingDir, path); relErr == nil {
-				path = relative
-			}
-		}
+		path := displaypath.FromDirectory(session.workingDir, document.DocumentPath())
 		if sourceStates[document.identity] != capture.Captured {
 			continue
 		}

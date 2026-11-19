@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/base/displaypath"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
@@ -71,10 +72,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if err != nil {
 		return err
 	}
-	label, err := filepath.Rel(physicalCwd, path)
-	if err != nil {
-		label = path
-	}
+	label := displaypath.FromDirectory(physicalCwd, path)
 	file, terminal := terminalFile(out)
 	links := hyperlinks.enabled(terminal, os.Getenv)
 	if links && terminal {

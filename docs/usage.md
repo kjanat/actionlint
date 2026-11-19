@@ -209,6 +209,9 @@ the same analysis in multiple formats, in order. For example,
 `actionlint --output github --output pretty` emits annotations followed by terminal
 diagnostics. Repeated identical formats are emitted once.
 
+Diagnostics and the summary show each file relative to the working directory. A file
+whose absolute path is shorter than its relative path is shown absolute.
+
 Set `output.formats`, `output.log-level`, `output.summary`, `output.network-stats`
 and `output.quiet` in the configuration file to use them as defaults for checks.
 An explicit `--config` selects those defaults. Otherwise actionlint uses the
@@ -584,8 +587,8 @@ include commented rule examples generated from the rule declarations.
 The command refuses to create another config when any supported config file exists.
 `init`, `init-config`, `--init` and `--init-config` are compatibility aliases;
 `config --init` and `config --init-config` also work. The success message displays
-a path relative to the working directory, linked to the file when terminal
-hyperlinks are enabled. Put `--json` before `config init` to receive the absolute
+the path relative to the working directory, or the absolute path when that is shorter,
+linked to the file when terminal hyperlinks are enabled. Put `--json` before `config init` to receive the absolute
 path as JSON, for example `actionlint --json config init --toml`.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one

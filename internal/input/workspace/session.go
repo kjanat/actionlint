@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/base/displaypath"
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
@@ -324,7 +325,7 @@ func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}
-		displayPath := a.relativePath(fullPath)
+		displayPath := displaypath.FromDirectory(a.cwd, fullPath)
 		if !filepath.IsAbs(path) && filepath.Clean(path) == displayPath {
 			displayPath = path
 		}
@@ -336,15 +337,8 @@ func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map
 	return a.prepare(sources, configProjects...)
 }
 
-func (a *InputPreparer) relativePath(path string) string {
-	if rel, err := filepath.Rel(a.cwd, path); err == nil {
-		return rel
-	}
-	return path
-}
-
-// ReadStdin analyzes a reader using StdinFileName. normalizePath makes its diagnostic
-// path relative to WorkingDir; false preserves the caller's spelling.
+// ReadStdin analyzes a reader using StdinFileName. normalizePath displays its diagnostic
+// path from WorkingDir, as displaypath.FromDirectory chooses; false preserves the caller's spelling.
 func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*PreparedBatch, error) {
 	a.selectionLog("Reading the input from stdin")
 	content, err := io.ReadAll(stdin)
@@ -371,7 +365,7 @@ func (a *InputPreparer) Content(path string, content []byte, project *Project, n
 	source := a.source(path, content, project)
 	source.InputPath = path
 	if normalizePath {
-		source.Path = a.relativePath(path)
+		source.Path = displaypath.FromDirectory(a.cwd, path)
 	}
 	return a.prepare([]InputFile{source})
 }

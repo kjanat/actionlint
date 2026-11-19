@@ -3,6 +3,8 @@ package policy
 import (
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/base/displaypath"
 )
 
 // RelativePath normalizes diagnostic paths relative to the invocation directory.
@@ -35,12 +37,12 @@ func (processor Processor) relativePath(directory, path string) string {
 func (processor Processor) displayPath(directory, path string) string {
 	relative := RelativePath(directory, path)
 	if _, supplied := processor.CanonicalPaths[path]; supplied || !filepath.IsAbs(path) || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return relative
+		return displaypath.FromDirectory(directory, path)
 	}
 	if canonicalDirectory, known := processor.CanonicalPaths[directory]; known {
-		return RelativePath(canonicalDirectory, path)
+		return displaypath.FromDirectory(canonicalDirectory, path)
 	}
-	return relative
+	return displaypath.FromDirectory(directory, path)
 }
 
 func (processor Processor) projectRelativePath(root, path string) string {
