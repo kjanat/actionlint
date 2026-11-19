@@ -10,6 +10,10 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 		if [[ "${path}" == internal/* || "${path}" == cmd/actionlint/* ]]; then
 			readme=true
 		fi
+		# The vendor tree follows the root module's imports, not only go.mod.
+		if [[ "${path}" == *.go && "${path}" != plugins/examples/insecure-download/* && "${path}" != plugins/sdk/go/* ]]; then
+			nix=true
+		fi
 		case "${path}" in
 			.github/workflows/autofix.yml | tools/ci/autofix-inputs.bash | go.mod | go.sum)
 				tables=true
