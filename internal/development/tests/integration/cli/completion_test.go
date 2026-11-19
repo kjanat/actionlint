@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -250,11 +251,23 @@ func testCheckShellSyntax(t *testing.T, shell, script string) {
 		t.Skipf("none of %v is installed", candidates)
 	}
 
-	cmd := exec.CommandContext(t.Context(), bin, args...)
-	if env != nil {
-		cmd.Env = env
+	check := func() ([]byte, error) {
+		cmd := exec.CommandContext(t.Context(), bin, args...)
+		if env != nil {
+			cmd.Env = env
+		}
+		return cmd.CombinedOutput()
 	}
-	out, err := cmd.CombinedOutput()
+	// pwsh occasionally segfaults at startup on arm64 runners before it parses anything.
+	const attempts = 3
+	out, err := check()
+	for attempt := 1; attempt < attempts && checkerCrashed(err); attempt++ {
+		t.Logf("%s crashed (%v); retrying", bin, err)
+		out, err = check()
+	}
+	if checkerCrashed(err) {
+		t.Fatalf("%s crashed in all %d attempts while checking the generated script: %v\n%s", bin, attempts, err, out)
+	}
 	if err != nil {
 		t.Fatalf(`%s reported a syntax error in the generated script: %v
 %s
@@ -266,6 +279,37 @@ script:
 %s
 script:
 %s`, bin, out, script)
+	}
+}
+
+// checkerCrashed reports whether a syntax checker was killed by a signal
+// instead of exiting with a status of its own.
+func checkerCrashed(err error) bool {
+	exit, ok := errors.AsType[*exec.ExitError](err)
+	return ok && !exit.Exited()
+}
+
+func TestCheckerCrashedSeparatesSignalsFromExitStatus(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows processes do not end by signal")
+	}
+	sh, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh is required")
+	}
+	for _, tc := range []struct {
+		script  string
+		crashed bool
+	}{
+		{"exit 0", false},
+		{"exit 1", false},
+		{"kill -SEGV $$", true},
+	} {
+		err := exec.CommandContext(t.Context(), sh, "-c", tc.script).Run()
+		if got := checkerCrashed(err); got != tc.crashed {
+			t.Errorf("checkerCrashed(%q: %v) = %t, want %t", tc.script, err, got, tc.crashed)
+		}
 	}
 }
 
