@@ -194,6 +194,11 @@ per line. GitHub annotations are emitted only when explicitly selected.
 : Wrap `pretty` diagnostics at this width. Accepts 40 to 400. Default: 100.
 Requires **--output-format**=pretty.
 
+**--dependency-findings** *MODE*
+: Show dependency findings in pretty output. Use `compact` for a summary and
+details for findings that can make the check fail, or `full` for all details.
+The default is `compact`.
+
 **--json**
 : Select JSON output. With help, version, config, rules or doctor, emit JSON
 metadata. Operational errors are JSON objects on stderr.

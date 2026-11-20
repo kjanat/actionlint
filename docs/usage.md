@@ -341,7 +341,8 @@ Check the exit status before interpreting empty stdout as success.
 Errors fail a check. With `--strict`, warnings also fail it. Informational findings
 never fail a check. Dependency advice remains non-blocking unless selected by
 `lint.dependencies`; selected findings then follow the same severity threshold.
-JSON results record this threshold as `failure_threshold`.
+JSON results record this threshold as `failure_threshold`. Pretty output summarizes dependency findings by default.
+Pass `--dependency-findings=full` to show each dependency finding in full.
 
 Findings from imported remote actions carry `origin: "dependency"` in JSON and a
 `dependency:` prefix in pretty output, such as `error[dependency:action] missing-file`.

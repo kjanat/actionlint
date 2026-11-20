@@ -2,6 +2,7 @@
   "ruff composite action": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -27,6 +28,7 @@
         "snippet": "        import os"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -52,6 +54,7 @@
         "snippet": "        print(missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -142,6 +145,7 @@
   "ruff composite action (ruff alone)": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -167,6 +171,7 @@
         "snippet": "        import os"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -192,6 +197,7 @@
         "snippet": "        print(missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/python-action/action.yml",
           "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
@@ -282,6 +288,7 @@
   "ruff findings and templates": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
@@ -307,6 +314,7 @@
         "snippet": "          print(${{ github.event.number }}, missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
@@ -374,6 +382,7 @@
   "ruff findings and templates (ruff alone)": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
@@ -399,6 +408,7 @@
         "snippet": "          print(${{ github.event.number }}, missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
@@ -466,6 +476,7 @@
   "ruff selection and target version": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -491,6 +502,7 @@
         "snippet": "          print(missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -516,6 +528,7 @@
         "snippet": "          match x:"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -595,6 +608,7 @@
   "ruff selection and target version (ruff alone)": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -620,6 +634,7 @@
         "snippet": "          print(missing)"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -645,6 +660,7 @@
         "snippet": "          match x:"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
@@ -724,6 +740,7 @@
   "ruff syntax error": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
@@ -749,6 +766,7 @@
         "snippet": "      - run: |"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
@@ -816,6 +834,7 @@
   "ruff syntax error (ruff alone)": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
@@ -841,6 +860,7 @@
         "snippet": "      - run: |"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
@@ -908,6 +928,7 @@
   "shellcheck configuration file": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
@@ -933,6 +954,7 @@
         "snippet": "          echo `date`"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
@@ -958,6 +980,7 @@
         "snippet": "          echo `date`"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
@@ -1085,6 +1108,7 @@
   "shellcheck dialect directive and implicit shell": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
@@ -1110,6 +1134,7 @@
         "snippet": "      - run: echo $Z"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
@@ -1177,6 +1202,7 @@
   "shellcheck dialect directive and implicit shell (ruff alone)": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
@@ -1232,6 +1258,7 @@
   "shellcheck findings, fixes and startup": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
@@ -1257,6 +1284,7 @@
         "snippet": "          ls *.txt | grep x"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
@@ -1282,6 +1310,7 @@
         "snippet": "          ls *.txt | grep x"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
@@ -1342,6 +1371,7 @@
         ]
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
@@ -1446,6 +1476,7 @@
   "shellcheck inline directives": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
@@ -1471,6 +1502,7 @@
         "snippet": "          local x=1"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
@@ -1496,6 +1528,7 @@
         "snippet": "          test -n \"$(echo $Y)\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
@@ -1521,6 +1554,7 @@
         "snippet": "          local x=1"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
@@ -1660,6 +1694,7 @@
   "shellcheck invalid directive": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "5409f5d7f369fed4341d6f51b1eb94bcccab70ba0cff687f1eb8ff1e593d95fb",
@@ -1728,6 +1763,7 @@
   "shellcheck sourced file": {
     "findings": [
       {
+        "origin": "project",
         "explanation": "Analyze embedded shell scripts with ShellCheck.",
         "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
         "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
@@ -1819,6 +1855,7 @@
   "shellcheck sourced file suppressed at another line": {
     "findings": [
       {
+        "origin": "project",
         "explanation": "Analyze embedded shell scripts with ShellCheck.",
         "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
         "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
@@ -1974,6 +2011,7 @@
   "tools disabled by override": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003croot\u003e/.github/workflows/ci.yml",
           "revision": "a2940a2e7766285d315ee9e1fb51f590a161e24045873afcbea16cdd26baea10",
