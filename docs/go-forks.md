@@ -9,7 +9,7 @@ flowchart LR
     %% renovate: depName=github.com/kjanat/go-yaml/v4
     A[actionlint] --> Y["kjanat/go-yaml/v4<br/>v4.0.0-rc.7"]
     %% renovate: depName=github.com/kjanat/wacogo
-    A --> W["kjanat/wacogo<br/>v0.3.2"]
+    A --> W["kjanat/wacogo<br/>v0.3.3"]
     %% renovate: depName=github.com/kjanat/wazero
     A --> Z["kjanat/wazero<br/>v1.12.2"]
     %% renovate: depName=github.com/kjanat/go-modules
