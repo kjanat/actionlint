@@ -236,7 +236,7 @@ func (rule *checker) verifyRunnerLabel(label labelFact) runnerOSCompat {
 		rule.unknownLabels = true
 		return compatInvalid
 	}
-	rule.Errorf(label.start, "label %q is unknown. available labels are %s. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file", label.text, messages.QuotesAll(allGitHubHostedRunnerLabels, selfHostedRunnerPresetOtherLabels, selfHostedRunnerPresetOSLabels, rule.labels))
+	rule.Errorf(label.start, "label %q is unknown. available labels are %s. if it is a custom label for a self-hosted or larger runner, set list of labels in actionlint.yaml config file", label.text, messages.QuotesAll(allGitHubHostedRunnerLabels, selfHostedRunnerPresetOtherLabels, selfHostedRunnerPresetOSLabels, rule.labels))
 	return compatInvalid
 }
 

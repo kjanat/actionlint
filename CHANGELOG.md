@@ -12,6 +12,8 @@
 
 - Remove the retired GitHub-hosted `macos-14`, `macos-14-large`, and `macos-14-xlarge` labels. Custom self-hosted labels can still be configured explicitly. (kjanat/actionlint#216)
 
+- Name larger runners in the `runner-label` message for unknown labels. A larger runner's label is the runner name chosen in organization settings, including for Red Hat Enterprise Linux images. Add those names to `repository.runners`. (kjanat/actionlint#496)
+
 - **Breaking:** Report `error while parsing reusable workflow` at every call site when the callee's `on.workflow_call` declarations are invalid. Callers previously got no error for: an input without `type`, a `type` other than `boolean`, `number` or `string`, an output without `value`, `required` written as a string such as `'yes'`, unknown or duplicate keys, YAML `<<:` merge keys, and a misspelled `Workflow_Call` event. GitHub rejects these workflows, so fix the callee. (kjanat/actionlint#417)
 - **Breaking:** Remove the `required-actions` rule and configuration. Remove its entries before migrating configuration.
 - With no arguments, check the current Git repository, or print help on stdout and exit 0 outside a repository. Use `actionlint check` to request repository discovery explicitly; it exits 3 when no workflow or action inputs are found.
