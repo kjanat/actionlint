@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
@@ -61,6 +62,8 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 					policyError := *finding
 					policyError.Rule = "forbidden-suppression"
 					policyError.Binding = binding.ID{}
+					policyError.MetadataIdentity = nil
+					policyError.MetadataParseSource = sourcetext.Revision{}
 					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.forbidden-suppression", ignore.Rule)
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)
