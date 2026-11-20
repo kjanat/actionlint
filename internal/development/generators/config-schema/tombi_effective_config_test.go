@@ -91,8 +91,8 @@ func TestEffectiveConfigInheritance(t *testing.T) {
 }
 
 type effectiveRuleCase struct {
-	path, action, nursery, pin, permission, timeout, suppression, excluded, location, report string
-	min, max                                                                                 float64
+	path, input, nursery, pin, permission, timeout, suppression, excluded, location, report string
+	min, max                                                                                float64
 }
 
 func TestEffectiveJSONRoots(t *testing.T) {
@@ -197,7 +197,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 			if len(locations) > 0 {
 				location = string(locations[0])
 			}
-			got := effectiveRuleCase{want.path, level("action"), level("errexit-status"), level("unpinned-reference"), level("missing-permissions"), level("job-timeout"), level("forbidden-suppression"), want.excluded, location, suppressOpt.Report(), minimum, maximum}
+			got := effectiveRuleCase{want.path, level("unknown-input"), level("errexit-status"), level("unpinned-reference"), level("missing-permissions"), level("job-timeout"), level("forbidden-suppression"), want.excluded, location, suppressOpt.Report(), minimum, maximum}
 			if got != want {
 				t.Errorf("effective settings: got %+v, want %+v", got, want)
 			}

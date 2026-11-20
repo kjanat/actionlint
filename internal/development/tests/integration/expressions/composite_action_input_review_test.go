@@ -23,9 +23,9 @@ func TestCompositeActionInputScriptSinks(t *testing.T) {
 			{"scalar JavaScript", "actions/github-script@v8", "script", "const value = ${{ true }}", map[string]int{"script-interpolation": 1}},
 			{"ordinary token input", "actions/github-script@v8", "github-token", "${{ inputs.token }}", nil},
 			{"ordinary action", "example/action@v1", "script", "${{ github.event.issue.title }}", nil},
-			{"invalid context", "actions/github-script@v8", "script", "console.log('${{ githbu.ref }}')", map[string]int{"action": 1}},
-			{"unavailable secrets", "actions/github-script@v8", "script", "console.log('${{ secrets.TOKEN }}')", map[string]int{"action": 1}},
-			{"independent invalid context", "actions/github-script@v8", "script", "console.log('${{ githbu.ref }}', '${{ github.event.issue.title }}')", map[string]int{"action": 1, "script-injection": 1}},
+			{"invalid context", "actions/github-script@v8", "script", "console.log('${{ githbu.ref }}')", map[string]int{"expression-reference": 1}},
+			{"unavailable secrets", "actions/github-script@v8", "script", "console.log('${{ secrets.TOKEN }}')", map[string]int{"context-availability": 1}},
+			{"independent invalid context", "actions/github-script@v8", "script", "console.log('${{ githbu.ref }}', '${{ github.event.issue.title }}')", map[string]int{"expression-reference": 1, "script-injection": 1}},
 		} {
 			t.Run(fmt.Sprintf("nested=%t/%s", nested, tc.name), func(t *testing.T) {
 				t.Parallel()
@@ -106,7 +106,7 @@ func TestCompositeActionInputMappingValidationOwnership(t *testing.T) {
 			body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      with: " + tc.mapping + "\n"
 			fixturefiles.Write(t, root, "inner/action.yml", body)
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" {
 				t.Fatalf("metadata must exclusively own malformed composite input mappings: %+v", result.Diagnostics)
 			}
 			findings := testutil.WorkflowDiagnostics(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with: "+strings.ReplaceAll(tc.mapping, "\n", "\n  ")+"\n"+"\npermissions: {}\n", "tools: {shellcheck: false, ruff: false}\n")

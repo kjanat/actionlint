@@ -1,8 +1,8 @@
 [lint]
 [lint.rules]
 [lint.rules.correctness]
-[lint.rules.correctness.action]
+[lint.rules.correctness.invalid-action-reference]
 level = 'on'
 
-[lint.rules.correctness.action.options]
+[lint.rules.correctness.invalid-action-reference.options]
 foo = true

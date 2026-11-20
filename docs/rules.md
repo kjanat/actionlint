@@ -6,18 +6,57 @@ Categories group rules by what they check. Provider identifies the implementatio
 
 Errors fail a check by default. With `--strict`, warnings also fail it. Informational findings appear in the output without failing the check. See [Exit status](usage.md#exit-status) for details.
 
-## action
+## action-branding
 
-Validate action references, inputs, outputs, and local metadata.
+Validate action branding icons and colors.
 
-Check the action reference, runtime, declared inputs and action metadata at the indicated source.
+Choose an icon and color supported by GitHub Actions metadata.
 
 - Category: `correctness/actions`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+Configure this rule with `lint.rules.correctness.action-branding`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## action-input-deprecation
+
+Report empty deprecation messages in action input declarations.
+
+Explain how callers should replace the deprecated input, or remove deprecationMessage.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.action-input-deprecation`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## action-metadata-read
+
+Report action metadata that could not be read.
+
+Check access to the action metadata file and correct the reported read failure.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.action-metadata-read`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## action-runtime
+
+Report unsupported, removed or deprecated runs.using runtimes in action metadata and referenced action definitions. This checks the GitHub Actions runner's runtime contract. The runtime-lifecycle rule separately checks language release support for setup-node inputs.
+
+Select a runtime supported by current GitHub Actions runners or update the referenced action.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.action-runtime`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## cache-call-unrestricted
 
@@ -252,6 +291,19 @@ Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## deprecated-input
+
+Report supplied action inputs marked as deprecated.
+
+Follow the action's deprecation message and use its replacement input.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.deprecated-input`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## duplicate-workflow-name
 
@@ -670,6 +722,32 @@ Use a known rule name and place the directive on the declaration it is intended 
 
 Configure this rule with `lint.rules.correctness.inline-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
+## invalid-action-reference
+
+Validate action reference syntax.
+
+Use owner/repo[/path]@ref, ./path, $/path, or a valid docker:// reference.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.invalid-action-reference`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## invalid-dockerfile
+
+Validate the filename of a Docker action's local image definition.
+
+Point runs.image at a file named Dockerfile or use a supported registry image.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.invalid-dockerfile`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
 ## invalid-output-file
 
 GITHUB_OUTPUT requires NAME=value records or multiline records enclosed by NAME<<delimiter and a matching delimiter. This check combines literal writes from Bash and sh scripts, then validates the complete file. It handles literal echo and printf commands, command groups, and cat or tee with literal text from a here-document or pipe. It skips the script if it contains dynamic values, unsupported commands, variable assignments or control flow. Commands that could redefine these utilities also cause the script to be skipped.
@@ -794,6 +872,19 @@ Check access to the referenced repository and its action.yml or action.yaml.
 - Enabled by default: `false`
 
 Configure this rule with `lint.rules.conventions.missing-action-metadata`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
+
+## missing-file
+
+Check file references whose location the declaring format defines. For action metadata, check runs.main, runs.pre, runs.post and a local Dockerfile relative to the action directory. Unknown file availability produces no finding. Container entrypoints resolve inside the image and are excluded. Generated files can be absent before the build; disable this rule for those manifests with a per-file override.
+
+Correct the referenced path, provide the file, or disable missing-file for manifests whose files are generated before execution.
+
+- Category: `correctness/files`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.missing-file`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## missing-local-action
 
@@ -962,6 +1053,19 @@ jobs:
     steps:
       - run: echo ok
 ```
+
+## required-input
+
+Report required action inputs missing from a known input mapping.
+
+Supply the required input or use an action version with a suitable default.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.required-input`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## ruff
 
@@ -1206,7 +1310,7 @@ Configure this rule with `lint.rules.suspicious.string-conditions`. Use `off` to
 
 ## syntax-check
 
-Validate GitHub Actions workflow syntax.
+Validate GitHub Actions workflow and action metadata syntax.
 
 Check the indicated YAML field and its expected GitHub Actions value type.
 
@@ -1253,6 +1357,19 @@ jobs:
     steps:
       - run: echo ok
 ```
+
+## unknown-input
+
+Report action inputs absent from the available input declaration.
+
+Use an input declared by the referenced action.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.unknown-input`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## unpinned-reference
 

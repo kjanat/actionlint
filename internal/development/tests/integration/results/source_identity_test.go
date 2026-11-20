@@ -113,7 +113,7 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 				t.Fatal("unexpected manifest diagnostics", result.Diagnostics)
 			}
 			for i, diagnostic := range result.Diagnostics {
-				if diagnostic.Rule != "action" || diagnostic.Path != path || diagnostic.Message != expected[i].message || diagnostic.Start != expected[i].start {
+				if diagnostic.Rule != "syntax-check" || diagnostic.Path != path || diagnostic.Message != expected[i].message || diagnostic.Start != expected[i].start {
 					t.Fatal("manifest diagnostic lost source identity", diagnostic)
 				}
 			}

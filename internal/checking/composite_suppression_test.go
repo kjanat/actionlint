@@ -22,7 +22,7 @@ func TestLocalActionSuppressionSourcesStayWorkflowScoped(t *testing.T) {
 	t.Parallel()
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
-	writeShellcheckFixture(t, root, "local/action.yml", `name: local # actionlint:ignore action --
+	writeShellcheckFixture(t, root, "local/action.yml", `name: local # actionlint:ignore syntax-check --
 description: test
 runs:
   using: node24

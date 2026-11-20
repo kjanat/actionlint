@@ -13,7 +13,7 @@ import (
 
 func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	t.Parallel()
-	rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "metadata-files", Category: "correctness", Scope: rule.CompositeConfiguration}})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "missing-file", Category: "correctness", Scope: rule.CompositeConfiguration}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,11 +23,11 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	}{{"off", 0}, {"error", 1}} {
 		t.Run(test.level, func(t *testing.T) {
 			t.Parallel()
-			source, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: off}}}"))
+			source, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {missing-file: off}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			occurrence, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: " + test.level + "}}}"))
+			occurrence, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {missing-file: " + test.level + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +40,7 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 			}
 			analysis := compositeAnalyzer{bindings: prepared, compositionSession: &compositionSession{
 				invocations: graph,
-				passes:      []workflowvisit.Pass{&failingMetadataParticipant{Base: workflowvisit.NewBase("metadata-files", "")}},
+				passes:      []workflowvisit.Pass{&failingMetadataParticipant{Base: workflowvisit.NewBase("missing-file", "")}},
 				bindSource: func(parent *rulebinding.Scope, _ string) (*rulebinding.Scope, error) {
 					return registry.Prepare(parent.Caller(), source, parent.Composite()), nil
 				},

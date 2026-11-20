@@ -138,7 +138,7 @@ func (rule *commitHashCheck) checkJob(n workflows.BoundJob) {
 }
 
 // Return the {ref} part of a {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref} specification. The
-// second return value is false when the specification has another form. The "action" rule reports the forms
+// second return value is false when the specification has another form. The invalid-action-reference rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
 	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository || form == callreferences.FormContainer {

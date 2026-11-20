@@ -25,8 +25,8 @@ func TestPublicationPreservesRequiredLifecycleProvenance(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			key := finding.MetadataKey{Path: "action.yml", Message: "runtime is deprecated"}
-			optional := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "action.yml", Message: key.Message, Severity: severity.Severity(tc.optionalSeverity), MetadataIdentity: &finding.MetadataIdentity{Key: key, Declaration: tc.declaration}}
-			required := &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: severity.Severity(tc.requiredSeverity), LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
+			optional := &finding.Finding{Rule: "action-runtime", Code: "runtime-deprecated", Path: "action.yml", Message: key.Message, Severity: severity.Severity(tc.optionalSeverity), MetadataIdentity: &finding.MetadataIdentity{Key: key, Declaration: tc.declaration}}
+			required := &finding.Finding{Rule: "action-runtime", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: severity.Severity(tc.requiredSeverity), LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
 			files := []policy.Batch{{InputPath: "action.yml", Findings: []*finding.Finding{optional}}, {InputPath: "workflow.yml", Findings: []*finding.Finding{required}}}
 			files[0] = prepareRetentionBatch(t, files[0], tc.optionalSeverity, "")
 			files[1] = prepareRetentionBatch(t, files[1], tc.requiredSeverity, "trusted.yml")
@@ -59,7 +59,7 @@ func TestPublicationKeepsDistinctRequiredPolicyOrigins(t *testing.T) {
 	t.Parallel()
 	key := finding.MetadataKey{Path: "action.yml", Message: "runtime is deprecated"}
 	makeFinding := func() *finding.Finding {
-		return &finding.Finding{Rule: "action", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: "warning", LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
+		return &finding.Finding{Rule: "action-runtime", Code: "runtime-deprecated", Path: "workflow.yml", Message: key.Message, Severity: "warning", LifecycleEvidence: lifecycleFinding(t, "2026-11-01", true).LifecycleEvidence, MetadataIdentity: &finding.MetadataIdentity{Key: key}}
 	}
 	files := []policy.Batch{{InputPath: "one.yml", Findings: []*finding.Finding{makeFinding()}}, {InputPath: "two.yml", Findings: []*finding.Finding{makeFinding()}}}
 	files[0] = prepareRetentionBatch(t, files[0], "warning", "one.yml")
@@ -90,7 +90,7 @@ func prepareRetentionBatch(t *testing.T, batch policy.Batch, notified, origin st
 	if notified == "warning" {
 		level = "warn"
 	}
-	cfg := lifecycleRulesConfig(t, "lint: {rules: {correctness: {action: "+level+"}}}")
+	cfg := lifecycleRulesConfig(t, "lint: {rules: {correctness: {action-runtime: "+level+"}}}")
 	batch.Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
 	batch.Policy = preparePolicy(batch.Processor.RuleSet, cfg, policy.DocumentInputs{Path: batch.InputPath}, nil, batch.Findings)
 	if origin != "" {

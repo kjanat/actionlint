@@ -362,13 +362,13 @@
 		"descriptor": {
 			"execution_failure": true,
 			"name": "syntax-check",
-			"description": "Validate GitHub Actions workflow syntax",
+			"description": "Validate GitHub Actions workflow and action metadata syntax",
 			"category": "correctness",
 			"subcategory": "syntax",
 			"maturity": "stable",
 			"provider": "actionlint",
 			"recommended": true,
-			"explanation": "Validate GitHub Actions workflow syntax.",
+			"explanation": "Validate GitHub Actions workflow and action metadata syntax.",
 			"help": "Check the indicated YAML field and its expected GitHub Actions value type.",
 			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#syntax-check"
 		},
@@ -433,7 +433,7 @@
 			"help": "Check the uses path and ensure the action has a manifest or Dockerfile. If paths differ only in casing, rename them so each path can be resolved unambiguously.",
 			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action"
 		},
-		"supports_actions": false,
+		"supports_actions": true,
 		"scope": 0,
 		"options": "",
 		"execution": "none",
@@ -696,7 +696,7 @@
 				}
 			]
 		},
-		"supports_actions": false,
+		"supports_actions": true,
 		"scope": 0,
 		"options": "",
 		"execution": "build",
@@ -813,21 +813,201 @@
 	},
 	{
 		"descriptor": {
-			"name": "action",
-			"description": "Validate action references, inputs, outputs, and local metadata",
+			"name": "invalid-action-reference",
+			"description": "Validate action reference syntax",
 			"category": "correctness",
 			"subcategory": "actions",
 			"maturity": "stable",
 			"provider": "actionlint",
 			"recommended": true,
-			"explanation": "Validate action references, inputs, outputs, and local metadata.",
-			"help": "Check the action reference, runtime, declared inputs and action metadata at the indicated source.",
-			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action"
+			"explanation": "Validate action reference syntax.",
+			"help": "Use owner/repo[/path]@ref, ./path, $/path, or a valid docker:// reference.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#invalid-action-reference"
 		},
 		"supports_actions": true,
 		"scope": 0,
 		"options": "",
 		"execution": "build",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "missing-file",
+			"description": "Report referenced files confirmed missing from the inspected source",
+			"category": "correctness",
+			"subcategory": "files",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Check file references whose location the declaring format defines. For action metadata, check runs.main, runs.pre, runs.post and a local Dockerfile relative to the action directory. Unknown file availability produces no finding. Container entrypoints resolve inside the image and are excluded. Generated files can be absent before the build; disable this rule for those manifests with a per-file override.",
+			"help": "Correct the referenced path, provide the file, or disable missing-file for manifests whose files are generated before execution.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-file"
+		},
+		"supports_actions": true,
+		"scope": 2,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "unknown-input",
+			"description": "Report action inputs absent from the available input declaration",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report action inputs absent from the available input declaration.",
+			"help": "Use an input declared by the referenced action.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unknown-input"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "required-input",
+			"description": "Report required action inputs missing from a known input mapping",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report required action inputs missing from a known input mapping.",
+			"help": "Supply the required input or use an action version with a suitable default.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#required-input"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "deprecated-input",
+			"description": "Report supplied action inputs marked as deprecated",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report supplied action inputs marked as deprecated.",
+			"help": "Follow the action's deprecation message and use its replacement input.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#deprecated-input"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "action-runtime",
+			"description": "Validate action runtimes accepted by GitHub Actions runners",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report unsupported, removed or deprecated runs.using runtimes in action metadata and referenced action definitions. This checks the GitHub Actions runner's runtime contract. The runtime-lifecycle rule separately checks language release support for setup-node inputs.",
+			"help": "Select a runtime supported by current GitHub Actions runners or update the referenced action.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action-runtime"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "action-branding",
+			"description": "Validate action branding icons and colors",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Validate action branding icons and colors.",
+			"help": "Choose an icon and color supported by GitHub Actions metadata.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action-branding"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "action-input-deprecation",
+			"description": "Report empty deprecation messages in action input declarations",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report empty deprecation messages in action input declarations.",
+			"help": "Explain how callers should replace the deprecated input, or remove deprecationMessage.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action-input-deprecation"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "invalid-dockerfile",
+			"description": "Validate the filename of a Docker action's local image definition",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Validate the filename of a Docker action's local image definition.",
+			"help": "Point runs.image at a file named Dockerfile or use a supported registry image.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#invalid-dockerfile"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
+		"prepare": false,
+		"enabled": false
+	},
+	{
+		"descriptor": {
+			"name": "action-metadata-read",
+			"description": "Report action metadata that could not be read",
+			"category": "correctness",
+			"subcategory": "actions",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report action metadata that could not be read.",
+			"help": "Check access to the action metadata file and correct the reported read failure.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action-metadata-read"
+		},
+		"supports_actions": true,
+		"scope": 0,
+		"options": "",
+		"execution": "none",
 		"prepare": false,
 		"enabled": false
 	},
@@ -919,7 +1099,7 @@
 				}
 			]
 		},
-		"supports_actions": false,
+		"supports_actions": true,
 		"scope": 0,
 		"options": "",
 		"execution": "build",
@@ -986,7 +1166,7 @@
 			"help": "Correct the reference and supply required inputs and secrets. For permission or cache conflicts, adjust the caller's grant or reduce the called workflow's requirements.",
 			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call"
 		},
-		"supports_actions": false,
+		"supports_actions": true,
 		"scope": 0,
 		"options": "",
 		"execution": "build",

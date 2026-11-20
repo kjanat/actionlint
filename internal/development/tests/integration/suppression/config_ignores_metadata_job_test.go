@@ -2,6 +2,7 @@ package suppression_test
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -32,6 +33,10 @@ runs:
       timeout-minutes: wrong
 `,
 	} {
+		rule := "shell-name"
+		if strings.Contains(metadata, "timeout-minutes") {
+			rule = "syntax-check"
+		}
 		root, _ := testutil.ExecutableFixture(t, "shellcheck")
 		fixturefiles.Write(t, root, "inner/action.yml", metadata)
 		const source = `on: push
@@ -52,10 +57,10 @@ permissions: {}
 			ignores string
 			want    int
 		}{
-			{"[{rule: action, job: a, step: inner}]", 1},
-			{"[{rule: action, job: b, step: inner}]", 1},
-			{"[{rule: action, job: a, step: inner}, {rule: action, job: b, step: inner}]", 0},
-			{"[{rule: action, job: a, step: outer}, {rule: action, job: b, step: outer}]", 1},
+			{"[{rule: " + rule + ", job: a, step: inner}]", 1},
+			{"[{rule: " + rule + ", job: b, step: inner}]", 1},
+			{"[{rule: " + rule + ", job: a, step: inner}, {rule: " + rule + ", job: b, step: inner}]", 0},
+			{"[{rule: " + rule + ", job: a, step: outer}, {rule: " + rule + ", job: b, step: outer}]", 1},
 		} {
 			config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
 			if err != nil {

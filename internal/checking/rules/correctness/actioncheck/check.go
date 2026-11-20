@@ -29,6 +29,7 @@ import (
 
 type validator struct {
 	standalone *actionmeta.Metadata
+	metadata   *actionmeta.Metadata
 	errs       []*finding.Finding
 	advisories bool
 	files      actionmeta.ReferencedFiles
@@ -55,7 +56,7 @@ func (rule *validator) expressionFindings(s string, bare bool, field string, inp
 }
 
 func (rule *validator) Error(pos *sourcetext.Position, code actionmeta.ProblemCode, message string) {
-	ruleName, diagnosticCode := problemRule(code)
+	ruleName, diagnosticCode := ProblemRule(code)
 	item := finding.At(pos, ruleName, message)
 	item.Code = diagnosticCode
 	rule.errs = append(rule.errs, item)
@@ -121,6 +122,11 @@ func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *so
 		return
 	}
 	if rule.files.Lookup(file) == actionmeta.FileMissing {
+		if meta := rule.metadata; meta != nil && meta.Root != nil {
+			position := actionMetadataFieldPosition(meta, pos, "runs", prop)
+			rule.metadataErrorfAt(meta, position.Line, position.Column, nil, actionmeta.CodeMissingFile, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
+			return
+		}
 		rule.Errorf(pos, actionmeta.CodeMissingFile, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
 	}
 }
@@ -173,7 +179,7 @@ func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionm
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
 func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *sourcetext.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	ruleName, diagnosticCode := problemRule(code)
+	ruleName, diagnosticCode := ProblemRule(code)
 	err := finding.At(&sourcetext.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
@@ -203,7 +209,7 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
 func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *sourcetext.Position, code actionmeta.ProblemCode, format string, args ...any) {
-	ruleName, diagnosticCode := problemRule(code)
+	ruleName, diagnosticCode := ProblemRule(code)
 	err := finding.Errorf(&sourcetext.Position{Line: line, Column: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
@@ -413,6 +419,7 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *sour
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *sourcetext.Position) {
+	rule.metadata = meta
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
 		rule.Errorf(rule.metadataFieldPosition(caller, "name"), actionmeta.CodeMissingField, "name is required in action metadata %q", meta.Path())
@@ -524,7 +531,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 		}
 	}
 	for _, problem := range problems {
-		ruleName, diagnosticCode := problemRule(problem.Code)
+		ruleName, diagnosticCode := ProblemRule(problem.Code)
 		item := finding.FromDiagnostic(results.Diagnostic{
 			Rule: ruleName, Code: diagnosticCode, Path: problem.Path,
 			Message: problem.Message, Start: problem.Start, End: problem.End,
@@ -538,10 +545,14 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 // Missing fields point at their nearest declared parent. Existing fields point
 // at their key. Workflow-call diagnostics point to the caller's uses: value.
 func (rule *validator) metadataFieldPosition(fallback *sourcetext.Position, fields ...string) *sourcetext.Position {
-	if rule.standalone == nil {
+	return actionMetadataFieldPosition(rule.standalone, fallback, fields...)
+}
+
+func actionMetadataFieldPosition(meta *actionmeta.Metadata, fallback *sourcetext.Position, fields ...string) *sourcetext.Position {
+	if meta == nil {
 		return fallback
 	}
-	node := actionmeta.Node(rule.standalone.Root)
+	node := actionmeta.Node(meta.Root)
 	pos := &sourcetext.Position{Line: 1, Column: 1}
 	for _, field := range fields {
 		if node == nil || node.Kind != codec.MappingNode {
@@ -561,26 +572,51 @@ func (rule *validator) metadataFieldPosition(fallback *sourcetext.Position, fiel
 	return pos
 }
 
-// problemRule selects the configurable check and its reported subcode.
-func problemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) {
+// ProblemRule selects the configurable check and retains the detailed problem code.
+func ProblemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) {
 	switch code {
 	case actionmeta.CodeCoercion, actionmeta.CodeStringCondition, actionmeta.CodeJoinLiteral, actionmeta.CodeCollectionComparison:
-		return string(code), string(code)
-	case actionmeta.CodeInvalidJSON, actionmeta.CodeFormatPlaceholder:
-		return "expression-call", string(code)
+		ruleName = string(code)
+	case actionmeta.CodeInvalidJSON, actionmeta.CodeFormatPlaceholder, actionmeta.CodeJSONMemberCollision, actionmeta.CodeExpressionCall:
+		ruleName = "expression-call"
+	case actionmeta.CodeExpressionSyntax:
+		ruleName = "expression-syntax"
+	case actionmeta.CodeExpressionContext:
+		ruleName = "context-availability"
+	case actionmeta.CodeExpressionReference:
+		ruleName = "expression-reference"
+	case actionmeta.CodeExpressionType:
+		ruleName = "expression-type"
+	case actionmeta.CodeInvalidStepID, actionmeta.CodeDuplicateStepID:
+		ruleName = "id"
+	case actionmeta.CodeMissingShell:
+		ruleName = "shell-name"
+	case actionmeta.CodeInvalidReference:
+		ruleName = "invalid-action-reference"
+	case actionmeta.CodeReusableWorkflow:
+		ruleName = "workflow-call"
+	case actionmeta.CodeMissingFile:
+		ruleName = "missing-file"
+	case actionmeta.CodeInvalidDockerfile:
+		ruleName = "invalid-dockerfile"
+	case actionmeta.CodeRuntimeUnsupported, actionmeta.CodeRuntimeRemoved, actionmeta.CodeRuntimeDeprecated:
+		ruleName = "action-runtime"
+	case actionmeta.CodeBrandingIcon, actionmeta.CodeBrandingColor:
+		ruleName = "action-branding"
+	case actionmeta.CodeEmptyDeprecationMessage:
+		ruleName = "action-input-deprecation"
+	case actionmeta.CodeUnknownInput, actionmeta.CodeDeprecatedInput, actionmeta.CodeRequiredInput:
+		ruleName = string(code)
+	case actionmeta.CodeMetadataRead:
+		ruleName = "action-metadata-read"
 	case actionmeta.CodeMissingField, actionmeta.CodeUnexpectedField, actionmeta.CodeInvalidFieldType,
 		actionmeta.CodeDuplicateField, actionmeta.CodeNestingDepth, actionmeta.CodeExpressionForbidden,
-		actionmeta.CodeMissingFile, actionmeta.CodeInvalidDockerfile, actionmeta.CodeInvalidStepID,
-		actionmeta.CodeDuplicateStepID, actionmeta.CodeInvalidStep, actionmeta.CodeConflictingStepKind,
-		actionmeta.CodeMissingStepKind, actionmeta.CodeMissingShell, actionmeta.CodeInvalidReference,
-		actionmeta.CodeReusableWorkflow, actionmeta.CodeExpressionSyntax, actionmeta.CodeExpressionContext,
-		actionmeta.CodeExpressionReference, actionmeta.CodeExpressionCall, actionmeta.CodeExpressionType,
-		actionmeta.CodeJSONMemberCollision, actionmeta.CodeRuntimeUnsupported, actionmeta.CodeRuntimeRemoved,
-		actionmeta.CodeRuntimeDeprecated, actionmeta.CodeBrandingIcon, actionmeta.CodeBrandingColor,
-		actionmeta.CodeEmptyDeprecationMessage, actionmeta.CodeUnknownInput, actionmeta.CodeDeprecatedInput,
-		actionmeta.CodeRequiredInput, actionmeta.CodeYAMLAnchor, actionmeta.CodeYAMLAlias, actionmeta.CodeYAMLTag,
-		actionmeta.CodeMetadataParse, actionmeta.CodeMetadataRead, actionmeta.CodeMetadataEmpty:
-		return "action", string(code)
+		actionmeta.CodeInvalidStep, actionmeta.CodeConflictingStepKind, actionmeta.CodeMissingStepKind,
+		actionmeta.CodeYAMLAnchor, actionmeta.CodeYAMLAlias, actionmeta.CodeYAMLTag,
+		actionmeta.CodeMetadataParse, actionmeta.CodeMetadataEmpty:
+		ruleName = "syntax-check"
+	default:
+		panic(fmt.Sprintf("unclassified action metadata problem code %q", code))
 	}
-	return "action", string(code)
+	return ruleName, string(code)
 }

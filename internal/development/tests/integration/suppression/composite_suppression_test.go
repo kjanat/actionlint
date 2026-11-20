@@ -32,9 +32,9 @@ runs: false
 	} {
 		for _, nested := range []bool{false, true} {
 			for _, tc := range []struct{ name, directive, config, want string }{
-				{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
-				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "forbidden-suppression"},
-				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
+				{"malformed", "# actionlint:ignore syntax-check --", "", "inline-suppression"},
+				{"prohibited", "# actionlint:ignore syntax-check -- reviewed", "policy: {disallow-suppressions: true}\n", "forbidden-suppression"},
+				{"allowed", "# actionlint:ignore syntax-check -- reviewed", "", ""},
 			} {
 				t.Run(fmt.Sprintf("%s/nested=%t/%s", metadata.name, nested, tc.name), func(t *testing.T) {
 					t.Parallel()
@@ -56,7 +56,7 @@ runs:
 					var syntaxCount, directiveCount int
 					for _, diagnostic := range result.Diagnostics {
 						switch {
-						case diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "could not parse action metadata"):
+						case diagnostic.Rule == "syntax-check" && strings.Contains(diagnostic.Message, "could not parse action metadata"):
 							syntaxCount++
 						case tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1:
 							directiveCount++
@@ -91,12 +91,12 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 			name, rule, group, directive, caller, action string
 			wantCaller, wantAction                       string
 		}{
-			{"malformed-action-off", "inline-suppression", "correctness", "# actionlint:ignore action --", "error", "off", "error", ""},
-			{"malformed-caller-off", "inline-suppression", "correctness", "# actionlint:ignore action --", "off", "error", "", "error"},
-			{"malformed-severities", "inline-suppression", "correctness", "# actionlint:ignore action --", "info", "warn", "info", "warning"},
-			{"policy-action-only", "forbidden-suppression", "policy", "# actionlint:ignore action -- reviewed", "off", "error", "", "error"},
-			{"policy-caller-only", "forbidden-suppression", "policy", "# actionlint:ignore action -- reviewed", "error", "off", "error", ""},
-			{"policy-severities", "forbidden-suppression", "policy", "# actionlint:ignore action -- reviewed", "info", "warn", "info", "warning"},
+			{"malformed-action-off", "inline-suppression", "correctness", "# actionlint:ignore syntax-check --", "error", "off", "error", ""},
+			{"malformed-caller-off", "inline-suppression", "correctness", "# actionlint:ignore syntax-check --", "off", "error", "", "error"},
+			{"malformed-severities", "inline-suppression", "correctness", "# actionlint:ignore syntax-check --", "info", "warn", "info", "warning"},
+			{"policy-action-only", "forbidden-suppression", "policy", "# actionlint:ignore syntax-check -- reviewed", "off", "error", "", "error"},
+			{"policy-caller-only", "forbidden-suppression", "policy", "# actionlint:ignore syntax-check -- reviewed", "error", "off", "error", ""},
+			{"policy-severities", "forbidden-suppression", "policy", "# actionlint:ignore syntax-check -- reviewed", "info", "warn", "info", "warning"},
 		} {
 			t.Run(runtime.name+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
@@ -151,8 +151,8 @@ func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
       run: echo ok`},
 	} {
 		for _, tc := range []struct{ name, directive, config, rule string }{
-			{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
-			{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "forbidden-suppression"},
+			{"malformed", "# actionlint:ignore syntax-check --", "", "inline-suppression"},
+			{"prohibited", "# actionlint:ignore syntax-check -- reviewed", "policy: {disallow-suppressions: true}\n", "forbidden-suppression"},
 		} {
 			for _, enabled := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/enabled=%t", runtime.name, tc.name, enabled), func(t *testing.T) {
@@ -281,10 +281,10 @@ func TestCleanLocalActionSuppressionDirectives(t *testing.T) {
 				name, directive, config string
 				want                    []string
 			}{
-				{"malformed", "# actionlint:ignore action --", "", []string{"inline-suppression"}},
-				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", []string{"unused-suppression", "forbidden-suppression"}},
-				{"allowed", "# actionlint:ignore action -- reviewed", "", []string{"unused-suppression"}},
-				{"override", "# actionlint:ignore action -- reviewed", `policy: {disallow-suppressions: true}
+				{"malformed", "# actionlint:ignore syntax-check --", "", []string{"inline-suppression"}},
+				{"prohibited", "# actionlint:ignore syntax-check -- reviewed", "policy: {disallow-suppressions: true}\n", []string{"unused-suppression", "forbidden-suppression"}},
+				{"allowed", "# actionlint:ignore syntax-check -- reviewed", "", []string{"unused-suppression"}},
+				{"override", "# actionlint:ignore syntax-check -- reviewed", `policy: {disallow-suppressions: true}
 overrides:
   - includes: ['inner/action.yml']
     lint: {rules: {policy: {disallow-suppressions: off}}}

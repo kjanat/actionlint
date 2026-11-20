@@ -31,7 +31,7 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 					return nil, failure
 				}, nil)
 				cache := actions.NewCache(t, t.TempDir(), nil, reader)
-				rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
+				rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), cache, nil)
 				err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcetext.Position{Line: 1, Column: 1}}}}))
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 					t.Fatalf("interruption became a lint finding: error=%v findings=%+v", err, rule.Errs())
@@ -104,7 +104,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rule := NewRuleAction(t.Context(), ActionRule.Base(), nil, nil)
+	rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), nil, nil)
 	if err := rule.CheckStandaloneMetadata(metadata, parsing.SourceSnapshot{}, actionmeta.ReferencedFiles{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
@@ -129,7 +129,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(t.Context(), ActionRule.Base(), actions.NewCache(t, root, &cacheLog), nil)
+	rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), actions.NewCache(t, root, &cacheLog), nil)
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		if err := rule.checkLocalAction("./inner", "./inner", &definition.ExecAction{Uses: &definition.String{Value: "./inner", Pos: &sourcetext.Position{Line: i, Column: 1}}}); err != nil {
@@ -139,7 +139,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	if want := "[LocalActionsCache] New metadata parsed from action " + filepath.Join(root, "inner") + ": node24 action \"inner\"\n"; !strings.Contains(cacheLog.String(), want) {
 		t.Fatalf("cache log lacks %q: %q", want, cacheLog.String())
 	}
-	if want := "[action] Checking metadata of node24 action \"inner\" at \"./inner\"\n"; ruleLog.String() != want {
+	if want := "[invalid-action-reference] Checking metadata of node24 action \"inner\" at \"./inner\"\n"; ruleLog.String() != want {
 		t.Fatalf("rule log = %q, want %q", ruleLog.String(), want)
 	}
 }
@@ -151,7 +151,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	// without a shell is positioned in the metadata and carries an ignore origin.
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := actions.NewCache(t, root, nil)
-	rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
+	rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), cache, nil)
 	for i := 1; i <= 3; i++ {
 		action := &definition.ExecAction{Uses: &definition.String{Value: "./inner", Pos: &sourcetext.Position{Line: i, Column: 1}}}
 		if err := rule.checkLocalAction("./inner", "./inner", action); err != nil {

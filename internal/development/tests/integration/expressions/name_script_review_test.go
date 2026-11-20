@@ -16,8 +16,8 @@ func TestCompositeNameAndScalarDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		name, script, rule, suggestion string
 	}{
-		{"context", "echo '${{ githbu.ref }}'", "action", "github"},
-		{"function", "echo '${{ startWith(github.ref, 'refs/') }}'", "action", "startsWith"},
+		{"context", "echo '${{ githbu.ref }}'", "expression-reference", "github"},
+		{"function", "echo '${{ startWith(github.ref, 'refs/') }}'", "expression-call", "startsWith"},
 		{"boolean command", "${{ true }}", "script-interpolation", ""},
 		{"number command", "${{ 42 }}", "script-interpolation", ""},
 		{"serialized null command", "${{ toJSON(null) }}", "script-interpolation", ""},
@@ -54,7 +54,7 @@ func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
 			t.Run(fmt.Sprintf("standalone=%t/%s", standalone, level), func(t *testing.T) {
 				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
-				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {action: off, expression: off, script-interpolation: " + level + "}}}\n"
+				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {syntax-check: off, expression: off, script-interpolation: " + level + "}}}\n"
 				body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ${{ true }}\n"
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", config)
 				fixturefiles.Write(t, root, "inner/action.yml", body)
@@ -95,7 +95,7 @@ func TestCompositeInvalidNamePreservesIndependentScriptFinding(t *testing.T) {
 		for _, finding := range result.Diagnostics {
 			counts[finding.Rule]++
 		}
-		if len(result.Diagnostics) != 2 || counts["action"] != 1 || counts["script-interpolation"] != 1 {
+		if len(result.Diagnostics) != 2 || counts["expression-reference"] != 1 || counts["script-interpolation"] != 1 {
 			t.Fatalf("independent script finding lost or metadata error duplicated: %+v", result.Diagnostics)
 		}
 	}

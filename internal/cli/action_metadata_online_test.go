@@ -49,7 +49,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		}
 		found := false
 		for _, d := range result.Diagnostics {
-			if d.Rule == "action" && strings.Contains(d.Message, `input "unknown" is not defined`) {
+			if d.Rule == "unknown-input" && strings.Contains(d.Message, `input "unknown" is not defined`) {
 				found = true
 			}
 		}
@@ -159,7 +159,7 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 	}
 	found := false
 	for _, d := range result.Diagnostics {
-		if d.Rule == "action" && strings.Contains(d.Message, `input "unknown" is not defined`) {
+		if d.Rule == "unknown-input" && strings.Contains(d.Message, `input "unknown" is not defined`) {
 			found = true
 		}
 	}

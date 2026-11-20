@@ -1,7 +1,7 @@
 [lint]
 [lint.rules]
 [lint.rules.correctness]
-action = 'default'
+invalid-action-reference = 'default'
 expression-reference = 'off'
 inline-suppression = 'on'
 unused-suppression = 'info'

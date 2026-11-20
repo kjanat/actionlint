@@ -60,8 +60,8 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 		rules string
 		want  string
 	}{
-		{"action: off", "missing-local-action"},
-		{"missing-local-action: off", "action"},
+		{"invalid-action-reference: off", "missing-local-action"},
+		{"missing-local-action: off", "invalid-action-reference"},
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
 			t.Parallel()

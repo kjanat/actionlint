@@ -3,7 +3,7 @@
 preset = 'all'
 
 [lint.rules.correctness]
-action = true
+invalid-action-reference = true
 preset = 'recommended'
 
 [lint.rules.security]

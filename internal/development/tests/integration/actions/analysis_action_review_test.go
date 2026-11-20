@@ -152,9 +152,9 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 		for _, tc := range []struct {
 			name, manifest, config, rule, path, severity string
 		}{
-			{"severity", "name: inner\ndescription: inner\nruns: {using: node24}\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {action: warn}}}}]", "action", "inner/action.yml", "warning"},
+			{"severity", "name: inner\ndescription: inner\nruns: {using: node24}\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {syntax-check: warn}}}}]", "syntax-check", "inner/action.yml", "warning"},
 			{"malformed", "name: [\n", "", "syntax-check", "inner/action.yml", ""},
-			{"malformed-declaration-disabled", "name: [\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {syntax-check: off}}}}]", "action", "ci.yml", ""},
+			{"malformed-declaration-disabled", "name: [\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {syntax-check: off}}}}]", "syntax-check", "ci.yml", ""},
 		} {
 			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
 				t.Parallel()

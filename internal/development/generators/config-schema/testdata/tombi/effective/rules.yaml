@@ -2,7 +2,7 @@ lint:
   experimental: true
   rules:
     preset: none
-    correctness: {action: warn}
+    correctness: {unknown-input: warn}
     suspicious: {errexit-status: default}
     security:
       unpinned-reference: {level: warn, options: {exclude: ["root/*"]}}
@@ -15,7 +15,7 @@ overrides:
     lint:
       experimental: false
       rules:
-        correctness: {action: off}
+        correctness: {unknown-input: off}
         security:
           unpinned-reference: {level: error, options: {exclude: ["inner/*"]}}
           missing-permissions: {level: warn, options: {require-at: every-job}}
@@ -28,6 +28,6 @@ overrides:
     lint:
       experimental: true
       rules:
-        correctness: {action: error}
+        correctness: {unknown-input: error}
         suspicious: {errexit-status: off}
         conventions: {job-timeout: {level: default, options: {min-minutes: 10}}}

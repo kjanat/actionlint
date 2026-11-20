@@ -68,7 +68,7 @@ runs:
     - uses: actions/checkout
 `)
 	result := testutil.Composite(t, root, "- uses: ./generated\n  id: generated\n  with:\n    unexpected: value\n- run: echo '${{ steps.generated.outputs.unknown }}'", checking.Options{})
-	for _, want := range []struct{ rule, message string }{{"action", "token"}, {"action", "unexpected"}, {"expression-reference", "unknown"}} {
+	for _, want := range []struct{ rule, message string }{{"required-input", "token"}, {"unknown-input", "unexpected"}, {"expression-reference", "unknown"}} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 			return d.Rule == want.rule && strings.Contains(d.Message, want.message)
 		}) {
@@ -76,7 +76,7 @@ runs:
 		}
 	}
 	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
-		return d.Rule == "action" && filepath.ToSlash(d.Path) == "source/action.yml" && d.Start.Line == 13
+		return d.Rule == "invalid-action-reference" && filepath.ToSlash(d.Path) == "source/action.yml" && d.Start.Line == 13
 	}) {
 		t.Fatalf("lost source diagnostic: %+v", result.Diagnostics)
 	}
@@ -108,7 +108,7 @@ func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
 				t.Fatalf("want one failure per reference: %+v", result.Diagnostics)
 			}
 			for _, diagnostic := range result.Diagnostics {
-				wantRule := "action"
+				wantRule := "action-metadata-read"
 				if failure == "missing" {
 					wantRule = "missing-local-action"
 				}

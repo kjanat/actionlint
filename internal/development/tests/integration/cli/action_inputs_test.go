@@ -97,7 +97,7 @@ func TestCommandActionInputs(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 				t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 			}
-			if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "action" || report.Diagnostics[0].Path != wantPath {
+			if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "context-availability" || report.Diagnostics[0].Path != wantPath {
 				t.Fatalf("args=%v: expected one metadata error, got %+v, diagnostics=%+v", args, got, report.Diagnostics)
 			}
 			want := 2
@@ -133,7 +133,7 @@ func TestCommandDefaultActionDiscovery(t *testing.T) {
 		if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 			t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 		}
-		if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "action" || report.Diagnostics[0].Path != "action.yml" || len(report.Documents) != 1 {
+		if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "context-availability" || report.Diagnostics[0].Path != "action.yml" || len(report.Documents) != 1 {
 			t.Fatalf("args=%v: expected one discovered metadata error, got %+v, report=%+v", args, got, report)
 		}
 	}

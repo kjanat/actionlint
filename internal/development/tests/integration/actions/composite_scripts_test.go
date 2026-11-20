@@ -394,7 +394,7 @@ runs:
 		inner := fixturefiles.Write(t, root, "inner/action.yml", content)
 		result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./inner", checking.Options{})
 		if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
-			return d.Rule == "action" && (filepath.Join(root, d.Path) == outer && strings.Contains(d.Message, "could not parse") || filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell"))
+			return (d.Rule == "syntax-check" && filepath.Join(root, d.Path) == outer && strings.Contains(d.Message, "could not parse") || d.Rule == "shell-name" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell"))
 		}) {
 			t.Fatalf("nested metadata error lost: %+v", result.Diagnostics)
 		}

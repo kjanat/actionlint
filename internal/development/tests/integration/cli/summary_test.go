@@ -67,12 +67,12 @@ func TestActionCodesAndSummaryThroughCLI(t *testing.T) {
 		}
 	}
 	got := testRunCommand("", "--no-config", "--summary", one, two)
-	if got.Status != 1 || !strings.Contains(got.Stdout, "error[action] missing-file") ||
-		!strings.Contains(got.Stdout, "error[action] runtime-deprecated") || !strings.Contains(got.Stdout, "error[action] missing-shell") {
+	if got.Status != 1 || !strings.Contains(got.Stdout, "error[missing-file]") ||
+		!strings.Contains(got.Stdout, "error[action-runtime] runtime-deprecated") || !strings.Contains(got.Stdout, "error[shell-name] missing-shell") {
 		t.Fatalf("specific action diagnostics: %+v", got)
 	}
 	want := "! Checked 2 files, 3 findings.\n\nFiles:\n  2  " + workingDirectoryPath(t, one) + "\n  1  " + workingDirectoryPath(t, two) +
-		"\n\nDiagnostics:\n  1  action/missing-file\n  1  action/missing-shell\n  1  action/runtime-deprecated\n"
+		"\n\nDiagnostics:\n  1  action-runtime/runtime-deprecated\n  1  missing-file\n  1  shell-name/missing-shell\n"
 	if got.Stderr != want {
 		t.Fatalf("summary = %q, want %q", got.Stderr, want)
 	}

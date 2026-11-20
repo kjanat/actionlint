@@ -41,7 +41,7 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				lookup = localactions.NewResolver(cache, map[string]string{"./generated": "./broken"})
 				spec = "./generated"
 			}
-			rule := NewRuleAction(t.Context(), ActionRule.Base(), lookup, nil)
+			rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), lookup, nil)
 			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcetext.Position{Line: 3, Column: 5}}}}
 			if err := rule.VisitStep(declarations.Step(step)); err != nil {
 				t.Fatal(err)
@@ -70,7 +70,7 @@ func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) 
 	for _, failure := range []error{errors.New("invalid YAML"), context.Canceled, context.DeadlineExceeded} {
 		t.Run(failure.Error(), func(t *testing.T) {
 			t.Parallel()
-			rule := NewRuleAction(t.Context(), ActionRule.Base(), metadataParseFailureLookup{cause: failure}, nil)
+			rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), metadataParseFailureLookup{cause: failure}, nil)
 			err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}}))
 			if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 				t.Fatalf("unbound or interrupted parse became a finding: error=%v findings=%+v", err, rule.Errs())

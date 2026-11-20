@@ -14,13 +14,13 @@ func TestActionDiagnosticCodes(t *testing.T) {
 		name, source string
 		want         []string
 	}{
-		{"runtime and file", "name: example\ndescription: example\nruns: {using: node20, main: missing.js}\n", []string{"missing-file", "runtime-deprecated"}},
-		{"replaced runtime", "name: example\ndescription: example\nruns: {using: node16}\n", []string{"missing-field", "runtime-deprecated"}},
-		{"unsupported runtime", "name: example\ndescription: example\nruns: {using: invalid}\n", []string{"runtime-unsupported"}},
-		{"composite shell", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}]}\n", []string{"missing-shell"}},
-		{"context", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: 'echo ${{ secrets.TOKEN }}', shell: bash}]}\n", []string{"expression-context"}},
-		{"branding", "name: example\ndescription: example\nbranding: {icon: bad-icon, color: invalid}\nruns: {using: composite, steps: []}\n", []string{"invalid-branding-color", "invalid-branding-icon"}},
-		{"schema type", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok, shell: bash, continue-on-error: []}]}\n", []string{"invalid-field-type"}},
+		{"runtime and file", "name: example\ndescription: example\nruns: {using: node20, main: missing.js}\n", []string{"action-runtime/runtime-deprecated", "missing-file/missing-file"}},
+		{"replaced runtime", "name: example\ndescription: example\nruns: {using: node16}\n", []string{"action-runtime/runtime-deprecated", "syntax-check/missing-field"}},
+		{"unsupported runtime", "name: example\ndescription: example\nruns: {using: invalid}\n", []string{"action-runtime/runtime-unsupported"}},
+		{"composite shell", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}]}\n", []string{"shell-name/missing-shell"}},
+		{"context", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: 'echo ${{ secrets.TOKEN }}', shell: bash}]}\n", []string{"context-availability/expression-context"}},
+		{"branding", "name: example\ndescription: example\nbranding: {icon: bad-icon, color: invalid}\nruns: {using: composite, steps: []}\n", []string{"action-branding/invalid-branding-color", "action-branding/invalid-branding-icon"}},
+		{"schema type", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok, shell: bash, continue-on-error: []}]}\n", []string{"syntax-check/invalid-field-type"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -31,10 +31,10 @@ func TestActionDiagnosticCodes(t *testing.T) {
 			meta.Directory = t.TempDir()
 			var codes []string
 			for _, finding := range actioncheck.Standalone(meta, actionmeta.NewReferencedFiles(map[string]actionmeta.FileAvailability{"missing.js": actionmeta.FileMissing})) {
-				if finding.Rule != "action" || finding.Code == "" || finding.Code == "action" {
+				if finding.Rule == "action" || finding.Code == "" || finding.Code == "action" {
 					t.Fatalf("nonspecific action diagnostic: %+v", finding)
 				}
-				codes = append(codes, finding.Code)
+				codes = append(codes, finding.Rule+"/"+finding.Code)
 			}
 			slices.Sort(codes)
 			if !slices.Equal(codes, tc.want) {

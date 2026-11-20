@@ -1,2 +1,2 @@
 [[ignores]]
-rule = 'action'
+rule = 'invalid-action-reference'

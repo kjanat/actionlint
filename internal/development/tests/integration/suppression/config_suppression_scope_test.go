@@ -14,7 +14,7 @@ func TestMetadataSuppressionAliasConfigurations(t *testing.T) {
 	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "inner/index.js", "console.log('ok');\n")
-	fixturefiles.Write(t, root, "inner/action.yml", `name: inner # actionlint:ignore action --
+	fixturefiles.Write(t, root, "inner/action.yml", `name: inner # actionlint:ignore syntax-check --
 description: test
 runs:
   using: node24
@@ -48,7 +48,7 @@ func TestMetadataSuppressionIgnoresWorkflowOptions(t *testing.T) {
   steps:
     - shell: bash
       run: echo ok`} {
-		for _, directive := range []string{"# actionlint:ignore action --", "# actionlint:ignore action -- reviewed"} {
+		for _, directive := range []string{"# actionlint:ignore syntax-check --", "# actionlint:ignore syntax-check -- reviewed"} {
 			t.Run(runtime+directive, func(t *testing.T) {
 				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")

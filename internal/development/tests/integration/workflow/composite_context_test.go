@@ -49,7 +49,7 @@ func TestCompositeUnavailableContextsDoNotDuplicatePropertyFindings(t *testing.T
 				unavailable := map[string]bool{"needs": false, "secrets": false, "vars": false}
 				properties := 0
 				for _, diagnostic := range result.Diagnostics {
-					if diagnostic.Rule == "action" {
+					if diagnostic.Rule == "context-availability" {
 						for name := range unavailable {
 							if strings.Contains(diagnostic.Message, "context \""+name+"\"") {
 								unavailable[name] = true

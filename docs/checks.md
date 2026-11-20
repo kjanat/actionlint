@@ -1967,19 +1967,19 @@ permissions: { contents: read }
 Output:
 
 ```console
-test.yaml:7:15: invalid-reference: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:7:15: invalid-reference: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [invalid-action-reference]
   |
 7 |       - uses: actions/checkout
   |               ^~~~~~~~~~~~~~~~
-test.yaml:9:15: invalid-reference: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:9:15: invalid-reference: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [invalid-action-reference]
   |
 9 |       - uses: checkout@v2
   |               ^~~~~~~~~~~
-test.yaml:11:15: invalid-reference: tag of Docker action should not be empty: "docker://image" [action]
+test.yaml:11:15: invalid-reference: tag of Docker action should not be empty: "docker://image" [invalid-action-reference]
    |
 11 |       - uses: "docker://image:"
    |               ^~~~~~~~~~~~~~~~~
-test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [invalid-action-reference]
    |
 13 |       - uses: .github/my-actions/do-something
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2057,11 +2057,11 @@ Output:
 <!-- Skip update output -->
 
 ```console
-test.yaml:7:15: missing input "message" which is required by action "My action" defined at "./.github/actions/my-action". all required inputs are "message" [action]
+test.yaml:7:15: missing input "message" which is required by action "My action" defined at "./.github/actions/my-action". all required inputs are "message" [required-input]
   |
 7 |       - uses: ./.github/actions/my-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:13:11: input "additions" is not defined in action "My action" defined at "./.github/actions/my-action". available inputs are "addition", "message", "name" [action]
+test.yaml:13:11: input "additions" is not defined in action "My action" defined at "./.github/actions/my-action". available inputs are "addition", "message", "name" [unknown-input]
    |
 13 |           additions: foo, bar
    |           ^~~~~~~~~~
@@ -3357,27 +3357,27 @@ Output:
 <!-- Skip update output -->
 
 ```console
-test.yaml:8:15: description is required in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml" [action]
+.github/actions/my-invalid-action/action.yml:17:3: file "this-file-does-not-exist.js" does not exist in "/path/to/repo/.github/actions/my-invalid-action". it is specified at "main" key in "runs" section in "My action" action [missing-file]
+   |
+17 |   main: "this-file-does-not-exist.js"
+   |   ^~~~~
+test.yaml:8:15: unexpected-field: "env" is not allowed in "runs" section because "My action" is a JavaScript action. the action is defined at "/path/to/repo/.github/actions/my-invalid-action" [syntax-check]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: incorrect icon name "dog" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon [action]
+test.yaml:8:15: missing-field: description is required in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml" [syntax-check]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: incorrect color "gray-white" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor [action]
+test.yaml:8:15: invalid-branding-color: incorrect color "gray-white" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor [action-branding]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: runtime "node16" is no longer bundled with current GitHub Actions runners. update runs.using in local action "My action" to a current runtime [action]
+test.yaml:8:15: invalid-branding-icon: incorrect icon name "dog" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon [action-branding]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: file "this-file-does-not-exist.js" does not exist in "/path/to/repo/.github/actions/my-invalid-action". it is specified at "main" key in "runs" section in "My action" action [action]
-  |
-8 |       - uses: ./.github/actions/my-invalid-action
-  |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: "env" is not allowed in "runs" section because "My action" is a JavaScript action. the action is defined at "/path/to/repo/.github/actions/my-invalid-action" [action]
+test.yaml:8:15: runtime-deprecated: runtime "node16" is deprecated; current GitHub Actions runners use "node24" instead. update runs.using in local action "My action" to a current runtime [action-runtime]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3457,7 +3457,7 @@ permissions: {}
 Expected diagnostic:
 
 ```console
-test.yaml:9:11: deprecated-input: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
+test.yaml:9:11: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [deprecated-input]
   |
 9 |           fail_on_error: true
   |           ^~~~~~~~~~~~~~
@@ -3511,11 +3511,11 @@ Output:
 <!-- Skip update output -->
 
 ```console
-test.yaml:6:15: input "empty-message" is deprecated but "deprecationMessage" is empty in metadata of "My action" action at "/path/to/.github/actions/my-action/action.yaml" [action]
+test.yaml:6:15: empty-deprecation-message: input "empty-message" is deprecated but "deprecationMessage" is empty in metadata of "My action" action at "/path/to/.github/actions/my-action/action.yaml" [action-input-deprecation]
   |
 6 |       - uses: ./.github/actions/my-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:9:11: avoid using deprecated input "old-input" in action "My action" defined at "./.github/actions/my-action": This input is deprecated. Use new-input instead [action]
+test.yaml:9:11: avoid using deprecated input "old-input" in action "My action" defined at "./.github/actions/my-action": This input is deprecated. Use new-input instead [deprecated-input]
   |
 9 |           old-input: some value
   |           ^~~~~~~~~~

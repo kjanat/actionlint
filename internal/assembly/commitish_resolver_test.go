@@ -78,7 +78,7 @@ func TestBundledCommitishResolvesMetadataWithoutExternalExecutable(t *testing.T)
 				if diagnostic.Rule == "remote-resolution" {
 					t.Fatalf("metadata lookup unexpectedly enabled commit-pin suggestions: %+v", diagnostic)
 				}
-				if diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "unlisted-input") {
+				if diagnostic.Rule == "unknown-input" && strings.Contains(diagnostic.Message, "unlisted-input") {
 					found = true
 				}
 			}

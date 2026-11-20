@@ -210,9 +210,10 @@ test('closed action metadata is read through the virtual workspace host', async 
 
 test('JavaScript action entry files are checked through the virtual workspace host', async ({ page }) => {
 	const root = 'vscode-vfs://github/owner/repository';
+	const manifest = `${root}/local/action.yml`;
 	const entry = `${root}/local/index.js`;
 	await start(page, root, {
-		[`${root}/local/action.yml`]: 'name: Local\ndescription: Fixture\nruns: {using: node24, main: index.js}\n',
+		[manifest]: 'name: Local\ndescription: Fixture\nruns: {using: node24, main: index.js}\n',
 		[entry]: 'export {};\n',
 	});
 	const workflow =
@@ -224,11 +225,18 @@ test('JavaScript action entry files are checked through the virtual workspace ho
 		if (!session) throw new Error('The browser session was not started');
 		delete session.files[uri];
 	}, entry);
-	const missing = await check(page, workflow);
-	expect(missing.some(diagnostic => {
-		const message = typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value;
-		return message.includes('index.js') && message.includes('does not exist');
-	})).toBe(true);
+	expect(await check(page, workflow)).toEqual([]);
+	await page.waitForFunction(
+		uri =>
+			window.browserSession?.publications.some(publication =>
+				publication.uri === uri && publication.diagnostics.some(diagnostic => {
+					const message = typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value;
+					return diagnostic.code === 'missing-file/missing-file' && message.includes('index.js')
+						&& message.includes('does not exist');
+				})
+			),
+		manifest,
+	);
 });
 
 test('reusable workflow inputs and permission ceilings use virtual workspace metadata', async ({ page }) => {

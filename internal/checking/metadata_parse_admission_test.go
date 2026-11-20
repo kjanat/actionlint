@@ -106,7 +106,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			}
 			parseCount, retainedCount := 0, 0
 			for _, finding := range result.Diagnostics {
-				if finding.Rule == "action" && strings.Contains(finding.Message, "could not parse action metadata") {
+				if finding.Rule == "syntax-check" && strings.Contains(finding.Message, "could not parse action metadata") {
 					parseCount++
 				}
 				if finding.Message == "unrelated entry observation" {
@@ -167,7 +167,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			if !exists {
 				t.Fatal("metadata parse record absent")
 			}
-			producer := correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), cache, nil)
+			producer := correctness.NewRuleAction(t.Context(), correctness.InvalidActionReferenceRule.Base(), cache, nil)
 			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}

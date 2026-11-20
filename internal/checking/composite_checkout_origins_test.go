@@ -246,7 +246,7 @@ jobs:
 					t.Fatalf("canonical metadata not inspected: %v", result.Inputs)
 				}
 				if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
-					return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
+					return d.Rule == "shell-name" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 				}) {
 					t.Fatalf("missing composite diagnostic: %+v", result.Diagnostics)
 				}

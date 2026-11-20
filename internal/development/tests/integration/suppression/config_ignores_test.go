@@ -83,7 +83,7 @@ func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 		t.Run(level, func(t *testing.T) {
 			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
-			fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {correctness: {action: "+level+"}}}\nignores: [{rule: action, file: inner/action.yml, step: validate}]\npolicy: {disallow-suppressions: {report: suppression}}\n")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {correctness: {context-availability: "+level+"}}}\nignores: [{rule: context-availability, file: inner/action.yml, step: validate}]\npolicy: {disallow-suppressions: {report: suppression}}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: Inner\ndescription: Inner\nruns:\n  using: composite\n  steps:\n    - id: validate\n      shell: bash\n      run: echo '${{ invalid }}'\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
 			if level == "off" {
@@ -120,7 +120,7 @@ func TestReusableIgnoreMetadataScope(t *testing.T) {
 		t.Run(tc.selector, func(t *testing.T) {
 			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
-			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: [{rule: action, "+tc.selector+"}]")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: [{rule: context-availability, "+tc.selector+"}]")
 			fixturefiles.Write(t, root, "inner/action.yml", `name: inner
 description: test
 runs:

@@ -30,21 +30,21 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 				first         int
 			}{
 				{"none", "[]", 0},
-				{"unmatched job", "[{rule: action, job: missing}]", 0},
-				{"unmatched file", "[{rule: action, file: missing.yml}]", 0},
-				{"metadata file", "[{rule: action, file: inner/action.yml}]", 0},
+				{"unmatched job", "[{rule: $RULE, job: missing}]", 0},
+				{"unmatched file", "[{rule: $RULE, file: missing.yml}]", 0},
+				{"metadata file", "[{rule: $RULE, file: inner/action.yml}]", 0},
 				{"other rule", "[{rule: shellcheck, job: a}]", 0},
-				{"first", "[{rule: action, job: c}]", 1},
-				{"second", "[{rule: action, job: b}]", 0},
-				{"first two", "[{rule: action, job: c}, {rule: action, job: b}]", 2},
-				{"all", "[{rule: action, job: a}, {rule: action, job: b}, {rule: action, job: c}]", -1},
+				{"first", "[{rule: $RULE, job: c}]", 1},
+				{"second", "[{rule: $RULE, job: b}]", 0},
+				{"first two", "[{rule: $RULE, job: c}, {rule: $RULE, job: b}]", 2},
+				{"all", "[{rule: $RULE, job: a}, {rule: $RULE, job: b}, {rule: $RULE, job: c}]", -1},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					t.Parallel()
 					if tc.name == "metadata file" && metadata.foreign {
 						tc.first = -1
 					}
-					config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
+					config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + strings.ReplaceAll(tc.ignores, "$RULE", map[bool]string{false: "syntax-check", true: "context-availability"}[metadata.foreign])))
 					if err != nil {
 						t.Fatal(err)
 					}

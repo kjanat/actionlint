@@ -57,7 +57,7 @@ runs:
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
 			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
-				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
+				return d.Rule == "shell-name" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {
 				t.Fatalf("composite checked=%v, want %v: %+v", found, tc.read, result.Diagnostics)

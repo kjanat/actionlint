@@ -58,7 +58,7 @@ func TestReusableIgnoreInheritance(t *testing.T) {
 		{"", 1, "expression"},
 		{"ignores: []", 0, ""},
 		{"ignores: null", 0, ""},
-		{"ignores: [{rule: action, uses: './generated'}]", 1, "action"},
+		{"ignores: [{rule: missing-local-action, uses: './generated'}]", 1, "missing-local-action"},
 	} {
 		if err := os.WriteFile(child, []byte("extends: [base.yaml]\n"+tc.overlay), 0o600); err != nil {
 			t.Fatal(err)
