@@ -316,6 +316,10 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
 	d := p.ScriptDescriptor()
+	verify := func(data []byte) error {
+		descriptor := d.Clone()
+		return verifyScriptMetadata(data, ScriptEngineInterface, &descriptor)
+	}
 	metadata := map[string]any{
 		"metadata_version": 1, "id": d.ID, "name": d.Name, "plugin_version": d.Version,
 		"transport": "wasm-component", "interface": ScriptEngineInterface, "wit_sha256": scriptEngineWITSHA256,
@@ -334,7 +338,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor)
+			err = verify(data)
 			if (err == nil) != (key == "") {
 				t.Fatalf("metadata %q: %v", key, err)
 			}
@@ -348,7 +352,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor); err != nil {
+	if err := verify(data); err != nil {
 		t.Fatal(err)
 	}
 	for _, shells := range [][]string{{"python"}, {"Python"}, {"python.exe"}, {"python", "Python"}} {
@@ -360,7 +364,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor); (err == nil) != slices.Equal(shells, d.Shells) {
+			if err := verify(data); (err == nil) != slices.Equal(shells, d.Shells) {
 				t.Fatalf("metadata shells=%v: %v", shells, err)
 			}
 		})
