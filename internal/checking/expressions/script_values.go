@@ -35,7 +35,7 @@ func scriptLiteralProof(value string) scriptValueProof {
 	if correctness.SafeScriptWord(value) {
 		return scriptLiteralWord
 	}
-	if correctness.SafeScriptLiteral(value) {
+	if correctness.SafeScriptArgumentLiteral(value) {
 		return scriptArgumentOnly
 	}
 	return scriptUnsafe

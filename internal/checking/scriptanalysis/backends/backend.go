@@ -287,35 +287,68 @@ func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]chec
 }
 
 // check runs every request, in parallel for a concurrent process backend.
-// Each process still waits for a slot of the shared pool.
+// Each process still waits for a slot of the shared pool. A check with
+// variants runs once per variant, and their outcomes merge.
 func (r runner) check(ctx context.Context, checks []check) []outcome {
-	outcomes := make([]outcome, len(checks))
+	type job struct {
+		check int
+		run   check
+	}
+	var jobs []job
+	for i, c := range checks {
+		for _, run := range c.runs() {
+			jobs = append(jobs, job{check: i, run: run})
+		}
+	}
+	results := make([]outcome, len(jobs))
 	processes, reporting := r.backend.(processRunner)
 	run := func(i int) {
 		if reporting {
-			result, err := processes.Run(ctx, checks[i].request, checks[i].prepared.Vars)
-			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, skipped: result.Skipped, err: err}
+			result, err := processes.Run(ctx, jobs[i].run.request, jobs[i].run.prepared.Vars)
+			results[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, skipped: result.Skipped, err: err}
 			return
 		}
-		outcomes[i] = r.checkGranted(ctx, checks[i])
+		results[i] = r.checkGranted(ctx, jobs[i].run)
 	}
-	if !reporting || !processes.Concurrent() || len(checks) < 2 {
-		for i := range checks {
+	if !reporting || !processes.Concurrent() || len(jobs) < 2 {
+		for i := range jobs {
 			run(i)
 		}
-		return outcomes
+	} else {
+		var group errgroup.Group
+		group.SetLimit(runtime.GOMAXPROCS(0))
+		for i := range jobs {
+			group.Go(func() error {
+				run(i)
+				return nil
+			})
+		}
+		// Each check records its own error; the group reports none.
+		_ = group.Wait()
 	}
-	var group errgroup.Group
-	group.SetLimit(runtime.GOMAXPROCS(0))
-	for i := range checks {
-		group.Go(func() error {
-			run(i)
-			return nil
-		})
+	grouped := make([][]outcome, len(checks))
+	for i, job := range jobs {
+		grouped[job.check] = append(grouped[job.check], results[i])
 	}
-	// Each check records its own error; the group reports none.
-	_ = group.Wait()
+	outcomes := make([]outcome, len(checks))
+	for i, c := range checks {
+		outcomes[i] = mergeVariants(c.prepared, grouped[i])
+	}
 	return outcomes
+}
+
+// runs are the requests for c: one per variant, or c itself without
+// variants.
+func (c check) runs() []check {
+	if len(c.prepared.Variants) == 0 {
+		return []check{c}
+	}
+	runs := make([]check, len(c.prepared.Variants))
+	for i, variant := range c.prepared.Variants {
+		runs[i] = c
+		runs[i].request.Source = variant.Source
+	}
+	return runs
 }
 
 // findings maps one check's diagnostics to findings in the workflow.
@@ -327,6 +360,10 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 	}
 	files := map[string]reportedFile{}
 	for _, d := range result.diagnostics {
+		if d.Source != "" && c.prepared.ConfigFile != "" && sourcePath(d.Source, result.directory) == sourcePath(c.prepared.ConfigFile, result.directory) {
+			failures = errors.Join(failures, r.configurationError(d))
+			continue
+		}
 		if d.Source != "" {
 			if !r.options.findings.reportedSources {
 				failures = errors.Join(failures, fmt.Errorf("tool %s reported a finding in %q but does not declare reported sources", r.descriptor.Name, d.Source))

@@ -91,6 +91,25 @@ func Prepare(src, directives, startup string) Script {
 // Text is the prepared source.
 func (script Script) Text() string { return script.text }
 
+// Substitute returns the prepared source with each script row taken from
+// src, which has the rows of the source given to Prepare.
+func (script Script) Substitute(src string) string {
+	rows := strings.SplitAfter(src, "\n")
+	var out strings.Builder
+	for index, line := range strings.SplitAfter(script.text, "\n") {
+		if index >= len(script.sourceLines) || script.sourceLines[index] == 0 {
+			out.WriteString(line)
+			continue
+		}
+		row := rows[script.sourceLines[index]-1]
+		out.WriteString(row)
+		if !strings.HasSuffix(row, "\n") {
+			out.WriteByte('\n')
+		}
+	}
+	return out.String()
+}
+
 // OriginalLine is the run block row that prepared row line holds, or zero for
 // a generated row. The row just past the end maps past the last source row,
 // where parser errors and exclusive ends may point.

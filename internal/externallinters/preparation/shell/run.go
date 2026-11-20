@@ -58,5 +58,9 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		return preparation.Prepared{Skip: plan.Skip}, nil
 	}
 	script := Prepare(mask.Expressions(text), plan.Prefix, plan.Startup)
-	return preparation.Prepared{Source: script.Text(), LineMap: script.Line, Config: plan.Config, Vars: plan.Variables, Excluded: plan.Excluded}, nil
+	prepared := preparation.Prepared{Source: script.Text(), LineMap: script.Line, Config: plan.Config, Vars: plan.Variables, Excluded: plan.Excluded, ConfigFile: r.ConfigFile}
+	for _, variant := range mask.Variants(text) {
+		prepared.Variants = append(prepared.Variants, preparation.Variant{Source: script.Substitute(variant.Text), Substitutions: variant.Substitutions})
+	}
+	return prepared, nil
 }

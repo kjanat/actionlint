@@ -3,6 +3,7 @@ package backends
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -355,6 +356,55 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	}
 	if len(findings) != 2 || findings[0].Code != "X1" || findings[1].Code != "X2" || !findings[1].Source.RawScript {
 		t.Fatalf("findings: %+v", findings)
+	}
+}
+
+// koalaman/shellcheck@919d37c4d77a7ce16cfc76ebdd781dd6e8081fa5 reports an
+// unparsable --rcfile as SC1134 at its position in the rc file.
+func TestDiagnosticInSelectedConfigFileIsConfigurationError(t *testing.T) {
+	t.Parallel()
+	for _, reportedSources := range []bool{true, false} {
+		t.Run(fmt.Sprintf("reported sources %t", reportedSources), func(t *testing.T) {
+			t.Parallel()
+			directory := t.TempDir()
+			config := filepath.Join(directory, "broken.rc")
+			if err := os.WriteFile(config, []byte("disable=not-a-code\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(config, filepath.Join(directory, "linked.rc")); err != nil {
+				t.Skipf("symlink unavailable: %v", err)
+			}
+			at := sourcetext.Position{Line: 1, Column: 19}
+			diagnostics := []scriptengine.Diagnostic{
+				{Source: "broken.rc", Code: "SC1134", Severity: "error", Message: "Failed to process broken.rc, line 1", Location: at},
+				{Source: "linked.rc", Code: "SC1134", Severity: "error", Message: "Failed to process linked.rc, line 1", Location: at},
+			}
+			if reportedSources {
+				diagnostics = append(diagnostics, scriptengine.Diagnostic{Source: "lib.sh", Code: "SC2086", Severity: "info", Message: "read file", Location: sourcetext.Position{Line: 1, Column: 1}})
+			}
+			backend := &reportingBackend{directory: directory, result: func(scriptengine.Request) process.DecodedCheck {
+				return process.DecodedCheck{Diagnostics: diagnostics}
+			}}
+			script := scriptFixture(t, "run: |\n  source lib.sh\n")
+			script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
+			runner := buildRunner(t, backend, engineOptions{
+				prepare: func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error) {
+					return preparation.Prepared{Source: script.Text(), ConfigFile: config}, nil
+				},
+				findings: findingCapabilities{reportedSources: reportedSources},
+			})
+			findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{script}})
+			if err == nil || strings.Count(err.Error(), "tools.tool.config: SC1134: Failed to process") != 2 || strings.Contains(err.Error(), "does not declare reported sources") {
+				t.Fatalf("selected config diagnostics did not fail the run: %v", err)
+			}
+			wantFindings := 0
+			if reportedSources {
+				wantFindings = 1
+			}
+			if len(findings) != wantFindings || reportedSources && findings[0].Code != "SC2086" {
+				t.Fatalf("findings: %+v", findings)
+			}
+		})
 	}
 }
 

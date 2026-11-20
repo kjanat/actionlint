@@ -102,6 +102,38 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 	}
 }
 
+func TestKnownArgumentValuesAllowExpansionCharacters(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, run string
+		unsafe    bool
+	}{
+		{"env argument", "tar --create ${{ env.FLAGS }} .", false},
+		{"env command word", "${{ env.FLAGS }} --create .", true},
+		{"matrix echo argument", "echo ${{ matrix.flags }}", false},
+		{"matrix command word", "${{ matrix.flags }} --create .", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy: {matrix: {flags: ['--exclude=.[^/]*', '--exclude=x']}}\n    steps:\n      - env: {FLAGS: '--exclude=.[^/]*'}\n        run: " + tc.run + "\n"
+			rule, workflow := newTestCheckerForSource(t, source)
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			unsafe := false
+			for _, finding := range rule.Findings() {
+				unsafe = unsafe || finding.Rule == "script-interpolation"
+			}
+			if unsafe != tc.unsafe {
+				t.Fatalf("script-interpolation reported=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
+			}
+		})
+	}
+}
+
 func TestSafeMatrixScriptReferences(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

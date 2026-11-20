@@ -504,3 +504,35 @@ permissions: {}
 		})
 	}
 }
+
+func TestShellcheckChecksKnownTemplateValues(t *testing.T) {
+	t.Parallel()
+	command := shellcheckForTest(t)
+	root := t.TempDir()
+	template := "${{ github.event_name == 'push' && '$HOME' || 'x' }}"
+	workflow := writeFixture(t, root, "workflow.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo `+template+` done
+`)
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, d := range result.Diagnostics {
+		if d.Rule == "shellcheck" {
+			got = append(got, d.Code+" "+strconv.Itoa(d.Start.Line)+":"+strconv.Itoa(d.Start.Column)+" "+d.Message)
+		}
+	}
+	want := []string{
+		"SC2086 6:19 Double quote to prevent globbing and word splitting (when " + template + ` is "$HOME")`,
+		"SC1010 6:" + strconv.Itoa(20+len(template)) + " Use semicolon or linefeed before 'done' (or quote to make it literal)",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+}
