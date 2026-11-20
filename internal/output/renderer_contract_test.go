@@ -49,7 +49,7 @@ func TestRendererWriteErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 			presentation := FromAnalysis(analysis)
-			presentation.CheckResult = exitcode.AnalysisResult(analysis)
+			presentation.CheckResult = exitcode.AnalysisResult(analysis, false)
 			err = renderer.Render(failingRenderWriter{}, presentation)
 			text := format == outputformat.Text || format == outputformat.Oneline
 			if (err == nil) != text {

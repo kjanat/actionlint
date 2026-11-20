@@ -338,6 +338,16 @@ Nonempty summaries also include `summary.by_file` (`path`, `count`) and
 `summary.by_diagnostic` (`rule`, optional `code`, `count`).
 Check the exit status before interpreting empty stdout as success.
 
+Errors fail a check. With `--strict`, warnings also fail it. Informational findings
+never fail a check. Dependency advice remains non-blocking unless selected by
+`lint.dependencies`; selected findings then follow the same severity threshold.
+JSON results record this threshold as `failure_threshold`.
+
+Findings from imported remote actions carry `origin: "dependency"` in JSON and a
+`dependency:` prefix in pretty output, such as `error[dependency:action] missing-file`.
+Selected project files carry `origin: "project"`. These labels do not change rule
+names or suppression selectors.
+
 | Exit status | Meaning                                                                                                   |
 | ----------- | --------------------------------------------------------------------------------------------------------- |
 | `0`         | Completed without findings that affect the exit status, or completed an information/configuration command |

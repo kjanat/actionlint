@@ -212,7 +212,7 @@ func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 	t.Parallel()
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
-		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", exitcode.ExitSuccessProblemFound}, report: exitcode.AnalysisResult(*analysis)}
+		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", exitcode.ExitSuccessProblemFound}, report: exitcode.AnalysisResult(*analysis, false)}
 		o, count, rendered := renderOutcome(result)
 		if o.code != exitcode.ExitSuccessProblemFound || count != "1" || rendered != serialized {
 			t.Fatalf("typed finding count/rendered output changed: %+v, %q, %q", o, count, rendered)

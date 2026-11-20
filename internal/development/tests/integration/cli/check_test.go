@@ -98,7 +98,7 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 	}
 	summaryErr := json.Unmarshal([]byte(got.Stderr), &summary)
 	wantSummary := report.CheckSummary{
-		Files: 1, Findings: 1,
+		Files: 1, Findings: 1, ProjectFindings: 1,
 		ByFile:       []report.FileFindingCount{{Path: filepath.FromSlash(".github/workflows/ci.yml"), Count: 1}},
 		ByDiagnostic: []report.DiagnosticCount{{Rule: "expression-reference", Code: "unknown-variable", Count: 1}},
 	}
@@ -311,7 +311,7 @@ func TestApplicationBuiltInOutput(t *testing.T) {
 			t.Fatal(err)
 		}
 		presentation := output.FromAnalysis(*result)
-		presentation.CheckResult = exitcode.AnalysisResult(*result)
+		presentation.CheckResult = exitcode.AnalysisResult(*result, false)
 		if err := renderer.Render(&out, presentation); err != nil {
 			t.Fatal(err)
 		}

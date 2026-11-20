@@ -40,7 +40,7 @@ func TestConfiguredOutputEmitsEachFormatOnce(t *testing.T) {
 	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "output: {formats: [github, pretty, github], log-level: info, summary: true, network-stats: true}\n")
 	status, out, log := runConfiguredOutput(t, config, workflow)
-	if status != 1 || strings.Count(out, "::warning ") != 1 || strings.Count(out, "warning[empty-run]") != 1 {
+	if status != 0 || strings.Count(out, "::warning ") != 1 || strings.Count(out, "warning[empty-run]") != 1 {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 	if !strings.Contains(log, "verbose: actionlint ") || !strings.Contains(log, "Checked 1 file") || !strings.Contains(log, `"network":`) {
@@ -52,11 +52,11 @@ func TestConfiguredOutputExplicitFlagsOverride(t *testing.T) {
 	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "output: {formats: [github, pretty], log-level: debug, summary: true, network-stats: true, quiet: true}\n")
 	status, out, log := runConfiguredOutput(t, config, workflow, "--json", "--log-level=none", "--summary=false", "--network-stats=false", "--quiet=false")
-	if status != 1 || !json.Valid([]byte(out)) || log != "" {
+	if status != 0 || !json.Valid([]byte(out)) || log != "" {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 	status, out, log = runConfiguredOutput(t, config, workflow, "--output=gcc", "--output=gcc", "--verbose=false", "--summary=false", "--network-stats=false")
-	if status != 1 || strings.Contains(out, "::warning") || strings.Contains(out, "--> ") || strings.Count(out, "empty-run") != 1 || log != "" {
+	if status != 0 || strings.Contains(out, "::warning") || strings.Contains(out, "--> ") || strings.Count(out, "empty-run") != 1 || log != "" {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 }
@@ -67,11 +67,11 @@ func TestConfiguredOutputEnvironmentOverrides(t *testing.T) {
 	t.Setenv("ACTIONLINT_LOG_LEVEL", "none")
 	t.Setenv("ACTIONLINT_SUMMARY", "false")
 	status, out, log := runConfiguredOutput(t, config, workflow)
-	if status != 1 || !json.Valid([]byte(out)) || log != "" {
+	if status != 0 || !json.Valid([]byte(out)) || log != "" {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 	status, out, _ = runConfiguredOutput(t, config, workflow, "-o", "github")
-	if status != 1 || !strings.Contains(out, "::warning ") {
+	if status != 0 || !strings.Contains(out, "::warning ") {
 		t.Fatalf("CLI did not override environment: %s", out)
 	}
 }
@@ -107,7 +107,7 @@ func TestConfiguredOutputEmptyEnvironmentUsesConfig(t *testing.T) {
 	t.Setenv("ACTIONLINT_LOG_LEVEL", "")
 	config, workflow := configuredOutputFixture(t, "output: {formats: [github], log-level: info, summary: false}\n")
 	status, out, log := runConfiguredOutput(t, config, workflow)
-	if status != 1 || !strings.Contains(out, "::warning ") || !strings.Contains(log, "verbose: actionlint ") {
+	if status != 0 || !strings.Contains(out, "::warning ") || !strings.Contains(log, "verbose: actionlint ") {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 }
@@ -124,7 +124,7 @@ func TestConfiguredOutputInheritsAcrossFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	status, out, log := runConfiguredOutput(t, config, workflow)
-	if status != 1 || strings.Count(out, "::warning ") != 1 || log != "" {
+	if status != 0 || strings.Count(out, "::warning ") != 1 || log != "" {
 		t.Fatalf("status=%d out=%s log=%s", status, out, log)
 	}
 }
@@ -155,7 +155,7 @@ func TestConfiguredOutputUsesInvokingRepository(t *testing.T) {
 	var out, log bytes.Buffer
 	command := Command{Stdout: &out, Stderr: &log}
 	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--offline", filepath.Join(first, "workflow.yml"), filepath.Join(second, "workflow.yml")})
-	if status != 1 || strings.Count(out.String(), "empty-run") != 2 || strings.Contains(out.String(), "::warning") || log.Len() != 0 {
+	if status != 0 || strings.Count(out.String(), "empty-run") != 2 || strings.Contains(out.String(), "::warning") || log.Len() != 0 {
 		t.Fatalf("status=%d out=%s log=%s", status, &out, &log)
 	}
 }

@@ -56,6 +56,7 @@ function diagnostic(value: unknown): value is Diagnostic {
 		&& (value.snippet === undefined || typeof value.snippet === 'string')
 		&& (value.severity === undefined || typeof value.severity === 'string')
 		&& (value.non_blocking === undefined || typeof value.non_blocking === 'boolean')
+		&& (value.origin === undefined || value.origin === 'project' || value.origin === 'dependency')
 		&& (value.code === undefined || typeof value.code === 'string')
 		&& (value.fixes === undefined || (Array.isArray(value.fixes) && value.fixes.every(fix)));
 }
@@ -254,6 +255,8 @@ function incompleteCheck(value: unknown): value is IncompleteCheck {
 export function parseResult(value: unknown): ActionResult {
 	if (
 		!object(value) || value.schema_version !== 1
+		|| (value.failure_threshold !== undefined && value.failure_threshold !== 'warning'
+			&& value.failure_threshold !== 'error')
 		|| (value.file_count !== null && !integer(value.file_count, 0))
 		|| !Array.isArray(value.diagnostics) || !value.diagnostics.every(diagnostic)
 		|| !Array.isArray(value.configurations) || !value.configurations.every(configuration) || !Array.isArray(value.hints)
@@ -282,13 +285,11 @@ export function parseResult(value: unknown): ActionResult {
 	if (value.incomplete_checks !== undefined) data.incomplete_checks = value.incomplete_checks;
 	if (
 		value.completed === true && value.status === 'success' && value.exit_code === 0
-		&& value.diagnostics.every((finding) => finding.non_blocking === true)
 	) {
 		return { ...data, completed: true, status: 'success', exit_code: 0 };
 	}
 	if (
 		value.completed === true && value.status === 'problems-found' && value.exit_code === 1
-		&& value.diagnostics.some((finding) => finding.non_blocking !== true)
 	) {
 		return { ...data, completed: true, status: 'problems-found', exit_code: 1 };
 	}

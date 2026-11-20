@@ -29,16 +29,17 @@ func printPretty(out io.Writer, f results.PublishedDiagnostic, width int, hyperl
 	}
 	label := string(level)
 	if d.Rule != "" {
-		label += "[" + d.Rule + "]"
+		rule := d.Rule
+		if d.Origin == results.DependencyOrigin {
+			rule = "dependency:" + rule
+		}
+		label += "[" + rule + "]"
 	}
 	if d.Code != "" && d.Code != d.Rule {
 		label += " " + d.Code
 	}
 	writeWrapped(&b, "", label, width, style, hyperlinks)
 	writeWrapped(&b, "  ", d.Message, width, nil, hyperlinks)
-	if d.NonBlocking {
-		writeWrapped(&b, "  = ", "This dependency finding does not affect the exit code. Use lint.dependencies to make it count.", width, nil, hyperlinks)
-	}
 	writePrettyLocation(&b, "  --> ", d.Path, d.Start, width, hyperlinks)
 	if f.Excerpt.Kind != results.ExcerptAbsent {
 		gutter := fmt.Sprintf("%d | ", d.Start.Line)

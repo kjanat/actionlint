@@ -66,6 +66,7 @@ type sarifResult struct {
 }
 
 type sarifResultProperties struct {
+	Origin         results.DiagnosticOrigin `json:"origin,omitempty"`
 	DiagnosticCode string                   `json:"diagnosticCode,omitempty"`
 	Lifecycle      *results.LifecycleReport `json:"lifecycle,omitempty"`
 }
@@ -219,8 +220,8 @@ func WriteSARIF(out io.Writer, version string, rules []*rule.Descriptor, diagnos
 				PhysicalLocation: sarifSourceLocation(related.Path, related.Start, related.End),
 			})
 		}
-		if d.Code != "" || d.Lifecycle != nil {
-			result.Properties = &sarifResultProperties{DiagnosticCode: d.Code, Lifecycle: d.Lifecycle}
+		if d.Code != "" || d.Lifecycle != nil || d.Origin != "" {
+			result.Properties = &sarifResultProperties{DiagnosticCode: d.Code, Lifecycle: d.Lifecycle, Origin: d.Origin}
 		}
 		if len(result.Fixes) == 0 {
 			result.Fixes = nil

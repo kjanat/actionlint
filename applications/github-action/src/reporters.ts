@@ -53,8 +53,9 @@ export function annotation(diagnostic: Diagnostic): string {
 		? 'notice'
 		: 'error';
 	const message = diagnostic.message.replace(/([.!?])\s+(?=(?:avoid|instead|see)\b)/gi, '$1\n');
+	const origin = diagnostic.origin === 'dependency' ? 'dependency:' : '';
 	return `::${level} file=${property(diagnostic.path)},${range},title=${
-		property(diagnostic.code || diagnostic.rule)
+		property(origin + (diagnostic.code || diagnostic.rule))
 	}::${commandEscape(message + (diagnostic.snippet ? `\n\n${diagnosticSnippet(diagnostic)}` : ''))}`;
 }
 

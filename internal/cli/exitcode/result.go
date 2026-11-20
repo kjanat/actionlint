@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -22,12 +23,19 @@ const (
 
 // AnalysisResult reports a completed check. A failed check must use NewCheckResult
 // with its failure code and attach any partial analysis data separately.
-func AnalysisResult(analysis report.Analysis) report.CheckResult {
+func AnalysisResult(analysis report.Analysis, strict bool) report.CheckResult {
+	threshold := severity.Error
+	if strict {
+		threshold = severity.Warning
+	}
 	code := ExitSuccessNoProblem
-	if slices.ContainsFunc(analysis.Diagnostics, func(d results.PublishedDiagnostic) bool { return !d.NonBlocking }) {
+	if slices.ContainsFunc(analysis.Diagnostics, func(d results.PublishedDiagnostic) bool {
+		return !d.NonBlocking && d.Severity.Effective().Rank() >= threshold.Rank()
+	}) {
 		code = ExitSuccessProblemFound
 	}
 	r := report.FromAnalysis(analysis)
+	r.FailureThreshold = threshold
 	completion := NewCheckResult(code)
 	r.Status, r.Completed, r.ExitCode = completion.Status, completion.Completed, completion.ExitCode
 	return r

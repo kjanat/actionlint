@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/severity"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -133,9 +134,13 @@ func (processor Processor) evaluate(p DocumentInputs, all []*finding.Finding, me
 			}
 		}
 		findings = slices.DeleteFunc(findings, func(e *finding.Finding) bool {
+			e.Origin = processor.diagnosticOrigin(p, e.Path)
+			if e.Origin == results.DependencyOrigin && e.Rule == "unused-suppression" {
+				return true
+			}
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
 			executionFailure := descriptor.ExecutionFailure && e.Severity.Effective() == severity.Error
-			e.NonBlocking = sourcetext.RemoteAddress(e.Path) && e.Path != p.Path &&
+			e.NonBlocking = e.Origin == results.DependencyOrigin &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			prepared, _ := p.Bindings.Lookup(e.Binding)
 			level := prepared.Scope().DiagnosticLevel(e.Rule)
@@ -160,6 +165,7 @@ func (processor Processor) evaluate(p DocumentInputs, all []*finding.Finding, me
 
 	all = append(requiredLifecycle, all...)
 	for _, err := range all {
+		err.Origin = processor.diagnosticOrigin(p, err.Path)
 		if err.Path == "" {
 			err.Path = path // Populate filename in the error
 		} else {
@@ -170,6 +176,20 @@ func (processor Processor) evaluate(p DocumentInputs, all []*finding.Finding, me
 	slices.SortFunc(all, finding.Compare)
 
 	return all, nil
+}
+
+func (processor Processor) diagnosticOrigin(p DocumentInputs, path string) results.DiagnosticOrigin {
+	if !sourcetext.RemoteAddress(path) || path == p.Path || path == p.ConfigPath {
+		return results.ProjectOrigin
+	}
+	entry := processor.CanonicalPaths[p.Path]
+	if entry == "" {
+		entry = processor.CanonicalPaths[p.ConfigPath]
+	}
+	if entry != "" && processor.CanonicalPaths[path] == entry {
+		return results.ProjectOrigin
+	}
+	return results.DependencyOrigin
 }
 
 func (p DocumentInputs) inlineAudit(path string, level func(string) ruleconfig.Level) *inlineAudit {

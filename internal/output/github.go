@@ -82,6 +82,9 @@ func WriteGitHub(out io.Writer, diagnostics []results.Diagnostic) error {
 		if title == "" {
 			title = diagnostic.Rule
 		}
+		if diagnostic.Origin == results.DependencyOrigin {
+			title = "dependency:" + title
+		}
 		properties = append(properties, GitHubCommandProperty{"title", title})
 		if _, err := io.WriteString(out, FormatGitHubCommand(GitHubAnnotationCommand(diagnostic.Severity), properties, diagnostic.Message)); err != nil {
 			return err

@@ -33,7 +33,7 @@ func TestCheckResultSchema(t *testing.T) {
 		Invocation: report.CheckInvocation{Entry: entry, ID: invocation.ID(strings.Repeat("a", 64))},
 		Rule:       "shellcheck", Reason: "tool unavailable",
 	})
-	encoded, err := json.Marshal(exitcode.AnalysisResult(partial))
+	encoded, err := json.Marshal(exitcode.AnalysisResult(partial, false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ runs:
 				finding.NonBlocking = !blocking
 				analysis.Diagnostics = append(analysis.Diagnostics, results.PublishedDiagnostic{Diagnostic: finding})
 			}
-			result := exitcode.AnalysisResult(analysis)
+			result := exitcode.AnalysisResult(analysis, false)
 			data, err := json.Marshal(result)
 			if err != nil {
 				t.Fatal(err)
@@ -175,9 +175,9 @@ runs:
 				t.Fatalf("native result rejected: %v\n%s", err, data)
 			}
 			if result.ExitCode == 0 {
-				value["status"], value["exit_code"] = "problems-found", 1
+				value["exit_code"] = 1
 			} else {
-				value["status"], value["exit_code"] = "success", 0
+				value["exit_code"] = 0
 			}
 			if err := schema.Validate(value); err == nil {
 				t.Fatalf("schema accepted contradictory result: %v", value)

@@ -87,7 +87,7 @@ func (a *commandApp) reportError(err error) int {
 			result := exitcode.NewCheckResult(status)
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
-				result.ActionMetadata = exitcode.AnalysisResult(*failure.result).ActionMetadata
+				result.ActionMetadata = exitcode.AnalysisResult(*failure.result, false).ActionMetadata
 				result.Diagnostics = results.Diagnostics(failure.result.Diagnostics)
 				result.Documents = failure.result.Documents
 				count := failure.result.FileCount

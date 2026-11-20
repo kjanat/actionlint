@@ -28,6 +28,9 @@ func writeCheckSummary(out io.Writer, mode output.Color, summary report.CheckSum
 			findings = "finding"
 		}
 		text = fmt.Sprintf("! Checked %d %s, %d %s.", summary.Files, files, summary.Findings, findings)
+		if summary.DependencyFindings > 0 {
+			text = fmt.Sprintf("! Checked %d %s. Findings: %d project, %d dependency.", summary.Files, files, summary.ProjectFindings, summary.DependencyFindings)
+		}
 		attribute = color.FgYellow
 	}
 	if count := len(summary.IncompleteChecks); count > 0 {
@@ -36,6 +39,9 @@ func writeCheckSummary(out io.Writer, mode output.Color, summary report.CheckSum
 			checks = "check"
 		}
 		text = fmt.Sprintf("! Checked %d %s. Findings: %d. %d %s could not finish.", summary.Files, files, summary.Findings, count, checks)
+		if summary.DependencyFindings > 0 {
+			text = fmt.Sprintf("! Checked %d %s. Findings: %d project, %d dependency. %d %s could not finish.", summary.Files, files, summary.ProjectFindings, summary.DependencyFindings, count, checks)
+		}
 		attribute = color.FgYellow
 	}
 	file, terminal := terminalFile(out)
