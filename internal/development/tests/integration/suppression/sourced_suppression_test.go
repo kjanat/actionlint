@@ -87,7 +87,7 @@ runs:
 								t.Fatalf("source diagnostic was changed: %+v", diagnostic)
 							}
 						} else if expected, ok := manifest[diagnostic.Message]; ok {
-							if diagnostic.Rule != "action" || filepath.ToSlash(diagnostic.Path) != origin || diagnostic.Start != expected {
+							if diagnostic.Rule != "syntax-check" || filepath.ToSlash(diagnostic.Path) != origin || diagnostic.Start != expected {
 								t.Fatal("manifest diagnostic lost origin", diagnostic)
 							}
 							delete(manifest, diagnostic.Message)

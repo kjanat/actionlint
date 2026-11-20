@@ -37,6 +37,7 @@ func ShellNameChecks(knownRunners *runners.Knowledge, registries ...*commands.Re
 		return knownRunners.Job(job).Platform
 	}
 	return define.Checks{
+		WorkflowStepsOnly: true,
 		Workflow: func(workflow workflows.BoundWorkflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(workflow.Defaults)), runners.Any, registries...))
 		},

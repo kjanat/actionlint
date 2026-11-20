@@ -54,7 +54,7 @@ func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
 			t.Run(fmt.Sprintf("standalone=%t/%s", standalone, level), func(t *testing.T) {
 				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
-				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {action: off, expression: off, script-interpolation: " + level + "}}}\n"
+				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {syntax-check: off, expression: off, script-interpolation: " + level + "}}}\n"
 				body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ${{ true }}\n"
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", config)
 				fixturefiles.Write(t, root, "inner/action.yml", body)

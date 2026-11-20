@@ -15,9 +15,11 @@ import (
 // and may run without any preceding or following callback. Findings may leave
 // Rule empty; the adapter attaches the rule's name.
 type Checks struct {
-	Workflow func(workflows.BoundWorkflow) []reporting.StepFinding
-	Job      func(workflows.BoundJob) []reporting.StepFinding
-	Step     func(workflows.BoundStep) []reporting.StepFinding
+	// WorkflowStepsOnly keeps step traversal in workflows even when a rule accepts action diagnostics.
+	WorkflowStepsOnly bool
+	Workflow          func(workflows.BoundWorkflow) []reporting.StepFinding
+	Job               func(workflows.BoundJob) []reporting.StepFinding
+	Step              func(workflows.BoundStep) []reporting.StepFinding
 }
 
 // checksVisitor is the traversal adapter for stateless checks.
@@ -73,7 +75,7 @@ func NewChecksVisitor(rules configuration.RuleSet, name string, checks Checks) w
 		panic("unregistered rule: " + name)
 	}
 	adapter := &checksVisitor{Base: workflowvisit.NewBase(metadata.Name, metadata.Description), name: metadata.Name, rules: rules, checks: checks}
-	if metadata.SupportsActions {
+	if metadata.SupportsActions && !checks.WorkflowStepsOnly {
 		return &invocationChecksVisitor{checksVisitor: adapter}
 	}
 	return adapter

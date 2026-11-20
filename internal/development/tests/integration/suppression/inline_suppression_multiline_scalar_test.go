@@ -22,10 +22,14 @@ func TestCompositeMultilineScalarSuppression(t *testing.T) {
 			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
-			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      # actionlint:ignore-next-line action\n      run: " + value + "\n    - shell: bash\n      run: echo ${{ github_repository }}\n"
+			rules := "expression-reference"
+			if strings.HasPrefix(value, "!!str &") {
+				rules += ", syntax-check"
+			}
+			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      # actionlint:ignore-next-line " + rules + "\n      run: " + value + "\n    - shell: bash\n      run: echo ${{ github_repository }}\n"
 			fixturefiles.Write(t, root, "inner/action.yml", metadata)
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || !strings.Contains(result.Diagnostics[0].Message, "runs.steps[1]") {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression-reference" || !strings.Contains(result.Diagnostics[0].Message, "runs.steps[1]") {
 				t.Fatalf("expected only unsuppressed sibling action: %+v", result.Diagnostics)
 			}
 		})
@@ -39,10 +43,10 @@ func TestInlineSuppressionRunFirstKey(t *testing.T) {
 			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
-			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    # actionlint:ignore-next-line action\n    - run: " + value + "\n      shell: bash\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
+			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    # actionlint:ignore-next-line expression-reference\n    - run: " + value + "\n      shell: bash\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
 			fixturefiles.Write(t, root, "inner/action.yml", metadata)
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || !strings.Contains(result.Diagnostics[0].Message, "runs.steps[1]") {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression-reference" || !strings.Contains(result.Diagnostics[0].Message, "runs.steps[1]") {
 				t.Fatalf("expected only unsuppressed sibling action: %+v", result.Diagnostics)
 			}
 		})
