@@ -163,10 +163,12 @@ run actionlint --ignore ''
 			if err := os.WriteFile(driver, []byte(tc.driver), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.CommandContext(t.Context(), bin, append(slices.Clone(tc.args), driver, script)...)
-			cmd.Dir = dir
-			cmd.Env = append(os.Environ(), "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"), "BASH_COMPLETION_FILE="+bashCompletion)
-			out, err := cmd.CombinedOutput()
+			out, err := runShellCheck(t, bin, func() ([]byte, error) {
+				cmd := exec.CommandContext(t.Context(), bin, append(slices.Clone(tc.args), driver, script)...)
+				cmd.Dir = dir
+				cmd.Env = append(os.Environ(), "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"), "BASH_COMPLETION_FILE="+bashCompletion)
+				return cmd.CombinedOutput()
+			})
 			if err != nil {
 				t.Fatalf("shell failed: %v\n%s", err, out)
 			}
@@ -258,15 +260,9 @@ func testCheckShellSyntax(t *testing.T, shell, script string) {
 		}
 		return cmd.CombinedOutput()
 	}
-	// pwsh occasionally segfaults at startup on arm64 runners before it parses anything.
-	const attempts = 3
-	out, err := check()
-	for attempt := 1; attempt < attempts && checkerCrashed(err); attempt++ {
-		t.Logf("%s crashed (%v); retrying", bin, err)
-		out, err = check()
-	}
+	out, err := runShellCheck(t, bin, check)
 	if checkerCrashed(err) {
-		t.Fatalf("%s crashed in all %d attempts while checking the generated script: %v\n%s", bin, attempts, err, out)
+		t.Fatalf("%s repeatedly crashed while checking the generated script: %v\n%s", bin, err, out)
 	}
 	if err != nil {
 		t.Fatalf(`%s reported a syntax error in the generated script: %v
@@ -280,6 +276,18 @@ script:
 script:
 %s`, bin, out, script)
 	}
+}
+
+func runShellCheck(t *testing.T, bin string, check func() ([]byte, error)) ([]byte, error) {
+	t.Helper()
+	// PowerShell can crash on startup on Arm runners.
+	const attempts = 3
+	out, err := check()
+	for attempt := 1; attempt < attempts && checkerCrashed(err); attempt++ {
+		t.Logf("%s crashed (%v); retrying", bin, err)
+		out, err = check()
+	}
+	return out, err
 }
 
 // checkerCrashed reports whether a syntax checker was killed by a signal
