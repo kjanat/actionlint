@@ -73,7 +73,7 @@ permissions: {}
 	for _, diagnostic := range result.Diagnostics {
 		seen[diagnostic.Rule] = true
 	}
-	if !seen["action"] || !seen["expression-reference"] {
+	if !seen["unknown-input"] || !seen["expression-reference"] {
 		t.Fatalf("metadata did not reach both consumers: %+v", result.Diagnostics)
 	}
 }
@@ -98,5 +98,47 @@ permissions: {}
 	}
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("unfetched metadata produced findings: %+v", result.Diagnostics)
+	}
+}
+
+func TestRemoteMetadataFailuresUseSemanticRules(t *testing.T) {
+	t.Parallel()
+	identity, err := actions.NewIdentity("github.com", "example/action", repository.ID{}, strings.Repeat("a", 40), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference, err := actions.ParseReference("github.com", "example/action@v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	route, err := actions.RefRoute("refs/tags/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := actions.NewReferenceSelection(reference, identity, strings.Repeat("a", 40), route, "test-observation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ name, content, rule, code string }{
+		{"parse", "name: [", "syntax-check", "metadata-parse"},
+		{"field shape", "name: test\ndescription: test\nruns: {using: composite, steps: [{run: echo ok, shell: bash, continue-on-error: []}]}\n", "syntax-check", "invalid-field-type"},
+		{"expression context", "name: test\ndescription: test\ninputs: {value: {default: '${{ secrets.TOKEN }}'}}\nruns: {using: composite, steps: []}\n", "context-availability", "expression-context"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			manifest, err := actions.NewManifest(selection, []byte(test.content))
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider := manifestProvider(func(context.Context, actions.Reference) (actions.Manifest, error) { return manifest, nil })
+			root := t.TempDir()
+			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != test.rule || result.Diagnostics[0].Code != test.code {
+				t.Fatalf("remote metadata problem lost its rule or code: %+v", result.Diagnostics)
+			}
+		})
 	}
 }

@@ -8,6 +8,42 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
+func TestActionDiagnosticsHaveSeparateSchemaSettings(t *testing.T) {
+	t.Parallel()
+	schema := compile(t)
+	for _, name := range []string{"missing-file", "unknown-input", "required-input", "deprecated-input", "invalid-action-reference", "action-runtime", "action-branding", "action-input-deprecation", "invalid-dockerfile", "action-metadata-read"} {
+		setting := object{"lint": object{"rules": object{"correctness": object{name: "warn"}}}}
+		for _, input := range []object{setting, {"overrides": []object{{"includes": []string{"**/action.yml"}, "lint": setting["lint"]}}}, {"ignores": []object{{"rule": name, "file": "**/action.yml"}}}} {
+			data, err := json.Marshal(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := schema.Validate(data); err != nil {
+				t.Errorf("rule %s rejected: %s: %v", name, data, err)
+			}
+		}
+	}
+	data, err := Document(moduleRoot, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Definitions map[string]struct {
+			Choices []struct {
+				Name string `json:"const"`
+			} `json:"anyOf"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, choice := range document.Definitions["known-rule-name"].Choices {
+		if choice.Name == "action" {
+			t.Fatal("removed action catch-all remains in the rule catalog")
+		}
+	}
+}
+
 func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
 	t.Parallel()
 	custom := installed(false)

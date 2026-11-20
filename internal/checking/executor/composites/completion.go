@@ -38,9 +38,12 @@ func (analysis *compositeAnalyzer) recordUncheckedFiles(meta *actionmeta.Metadat
 	unknown = slices.Compact(unknown)
 	reason := fmt.Sprintf("could not determine availability of action execution files %q", unknown)
 	entry := analysis.invocations.RootContext().Site()
-	for _, pass := range analysis.passes {
-		if participant, consumesFiles := pass.(workflowvisit.MetadataParticipant); consumesFiles && bindings.DiagnosticLevel(participant.Name()) != "off" {
-			analysis.incompleteChecks = append(analysis.incompleteChecks, report.IncompleteCheck{Source: source, Invocation: report.CheckInvocation{Entry: entry, ID: context.ID()}, Rule: participant.Name(), Reason: reason})
+	if bindings.DiagnosticLevel("missing-file") != "off" {
+		for _, pass := range analysis.passes {
+			if _, checksMetadata := pass.(workflowvisit.MetadataParticipant); checksMetadata {
+				analysis.incompleteChecks = append(analysis.incompleteChecks, report.IncompleteCheck{Source: source, Invocation: report.CheckInvocation{Entry: entry, ID: context.ID()}, Rule: "missing-file", Reason: reason})
+				break
+			}
 		}
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 // Write uses the current directory's kprint configuration and the destination's
@@ -20,11 +21,17 @@ func Write(ctx context.Context, path string, content []byte, exclusive bool) err
 			return err
 		}
 	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 	command := exec.CommandContext(ctx, "kprint", "fmt", "--stdin", filepath.Base(path))
+	command.WaitDelay = 5 * time.Second
 	command.Stdin = bytes.NewReader(content)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	formatted, err := command.Output()
+	if ctx.Err() != nil {
+		return fmt.Errorf("format generated %s: %w", path, ctx.Err())
+	}
 	if err != nil {
 		return fmt.Errorf("format generated %s: %w: %s", path, err, &stderr)
 	}

@@ -40,8 +40,8 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 	}
 	seenMetadata := make(map[metadataLocation][]int)
 	type declarationLocation struct {
-		project string
-		finding finding.MetadataKey
+		project, rule string
+		finding       finding.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
 	parseDeclarations := make(map[sourcetext.Revision]bool)
@@ -51,8 +51,8 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 			if file.Action && file.Source.Valid() && finding.Rule == "syntax-check" {
 				parseDeclarations[file.Source] = true
 			}
-			if identity := finding.MetadataIdentity; identity != nil && identity.Declaration && finding.Rule == "action" {
-				declarations[declarationLocation{project, identity.Key}] = true
+			if identity := finding.MetadataIdentity; identity != nil && identity.Declaration {
+				declarations[declarationLocation{project, finding.Rule, identity.Key}] = true
 			}
 		}
 	}
@@ -66,7 +66,7 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 		}
 		preferred := make(map[invocationIdentity]*finding.Finding)
 		for _, candidate := range file.Findings {
-			if identity := candidate.MetadataIdentity; identity != nil && candidate.Rule == "action" {
+			if identity := candidate.MetadataIdentity; identity != nil {
 				key := invocationIdentity{metadataLocation{project, candidate.Rule, candidate.Severity, identity.Key}, authority[candidate]}
 				prior := preferred[key]
 				if prior == nil {
@@ -82,14 +82,14 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 		}
 		unique := file.Findings[:0]
 		for _, finding := range file.Findings {
-			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
+			if identity := finding.MetadataIdentity; identity != nil {
 				key := invocationIdentity{metadataLocation{project, finding.Rule, finding.Severity, identity.Key}, authority[finding]}
 				if preferred[key] != finding {
 					continue
 				}
 			}
 			_, required := authority[finding]
-			if !required && finding.Rule == "action" && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
+			if !required && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
 				continue
 			}
 			published := finding.Publish(file.Policy.Content)
@@ -119,10 +119,10 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 				}
 			}
 			var metadataKey metadataLocation
-			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
+			isMetadata := finding.MetadataIdentity != nil
 			if identity := finding.MetadataIdentity; isMetadata {
 				metadataKey = metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
-				if _, required := authority[finding]; !required && !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
+				if _, required := authority[finding]; !required && !identity.Declaration && declarations[declarationLocation{project, finding.Rule, identity.Key}] {
 					continue
 				}
 				duplicate := slices.IndexFunc(seenMetadata[metadataKey], func(index int) bool {

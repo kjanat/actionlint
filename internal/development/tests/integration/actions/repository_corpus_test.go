@@ -75,7 +75,7 @@ permissions: {}
 						}
 						return
 					}
-					want, rule, line := "misspelled-input", "action", 8
+					want, rule, line := "misspelled-input", "unknown-input", 8
 					if mutation == "output" {
 						want, rule, line = "misspelled-output", "expression-reference", 11
 					}

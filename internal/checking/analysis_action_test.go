@@ -11,7 +11,7 @@ const standaloneComposite = "name: example\ndescription: example\nruns:\n  using
 
 func TestStandaloneActionCustomRules(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"step-name", "action", "shellcheck", "ruff", "deprecated-commands", "executable-bit"} {
+	for _, name := range []string{"step-name", "invalid-action-reference", "shellcheck", "ruff", "deprecated-commands", "executable-bit"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			calls := 0

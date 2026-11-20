@@ -29,7 +29,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 				if unknown {
 					file = "bad\x00.js"
 				}
-				selector := "action"
+				selector := "missing-file"
 				if tc.extraSelector {
 					selector += " env-var"
 				}
@@ -48,7 +48,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 				}
 				input := workspace.InputFile{Path: path, Content: []byte(metadata), Project: workspace.Identity(root)}
 				if tc.disabled {
-					cfg, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {action: off}}}\n"))
+					cfg, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {missing-file: off}}}\n"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -74,7 +74,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 						}
 						for _, fix := range diagnostic.Fixes {
 							for _, edit := range fix.Edits {
-								if !strings.Contains(edit.Replacement, "action") || strings.Contains(edit.Replacement, "env-var") {
+								if !strings.Contains(edit.Replacement, "missing-file") || strings.Contains(edit.Replacement, "env-var") {
 									t.Fatalf("cleanup removed the uncertain selector: %+v", edit)
 								}
 							}
@@ -102,7 +102,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 					t.Fatalf("lost partial action checks: %+v", result.IncompleteChecks)
 				}
 				for _, check := range result.IncompleteChecks {
-					if check.Rule != "action" || check.Source.Document == "" || check.Source.Revision == "" || check.Invocation.ID == "" || check.Reason == "" {
+					if check.Rule != "missing-file" || check.Source.Document == "" || check.Source.Revision == "" || check.Invocation.ID == "" || check.Reason == "" {
 						t.Fatalf("partial check lost its identity: %+v", check)
 					}
 					if check.Invocation.Entry.Document == "" || check.Invocation.Entry.Revision == "" || !strings.HasSuffix(filepath.ToSlash(check.Source.Document), "/local/action.yml") {

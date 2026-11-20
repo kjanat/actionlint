@@ -17,9 +17,9 @@ func TestMetadataCacheWithReusableIgnores(t *testing.T) {
 		{"expression", "[{rule: expression, job: first}]", 1},
 		{"shellcheck", "[{rule: shellcheck, job: first}]", 1},
 		{"missing-local-action", "[{rule: missing-local-action, job: first}]", 1},
-		{"action-file-matched", "[{rule: action, file: '.github/workflows/ci.yml'}]", 0},
-		{"action-first-job", "[{rule: action, job: first}]", 1},
-		{"action-second-job", "[{rule: action, job: second}]", 1},
+		{"action-file-matched", "[{rule: syntax-check, file: '.github/workflows/ci.yml'}]", 0},
+		{"action-first-job", "[{rule: syntax-check, job: first}]", 1},
+		{"action-second-job", "[{rule: syntax-check, job: second}]", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -39,7 +39,7 @@ func TestMetadataCacheWithReusableIgnores(t *testing.T) {
 				t.Fatalf("want %d diagnostics, got %+v", tc.want, result.Diagnostics)
 			}
 			for _, d := range result.Diagnostics {
-				if d.Rule != "action" {
+				if d.Rule != "syntax-check" {
 					t.Fatalf("unexpected diagnostic: %+v", d)
 				}
 				wantLine := map[string]int{"action-first-job": 10, "action-second-job": 6}[tc.name]

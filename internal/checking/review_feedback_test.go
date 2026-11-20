@@ -47,7 +47,7 @@ permissions: {}
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || result.Diagnostics[0].Start.Line != 6 {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" || result.Diagnostics[0].Start.Line != 6 {
 		t.Fatalf("metadata failure should belong to action rule at uses: %v", result.Diagnostics)
 	}
 }

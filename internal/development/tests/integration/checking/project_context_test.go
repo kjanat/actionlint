@@ -92,7 +92,7 @@ jobs:
 			}
 			foundAction, foundWorkflow, foundInvoked := false, false, false
 			for _, finding := range result.Diagnostics {
-				foundAction = foundAction || finding.Rule == "action" && strings.Contains(finding.Message, "token")
+				foundAction = foundAction || finding.Rule == "required-input" && strings.Contains(finding.Message, "token")
 				foundWorkflow = foundWorkflow || finding.Rule == "workflow-call" && strings.Contains(finding.Message, "message")
 				foundInvoked = foundInvoked || finding.Rule == "composite-scripts" && strings.Contains(finding.Message, "./local")
 			}

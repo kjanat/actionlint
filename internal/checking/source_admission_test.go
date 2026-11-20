@@ -256,7 +256,7 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 				}
 				target = foreign.Revision()
 			}
-			parse := &finding.Finding{Rule: "action", Message: "cannot parse action metadata", MetadataParseSource: target}
+			parse := &finding.Finding{Rule: "syntax-check", Message: "cannot parse action metadata", MetadataParseSource: target}
 			retained := &finding.Finding{Message: "entry observation"}
 			session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
 			accepted, admissionErr := session.admitReportedSources([]*finding.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)

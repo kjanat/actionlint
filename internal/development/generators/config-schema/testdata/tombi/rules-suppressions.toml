@@ -2,7 +2,7 @@
 file = '**/*.yml'
 job = 'build'
 reason = 'reviewed'
-rule = 'action'
+rule = 'invalid-action-reference'
 step = 'run'
 
 [lint]
@@ -13,4 +13,4 @@ level = 'warn'
 
 [lint.rules.conventions.forbidden-suppression.options]
 report = 'all'
-rules = ['action']
+rules = ['invalid-action-reference']

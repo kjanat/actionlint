@@ -43,8 +43,8 @@ jobs:
     steps: *shared
 permissions: {}
 `
-	findings := analyzeConfiguredWorkflow(t, source, "ignores: [{rule: action, job: a, uses: invalid}]")
-	if len(findings) != 1 || findings[0].Rule != "action" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "b" {
+	findings := analyzeConfiguredWorkflow(t, source, "ignores: [{rule: invalid-action-reference, job: a, uses: invalid}]")
+	if len(findings) != 1 || findings[0].Rule != "invalid-action-reference" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "b" {
 		t.Fatalf("lost alias invocation: %+v", findings)
 	}
 }

@@ -50,7 +50,7 @@ func TestIncompleteActionCheckIsNotAllClear(t *testing.T) {
 				if err := json.Unmarshal(log.Bytes(), &summary); err != nil {
 					t.Fatal(err)
 				}
-				if len(summary.Summary.IncompleteChecks) != 1 || summary.Summary.IncompleteChecks[0].Rule != "action" {
+				if len(summary.Summary.IncompleteChecks) != 1 || summary.Summary.IncompleteChecks[0].Rule != "invalid-action-reference" {
 					t.Fatalf("JSON summary lost incomplete checks: %s", log.String())
 				}
 			} else if strings.Contains(log.String(), "All clear") || !strings.Contains(log.String(), "could not finish") || !strings.Contains(log.String(), "action.yml") {

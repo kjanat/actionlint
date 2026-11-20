@@ -182,7 +182,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 func TestWorkflowOverrideControlsCompositeFindings(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ lint, severity string }{
-		{"rules: {correctness: {action: warn}}", "warning"},
+		{"rules: {correctness: {unknown-input: warn}}", "warning"},
 		{"enabled: false", ""},
 	} {
 		t.Run(tc.lint, func(t *testing.T) {
@@ -219,7 +219,7 @@ permissions: {}
 				if len(result.Diagnostics) != 0 {
 					t.Fatalf("disabled composite findings remain: %+v", result.Diagnostics)
 				}
-			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" || string(result.Diagnostics[0].Severity) != tc.severity || filepath.ToSlash(result.Diagnostics[0].Path) != "local/action.yml" {
+			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "unknown-input" || string(result.Diagnostics[0].Severity) != tc.severity || filepath.ToSlash(result.Diagnostics[0].Path) != "local/action.yml" {
 				t.Fatalf("composite override not applied: %+v", result.Diagnostics)
 			}
 		})

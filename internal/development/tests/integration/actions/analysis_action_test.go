@@ -185,11 +185,11 @@ func TestStandaloneActionSuppression(t *testing.T) {
 	t.Parallel()
 	bad := strings.Replace(testutil.CompositeAction, "echo ok", "echo ${{ secrets.TOKEN }}", 1)
 	for _, tc := range []struct{ name, source, config string }{
-		{"inline", strings.Replace(bad, "    - run:", "    # actionlint:ignore-next-line action\n    - run:", 1), ""},
-		{"file", bad, "ignores: [{rule: action, file: action.yml}]"},
-		{"step", strings.Replace(bad, "      shell: bash", "      shell: bash\n      id: lint", 1), "ignores: [{rule: action, step: lint}]"},
-		{"off", bad, "lint: {rules: {correctness: {action: off}}}"},
-		{"override", bad, "overrides: [{includes: [action.yml], lint: {rules: {correctness: {action: off}}}}]"},
+		{"inline", strings.Replace(bad, "    - run:", "    # actionlint:ignore-next-line context-availability\n    - run:", 1), ""},
+		{"file", bad, "ignores: [{rule: context-availability, file: action.yml}]"},
+		{"step", strings.Replace(bad, "      shell: bash", "      shell: bash\n      id: lint", 1), "ignores: [{rule: context-availability, step: lint}]"},
+		{"off", bad, "lint: {rules: {correctness: {context-availability: off}}}"},
+		{"override", bad, "overrides: [{includes: [action.yml], lint: {rules: {correctness: {context-availability: off}}}}]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

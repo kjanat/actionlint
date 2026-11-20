@@ -152,10 +152,28 @@
     "known-rule-name": {
       "anyOf": [
         {
-          "description": "Validate action references, inputs, outputs, and local metadata",
-          "markdownDescription": "Validate action references, inputs, outputs, and local metadata",
+          "description": "Validate action branding icons and colors",
+          "markdownDescription": "Validate action branding icons and colors",
           "type": "string",
-          "const": "action"
+          "const": "action-branding"
+        },
+        {
+          "description": "Report empty deprecation messages in action input declarations",
+          "markdownDescription": "Report empty deprecation messages in action input declarations",
+          "type": "string",
+          "const": "action-input-deprecation"
+        },
+        {
+          "description": "Report action metadata that could not be read",
+          "markdownDescription": "Report action metadata that could not be read",
+          "type": "string",
+          "const": "action-metadata-read"
+        },
+        {
+          "description": "Validate action runtimes accepted by GitHub Actions runners",
+          "markdownDescription": "Validate action runtimes accepted by GitHub Actions runners",
+          "type": "string",
+          "const": "action-runtime"
         },
         {
           "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
@@ -216,6 +234,12 @@
           "markdownDescription": "Report deprecated set-output, save-state, set-env, and add-path commands",
           "type": "string",
           "const": "deprecated-commands"
+        },
+        {
+          "description": "Report supplied action inputs marked as deprecated",
+          "markdownDescription": "Report supplied action inputs marked as deprecated",
+          "type": "string",
+          "const": "deprecated-input"
         },
         {
           "description": "Deprecated alias. Use forbidden-suppression instead.",
@@ -340,6 +364,18 @@
           "const": "inline-suppression"
         },
         {
+          "description": "Validate action reference syntax",
+          "markdownDescription": "Validate action reference syntax",
+          "type": "string",
+          "const": "invalid-action-reference"
+        },
+        {
+          "description": "Validate the filename of a Docker action's local image definition",
+          "markdownDescription": "Validate the filename of a Docker action's local image definition",
+          "type": "string",
+          "const": "invalid-dockerfile"
+        },
+        {
           "description": "Check literal writes to GITHUB_OUTPUT",
           "markdownDescription": "Check literal writes to GITHUB_OUTPUT",
           "type": "string",
@@ -374,6 +410,12 @@
           "markdownDescription": "Require inspected metadata for remote actions",
           "type": "string",
           "const": "missing-action-metadata"
+        },
+        {
+          "description": "Report referenced files confirmed missing from the inspected source",
+          "markdownDescription": "Report referenced files confirmed missing from the inspected source",
+          "type": "string",
+          "const": "missing-file"
         },
         {
           "description": "Report local action references that cannot be resolved",
@@ -442,6 +484,12 @@
           "deprecationMessage": "Deprecated alias. Use job-timeout instead."
         },
         {
+          "description": "Report required action inputs missing from a known input mapping",
+          "markdownDescription": "Report required action inputs missing from a known input mapping",
+          "type": "string",
+          "const": "required-input"
+        },
+        {
           "description": "Analyze embedded Python scripts with Ruff",
           "markdownDescription": "Analyze embedded Python scripts with Ruff",
           "type": "string",
@@ -504,8 +552,8 @@
           "deprecationMessage": "Deprecated alias. Use coercion instead."
         },
         {
-          "description": "Validate GitHub Actions workflow syntax",
-          "markdownDescription": "Validate GitHub Actions workflow syntax",
+          "description": "Validate GitHub Actions workflow and action metadata syntax",
+          "markdownDescription": "Validate GitHub Actions workflow and action metadata syntax",
           "type": "string",
           "const": "syntax-check"
         },
@@ -514,6 +562,12 @@
           "markdownDescription": "Review jobs that can continue after cancellation",
           "type": "string",
           "const": "uncancellable-condition"
+        },
+        {
+          "description": "Report action inputs absent from the available input declaration",
+          "markdownDescription": "Report action inputs absent from the available input declaration",
+          "type": "string",
+          "const": "unknown-input"
         },
         {
           "description": "Require full commit SHAs for actions and workflows, and digests for images",
@@ -561,7 +615,10 @@
     },
     "known-rule-name-values": {
       "enum": [
-        "action",
+        "action-branding",
+        "action-input-deprecation",
+        "action-metadata-read",
+        "action-runtime",
         "cache-call-unrestricted",
         "cache-operation",
         "cache-write-untrusted",
@@ -572,6 +629,7 @@
         "context-availability",
         "credentials",
         "deprecated-commands",
+        "deprecated-input",
         "disallow-suppressions",
         "duplicate-workflow-name",
         "empty-job",
@@ -592,12 +650,15 @@
         "id",
         "if-cond",
         "inline-suppression",
+        "invalid-action-reference",
+        "invalid-dockerfile",
         "invalid-output-file",
         "job-needs",
         "job-timeout",
         "join-literal",
         "matrix",
         "missing-action-metadata",
+        "missing-file",
         "missing-local-action",
         "missing-permissions",
         "mixed-type-comparisons",
@@ -608,6 +669,7 @@
         "require-action-metadata",
         "require-commit-hash",
         "require-job-timeout",
+        "required-input",
         "ruff",
         "runner-label",
         "runner-support",
@@ -620,6 +682,7 @@
         "suspicious-coercion",
         "syntax-check",
         "uncancellable-condition",
+        "unknown-input",
         "unpinned-reference",
         "unsound-ternary",
         "unused-suppression",
@@ -1578,7 +1641,16 @@
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
-                                "action",
+                                "invalid-action-reference",
+                                "missing-file",
+                                "unknown-input",
+                                "required-input",
+                                "deprecated-input",
+                                "action-runtime",
+                                "action-branding",
+                                "action-input-deprecation",
+                                "invalid-dockerfile",
+                                "action-metadata-read",
                                 "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
@@ -1622,10 +1694,40 @@
                         {
                           "type": "object",
                           "properties": {
-                            "action": {
-                              "title": "action",
-                              "description": "Validate action references, inputs, outputs, and local metadata",
-                              "markdownDescription": "Validate action references, inputs, outputs, and local metadata",
+                            "action-branding": {
+                              "title": "action-branding",
+                              "description": "Validate action branding icons and colors",
+                              "markdownDescription": "Validate action branding icons and colors",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "action-input-deprecation": {
+                              "title": "action-input-deprecation",
+                              "description": "Report empty deprecation messages in action input declarations",
+                              "markdownDescription": "Report empty deprecation messages in action input declarations",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "action-metadata-read": {
+                              "title": "action-metadata-read",
+                              "description": "Report action metadata that could not be read",
+                              "markdownDescription": "Report action metadata that could not be read",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "action-runtime": {
+                              "title": "action-runtime",
+                              "description": "Validate action runtimes accepted by GitHub Actions runners",
+                              "markdownDescription": "Validate action runtimes accepted by GitHub Actions runners",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -1666,6 +1768,16 @@
                               "title": "deprecated-commands",
                               "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
                               "markdownDescription": "Report deprecated set-output, save-state, set-env, and add-path commands",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "deprecated-input": {
+                              "title": "deprecated-input",
+                              "description": "Report supplied action inputs marked as deprecated",
+                              "markdownDescription": "Report supplied action inputs marked as deprecated",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -1812,6 +1924,26 @@
                                 }
                               ]
                             },
+                            "invalid-action-reference": {
+                              "title": "invalid-action-reference",
+                              "description": "Validate action reference syntax",
+                              "markdownDescription": "Validate action reference syntax",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "invalid-dockerfile": {
+                              "title": "invalid-dockerfile",
+                              "description": "Validate the filename of a Docker action's local image definition",
+                              "markdownDescription": "Validate the filename of a Docker action's local image definition",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
                             "invalid-output-file": {
                               "title": "invalid-output-file",
                               "description": "Check literal writes to GITHUB_OUTPUT",
@@ -1842,6 +1974,16 @@
                               "title": "matrix",
                               "description": "Validate matrix definitions, combinations, and filters",
                               "markdownDescription": "Validate matrix definitions, combinations, and filters",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "missing-file": {
+                              "title": "missing-file",
+                              "description": "Report referenced files confirmed missing from the inspected source",
+                              "markdownDescription": "Report referenced files confirmed missing from the inspected source",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -1893,6 +2035,16 @@
                               "title": "preset",
                               "description": "Baseline selection within this group: recommended",
                               "markdownDescription": "Baseline selection within this group: recommended"
+                            },
+                            "required-input": {
+                              "title": "required-input",
+                              "description": "Report required action inputs missing from a known input mapping",
+                              "markdownDescription": "Report required action inputs missing from a known input mapping",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
                             },
                             "ruff": {
                               "title": "ruff",
@@ -1966,8 +2118,18 @@
                             },
                             "syntax-check": {
                               "title": "syntax-check",
-                              "description": "Validate GitHub Actions workflow syntax",
-                              "markdownDescription": "Validate GitHub Actions workflow syntax",
+                              "description": "Validate GitHub Actions workflow and action metadata syntax",
+                              "markdownDescription": "Validate GitHub Actions workflow and action metadata syntax",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "unknown-input": {
+                              "title": "unknown-input",
+                              "description": "Report action inputs absent from the available input declaration",
+                              "markdownDescription": "Report action inputs absent from the available input declaration",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -2372,7 +2534,16 @@
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
-                                "action",
+                                "invalid-action-reference",
+                                "missing-file",
+                                "unknown-input",
+                                "required-input",
+                                "deprecated-input",
+                                "action-runtime",
+                                "action-branding",
+                                "action-input-deprecation",
+                                "invalid-dockerfile",
+                                "action-metadata-read",
                                 "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
@@ -2604,7 +2775,16 @@
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
-                                "action",
+                                "invalid-action-reference",
+                                "missing-file",
+                                "unknown-input",
+                                "required-input",
+                                "deprecated-input",
+                                "action-runtime",
+                                "action-branding",
+                                "action-input-deprecation",
+                                "invalid-dockerfile",
+                                "action-metadata-read",
                                 "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
@@ -3542,7 +3722,16 @@
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
-                                          "action",
+                                          "invalid-action-reference",
+                                          "missing-file",
+                                          "unknown-input",
+                                          "required-input",
+                                          "deprecated-input",
+                                          "action-runtime",
+                                          "action-branding",
+                                          "action-input-deprecation",
+                                          "invalid-dockerfile",
+                                          "action-metadata-read",
                                           "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",
@@ -3586,10 +3775,40 @@
                                   {
                                     "type": "object",
                                     "properties": {
-                                      "action": {
-                                        "title": "action",
-                                        "description": "Validate action references, inputs, outputs, and local metadata",
-                                        "markdownDescription": "Validate action references, inputs, outputs, and local metadata",
+                                      "action-branding": {
+                                        "title": "action-branding",
+                                        "description": "Validate action branding icons and colors",
+                                        "markdownDescription": "Validate action branding icons and colors",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "action-input-deprecation": {
+                                        "title": "action-input-deprecation",
+                                        "description": "Report empty deprecation messages in action input declarations",
+                                        "markdownDescription": "Report empty deprecation messages in action input declarations",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "action-metadata-read": {
+                                        "title": "action-metadata-read",
+                                        "description": "Report action metadata that could not be read",
+                                        "markdownDescription": "Report action metadata that could not be read",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "action-runtime": {
+                                        "title": "action-runtime",
+                                        "description": "Validate action runtimes accepted by GitHub Actions runners",
+                                        "markdownDescription": "Validate action runtimes accepted by GitHub Actions runners",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -3630,6 +3849,16 @@
                                         "title": "deprecated-commands",
                                         "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
                                         "markdownDescription": "Report deprecated set-output, save-state, set-env, and add-path commands",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "deprecated-input": {
+                                        "title": "deprecated-input",
+                                        "description": "Report supplied action inputs marked as deprecated",
+                                        "markdownDescription": "Report supplied action inputs marked as deprecated",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -3776,6 +4005,26 @@
                                           }
                                         ]
                                       },
+                                      "invalid-action-reference": {
+                                        "title": "invalid-action-reference",
+                                        "description": "Validate action reference syntax",
+                                        "markdownDescription": "Validate action reference syntax",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "invalid-dockerfile": {
+                                        "title": "invalid-dockerfile",
+                                        "description": "Validate the filename of a Docker action's local image definition",
+                                        "markdownDescription": "Validate the filename of a Docker action's local image definition",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
                                       "invalid-output-file": {
                                         "title": "invalid-output-file",
                                         "description": "Check literal writes to GITHUB_OUTPUT",
@@ -3806,6 +4055,16 @@
                                         "title": "matrix",
                                         "description": "Validate matrix definitions, combinations, and filters",
                                         "markdownDescription": "Validate matrix definitions, combinations, and filters",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "missing-file": {
+                                        "title": "missing-file",
+                                        "description": "Report referenced files confirmed missing from the inspected source",
+                                        "markdownDescription": "Report referenced files confirmed missing from the inspected source",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -3857,6 +4116,16 @@
                                         "title": "preset",
                                         "description": "Baseline selection within this group: recommended",
                                         "markdownDescription": "Baseline selection within this group: recommended"
+                                      },
+                                      "required-input": {
+                                        "title": "required-input",
+                                        "description": "Report required action inputs missing from a known input mapping",
+                                        "markdownDescription": "Report required action inputs missing from a known input mapping",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
                                       },
                                       "ruff": {
                                         "title": "ruff",
@@ -3930,8 +4199,18 @@
                                       },
                                       "syntax-check": {
                                         "title": "syntax-check",
-                                        "description": "Validate GitHub Actions workflow syntax",
-                                        "markdownDescription": "Validate GitHub Actions workflow syntax",
+                                        "description": "Validate GitHub Actions workflow and action metadata syntax",
+                                        "markdownDescription": "Validate GitHub Actions workflow and action metadata syntax",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "unknown-input": {
+                                        "title": "unknown-input",
+                                        "description": "Report action inputs absent from the available input declaration",
+                                        "markdownDescription": "Report action inputs absent from the available input declaration",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -4336,7 +4615,16 @@
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
-                                          "action",
+                                          "invalid-action-reference",
+                                          "missing-file",
+                                          "unknown-input",
+                                          "required-input",
+                                          "deprecated-input",
+                                          "action-runtime",
+                                          "action-branding",
+                                          "action-input-deprecation",
+                                          "invalid-dockerfile",
+                                          "action-metadata-read",
                                           "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",
@@ -4568,7 +4856,16 @@
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
-                                          "action",
+                                          "invalid-action-reference",
+                                          "missing-file",
+                                          "unknown-input",
+                                          "required-input",
+                                          "deprecated-input",
+                                          "action-runtime",
+                                          "action-branding",
+                                          "action-input-deprecation",
+                                          "invalid-dockerfile",
+                                          "action-metadata-read",
                                           "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",

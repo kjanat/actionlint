@@ -59,7 +59,7 @@ func TestVendorLockInSelection(t *testing.T) {
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Runners: runnerapi.Options{Target: tc.target}, Presets: configuration.Presets{Strict: tc.strict}})
 			count := 0
 			for _, finding := range findings {
-				if finding.Rule == "action" || finding.Rule == "workflow-call" {
+				if finding.Rule == "invalid-action-reference" || finding.Rule == "workflow-call" {
 					t.Fatalf("duplicate generic format error: %+v", finding)
 				}
 				if finding.Rule == "vendor-lock-in" {

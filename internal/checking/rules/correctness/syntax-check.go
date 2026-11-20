@@ -8,11 +8,11 @@ import (
 var SyntaxCheckRule = &define.Rule{
 	ExecutionFailure: true,
 	Name:             "syntax-check",
-	Description:      "Validate GitHub Actions workflow syntax",
+	Description:      "Validate GitHub Actions workflow and action metadata syntax",
 	Category:         "correctness",
 	Subcategory:      "syntax",
 	Recommended:      true,
 	Help:             "Check the indicated YAML field and its expected GitHub Actions value type.",
 	SupportsActions:  true,
-	DeclaredBy:       "workflow parser",
+	DeclaredBy:       "workflow parser and action metadata traversal",
 }

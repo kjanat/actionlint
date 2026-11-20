@@ -106,7 +106,7 @@ func TestCompositeActionInputMappingValidationOwnership(t *testing.T) {
 			body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      with: " + tc.mapping + "\n"
 			fixturefiles.Write(t, root, "inner/action.yml", body)
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" {
 				t.Fatalf("metadata must exclusively own malformed composite input mappings: %+v", result.Diagnostics)
 			}
 			findings := testutil.WorkflowDiagnostics(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with: "+strings.ReplaceAll(tc.mapping, "\n", "\n  ")+"\n"+"\npermissions: {}\n", "tools: {shellcheck: false, ruff: false}\n")

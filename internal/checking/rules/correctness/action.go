@@ -20,14 +20,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// ActionRule is the single definition of the action rule.
-var ActionRule = &define.Rule{
-	Name:            "action",
-	Description:     "Validate action references, inputs, outputs, and local metadata",
+// InvalidActionReferenceRule also supplies the shared action metadata traversal.
+var InvalidActionReferenceRule = &define.Rule{
+	Name:            "invalid-action-reference",
+	Description:     "Validate action reference syntax",
 	Category:        "correctness",
 	Subcategory:     "actions",
 	Recommended:     true,
-	Help:            "Check the action reference, runtime, declared inputs and action metadata at the indicated source.",
+	Help:            "Use owner/repo[/path]@ref, ./path, $/path, or a valid docker:// reference.",
 	SupportsActions: true,
 	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewRuleAction(c.Context, base, c.Actions.Prepared(), c.RemoteActions).WithLifecycle(c.Lifecycle)
@@ -116,11 +116,13 @@ func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 	inspection := rule.remote.Inspect(spec)
 	if inspection.Availability().State() == actions.MetadataInvalid {
 		for _, problem := range inspection.Availability().Problems() {
-			item := finding.Errorf(reporting.SourcePosition(e.Uses), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
-			item.Code = string(problem.Code)
-			if item.Code == "" {
-				item.Code = string(actionmeta.CodeMetadataParse)
+			code := problem.Code
+			if code == "" {
+				code = actionmeta.CodeMetadataParse
 			}
+			ruleName, diagnosticCode := actioncheck.ProblemRule(code)
+			item := finding.Errorf(reporting.SourcePosition(e.Uses), ruleName, "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
+			item.Code = diagnosticCode
 			rule.Report(item)
 		}
 	}
@@ -142,9 +144,10 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 		if _, unresolved := errors.AsType[localactions.UnresolvedError](err); unresolved {
 			rule.Report(finding.At(reporting.SourcePosition(action.Uses), "missing-local-action", err.Error()))
 		} else {
-			item := finding.At(reporting.SourcePosition(action.Uses), rule.Name(), err.Error())
+			item := finding.At(reporting.SourcePosition(action.Uses), "action-metadata-read", err.Error())
 			item.Code = string(actionmeta.CodeMetadataRead)
 			if parseError, ok := errors.AsType[*localactions.ParseError](err); ok {
+				item.Rule = "syntax-check"
 				item.Code = string(actionmeta.CodeMetadataParse)
 				item.MetadataParseSource = source.Capture().Revision()
 				if !item.MetadataParseSource.Valid() {

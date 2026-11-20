@@ -37,7 +37,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 					if !strings.Contains(d.Message, "YAML anchors") && !strings.Contains(d.Message, "YAML aliases") {
 						continue
 					}
-					if d.Rule != "action" || d.Path != filepath.Join("inner", filename) {
+					if d.Rule != "syntax-check" || d.Path != filepath.Join("inner", filename) {
 						t.Fatalf("nested manifest diagnostic points outside its source: %+v", d)
 					}
 					got = append(got, d.Start)

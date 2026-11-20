@@ -41,7 +41,7 @@ runs:
 				switch selection {
 				case "removed":
 					return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool {
-						return rule.Name() == "action"
+						return rule.Name() == "invalid-action-reference"
 					})
 				case "empty":
 					return nil
@@ -49,7 +49,7 @@ runs:
 					return rules
 				}
 			}})
-			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "action" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "invalid-action-reference" })
 			if found != (selection == "enabled") {
 				t.Fatalf("action rule selection %q: %+v", selection, result.Diagnostics)
 			}
@@ -113,7 +113,7 @@ runs: {using: composite, steps: []}
 		return root, outer, inner, decoy
 	}
 	for _, spec := range []string{"./source/local", "$/local"} {
-		for _, removed := range []string{"", "executable-bit", "action"} {
+		for _, removed := range []string{"", "executable-bit", "invalid-action-reference"} {
 			t.Run(spec+"/"+removed, func(t *testing.T) {
 				t.Parallel()
 				root, outer, inner, decoy := fixture(t)
@@ -135,8 +135,8 @@ runs: {using: composite, steps: []}
 				}) {
 					t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
 				}
-				if removed != "action" && !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
-					return d.Rule == "action" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell")
+				if removed != "invalid-action-reference" && !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
+					return d.Rule == "shell-name" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell")
 				}) {
 					t.Fatalf("nested metadata validation lost: %+v", result.Diagnostics)
 				}

@@ -16,11 +16,11 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 		wantPaths, wantSeverities []string
 	}{
 		{"shared-finding", "", "", []string{".github/workflows/a.yml"}, []string{""}},
-		{"first-inline-ignored", "", "      # actionlint:ignore-next-line action -- covered elsewhere\n", []string{".github/workflows/b.yml"}, []string{""}},
-		{"first-file-ignored", "ignores: [{rule: action, file: '.github/workflows/a.yml'}]\n", "", []string{".github/workflows/b.yml"}, []string{""}},
-		{"first-rule-off", "overrides:\n  - includes: ['.github/workflows/a.yml']\n    lint: {rules: {correctness: {action: off}}}\n", "", []string{".github/workflows/b.yml"}, []string{""}},
-		{"different-severities", "lint: {rules: {correctness: {action: error}}}\noverrides:\n  - includes: ['.github/workflows/a.yml']\n    lint: {rules: {correctness: {action: warn}}}\n", "", []string{".github/workflows/a.yml", ".github/workflows/b.yml"}, []string{"warning", "error"}},
-		{"all-ignored", "ignores: [{rule: action, file: '.github/workflows/*.yml'}]\n", "", nil, nil},
+		{"first-inline-ignored", "", "      # actionlint:ignore-next-line syntax-check -- covered elsewhere\n", []string{".github/workflows/b.yml"}, []string{""}},
+		{"first-file-ignored", "ignores: [{rule: syntax-check, file: '.github/workflows/a.yml'}]\n", "", []string{".github/workflows/b.yml"}, []string{""}},
+		{"first-rule-off", "overrides:\n  - includes: ['.github/workflows/a.yml']\n    lint: {rules: {correctness: {syntax-check: off}}}\n", "", []string{".github/workflows/b.yml"}, []string{""}},
+		{"different-severities", "lint: {rules: {correctness: {syntax-check: error}}}\noverrides:\n  - includes: ['.github/workflows/a.yml']\n    lint: {rules: {correctness: {syntax-check: warn}}}\n", "", []string{".github/workflows/a.yml", ".github/workflows/b.yml"}, []string{"warning", "error"}},
+		{"all-ignored", "ignores: [{rule: syntax-check, file: '.github/workflows/*.yml'}]\n", "", nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -43,7 +43,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 					t.Fatalf("attempt %d: expected %d findings, got %+v", attempt, len(tc.wantPaths), result.Diagnostics)
 				}
 				for i, d := range result.Diagnostics {
-					if d.Rule != "action" || !strings.Contains(d.Message, "description is required") || filepath.ToSlash(d.Path) != tc.wantPaths[i] || string(d.Severity) != tc.wantSeverities[i] {
+					if d.Rule != "syntax-check" || !strings.Contains(d.Message, "description is required") || filepath.ToSlash(d.Path) != tc.wantPaths[i] || string(d.Severity) != tc.wantSeverities[i] {
 						t.Fatalf("attempt %d: finding %d = %+v; expected %s with severity %s", attempt, i, d, tc.wantPaths[i], tc.wantSeverities[i])
 					}
 				}
@@ -93,7 +93,7 @@ func TestMetadataDedupKeepsInvocationErrorsAcrossWorkflows(t *testing.T) {
 func TestMetadataDedupKeepsDistinctSuppressionViolations(t *testing.T) {
 	t.Parallel()
 	root, _ := executableFixture(t)
-	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\npolicy: {disallow-suppressions: {report: suppression}}\nignores:\n  - {rule: action, file: '.github/workflows/a.yml'}\n  - {rule: action, file: '.github/workflows/b.yml'}\n")
+	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\npolicy: {disallow-suppressions: {report: suppression}}\nignores:\n  - {rule: syntax-check, file: '.github/workflows/a.yml'}\n  - {rule: syntax-check, file: '.github/workflows/b.yml'}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)

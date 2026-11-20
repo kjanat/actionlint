@@ -56,7 +56,7 @@ jobs:
 				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 					if actionRule {
 						for _, rule := range rules {
-							if rule.Name() == "action" {
+							if rule.Name() == "invalid-action-reference" {
 								return []workflowvisit.Rule{rule}
 							}
 						}

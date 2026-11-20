@@ -161,7 +161,7 @@ func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 
 func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	t.Parallel()
-	project, err := ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
+	project, err := ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    correctness: {unknown-input: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,10 +191,10 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 			t.Fatalf("source override was not resolved before consumption: %s", got)
 		}
 	}
-	if got := ConfigurationRules().DiagnosticLevel(action, "action"); got != "warn" {
+	if got := ConfigurationRules().DiagnosticLevel(action, "unknown-input"); got != "warn" {
 		t.Fatalf("action setting = %s", got)
 	}
-	if got := ConfigurationRules().DiagnosticLevel(source, "action"); got == "warn" {
+	if got := ConfigurationRules().DiagnosticLevel(source, "unknown-input"); got == "warn" {
 		t.Fatal("caller-scoped action setting leaked into the source scope")
 	}
 }
@@ -212,7 +212,7 @@ func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	project, err := rules.ParseConfig([]byte(`tools:
   custom-script:
     backend: {wasm: {path: workflow.wasm}}
-lint: {rules: {correctness: {action: warn}}}
+lint: {rules: {correctness: {unknown-input: warn}}}
 overrides:
   - includes: ['inner/**']
     tools:
@@ -238,7 +238,7 @@ overrides:
 		if !ok || module.Path() != "action.wasm" {
 			t.Fatalf("source tool lost its backend override: module=%+v selected=%v", module, ok)
 		}
-		if rules.DiagnosticLevel(cfg, "action") == "warn" {
+		if rules.DiagnosticLevel(cfg, "unknown-input") == "warn" {
 			t.Fatal("source projection retained caller-only rule settings")
 		}
 	}

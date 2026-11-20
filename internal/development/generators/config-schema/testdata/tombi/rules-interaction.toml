@@ -16,7 +16,7 @@ max-minutes = 30.0
 min-minutes = 5.0
 
 [lint.rules.correctness]
-action = 'error'
+invalid-action-reference = 'error'
 level = 'warn'
 
 [lint.rules.security]
