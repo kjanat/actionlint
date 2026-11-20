@@ -34,6 +34,8 @@ func TestTemplateStringAlternatives(t *testing.T) {
 		{"unknown left operand", "${{ inputs.a && 'x' || 'y' }}", nil},
 		{"unknown branch", "${{ inputs.a == 'b' && inputs.c || 'y' }}", nil},
 		{"unknown fallback", "${{ inputs.a == 'b' && 'x' || inputs.c }}", nil},
+		{"object alternatives", "${{ case(inputs.a == 'x', fromJSON('{}'), fromJSON('{}')) && 'ok' || 'fallback' }}", nil},
+		{"array alternatives", "${{ case(inputs.a == 'x', fromJSON('[]'), fromJSON('[]')) && 'ok' || 'fallback' }}", nil},
 		{"unterminated", "${{ case(inputs.a, 'a', 'b')", nil},
 		{"budget", strings.Repeat("${{ case(inputs.a, 'a', 'b') }}", 6), nil},
 		{"size budget", strings.Repeat("a", maxAlternativeBytes+1), nil},

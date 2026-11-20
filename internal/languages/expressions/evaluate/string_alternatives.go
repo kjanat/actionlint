@@ -41,7 +41,13 @@ func valueAlternatives(expr syntax.Node, depth int) ([]any, bool) {
 		return nil, false
 	}
 	if value, known := ConditionConstantValue(expr); known {
-		if text, ok := value.(string); ok && len(text) > maxAlternativeBytes {
+		switch value := value.(type) {
+		case string:
+			if len(value) > maxAlternativeBytes {
+				return nil, false
+			}
+		case nil, bool, float64:
+		default:
 			return nil, false
 		}
 		return []any{value}, true
