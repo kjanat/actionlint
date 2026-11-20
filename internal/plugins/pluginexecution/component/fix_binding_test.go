@@ -17,24 +17,28 @@ func TestGuestDiagnosticFixRevisions(t *testing.T) {
 	start := sourcetext.Position{Line: 1, Column: 1}
 	end := sourcetext.Position{Line: 1, Column: 2}
 	digest := strings.Repeat("a", 64)
-	revision := wacogo.NewValRecord(field("path", wacogo.ValString(path)), field("digest", wacogo.ValString(digest)))
-	edit := wacogo.NewValRecord(
-		field("path", wacogo.ValString(path)), field("start", lowerPosition(start)),
-		field("end", lowerPosition(end)), field("replacement", wacogo.ValString("x")),
-	)
 	for _, test := range []struct {
 		name      string
-		revisions *wacogo.ValList
+		revisions int
 		wantError string
 	}{
-		{name: "preserves fix", revisions: wacogo.NewValListOf(revision)},
-		{name: "duplicate revision", revisions: wacogo.NewValListOf(revision, revision), wantError: `duplicate source revision "workflow.yml"`},
+		{name: "preserves fix", revisions: 1},
+		{name: "duplicate revision", revisions: 2, wantError: `duplicate source revision "workflow.yml"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			revisions := make([]wacogo.Val, test.revisions)
+			for i := range revisions {
+				revisions[i] = wacogo.NewValRecord(field("path", wacogo.ValString(path)), field("digest", wacogo.ValString(digest)))
+			}
+			edit := wacogo.NewValRecord(
+				field("path", wacogo.ValString(path)), field("start", lowerPosition(start)),
+				field("end", lowerPosition(end)), field("replacement", wacogo.ValString("x")),
+			)
 			diagnostic := mixedDiagnostic("replace character", start, end)
 			fix := wacogo.NewValRecord(
 				field("description", wacogo.ValString("replace character")), field("applicability", wacogo.ValString("safe")),
-				field("revisions", test.revisions), field("edits", wacogo.NewValListOf(edit)),
+				field("revisions", wacogo.NewValListOf(revisions...)), field("edits", wacogo.NewValListOf(edit)),
 			)
 			var fields []wacogo.Field
 			for _, name := range []string{"reference", "related", "rule", "code", "severity", "message", "path", "explanation", "help", "documentation-url", "start", "end"} {

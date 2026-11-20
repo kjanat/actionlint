@@ -63,11 +63,11 @@ func TestConfigFile(t *testing.T) {
 
 func TestConfigFileSearchesProjectBeforeUserConfig(t *testing.T) {
 	project, userConfig := t.TempDir(), t.TempDir()
+	variable := "XDG_CONFIG_HOME"
 	if runtime.GOOS == "windows" {
-		t.Setenv("APPDATA", userConfig)
-	} else {
-		t.Setenv("XDG_CONFIG_HOME", userConfig)
+		variable = "APPDATA"
 	}
+	t.Setenv(variable, userConfig)
 	const name = "actionlint-test-tool.conf"
 	projectFile, userFile := filepath.Join(project, name), filepath.Join(userConfig, name)
 	for _, path := range []string{projectFile, userFile} {

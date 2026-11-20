@@ -241,6 +241,7 @@ func TestPluginTestReadsSeparateFixtureFile(t *testing.T) {
 		{name: "unknown field", fixture: `[{"name":"clean","unexpected":true}]`, wantStatus: 1, wantError: `unknown field "unexpected"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixturePath := filepath.Join(t.TempDir(), "fixtures.json")
 			if err := os.WriteFile(fixturePath, []byte(test.fixture), 0o600); err != nil {
 				t.Fatal(err)
