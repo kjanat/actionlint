@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func writeFixture(t *testing.T, root, name, content string) {
@@ -41,7 +42,7 @@ func gitFixture(t *testing.T, root string) func(...string) {
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(config, "gitconfig"))
 	git := func(args ...string) {
 		t.Helper()
-		if out, err := exec.CommandContext(t.Context(), "git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+		if out, err := gitcommand.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}

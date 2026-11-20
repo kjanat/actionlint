@@ -39,12 +39,7 @@ func writeFixture(t *testing.T, root, name, content string) string {
 
 func writeGitRepository(t *testing.T, root string) {
 	t.Helper()
-	command := exec.CommandContext(t.Context(), "git", "init", "--quiet", root)
-	for _, entry := range os.Environ() {
-		if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
-			command.Env = append(command.Env, entry)
-		}
-	}
+	command := gitcommand.Command(t.Context(), "git", root, "init", "--quiet")
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}

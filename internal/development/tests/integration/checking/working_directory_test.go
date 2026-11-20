@@ -11,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func TestFileRequestsUseProcessDirectoryWithoutMutatingPaths(t *testing.T) {
@@ -80,8 +81,8 @@ func TestRepositoryRequestsUseProcessDirectoryOrDefaultToWorkingDirectory(t *tes
 			if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			command := exec.CommandContext(t.Context(), git, "init", "--quiet", repository)
-			command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+filepath.Join(root, "unused-gitconfig"))
+			command := gitcommand.Command(t.Context(), git, repository, "init", "--quiet")
+			command.Env = append(command.Env, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+filepath.Join(root, "unused-gitconfig"))
 			if output, err := command.CombinedOutput(); err != nil {
 				t.Fatalf("git init: %v: %s", err, output)
 			}

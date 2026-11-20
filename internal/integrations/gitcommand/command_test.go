@@ -193,3 +193,32 @@ func TestQueryPreservesSeparateOutputStreams(t *testing.T) {
 		t.Fatalf("successful query: output=%+v error=%v", output, err)
 	}
 }
+
+// Git sets GIT_DIR and GIT_INDEX_FILE for hooks. A `git init` that inherits
+// them reinitializes the hook's repository as bare.
+func TestCommandIgnoresInheritedRepository(t *testing.T) {
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git is not installed")
+	}
+	hook := t.TempDir()
+	if output, err := Command(t.Context(), git, hook, "init", "--quiet").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	t.Setenv("GIT_DIR", filepath.Join(hook, ".git"))
+	t.Setenv("GIT_INDEX_FILE", filepath.Join(hook, ".git", "index"))
+	fixture := t.TempDir()
+	if output, err := Command(t.Context(), git, fixture, "init", "--quiet").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	if _, err := os.Stat(filepath.Join(fixture, ".git", "HEAD")); err != nil {
+		t.Fatalf("fixture repository missing: %v", err)
+	}
+	config, err := os.ReadFile(filepath.Join(hook, ".git", "config"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(config), "bare = true") {
+		t.Fatalf("hook repository became bare:\n%s", config)
+	}
+}
