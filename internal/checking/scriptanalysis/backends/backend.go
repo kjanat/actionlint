@@ -327,6 +327,10 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 	}
 	files := map[string]reportedFile{}
 	for _, d := range result.diagnostics {
+		if d.Source != "" && c.prepared.ConfigFile != "" && sourcePath(d.Source, result.directory) == sourcePath(c.prepared.ConfigFile, result.directory) {
+			failures = errors.Join(failures, r.configurationError(d))
+			continue
+		}
 		if d.Source != "" {
 			if !r.options.findings.reportedSources {
 				failures = errors.Join(failures, fmt.Errorf("tool %s reported a finding in %q but does not declare reported sources", r.descriptor.Name, d.Source))

@@ -25,6 +25,9 @@ type Prepared struct {
 	AcceptDiagnostic func(scriptengine.Diagnostic) bool
 	// Vars supplies values for placeholders in the tool command.
 	Vars map[string]string
+	// ConfigFile is the tool configuration file selected for this run. A
+	// diagnostic the tool reports in it is a configuration error.
+	ConfigFile string
 	// Excluded lists diagnostic codes the tool should skip for this script.
 	// Script engines receive these codes with each request.
 	Excluded []string

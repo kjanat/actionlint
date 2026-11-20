@@ -58,5 +58,5 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		return preparation.Prepared{Skip: plan.Skip}, nil
 	}
 	script := Prepare(mask.Expressions(text), plan.Prefix, plan.Startup)
-	return preparation.Prepared{Source: script.Text(), LineMap: script.Line, Config: plan.Config, Vars: plan.Variables, Excluded: plan.Excluded}, nil
+	return preparation.Prepared{Source: script.Text(), LineMap: script.Line, Config: plan.Config, Vars: plan.Variables, Excluded: plan.Excluded, ConfigFile: r.ConfigFile}, nil
 }
