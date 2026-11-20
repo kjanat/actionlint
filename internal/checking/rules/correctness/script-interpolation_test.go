@@ -102,6 +102,16 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 		{"toJSON(github.repository == null)", exprtypes.StringType(), false},
 		{"toJSON(!github.repository)", exprtypes.StringType(), false},
 		{"toJSON('safe')", exprtypes.StringType(), true},
+		// actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 action.yml line 39.
+		{"inputs.include-hidden-files != 'true' && '--exclude=.[^/]*' || ''", exprtypes.StringType(), false},
+		{"'--exclude=x'", exprtypes.StringType(), false},
+		{"inputs.enabled && 'a=b' || 'b'", exprtypes.StringType(), false},
+		{"'*.go'", exprtypes.StringType(), false},
+		{"'~/cache'", exprtypes.StringType(), false},
+		{"'#comment'", exprtypes.StringType(), true},
+		{"'a!b'", exprtypes.StringType(), true},
+		{"'{a,b}'", exprtypes.StringType(), true},
+		{"inputs.enabled && 'a=b' || 'b c'", exprtypes.StringType(), true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
@@ -120,6 +130,23 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 				t.Fatalf("wrong finding identity: %+v", findings[0])
 			}
 		})
+	}
+}
+
+func TestKnownArgumentValueNeedsArgumentPosition(t *testing.T) {
+	t.Parallel()
+	for _, expression := range []string{"'a=b'", "'*.go'", "inputs.enabled && '--exclude=x' || ''"} {
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(expression + "}}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		types := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types
+		if findings := ScriptInterpolation(node, exprtypes.StringType(), types, ShellArgumentInsertion, nil); len(findings) != 0 {
+			t.Errorf("%s rejected as a data argument: %v", expression, findings)
+		}
+		if findings := ScriptInterpolation(node, exprtypes.StringType(), types, ShellWordInsertion, nil); len(findings) == 0 {
+			t.Errorf("%s accepted as an unrestricted shell word", expression)
+		}
 	}
 }
 
@@ -212,12 +239,12 @@ func TestNumericScriptLiteralsRequireArgumentPosition(t *testing.T) {
 
 func TestSafeScriptArguments(t *testing.T) {
 	t.Parallel()
-	for _, text := range []string{"", "--allow-no-files --diff ", "--excludes .github", "--flag\tvalue", "if fi 2"} {
+	for _, text := range []string{"", "--allow-no-files --diff ", "--excludes .github", "--flag\tvalue", "if fi 2", "*.go", "x=y", "--exclude=.[^/]* ~/cache"} {
 		if !SafeScriptArguments(text) {
 			t.Fatalf("literal argument list rejected: %q", text)
 		}
 	}
-	for _, text := range []string{"a; id", "$(id)", "`id`", "x\ny", "x\ry", "x\u00a0y", "x|y", "x>y", "x<y", "x#y", "x'y", `x"y`, `x\y`, "*.go", "x=y"} {
+	for _, text := range []string{"a; id", "$(id)", "`id`", "x\ny", "x\ry", "x\u00a0y", "x|y", "x>y", "x<y", "x#y", "x'y", `x"y`, `x\y`, "x!y", "{a,b}"} {
 		if SafeScriptArguments(text) {
 			t.Fatalf("shell syntax accepted: %q", text)
 		}

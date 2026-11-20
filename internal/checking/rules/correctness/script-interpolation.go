@@ -20,7 +20,7 @@ var ScriptInterpolationRule = &define.Rule{
 	Description: "Detect template values that may change script syntax",
 	Category:    "correctness",
 	Subcategory: "scripts",
-	Explanation: "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position.",
+	Explanation: "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. In that position a known string may also contain = + , @ % ^ ~ * ? [ and ], which expand an argument without changing shell syntax. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position.",
 	Help:        "Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.",
 	Recommended: true,
 	Examples: []rule.Example{rule.LabeledWorkflowExample("Keep a dynamic value out of generated shell source.",
@@ -62,12 +62,28 @@ func scriptLiteralCharacter(r rune) bool {
 	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./:-", r)
 }
 
+// SafeScriptArgumentLiteral recognizes text that a proved command argument
+// may hold. Beyond SafeScriptLiteral it allows assignment, tilde and glob
+// characters, which expand an argument without changing shell syntax.
+func SafeScriptArgumentLiteral(value string) bool {
+	for _, r := range value {
+		if !scriptArgumentCharacter(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func scriptArgumentCharacter(r rune) bool {
+	return scriptLiteralCharacter(r) || strings.ContainsRune("=+,@%^~*?[]", r)
+}
+
 // SafeScriptArguments recognizes literal shell words separated by horizontal
 // whitespace. It requires an independent proof that insertion occupies a whole
 // command argument; it is not safe in command, assignment or redirection syntax.
 func SafeScriptArguments(value string) bool {
 	for _, r := range value {
-		if r == ' ' || r == '\t' || scriptLiteralCharacter(r) {
+		if r == ' ' || r == '\t' || scriptArgumentCharacter(r) {
 			continue
 		}
 		return false
@@ -151,7 +167,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 		case nil, bool, float64:
 			return scalarArgument
 		case string:
-			return scalarArgument && SafeScriptLiteral(value) || SafeScriptWord(value)
+			return scalarArgument && SafeScriptArgumentLiteral(value) || SafeScriptWord(value)
 		default:
 			return false
 		}
