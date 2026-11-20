@@ -43,6 +43,7 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env: { MISE_ENABLE_TOOLS: "kprint,node,npm,bun" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -91,17 +92,20 @@ jobs:
           MISE_ENABLE_TOOLS: ${{ (steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true') && 'kprint,node,npm,bun' || 'kprint,bun' }}
       - name: Regenerate the configuration schema
         id: schema
+        timeout-minutes: 5
         run: bash tools/ci/autofix-step.bash mise run generate:config-schema
       - name: Install catalogue generator dependencies
         if: steps.inputs.outputs.tables == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Regenerate affected Go tables
         id: tables
+        timeout-minutes: 10
         if: steps.inputs.outputs.tables == 'true'
         run: bash tools/ci/autofix-step.bash mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Refresh the affected README demo
         id: readme
+        timeout-minutes: 5
         if: steps.inputs.outputs.readme == 'true'
         run: bash tools/ci/autofix-step.bash node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
@@ -111,6 +115,7 @@ jobs:
         run: rustup toolchain install
       - name: format the code
         id: format
+        timeout-minutes: 10
         # autofix-ci will fail if the .github directory is touched
         run: bash tools/ci/autofix-step.bash kprint fmt --allow-no-files --diff --excludes .github
       - name: Describe applied fixes
