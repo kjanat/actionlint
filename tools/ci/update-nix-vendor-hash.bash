@@ -44,7 +44,9 @@ write_hash() {
 	cp -p -- "${scratch}/original" "${scratch}/candidate"
 	sed "s#^  vendorHash = \"${current}\";\$#  vendorHash = \"$1\";#" \
 		"${scratch}/original" >"${scratch}/candidate"
-	if [[ "$(read_hash "${scratch}/candidate")" != "$1" ]]; then
+	local candidate_hash
+	candidate_hash=$(read_hash "${scratch}/candidate")
+	if [[ "${candidate_hash}" != "$1" ]]; then
 		echo "Cannot replace vendorHash in ${package}" >&2
 		return 1
 	fi
