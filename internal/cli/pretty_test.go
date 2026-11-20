@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestPrettyCheckCommand(t *testing.T) {
@@ -62,6 +65,44 @@ func TestPrettyOptions(t *testing.T) {
 			}
 			if _, err := newResultRenderers(app.inv.Render); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestDependencyFindingsFlag(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"compact", "full", "invalid"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			app := newCommandApp(t.Context(), &Command{})
+			if _, _, err := app.parseRoot([]string{"--dependency-findings=" + mode}); err != nil {
+				t.Fatal(err)
+			}
+			err := app.prepareInvocation()
+			if mode == "invalid" {
+				if err == nil || !strings.Contains(err.Error(), "--dependency-findings") {
+					t.Fatalf("invalid mode accepted: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			renderer, err := newResultRenderer(app.inv.Render, outputformat.Pretty)
+			if err != nil {
+				t.Fatal(err)
+			}
+			finding := results.Publish(results.Diagnostic{
+				Origin: results.DependencyOrigin, Rule: "shellcheck", Severity: severity.Info,
+				Path: "remote/action.yml", Message: "dependency detail",
+			}, results.DiagnosticSource{})
+			var out strings.Builder
+			if err := renderer.Render(&out, output.RenderedReport{Findings: []results.PublishedDiagnostic{finding}}); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(out.String(), "dependency detail") != (mode == "full") {
+				t.Fatalf("%s output: %s", mode, out.String())
 			}
 		})
 	}

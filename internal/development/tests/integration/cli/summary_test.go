@@ -25,7 +25,7 @@ func TestSummaryDefaultsAndOverrides(t *testing.T) {
 			{name: "findings", input: commandBadWorkflow, want: "! Checked 1 file, 1 finding.\n\nFiles:\n  1  <stdin>\n\nDiagnostics:\n  1  expression-reference/unknown-variable\n", status: 1},
 			{name: "quiet", input: commandGoodWorkflow, flags: []string{"--quiet"}},
 			{name: "disabled", input: commandGoodWorkflow, flags: []string{"--summary=false"}},
-			{name: "json", input: commandGoodWorkflow, flags: []string{"--json"}, want: "{\"summary\":{\"files\":1,\"findings\":0}}\n"},
+			{name: "json", input: commandGoodWorkflow, flags: []string{"--json"}, want: "{\"summary\":{\"files\":1,\"findings\":0,\"project_findings\":0,\"dependency_findings\":0}}\n"},
 			{name: "template", input: commandGoodWorkflow, flags: []string{"--template={{range .}}{{.Kind}}{{end}}"}, want: "✓ Checked 1 file. All clear!\n"},
 			{name: "environment disabled", input: commandGoodWorkflow, env: "false"},
 			{name: "flag overrides environment", input: commandGoodWorkflow, env: "true", flags: []string{"--summary=false"}},

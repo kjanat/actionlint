@@ -309,6 +309,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f.StringArrayVar(&a.inv.Check.IgnoreSelectors, "ignore", nil, "Ignore a `RULE`, diagnostic code or rule/code (repeatable)")
 	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")
 	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")
+	f.StringVar(&a.inv.Render.DependencyFindings, "dependency-findings", "compact", "Dependency findings in pretty output: compact or full")
 	f.Var(&a.opts.output, "output", "Alias for --output-format (repeatable)")
 	f.StringVarP(&a.inv.Render.Template, "template", "f", "", "Render legacy fields with this Go template")
 	f.StringVar(&a.inv.Render.Template, "format", "", "Alias for --template")
@@ -333,7 +334,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	for _, name := range []string{"ignore-regex", "ignore"} {
 		annotateFlag(f, name, "Filtering")
 	}
-	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "diagnostic-width", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
+	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "diagnostic-width", "dependency-findings", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
 		annotateFlag(f, name, "Output")
 	}
 	for _, name := range []string{"yes", "help", "help-legacy"} {
@@ -362,6 +363,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	}
 	choices("output-format", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
 	choices("output", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
+	choices("dependency-findings", []string{"compact", "full"})
 	choices("log-level", []string{"none", "info", "debug"})
 	if modern {
 		choices("color", []string{"auto", "always", "never"})

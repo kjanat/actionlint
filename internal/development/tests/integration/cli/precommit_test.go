@@ -100,7 +100,7 @@ func TestPreCommitCommandRendersEmptyResult(t *testing.T) {
 	}
 	got = testRunCommand("", "pre-commit", "--json", "--summary", "--yes", "--output-file", "report.json")
 	data, err := os.ReadFile("report.json")
-	if err != nil || got.Status != 0 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":0,\"findings\":0}}\n" {
+	if err != nil || got.Status != 0 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":0,\"findings\":0,\"project_findings\":0,\"dependency_findings\":0}}\n" {
 		t.Fatalf("%+v %s (%v)", got, data, err)
 	}
 }

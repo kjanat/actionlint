@@ -26,7 +26,7 @@ func TestGCCOutputSelection(t *testing.T) {
 		t.Fatalf("gcc environment format: %+v", got)
 	}
 	got = testRunCommand(strings.Replace(commandGoodWorkflow, "echo ok", "echo ok # ignore script-interpolation", 1), "--no-config", "-")
-	if got.Status != 1 || !strings.Contains(got.Stdout, ": note: inline suppression of") || !strings.HasSuffix(got.Stdout, " [unused-suppression]\n") {
+	if got.Status != 0 || !strings.Contains(got.Stdout, ": note: inline suppression of") || !strings.HasSuffix(got.Stdout, " [unused-suppression]\n") {
 		t.Fatalf("informational finding is not a compiler note: %+v", got)
 	}
 }

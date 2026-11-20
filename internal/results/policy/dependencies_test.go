@@ -66,6 +66,7 @@ func TestDependencyPinDeduplicationRequiresEqualContentsAndSemantics(t *testing.
 		{"unknown contents", "", "same finding", 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var batches []policy.Batch
 			for i, pin := range []string{"abc", "def", "abc"} {
 				content, message := []byte("name: action"), "same finding"

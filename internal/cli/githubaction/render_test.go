@@ -99,6 +99,15 @@ func TestCommandEscape(t *testing.T) {
 	}
 }
 
+func TestNativeAnnotationsIdentifyDependencyFindings(t *testing.T) {
+	t.Parallel()
+	analysis := analysisForRender(t, "")
+	analysis.Diagnostics[0].Origin = results.DependencyOrigin
+	if got := actionAnnotations(analysis); !strings.Contains(got, "title=actionlint (dependency%3Arunner-label)") {
+		t.Fatalf("missing dependency annotation title: %q", got)
+	}
+}
+
 func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
 	t.Parallel()
 	analysis := analysisForRender(t, "")

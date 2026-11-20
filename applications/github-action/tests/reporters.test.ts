@@ -83,13 +83,11 @@ test('persisted results validate completion and preserve diagnostic severity and
 });
 
 test('the Action preserves the native severity threshold and exit decision', () => {
-	for (
-		const [threshold, status, code] of [
-			['error', 'success', 0],
-			['warning', 'problems-found', 1],
-		]
-	) {
-		const native = { ...result, failure_threshold: threshold, status, exit_code: code };
+	const nativeResults: ActionResult[] = [
+		{ ...result, failure_threshold: 'error', status: 'success', exit_code: 0 },
+		{ ...result, failure_threshold: 'warning', status: 'problems-found', exit_code: 1 },
+	];
+	for (const native of nativeResults) {
 		assert.deepEqual(parseResult(native), native);
 	}
 	assert.throws(() => parseResult({ ...result, failure_threshold: 'info' }));

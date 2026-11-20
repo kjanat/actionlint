@@ -14,7 +14,7 @@ func TestCommandContainerRunner(t *testing.T) {
 		status          int
 	}{
 		{"on", "error", 1},
-		{"warn", "warning", 1},
+		{"warn", "warning", 0},
 		{"off", "", 0},
 	} {
 		t.Run(tc.level, func(t *testing.T) {

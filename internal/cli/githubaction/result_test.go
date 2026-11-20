@@ -97,8 +97,8 @@ permissions: {}
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
-				if code := Main(func(key string) string { return env[key] }, &output, dependencycache.Acquisition{}); code != 1 {
-					t.Fatalf("code %d; want findings: %s", code, output.String())
+				if code := Main(func(key string) string { return env[key] }, &output, dependencycache.Acquisition{}); code != 0 {
+					t.Fatalf("code %d; want success with an informational finding: %s", code, output.String())
 				}
 				var result report.CheckResult
 				if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
@@ -159,7 +159,11 @@ permissions: {}
 						t.Errorf("SARIF artifact = %+v, want workspace-relative %q", artifact, tc.uri)
 					}
 				}
-				selected := parseOutputs(read(t, outputPath))["output"]
+				outputs := parseOutputs(read(t, outputPath))
+				if outputs["problems-found"] != "true" || outputs["problem-count"] != "1" || outputs["exit-code"] != "0" {
+					t.Fatalf("informational finding outputs: %v", outputs)
+				}
+				selected := outputs["output"]
 				if file := read(t, filepath.Join(workspace, "report.txt")); strings.TrimSuffix(file, "\n") != selected {
 					t.Error("output-file differs from selected output")
 				}
@@ -200,8 +204,8 @@ permissions: {}
 		"INPUT_OUTPUT-FILE": "report.sarif",
 	}
 	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output, dependencycache.Acquisition{}); code != 1 {
-		t.Fatalf("code %d; want 1: %s", code, output.String())
+	if code := Main(func(key string) string { return env[key] }, &output, dependencycache.Acquisition{}); code != 0 {
+		t.Fatalf("code %d; want success with an informational finding: %s", code, output.String())
 	}
 	selected := parseOutputs(read(t, outputPath))["output"]
 	if report := read(t, filepath.Join(workspace, "report.sarif")); strings.TrimSuffix(report, "\n") != selected {

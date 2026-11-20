@@ -208,7 +208,7 @@ func TestCommandNativeJSON(t *testing.T) {
 			}
 			expected := []results.Diagnostic{}
 			for _, field := range want {
-				expected = append(expected, results.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: sourcetext.Position{Line: field.Line, Column: field.Column}, End: sourcetext.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected = append(expected, results.Diagnostic{Origin: results.ProjectOrigin, Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: sourcetext.Position{Line: field.Line, Column: field.Column}, End: sourcetext.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]
