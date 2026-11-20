@@ -4,6 +4,9 @@ import (
 	"go/build"
 	"reflect"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
+	"go.bytecodealliance.org/cm"
 )
 
 func TestGuestBuildExcludesNativePackaging(t *testing.T) {
@@ -31,6 +34,23 @@ func TestGuestBuildExcludesNativePackaging(t *testing.T) {
 				t.Fatalf("guest selected=%t, native selected=%t; want guest=%t", guest, native, test.guest)
 			}
 		})
+	}
+}
+
+func TestAnalyzeUsesMappedEndOfInsecureFlag(t *testing.T) {
+	t.Parallel()
+	start := analyzer.Position{Line: 7, Column: 15}
+	end := analyzer.Position{Line: 7, Column: 22}
+	script := analyzer.Script{
+		Path: "action.yml",
+		Text: "curl -k https://example.com",
+		Spans: cm.ToList([]analyzer.Span{{
+			Line: 1, Start: 6, End: 8, Document: start, DocumentEnd: cm.Some(end),
+		}}),
+	}
+	got := analyze(analyzer.Input{Invoked: cm.ToList([]analyzer.Script{script})}).Diagnostics.Slice()
+	if len(got) != 1 || got[0].Path != script.Path || got[0].Start != start || got[0].End != end {
+		t.Fatalf("diagnostics = %+v, want one finding in %q from %+v to %+v", got, script.Path, start, end)
 	}
 }
 

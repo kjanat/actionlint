@@ -226,6 +226,32 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 	}
 }
 
+func TestMigrationLeavesConfigAndExistingLockIntact(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	original := []byte("policy: {require-job-timeout: false}\n")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
+	if err != nil || !plan.Changed {
+		t.Fatalf("prepare migration: %+v, %v", plan, err)
+	}
+	lock := path + ".migrate.lock"
+	if err := os.Mkdir(lock, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "cannot lock config migration") {
+		t.Fatalf("apply with existing lock: %v", err)
+	}
+	if got, err := os.ReadFile(path); err != nil || !bytes.Equal(got, original) {
+		t.Fatalf("config changed: %q, %v", got, err)
+	}
+	if info, err := os.Stat(lock); err != nil || !info.IsDir() {
+		t.Fatalf("existing lock changed: %v, %v", info, err)
+	}
+}
+
 func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 	t.Parallel()
 	type inputs struct{ selected, base, other, linkedBase string }

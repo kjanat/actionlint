@@ -61,6 +61,30 @@ func TestMetadataRejectsMalformedFraming(t *testing.T) {
 	}
 }
 
+func TestPackageMetadataRejectsInvalidDescriptor(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name, id, schema, want string
+		inputs                 []analyzer.InputKind
+	}{
+		{name: "invalid ID", id: "invalid id", want: "plugin ID requires"},
+		{name: "unknown input kind", id: "example/check", inputs: []analyzer.InputKind{255}, want: "unknown required input kind 255"},
+		{name: "non-object options schema", id: "example/check", schema: "[]", want: "descriptor options schema must be a JSON object"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			plugin := Package{
+				Identity:   Identity{ID: test.id},
+				Descriptor: analyzer.Descriptor{OptionsSchema: test.schema, RequiredInputs: cm.ToList(test.inputs)},
+			}
+			got, err := plugin.Metadata()
+			if got != nil || err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Metadata() = %s, %v, want error containing %q", got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestPackageUsesExportedDescriptorAndWritesChecksums(t *testing.T) {
 	plugin := Package{
 		Identity: Identity{ID: "example/check", Name: "Example", Description: "Check scripts", License: "MIT", Repository: "https://github.com/example/check", Version: "1.0.0"},
