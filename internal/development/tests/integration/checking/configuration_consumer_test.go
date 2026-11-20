@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -15,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 const configurationWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
@@ -61,7 +61,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
+	if output, err := gitcommand.Command(t.Context(), "git", root, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	path := filepath.Join(root, ".github", "workflows", "ci.yml")

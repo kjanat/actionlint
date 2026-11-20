@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func configuredOutputFixture(t *testing.T, settings string) (string, string) {
@@ -137,7 +138,7 @@ func TestConfiguredOutputUsesInvokingRepository(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(dir, ".github"), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if result, err := exec.CommandContext(t.Context(), "git", "init", "-q", dir).CombinedOutput(); err != nil {
+		if result, err := gitcommand.Command(t.Context(), "git", dir, "init", "-q").CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, result)
 		}
 		if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("plugins: []\noutput: "+output+"\n"), 0o600); err != nil {

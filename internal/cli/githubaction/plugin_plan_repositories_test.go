@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -14,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -67,7 +67,7 @@ func TestPluginPlanNestedRepositories(t *testing.T) {
 				".github/actionlint.yml": rootConfig, "child/.github/actionlint.yml": childConfig,
 			})
 			child := filepath.Join(root, "child")
-			command := exec.CommandContext(t.Context(), "git", "init", "--quiet", child)
+			command := gitcommand.Command(t.Context(), "git", child, "init", "--quiet")
 			if output, err := command.CombinedOutput(); err != nil {
 				t.Fatalf("init nested repository: %v: %s", err, output)
 			}

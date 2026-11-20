@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -93,12 +93,7 @@ func workspaceWith(t *testing.T, files map[string]string) string {
 	dir := resolved(t, t.TempDir())
 	for name, content := range files {
 		if name == ".git" {
-			command := exec.CommandContext(t.Context(), "git", "init", "--quiet", dir)
-			for _, entry := range os.Environ() {
-				if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
-					command.Env = append(command.Env, entry)
-				}
-			}
+			command := gitcommand.Command(t.Context(), "git", dir, "init", "--quiet")
 			if out, err := command.CombinedOutput(); err != nil {
 				t.Fatalf("git init: %v: %s", err, out)
 			}

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -25,7 +25,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	for _, name := range []string{"first", "second"} {
 		root := filepath.Join(parent, name)
-		command := exec.CommandContext(t.Context(), "git", "init", "--quiet", root)
+		command := gitcommand.Command(t.Context(), "git", ".", "init", "--quiet", root)
 		if output, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, output)
 		}

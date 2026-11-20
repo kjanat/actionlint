@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -82,7 +82,7 @@ func configuredEngineFixture(t *testing.T) (string, []string, *configuration.Loa
 			t.Fatal(err)
 		}
 	}
-	if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
+	if output, err := gitcommand.Command(t.Context(), "git", root, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	cfg, err := checking.ConfigurationRules().Read(filepath.Join(root, "actionlint.yaml"), os.ReadFile)

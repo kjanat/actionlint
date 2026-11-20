@@ -3,13 +3,13 @@ package checking
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
@@ -18,7 +18,7 @@ func TestWorkflowCallOutputContextUsesCapturedCalleeMetadata(t *testing.T) {
 	fixture := func(t *testing.T) (string, string) {
 		t.Helper()
 		root := t.TempDir()
-		if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
+		if output, err := gitcommand.Command(t.Context(), "git", root, "init", "--quiet").CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, output)
 		}
 		directory := filepath.Join(root, ".github", "workflows")

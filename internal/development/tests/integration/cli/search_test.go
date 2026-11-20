@@ -3,10 +3,11 @@ package cli_test
 import (
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func TestSearchDirectoriesAndGlobsAcrossRepositories(t *testing.T) {
@@ -14,7 +15,7 @@ func TestSearchDirectoriesAndGlobsAcrossRepositories(t *testing.T) {
 	t.Chdir(parent)
 	for _, name := range []string{"first", "second"} {
 		root := filepath.Join(parent, name)
-		if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
+		if output, err := gitcommand.Command(t.Context(), "git", ".", "init", "--quiet", root).CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, output)
 		}
 		if err := os.MkdirAll(filepath.Join(root, ".github", "workflows"), 0o700); err != nil {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,14 +25,22 @@ func Command(ctx context.Context, git, root string, args ...string) *exec.Cmd {
 	// query uses the workflow's project.
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		switch strings.ToUpper(name) {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR":
-			continue
+		if !slices.Contains(repositoryVariables, strings.ToUpper(name)) {
+			command.Env = append(command.Env, entry)
 		}
-		command.Env = append(command.Env, entry)
 	}
 	command.Env = offlineEnvironment(ctx, command.Env)
 	return command
+}
+
+// repositoryVariables are the variables `git rev-parse --local-env-vars`
+// lists. Git sets them for hooks, and a Git command that inherits them acts on
+// that repository.
+var repositoryVariables = []string{
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
+	"GIT_OBJECT_DIRECTORY", "GIT_DIR", "GIT_WORK_TREE", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE",
+	"GIT_INDEX_FILE", "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE", "GIT_PREFIX", "GIT_SHALLOW_FILE",
+	"GIT_COMMON_DIR",
 }
 
 // Output contains a Git query's separate output streams, including warnings

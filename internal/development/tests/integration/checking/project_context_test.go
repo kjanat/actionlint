@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -118,8 +119,8 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					if err != nil {
 						t.Skip("Git required for repository discovery")
 					}
-					command := exec.CommandContext(t.Context(), git, "init", "--quiet", root)
-					command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+filepath.Join(root, "unused-gitconfig"))
+					command := gitcommand.Command(t.Context(), git, root, "init", "--quiet")
+					command.Env = append(command.Env, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+filepath.Join(root, "unused-gitconfig"))
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("git init: %v: %s", err, output)
 					}

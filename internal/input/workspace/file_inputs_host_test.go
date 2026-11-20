@@ -42,7 +42,7 @@ func TestDiscoveryUsesHostFilesystemAndGitQueries(t *testing.T) {
 		t.Skip("git is not installed")
 	}
 	root := t.TempDir()
-	if output, err := exec.CommandContext(t.Context(), git, "init", "-q", root).CombinedOutput(); err != nil {
+	if output, err := gitcommand.Command(t.Context(), git, root, "init", "-q").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	for _, name := range []string{".github/workflows/build.yml", ".github/workflows/ignored.yml", "actions/nested/action.yaml", "ignored/action.yml", "other.yaml"} {
