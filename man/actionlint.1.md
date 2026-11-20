@@ -835,8 +835,10 @@ current directory and, on GitHub Actions, exposes its path as the
 
 `actionlint` command exits with one of the following exit statuses.
 
-- **0**: It ran successfully and no problem was found.
-- **1**: It ran successfully and some problem was found.
+- **0**: The command completed. A check returns this status when no finding reaches
+  its failure threshold.
+- **1**: The check completed with at least one finding that reaches its failure
+  threshold. Errors fail a check by default. With **--strict**, warnings also fail it.
 - **2**: Command-line parsing or option validation failed, such as an unknown flag, missing value,
   unknown output mode, or incompatible output flags.
 - **3**: Initialization or linting failed, for example because a file cannot be read, a project

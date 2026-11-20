@@ -345,7 +345,7 @@ JSON results record this threshold as `failure_threshold`. Pretty output summari
 Pass `--dependency-findings=full` to show each dependency finding in full.
 
 Findings from imported remote actions carry `origin: "dependency"` in JSON and a
-`dependency:` prefix in pretty output, such as `error[dependency:action] missing-file`.
+`dependency:` prefix in pretty output, such as `info[dependency:shellcheck] SC2086`.
 Selected project files carry `origin: "project"`. These labels do not change rule
 names or suppression selectors.
 

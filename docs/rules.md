@@ -4,6 +4,8 @@
 
 Categories group rules by what they check. Provider identifies the implementation. Maturity identifies stable and nursery rules.
 
+Errors fail a check by default. With `--strict`, warnings also fail it. Informational findings appear in the output without failing the check. See [Exit status](usage.md#exit-status) for details.
+
 ## action
 
 Validate action references, inputs, outputs, and local metadata.
@@ -15,7 +17,7 @@ Check the action reference, runtime, declared inputs and action metadata at the 
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## cache-call-unrestricted
 
@@ -28,7 +30,7 @@ Set cache-mode to read or none on the calling job or workflow.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.cache-call-unrestricted`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.cache-call-unrestricted`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## cache-operation
 
@@ -41,7 +43,7 @@ Remove the cache step or choose an action and cache mode that allow the intended
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.cache-operation`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.cache-operation`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## cache-write-untrusted
 
@@ -54,7 +56,7 @@ Set cache-mode to read or none, restrict the job with an event guard, or documen
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.cache-write-untrusted`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.cache-write-untrusted`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## case-insensitive-conditions
 
@@ -67,7 +69,7 @@ Expression string comparisons ignore case; avoid using them as case-sensitive id
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## coercion
 
@@ -80,7 +82,7 @@ Check the intended argument or operand type. Use a string literal when text is i
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.coercion`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.coercion`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Use the boolean value directly when checking branch protection.
 
@@ -117,7 +119,7 @@ Compare the fields or array elements that determine equality. Disable this rule 
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.suspicious.collection-comparison`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.collection-comparison`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Compare the object properties that matter to the condition.
 
@@ -154,7 +156,7 @@ Select a Linux runner with Docker, such as ubuntu-latest, or guard the container
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.container-runner`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.container-runner`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Use a Linux runner with Docker for a job container.
 
@@ -191,7 +193,7 @@ Move the expression to a field where its contexts and functions are available, o
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.context-availability`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.context-availability`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## credentials
 
@@ -204,7 +206,7 @@ Store the credential as a secret and reference it through the secrets context.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.credentials`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.credentials`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Read container credentials from a secret.
 
@@ -249,7 +251,7 @@ Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## duplicate-workflow-name
 
@@ -262,7 +264,7 @@ Give each workflow its own name.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.suspicious.duplicate-workflow-name`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.duplicate-workflow-name`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## empty-job
 
@@ -275,7 +277,7 @@ Add steps, call a reusable workflow with uses, or remove the job.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.empty-job`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.empty-job`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Give the job steps to run.
 
@@ -309,7 +311,7 @@ Write the commands the step should run, or remove the step.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.suspicious.empty-run`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.empty-run`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Write the commands the step runs.
 
@@ -344,7 +346,7 @@ Add the events that should start the workflow, or delete the workflow.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.suspicious.empty-triggers`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.empty-triggers`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Declare the events that start the workflow.
 
@@ -379,7 +381,7 @@ Use valid environment variable names and values in the indicated mapping.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.env-var`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.env-var`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Use environment names without spaces.
 
@@ -424,7 +426,7 @@ Capture the failure status in an if condition or an || handler when the script m
 - Maturity: `nursery`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.errexit-status`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.errexit-status`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Capture failure explicitly when the script must continue.
 
@@ -463,7 +465,7 @@ Use a property supplied by the declared events and activity types. Unknown event
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.event-payload`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.event-payload`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## events
 
@@ -476,7 +478,7 @@ Check the trigger name, activity type and filters at the reported location.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.events`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.events`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## executable-bit
 
@@ -489,7 +491,7 @@ Record the executable bit for the referenced script in Git, or invoke it explici
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.executable-bit`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.executable-bit`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## expression
 
@@ -502,7 +504,7 @@ Use the expression value and interpolation form required by this workflow field.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.expression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.expression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## expression-call
 
@@ -515,7 +517,7 @@ Check parentheses, argument count, format placeholders and literal JSON.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.expression-call`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.expression-call`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## expression-reference
 
@@ -528,7 +530,7 @@ Use a declared context, property or function; check the suggested spelling and a
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.expression-reference`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.expression-reference`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## expression-syntax
 
@@ -541,7 +543,7 @@ Correct the indicated expression token, literal or delimiter.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.expression-syntax`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.expression-syntax`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## expression-type
 
@@ -554,7 +556,7 @@ Supply the expected value type; convert serialized values explicitly when needed
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.expression-type`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.expression-type`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## forbidden-suppression
 
@@ -567,7 +569,7 @@ Remove the suppression and address its finding, or change the repository suppres
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.conventions.forbidden-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.conventions.forbidden-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## glob
 
@@ -580,7 +582,7 @@ Correct the pattern syntax and check how positive and negative patterns are orde
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.glob`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.glob`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## id
 
@@ -593,7 +595,7 @@ Use a unique valid identifier within its job or workflow scope.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.id`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.id`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Begin step IDs with a letter or underscore.
 
@@ -630,7 +632,7 @@ Correct the expression to test the intended runtime value. Remove a condition th
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.if-cond`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.if-cond`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Remove an unconditional truthy condition.
 
@@ -666,7 +668,7 @@ Use a known rule name and place the directive on the declaration it is intended 
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.inline-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.inline-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## invalid-output-file
 
@@ -679,7 +681,7 @@ Write NAME=value for a single-line output. For a multiline output, write NAME<<d
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.invalid-output-file`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.invalid-output-file`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Write the value as a named output.
 
@@ -716,7 +718,7 @@ Reference an existing job ID and remove dependency cycles.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.job-needs`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.job-needs`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Remove a dependency on a job that does not exist.
 
@@ -752,7 +754,7 @@ Set timeout-minutes on the job within the configured bounds.
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.conventions.job-timeout`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.conventions.job-timeout`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## join-literal
 
@@ -765,7 +767,7 @@ If you meant to use literal text, remove the redundant call. To combine expressi
 - Maturity: `nursery`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.join-literal`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.join-literal`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## matrix
 
@@ -778,7 +780,7 @@ Check axis names and values and ensure include/exclude entries match the intende
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.matrix`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.matrix`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## missing-action-metadata
 
@@ -791,7 +793,7 @@ Check access to the referenced repository and its action.yml or action.yaml.
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.conventions.missing-action-metadata`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.conventions.missing-action-metadata`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## missing-local-action
 
@@ -804,7 +806,7 @@ Check the uses path and ensure the action has a manifest or Dockerfile. If paths
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## missing-permissions
 
@@ -817,7 +819,7 @@ Add permissions on the workflow or on every job. If require-at is configured, ad
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.missing-permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.missing-permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 This job uses no token permissions.
 
@@ -851,7 +853,7 @@ Compare values of matching types or convert them explicitly before comparison.
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.mixed-type-comparisons`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.mixed-type-comparisons`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## mixed-type-matrix-filters
 
@@ -864,7 +866,7 @@ Use the same value types in matrix axes and include/exclude filters.
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.mixed-type-matrix-filters`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.mixed-type-matrix-filters`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## numeric-values
 
@@ -877,7 +879,7 @@ Set max-parallel to a positive whole number.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.numeric-values`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.numeric-values`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Write the whole number GitHub uses for max-parallel.
 
@@ -920,7 +922,7 @@ Check background-step names and wait/cancel references in the parallel group.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.parallel-steps`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.parallel-steps`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## permissions
 
@@ -933,7 +935,7 @@ Use supported permission scopes and read, write or none access levels.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Choose an allowed access level for the permission scope.
 
@@ -972,7 +974,7 @@ Correct the reported Python code; select Ruff rules through tools.ruff configura
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.ruff`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.ruff`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## runner-label
 
@@ -985,7 +987,7 @@ Correct the runner label or declare repository-specific labels in repository.run
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.runner-label`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.runner-label`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## runner-support
 
@@ -998,7 +1000,7 @@ Select a supported runner architecture or update the runner inventory. Set repos
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.runner-support`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.runner-support`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## runtime-lifecycle
 
@@ -1011,7 +1013,7 @@ Select a supported Node.js release. Configure lint.lifecycle.policies to choose 
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.runtime-lifecycle`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.runtime-lifecycle`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## script-injection
 
@@ -1024,7 +1026,7 @@ Pass untrusted values through environment variables or action inputs. For secret
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.script-injection`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.script-injection`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Prefer the tool's native environment variable: GitHub CLI reads GH_TOKEN directly, keeping the secret out of script text and command arguments. GitHub secrets are automatically masked in logs; register generated or fetched secrets with add-mask before use. Masking does not protect process arguments.
 
@@ -1093,7 +1095,7 @@ Pass dynamic values through environment variables and read them as data in the s
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.script-interpolation`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.script-interpolation`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Keep a dynamic value out of generated shell source.
 
@@ -1150,7 +1152,7 @@ Select a supported interpreter, include {0} for the script filename in custom co
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.shell-name`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.shell-name`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Correct the shell name.
 
@@ -1187,7 +1189,7 @@ Correct the reported shell construct; inspect suggested edits before applying th
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.shellcheck`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.shellcheck`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## string-conditions
 
@@ -1200,7 +1202,7 @@ Use a boolean expression; a nonempty string, including the string false, is trut
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.string-conditions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.string-conditions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## syntax-check
 
@@ -1213,7 +1215,7 @@ Check the indicated YAML field and its expected GitHub Actions value type.
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.syntax-check`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.syntax-check`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## uncancellable-condition
 
@@ -1226,7 +1228,7 @@ If cancellation should stop the job, use !cancelled(). Keep always() when cancel
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.uncancellable-condition`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.uncancellable-condition`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 When this job should stop on cancellation, use !cancelled(). Do not make this change for required cancellation cleanup or reporting.
 
@@ -1263,7 +1265,7 @@ Pin uses references to a full commit SHA and container images to a digest.
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.security.unpinned-reference`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.unpinned-reference`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## unsound-ternary
 
@@ -1276,7 +1278,7 @@ The middle operand of a && b || c must be truthy to select b; use an explicit co
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.unsound-ternary`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.unsound-ternary`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## unused-suppression
 
@@ -1289,7 +1291,7 @@ Run actionlint fix --apply or use the editor quick fix to remove unused selector
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## vendor-lock-in
 
@@ -1302,7 +1304,7 @@ Use owner/repo[/path]@ref for an action hosted in the current GitHub instance. T
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.vendor-lock-in`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.vendor-lock-in`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Remove the GitHub URL prefix without changing the action or its version.
 
@@ -1337,7 +1339,7 @@ Correct the reference and supply required inputs and secrets. For permission or 
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.workflow-call`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.workflow-call`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 ## workflow-command-syntax
 
@@ -1356,7 +1358,7 @@ Use ::name::message or ::name key=value::message with a runner command name. Use
 - Maturity: `nursery`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.suspicious.workflow-command-syntax`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.workflow-command-syntax`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
 
 Close the annotation name with two colons.
 
@@ -1393,4 +1395,4 @@ Use the exact name of an existing workflow in workflows; names are matched indep
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.correctness.workflow-run-names`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.workflow-run-names`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity.
