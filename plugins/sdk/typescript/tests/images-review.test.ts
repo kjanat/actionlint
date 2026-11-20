@@ -31,6 +31,22 @@ test('extracts image scalars in workflows and composite actions with source rang
 	]);
 });
 
+test('preserves source ranges for quoted and escaped image scalars', () => {
+	const quoted = 'jobs:\n  scan:\n    container:\n      image: "ghcr.io/example/scanner:1.2"';
+	expect(imageReferences(quoted, 'workflow')).toEqual([
+		{ value: 'ghcr.io/example/scanner:1.2', start: { row: 4, column: 14 }, end: { row: 4, column: 43 } },
+	]);
+	const escaped = 'jobs: { build🍊: { steps: [{ uses: "docker\\u003a//ghcr.io/example/image:1" }] } }';
+	expect(imageReferences(escaped, 'workflow')).toEqual([
+		{ value: 'ghcr.io/example/image:1', start: { row: 1, column: 35 }, end: { row: 1, column: 74 } },
+	]);
+});
+
+test('rejects dynamic container images', () => {
+	const source = 'jobs:\n  scan:\n    container: "${{ vars.IMAGE }}"\n';
+	expect(() => imageReferences(source, 'workflow')).toThrow(/dynamic image reference/u);
+});
+
 test('handles YAML block scalar chomping and rejects embedded newlines', () => {
 	for (const style of ['>', '>-', '|', '|-']) {
 		const source = `jobs:\n  test:\n    container: ${style}\n      alpine:3\n`;
@@ -54,6 +70,11 @@ test('handles YAML block scalar chomping and rejects embedded newlines', () => {
 
 for (
 	const { kind, source, label } of [
+		{
+			kind: 'workflow',
+			source: 'base: &image nginx:1\njobs:\n  scan:\n    container: *image\n',
+			label: 'jobs.scan.container',
+		},
 		{
 			kind: 'workflow',
 			source: 'env:\n  IMAGE: &image docker://alpine:3\njobs:\n  scan:\n    steps:\n      - uses: *image\n',
