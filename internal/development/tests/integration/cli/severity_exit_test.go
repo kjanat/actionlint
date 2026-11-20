@@ -12,16 +12,16 @@ import (
 
 func TestCommandSeverityExitStatus(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "action.yml"), []byte("name: Example\ndescription: Example action\nruns:\n  using: node24\n  main: dist/main.mjs\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "workflow.yml"), []byte("on: push\npermissions: {}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: ''\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(root)
 	for _, level := range []string{"info", "warn", "error"} {
-		if err := os.WriteFile("actionlint.toml", []byte("[lint.rules.correctness]\nmissing-file = \""+level+"\"\n"), 0o600); err != nil {
+		if err := os.WriteFile("actionlint.toml", []byte("[lint.rules.suspicious]\nempty-run = \""+level+"\"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		for _, strict := range []bool{false, true} {
-			args := []string{"check", "--offline", "--no-tools", "--config", "actionlint.toml", "--json", "action.yml"}
+			args := []string{"check", "--offline", "--no-tools", "--config", "actionlint.toml", "--json", "workflow.yml"}
 			if strict {
 				args = append(args, "--strict")
 			}
