@@ -17,6 +17,7 @@ export type Fix = {
 	revisions?: Record<string, string>;
 };
 export type Diagnostic = {
+	origin?: 'project' | 'dependency';
 	non_blocking?: boolean;
 	reference?: SourceReference;
 	explanation?: string;
@@ -187,6 +188,7 @@ export type IncompleteCheck = {
 };
 
 export type ResultData = {
+	failure_threshold?: 'warning' | 'error';
 	/** Checks that could not finish in at least one invocation of a source revision. */
 	incomplete_checks?: IncompleteCheck[];
 	schema_version: 1;

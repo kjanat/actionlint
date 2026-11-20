@@ -5,6 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
@@ -19,6 +20,7 @@ type CheckResult struct {
 	Status           string                   `json:"status"`
 	Completed        bool                     `json:"completed"`
 	ExitCode         int                      `json:"exit_code"`
+	FailureThreshold severity.Severity        `json:"failure_threshold,omitempty"`
 	FileCount        *int                     `json:"file_count"`
 	Diagnostics      []results.Diagnostic     `json:"diagnostics"`
 	Documents        outline.Outlines         `json:"documents"`

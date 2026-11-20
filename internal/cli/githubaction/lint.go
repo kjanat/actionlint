@@ -206,7 +206,9 @@ func runLinter(req *lintRequest) *lintResult {
 		}
 		out.WriteString(rendered)
 	}
-	code := exitcode.AnalysisResult(*analysis).ExitCode
+	completion := exitcode.AnalysisResult(*analysis, opts.Presets.Strict)
+	result.report.FailureThreshold = completion.FailureThreshold
+	code := completion.ExitCode
 	if code == exitcode.ExitSuccessProblemFound {
 		result.report.Hints = append(result.report.Hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
 	}

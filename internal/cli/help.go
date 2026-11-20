@@ -182,7 +182,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 		flags []flagHelp
 	}{
 		{"Rule selection", []flagHelp{
-			{"strict", "Enable stable correctness, security and suspicious rules, respecting configured exceptions"},
+			{"strict", "Enable stable correctness, security and suspicious rules and fail on warnings and errors, respecting configured exceptions"},
 			{"experimental", "Enable nursery rules, respecting configured exceptions"},
 		}},
 		{"Flags", []flagHelp{

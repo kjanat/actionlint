@@ -70,7 +70,7 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\npermissions: {}\n"
 	source := fmt.Sprintf("%s#sha256=%x", componentURL, sha256.Sum256(component))
 	got = testRunCommandWithAcquisition(acquisition, workflow, "check", "--no-config", "--plugin", source, "-")
-	if got.Status != 1 || !strings.Contains(got.Stdout, "sudo") {
+	if got.Status != 0 || !strings.Contains(got.Stdout, "sudo") {
 		t.Fatalf("remote component: %+v", got)
 	}
 	if requests := registry.Requests(); len(requests) != 2 {

@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -65,7 +66,11 @@ func actionAnnotations(analysis *report.Analysis) string {
 	var annotations strings.Builder
 	for _, finding := range analysis.Diagnostics {
 		fields := output.TemplateFieldsOf(finding)
-		title := "actionlint (" + fields.Kind
+		title := "actionlint ("
+		if finding.Origin == results.DependencyOrigin {
+			title += "dependency:"
+		}
+		title += fields.Kind
 		if fields.Code != "" && fields.Code != fields.Kind {
 			title += "/" + fields.Code
 		}

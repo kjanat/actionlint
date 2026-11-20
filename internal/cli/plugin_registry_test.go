@@ -107,7 +107,7 @@ func TestRegistryCLI(t *testing.T) {
 	}
 	requests = len(r.Requests())
 	pluginCommandTest(t, acquisition, 0, "plugin", "list", "--json")
-	if output := pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
+	if output := pluginCommandTest(t, acquisition, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)
 	}
 	if output := pluginCommandTest(t, acquisition, 0, "rules", "no-sudo"); !strings.Contains(output, "no-sudo") {
@@ -169,7 +169,7 @@ func TestRegistryCLI(t *testing.T) {
 	r.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", catalogue)
 	pluginCommandTest(t, acquisition, 0, "plugin", "sync")
 	r.SetOffline(true)
-	pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+	pluginCommandTest(t, acquisition, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	pluginCommandTest(t, acquisition, 0, "plugin", "remove", "publisher/plugin")
 	if refs := readDeclarations(); refs == nil || len(refs) != 0 {
 		t.Fatalf("removal must persist explicit empty plugins: %#v", refs)

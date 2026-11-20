@@ -46,8 +46,12 @@ permissions: {}
 					}
 					continue
 				}
-				if got.Status != 1 || got.Stderr != "" || strings.Count(got.Stdout, tc.severity+"[coercion]\n") != 2 || strings.Contains(got.Stdout, "[expression-type]") {
-					t.Fatalf("%v: expected two %s coercion diagnostics and exit 1: %+v", prefix, tc.severity, got)
+				wantStatus := 0
+				if tc.severity == "error" {
+					wantStatus = 1
+				}
+				if got.Status != wantStatus || got.Stderr != "" || strings.Count(got.Stdout, tc.severity+"[coercion]\n") != 2 || strings.Contains(got.Stdout, "[expression-type]") {
+					t.Fatalf("%v: expected two %s coercion diagnostics and exit %d: %+v", prefix, tc.severity, wantStatus, got)
 				}
 			}
 		})

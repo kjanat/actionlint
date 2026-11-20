@@ -98,6 +98,7 @@ type renderOptions struct {
 	Template           string
 	TemplateFile       string
 	OutputFile         string
+	DependencyFindings string
 	Color              output.Color
 	Width              int
 	Oneline            bool
@@ -191,6 +192,9 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	if !explicitOutput && !i.JSON && i.Render.Template == "" && i.Render.TemplateFile == "" && !i.Render.Oneline {
 		o.output = outputModes{"pretty"}
+	}
+	if a.set["dependency-findings"] && i.Render.DependencyFindings != "compact" && i.Render.DependencyFindings != "full" {
+		return exitcode.UsageError{Cause: errors.New("--dependency-findings must be compact or full")}
 	}
 	if a.set["diagnostic-width"] && !slices.Contains(o.output, "pretty") {
 		return exitcode.UsageError{Cause: errors.New("--diagnostic-width requires --output-format=pretty")}

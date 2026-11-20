@@ -79,15 +79,25 @@ test('persisted results validate completion and preserve diagnostic severity and
 	assert.throws(() => parseResult({ ...result, completed: false }));
 	assert.throws(() => parseResult({ ...result, schema_version: 2 }));
 	assert.throws(() => parseResult({ ...result, diagnostics: [{ ...diagnostic, start: { line: -1, column: 3 } }] }));
-	assert.throws(() => parseResult({ ...result, status: 'success', exit_code: 0 }));
+	assert.throws(() => parseResult({ ...result, status: 'success', exit_code: 1 }));
+});
+
+test('the Action preserves the native severity threshold and exit decision', () => {
+	const nativeResults: ActionResult[] = [
+		{ ...result, failure_threshold: 'error', status: 'success', exit_code: 0 },
+		{ ...result, failure_threshold: 'warning', status: 'problems-found', exit_code: 1 },
+	];
+	for (const native of nativeResults) {
+		assert.deepEqual(parseResult(native), native);
+	}
+	assert.throws(() => parseResult({ ...result, failure_threshold: 'info' }));
 });
 
 test('dependency advice does not turn a successful native check into an Action failure', async () => {
 	const advice = { ...diagnostic, non_blocking: true };
 	const successful = { ...result, status: 'success', exit_code: 0, diagnostics: [advice] };
 	assert.deepEqual(parseResult(successful), successful);
-	assert.throws(() => parseResult({ ...result, diagnostics: [advice] }));
-	assert.throws(() => parseResult({ ...successful, diagnostics: [advice, diagnostic] }));
+	assert.deepEqual(parseResult({ ...successful, diagnostics: [advice, diagnostic] }).diagnostics, [advice, diagnostic]);
 	assert.throws(() => parseResult({ ...successful, diagnostics: [{ ...advice, non_blocking: 'true' }] }));
 	const mixed = { ...result, diagnostics: [advice, diagnostic] };
 	assert.deepEqual(parseResult(mixed), mixed);

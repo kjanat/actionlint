@@ -194,6 +194,11 @@ per line. GitHub annotations are emitted only when explicitly selected.
 : Wrap `pretty` diagnostics at this width. Accepts 40 to 400. Default: 100.
 Requires **--output-format**=pretty.
 
+**--dependency-findings** *MODE*
+: Show dependency findings in pretty output. Use `compact` for a summary and
+details for findings that can make the check fail, or `full` for all details.
+The default is `compact`.
+
 **--json**
 : Select JSON output. With help, version, config, rules or doctor, emit JSON
 metadata. Operational errors are JSON objects on stderr.
@@ -830,8 +835,10 @@ current directory and, on GitHub Actions, exposes its path as the
 
 `actionlint` command exits with one of the following exit statuses.
 
-- **0**: It ran successfully and no problem was found.
-- **1**: It ran successfully and some problem was found.
+- **0**: The command completed. A check returns this status when no finding reaches
+  its failure threshold.
+- **1**: The check completed with at least one finding that reaches its failure
+  threshold. Errors fail a check by default. With **--strict**, warnings also fail it.
 - **2**: Command-line parsing or option validation failed, such as an unknown flag, missing value,
   unknown output mode, or incompatible output flags.
 - **3**: Initialization or linting failed, for example because a file cannot be read, a project

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -28,5 +29,22 @@ func TestSummaryDetails(t *testing.T) {
 	}
 	if err := WriteSummaryDetails(failingRenderWriter{}, summary); err == nil {
 		t.Fatal("lost summary write error")
+	}
+}
+
+func TestSummaryDetailsAlignCountsAndSeparateDependencies(t *testing.T) {
+	t.Parallel()
+	summary := report.CheckSummary{
+		ByFile:           []report.FileFindingCount{{Path: "a.yml", Count: 34}, {Path: "b.yml", Count: 1}},
+		DependencyByFile: []report.FileFindingCount{{Path: "remote.yml", Count: 12}, {Path: "other.yml", Count: 2}},
+		ByDiagnostic:     []report.DiagnosticCount{{Rule: "shellcheck", Code: "SC2086", Origin: results.DependencyOrigin, Count: 34}, {Rule: "action", Count: 1}},
+	}
+	var out strings.Builder
+	if err := WriteSummaryDetails(&out, summary); err != nil {
+		t.Fatal(err)
+	}
+	want := "\nFiles:\n  34  a.yml\n   1  b.yml\n\nDependencies:\n  12  remote.yml\n   2  other.yml\n\nDiagnostics:\n  34  dependency:shellcheck/SC2086\n   1  action\n"
+	if out.String() != want {
+		t.Fatalf("summary details = %q; want %q", out.String(), want)
 	}
 }

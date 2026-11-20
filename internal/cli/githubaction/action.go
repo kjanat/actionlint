@@ -123,7 +123,7 @@ func (a *action) execute() (int, error) {
 	err = a.appendOutputs([]namedOutput{
 		{"exit-code", strconv.Itoa(outcome.code)},
 		{"result", result},
-		{"problems-found", strconv.FormatBool(outcome.code == exitcode.ExitSuccessProblemFound)},
+		{"problems-found", strconv.FormatBool(count != "" && count != "0")},
 		{"problem-count", count},
 		{"output", rendered},
 		{"output-file", written},

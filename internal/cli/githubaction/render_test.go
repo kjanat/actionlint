@@ -99,6 +99,15 @@ func TestCommandEscape(t *testing.T) {
 	}
 }
 
+func TestNativeAnnotationsIdentifyDependencyFindings(t *testing.T) {
+	t.Parallel()
+	analysis := analysisForRender(t, "")
+	analysis.Diagnostics[0].Origin = results.DependencyOrigin
+	if got := actionAnnotations(analysis); !strings.Contains(got, "title=actionlint (dependency%3Arunner-label)") {
+		t.Fatalf("missing dependency annotation title: %q", got)
+	}
+}
+
 func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
 	t.Parallel()
 	analysis := analysisForRender(t, "")
@@ -212,7 +221,7 @@ func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 	t.Parallel()
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
-		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", exitcode.ExitSuccessProblemFound}, report: exitcode.AnalysisResult(*analysis)}
+		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", exitcode.ExitSuccessProblemFound}, report: exitcode.AnalysisResult(*analysis, false)}
 		o, count, rendered := renderOutcome(result)
 		if o.code != exitcode.ExitSuccessProblemFound || count != "1" || rendered != serialized {
 			t.Fatalf("typed finding count/rendered output changed: %+v, %q, %q", o, count, rendered)

@@ -22,7 +22,7 @@ func TestCheckJSONPreservesActionMetadataCoverage(t *testing.T) {
 		t.Fatalf("coverage=%v", result.ActionMetadata)
 	}
 	var content bytes.Buffer
-	if err := output.WriteJSON(&content, exitcode.AnalysisResult(*result), false); err != nil {
+	if err := output.WriteJSON(&content, exitcode.AnalysisResult(*result, false), false); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(content.String(), `"action_metadata":[{"reference":"example/action@v1","state":"unavailable","reason":"lookup-disabled"`) {

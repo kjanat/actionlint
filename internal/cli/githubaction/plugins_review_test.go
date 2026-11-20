@@ -191,7 +191,7 @@ func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	})
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	result := runLinter(req)
-	if result.code != exitcode.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "ECHO001" {
+	if result.code != exitcode.ExitSuccessNoProblem || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "ECHO001" {
 		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 	}
 	if result.report.Diagnostics[0].Start.Line != 6 || result.report.Diagnostics[0].Start.Column != 20 {

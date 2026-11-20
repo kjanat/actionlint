@@ -82,7 +82,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			cold := runLinter(req)
-			if cold.code != 1 || len(cold.report.Diagnostics) != 1 || cold.report.Diagnostics[0].Rule != "no-sudo" {
+			if cold.code != 0 || len(cold.report.Diagnostics) != 1 || cold.report.Diagnostics[0].Rule != "no-sudo" {
 				t.Fatalf("cold component result: %+v, %s", cold.report.Diagnostics, cold.stderr)
 			}
 			if len(registry.Requests()) != 1 || registry.Requests()[0] != pin.URL {
@@ -91,7 +91,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 			registry.ResetRequests()
 			registry.SetOffline(true)
 			result := runLinter(req)
-			if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "no-sudo" {
+			if result.code != 0 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "no-sudo" {
 				t.Fatalf("cached component result: %+v, %s", result.report.Diagnostics, result.stderr)
 			}
 			if len(registry.Requests()) != 0 {
@@ -151,11 +151,11 @@ func TestActionConfiguredWasm(t *testing.T) {
 				t.Fatal(err)
 			}
 			result := runLinter(req)
-			wantCode := "ECHO001"
+			wantCode, wantStatus := "ECHO001", 0
 			if strings.Contains(fixture, "/module/") {
-				wantCode = "F821"
+				wantCode, wantStatus = "F821", 1
 			}
-			if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != wantCode {
+			if result.code != wantStatus || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != wantCode {
 				t.Fatalf("configured Wasm result: %+v %s", result.report.Diagnostics, result.stderr)
 			}
 			env["INPUT_DISABLE-TOOLS"] = "shellcheck,ruff"
@@ -271,7 +271,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 	cold := runLinter(req)
-	if cold.code != 1 || len(cold.report.Diagnostics) != 1 || cold.report.Diagnostics[0].Rule != "no-sudo" {
+	if cold.code != 0 || len(cold.report.Diagnostics) != 1 || cold.report.Diagnostics[0].Rule != "no-sudo" {
 		t.Fatalf("inline cold plugin failed: %+v %s", cold.report.Diagnostics, cold.stderr)
 	}
 	if len(registry.Requests()) != 1 || registry.Requests()[0] != url {
@@ -280,7 +280,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 	registry.ResetRequests()
 	registry.SetOffline(true)
 	result := runLinter(req)
-	if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "no-sudo" || len(registry.Requests()) != 0 {
+	if result.code != 0 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "no-sudo" || len(registry.Requests()) != 0 {
 		t.Fatalf("inline cached plugin failed: %+v %s requests=%v", result.report.Diagnostics, result.stderr, registry.Requests())
 	}
 }

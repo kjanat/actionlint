@@ -18,9 +18,14 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 		start               sourcetext.Position
 	}
 	seen := make(map[location][]int)
+	dependencySources := make(map[location][]int)
 	var retained []*finding.Finding
 	var retainedBatch []int
 	mergeFinding := func(index int, diagnostic results.Diagnostic) {
+		if diagnostic.Origin == results.ProjectOrigin {
+			diagnostics[index].Origin = results.ProjectOrigin
+			retained[index].Origin = results.ProjectOrigin
+		}
 		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
 		if _, required := authority[retained[index]]; required {
@@ -97,6 +102,22 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 			}
 			file.Processor.completeDiagnostic(&published.Diagnostic, published.Source.Content, identityPath, published.Source.Unavailable.Present())
 			diagnostic := published.Diagnostic
+			if source, _, ok := results.DependencyAddress(diagnostic.Path); ok && diagnostic.Origin == results.DependencyOrigin {
+				key := location{project, source, diagnostic.Rule, diagnostic.Start}
+				duplicate := slices.IndexFunc(dependencySources[key], func(index int) bool {
+					return authority[retained[index]] == authority[finding] && identicalDependencyFinding(diagnostics[index], published)
+				})
+				if duplicate >= 0 {
+					index := dependencySources[key][duplicate]
+					mergeFinding(index, diagnostic)
+					related := results.Related{Message: results.IdenticalDependencyLocation, Path: diagnostic.Path, Start: diagnostic.Start, End: diagnostic.End}
+					if !slices.Contains(diagnostics[index].Related, related) {
+						diagnostics[index].Related = append(diagnostics[index].Related, related)
+						retained[index].Related = append(retained[index].Related, related)
+					}
+					continue
+				}
+			}
 			var metadataKey metadataLocation
 			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
 			if identity := finding.MetadataIdentity; isMetadata {
@@ -116,11 +137,13 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
 			duplicate := slices.IndexFunc(seen[key], func(index int) bool {
 				previous, current := diagnostics[index].Diagnostic, diagnostic
+				previous.Related, current.Related = withoutDependencyLocations(previous.Related), withoutDependencyLocations(current.Related)
 				previous.NonBlocking, current.NonBlocking = false, false
+				previous.Origin, current.Origin = "", ""
 				if retainedBatch[index] == i && retained[index].InferredReference && finding.InferredReference {
 					previous.Reference, current.Reference = nil, nil
 				}
-				return authority[retained[index]] == authority[finding] && reflect.DeepEqual(previous, current)
+				return authority[retained[index]] == authority[finding] && bytes.Equal(diagnostics[index].Source.Content, published.Source.Content) && reflect.DeepEqual(previous, current)
 			})
 			if duplicate >= 0 {
 				index := seen[key][duplicate]
@@ -142,6 +165,10 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 					target.Path = file.InputPath
 				}
 				published.Source.Suppression = &target
+			}
+			if source, _, ok := results.DependencyAddress(diagnostic.Path); ok && diagnostic.Origin == results.DependencyOrigin {
+				key := location{project, source, diagnostic.Rule, diagnostic.Start}
+				dependencySources[key] = append(dependencySources[key], len(diagnostics))
 			}
 			diagnostics = append(diagnostics, published)
 			unique = append(unique, finding)

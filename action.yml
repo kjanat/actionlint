@@ -117,8 +117,8 @@ outputs:
   exit-code:
     description: >-
       actionlint exit code:
-      0 for clean,
-      1 for problems,
+      0 if no finding reaches the failure threshold,
+      1 if a finding reaches the failure threshold,
       2 for invalid options, or
       3 for failure.
   result:

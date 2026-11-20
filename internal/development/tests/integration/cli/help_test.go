@@ -46,7 +46,7 @@ func TestRootHelpOverview(t *testing.T) {
 			t.Errorf("root help missing %q: %s", text, root.Stderr)
 		}
 	}
-	if !strings.Contains(strings.Join(strings.Fields(root.Stderr), " "), "Enable stable correctness, security and suspicious rules, respecting configured exceptions") {
+	if !strings.Contains(strings.Join(strings.Fields(root.Stderr), " "), "Enable stable correctness, security and suspicious rules and fail on warnings and errors, respecting configured exceptions") {
 		t.Errorf("root help does not describe strict rule selection: %s", root.Stderr)
 	}
 	check := testRunCommand("", "check", "--help")

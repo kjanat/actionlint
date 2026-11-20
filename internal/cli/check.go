@@ -170,12 +170,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 	}
 	presentation := output.FromAnalysis(*result)
-	presentation.CheckResult = exitcode.AnalysisResult(*result)
+	presentation.CheckResult = exitcode.AnalysisResult(*result, c.Strict)
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, presentation); err != nil {
 		return 0, err
 	}
 	if inv.Legacy && options.Verbose && result.FileCount > 1 {
-		_, _ = fmt.Fprintf(log, "verbose: Found %d errors in %d files\n", len(result.Diagnostics), result.FileCount)
+		counts := report.NewCheckSummary(*result)
+		_, _ = fmt.Fprintf(log, "verbose: Found %d project findings and %d dependency findings in %d files\n", counts.ProjectFindings, counts.DependencyFindings, result.FileCount)
 	}
 	status = presentation.ExitCode
 	if r.Summary && !r.Quiet {

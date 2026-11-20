@@ -493,6 +493,13 @@
           "description": "The finding is reported but does not make the check fail.",
           "type": "boolean"
         },
+        "origin": {
+          "description": "Whether the finding belongs to selected project input or an imported remote dependency.",
+          "enum": [
+            "project",
+            "dependency"
+          ]
+        },
         "path": {
           "description": "Analyzed source path; relative paths use the Action working directory.",
           "type": "string"
@@ -1095,6 +1102,13 @@
         3
       ]
     },
+    "failure_threshold": {
+      "description": "The lowest severity that can fail this check after dependency policy and suppressions.",
+      "enum": [
+        "warning",
+        "error"
+      ]
+    },
     "file_count": {
       "description": "Number of selected workflow files, or null when unknown. Zero means no workflows selected.",
       "type": [
@@ -1187,18 +1201,6 @@
         "completed": {
           "const": true
         },
-        "diagnostics": {
-          "items": {
-            "required": [
-              "non_blocking"
-            ],
-            "properties": {
-              "non_blocking": {
-                "const": true
-              }
-            }
-          }
-        },
         "exit_code": {
           "const": 0
         },
@@ -1211,20 +1213,6 @@
       "properties": {
         "completed": {
           "const": true
-        },
-        "diagnostics": {
-          "contains": {
-            "not": {
-              "required": [
-                "non_blocking"
-              ],
-              "properties": {
-                "non_blocking": {
-                  "const": true
-                }
-              }
-            }
-          }
         },
         "exit_code": {
           "const": 1

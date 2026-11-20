@@ -53,7 +53,7 @@ jobs:
 			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}
 			status := command.MainContext(t.Context(), args)
 			wantStatus := 0
-			if tc.want != "" {
+			if tc.want == "error" {
 				wantStatus = 1
 			}
 			if status != wantStatus {

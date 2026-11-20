@@ -87,6 +87,7 @@ func newResultRenderer(options renderOptions, format outputformat.Format) (*outp
 	if err != nil {
 		return nil, err
 	}
+	renderer.SetShowDependencies(options.DependencyFindings == "full")
 	if options.Width != 0 {
 		if err := renderer.SetWidth(options.Width); err != nil {
 			return nil, err

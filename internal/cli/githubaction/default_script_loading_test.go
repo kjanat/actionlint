@@ -150,7 +150,7 @@ func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	result = runLinter(req)
-	if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "ruff" || result.report.Diagnostics[0].Code != "ECHO001" {
+	if result.code != 0 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "ruff" || result.report.Diagnostics[0].Code != "ECHO001" {
 		t.Fatalf("action input finding: %+v; %s", result.report.Diagnostics, result.stderr)
 	}
 	downloads := 0

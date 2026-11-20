@@ -18,7 +18,7 @@ func TestCheckSummaryGroupsCodesWithinRules(t *testing.T) {
 		{Path: "a.yml", Rule: "syntax-check", Code: "syntax-check"},
 	}})
 	want := CheckSummary{
-		Files: 4, Findings: 6,
+		Files: 4, Findings: 6, ProjectFindings: 6,
 		ByFile: []FileFindingCount{{Path: "a.yml", Count: 3}, {Path: "b.yml", Count: 3}},
 		ByDiagnostic: []DiagnosticCount{
 			{Rule: "action", Code: "missing-file", Count: 2},
@@ -32,5 +32,20 @@ func TestCheckSummaryGroupsCodesWithinRules(t *testing.T) {
 	}
 	if got := NewCheckSummary(Analysis{FileCount: 4}); got.Files != 4 || got.Findings != 0 || len(got.ByFile) != 0 || len(got.ByDiagnostic) != 0 {
 		t.Fatalf("clean result has finding groups: %+v", got)
+	}
+}
+
+func TestCheckSummarySeparatesProjectAndDependencyFindings(t *testing.T) {
+	t.Parallel()
+	summary := NewCheckSummary(Analysis{FileCount: 1, Diagnostics: []results.PublishedDiagnostic{
+		{Path: "ci.yml", Origin: results.ProjectOrigin, Rule: "shellcheck", Code: "SC2086"},
+		{Path: "https://example.test/action.yml", Origin: results.DependencyOrigin, Rule: "shellcheck", Code: "SC2086"},
+		{Path: "https://example.test/action.yml", Origin: results.DependencyOrigin, Rule: "shellcheck", Code: "SC2086"},
+	}})
+	if summary.Findings != 3 || summary.ProjectFindings != 1 || summary.DependencyFindings != 2 ||
+		!reflect.DeepEqual(summary.ByFile, []FileFindingCount{{Path: "ci.yml", Count: 1}}) ||
+		!reflect.DeepEqual(summary.DependencyByFile, []FileFindingCount{{Path: "https://example.test/action.yml", Count: 2}}) ||
+		!reflect.DeepEqual(summary.ByDiagnostic, []DiagnosticCount{{Rule: "shellcheck", Code: "SC2086", Origin: results.DependencyOrigin, Count: 2}, {Rule: "shellcheck", Code: "SC2086", Count: 1}}) {
+		t.Fatalf("summary mixes project and dependency findings: %+v", summary)
 	}
 }

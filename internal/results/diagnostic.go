@@ -7,8 +7,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
+// DiagnosticOrigin distinguishes selected project files from imported remote dependencies.
+type DiagnosticOrigin string
+
+const (
+	ProjectOrigin    DiagnosticOrigin = "project"
+	DependencyOrigin DiagnosticOrigin = "dependency"
+)
+
 // Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
+	Origin DiagnosticOrigin `json:"origin,omitempty"`
 	// NonBlocking findings remain visible but do not make the check exit with status 1.
 	NonBlocking      bool                  `json:"non_blocking,omitempty"`
 	Reference        *sourcetext.Reference `json:"reference,omitempty"`

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -123,7 +124,7 @@ jobs:
 			}
 			status := cmd.Main(append(args, "-"))
 			wantStatus := exitcode.ExitSuccessNoProblem
-			if len(tc.kinds) > 0 {
+			if slices.ContainsFunc(tc.kinds, func(kind string) bool { return kind != "unused-suppression" }) {
 				wantStatus = exitcode.ExitSuccessProblemFound
 			}
 			if status != wantStatus || stderr.Len() != 0 {

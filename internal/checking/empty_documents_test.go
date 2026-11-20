@@ -14,7 +14,7 @@ func TestAnalysisEmptyDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, result := range []report.CheckResult{exitcode.AnalysisResult(result.Analysis), exitcode.AnalysisResult((&analysisResult{}).Analysis), exitcode.NewCheckResult(3)} {
+	for _, result := range []report.CheckResult{exitcode.AnalysisResult(result.Analysis, false), exitcode.AnalysisResult((&analysisResult{}).Analysis, false), exitcode.NewCheckResult(3)} {
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)

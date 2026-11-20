@@ -366,6 +366,7 @@
   "err/if_cond_constants.yaml": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/if_cond_constants.yaml",
           "revision": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8",
@@ -391,6 +392,7 @@
         "snippet": "      - run: echo Constant `true`"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/if_cond_constants.yaml",
           "revision": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8",
@@ -731,6 +733,7 @@
   "err/issue207_work_dir_with_uses.yaml": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/issue207_work_dir_with_uses.yaml",
           "revision": "2bfa66f512c1a96818bccf25ca673e6af85312a45a5fdca6c8d55abaa41426c5",
@@ -1241,6 +1244,7 @@
   "err/shellcheck_default_shell_detection.yaml": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1266,6 +1270,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1291,6 +1296,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1316,6 +1322,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1341,6 +1348,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1366,6 +1374,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1391,6 +1400,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1416,6 +1426,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1441,6 +1452,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1466,6 +1478,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1491,6 +1504,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -1516,6 +1530,7 @@
         "snippet": "      - run: $Env:FOO = \"FOO\""
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
           "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
@@ -2450,6 +2465,7 @@
   "examples/shellcheck_integration.yaml": {
     "findings": [
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2510,6 +2526,7 @@
         ]
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2535,6 +2552,7 @@
         "snippet": "      - run: echo $FOO"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2560,6 +2578,7 @@
         "snippet": "      - run: echo $FOO"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2585,6 +2604,7 @@
         "snippet": "          echo $FOO"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2610,6 +2630,7 @@
         "snippet": "      - run: echo é $FOO"
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
@@ -2670,6 +2691,7 @@
         ]
       },
       {
+        "origin": "project",
         "reference": {
           "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
           "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",

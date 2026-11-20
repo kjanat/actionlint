@@ -7,19 +7,21 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Renderer formats analysis results.
 type Renderer struct {
-	format     outputformat.Format
-	oneline    bool
-	version    func() string
-	rules      *ruleSet
-	formatter  *Formatter
-	width      int
-	hyperlinks bool
-	color      bool
+	format           outputformat.Format
+	oneline          bool
+	version          func() string
+	rules            *ruleSet
+	formatter        *Formatter
+	width            int
+	hyperlinks       bool
+	color            bool
+	showDependencies bool
 }
 
 // New validates a built-in format or custom Go template before rendering.
@@ -55,6 +57,9 @@ func (r *Renderer) SetHyperlinks(enabled bool) { r.hyperlinks = enabled }
 
 func (r *Renderer) SetColor(enabled bool) { r.color = enabled }
 
+// SetShowDependencies includes full dependency findings in pretty output.
+func (r *Renderer) SetShowDependencies(enabled bool) { r.showDependencies = enabled }
+
 // SetWidth sets the pretty format's display width, including indentation.
 func (r *Renderer) SetWidth(width int) error {
 	if width < 40 || width > 400 {
@@ -85,8 +90,18 @@ func (r *Renderer) Render(out io.Writer, result RenderedReport) error {
 		// Text formats render findings below.
 	}
 	fields := make([]*TemplateFields, 0, len(result.Findings))
+	if r.format == outputformat.Pretty && !r.showDependencies {
+		if err := printDependencySummary(out, result.Findings); err != nil {
+			return err
+		}
+	}
 	for _, finding := range result.Findings {
 		if r.format == outputformat.Pretty {
+			threshold := result.FailureThreshold.Effective()
+			fails := !finding.NonBlocking && finding.Severity.Effective() != severity.Info && finding.Severity.Effective().Rank() >= threshold.Rank()
+			if finding.Origin == results.DependencyOrigin && !r.showDependencies && !fails {
+				continue
+			}
 			configPath := ""
 			// Omit repeated rule descriptions from individual findings.
 			if rule := r.rules.lookup(finding.Rule); rule != nil {
