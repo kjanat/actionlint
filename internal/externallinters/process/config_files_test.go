@@ -60,3 +60,32 @@ func TestConfigFile(t *testing.T) {
 		t.Fatal("missing path accepted")
 	}
 }
+
+func TestConfigFileSearchesProjectBeforeUserConfig(t *testing.T) {
+	project, userConfig := t.TempDir(), t.TempDir()
+	if runtime.GOOS == "windows" {
+		t.Setenv("APPDATA", userConfig)
+	} else {
+		t.Setenv("XDG_CONFIG_HOME", userConfig)
+	}
+	const name = "actionlint-test-tool.conf"
+	projectFile, userFile := filepath.Join(project, name), filepath.Join(userConfig, name)
+	for _, path := range []string{projectFile, userFile} {
+		if err := os.WriteFile(path, []byte("tool configuration"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := toolmanifest.ConfigFiles{
+		Names:  []string{name},
+		Search: []toolmanifest.ConfigSearch{toolmanifest.ConfigSearchUpward, toolmanifest.ConfigSearchXDG},
+	}
+	if got, err := ConfigFile(nil, config, "", project); err != nil || got != projectFile {
+		t.Fatalf("project config = %q, error = %v, want %q", got, err, projectFile)
+	}
+	if err := os.Remove(projectFile); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := ConfigFile(nil, config, "", project); err != nil || got != userFile {
+		t.Fatalf("user config = %q, error = %v, want %q", got, err, userFile)
+	}
+}

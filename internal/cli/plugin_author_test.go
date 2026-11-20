@@ -3,10 +3,12 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -219,4 +221,49 @@ func mustAbs(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return absolute
+}
+
+func TestPluginTestReadsSeparateFixtureFile(t *testing.T) {
+	t.Parallel()
+	data, err := json.Marshal(authoringTestManifest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(t.TempDir(), "actionlint-provider.json")
+	if err := os.WriteFile(manifestPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name, fixture, wantError string
+		wantStatus               int
+	}{
+		{name: "passing", fixture: `[{"name":"clean","request":{"filename":"sample.py","source":"pass"},"expect_config":{"defaulted":true}}]`},
+		{name: "unknown field", fixture: `[{"name":"clean","unexpected":true}]`, wantStatus: 1, wantError: `unknown field "unexpected"`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixturePath := filepath.Join(t.TempDir(), "fixtures.json")
+			if err := os.WriteFile(fixturePath, []byte(test.fixture), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			status, stdout, stderr := runOfflineCommand(t, dependencycache.Acquisition{}, "", "plugin", "test", manifestPath, fixturePath, "--json")
+			var report struct {
+				Valid bool   `json:"valid"`
+				Error string `json:"error"`
+				Cases []struct {
+					Name   string `json:"name"`
+					Passed bool   `json:"passed"`
+				} `json:"cases"`
+			}
+			if err := json.Unmarshal([]byte(stdout), &report); err != nil || status != test.wantStatus || stderr != "" {
+				t.Fatalf("status=%d stdout=%q stderr=%q decode error=%v", status, stdout, stderr, err)
+			}
+			if test.wantError == "" {
+				if !report.Valid || report.Error != "" || len(report.Cases) != 1 || report.Cases[0].Name != "clean" || !report.Cases[0].Passed {
+					t.Fatalf("expected one passing fixture, got %s", stdout)
+				}
+			} else if report.Valid || !strings.Contains(report.Error, test.wantError) || len(report.Cases) != 0 {
+				t.Fatalf("expected fixture rejection containing %q, got %s", test.wantError, stdout)
+			}
+		})
+	}
 }

@@ -39,6 +39,18 @@ func TestCacheManagementCommands(t *testing.T) {
 	if err := os.Chtimes(file, old, old); err != nil {
 		t.Fatal(err)
 	}
+	for _, args := range [][]string{{"cache", "list"}, {"cache", "prune", "--older-than", "24h", "--dry-run"}} {
+		code, output, log := runOfflineCommand(t, acquisition, "", args...)
+		if code != 0 || log != "" || !strings.Contains(output, "configs/example") || !strings.Contains(output, "1 files, 13 bytes") {
+			t.Fatalf("%v: status=%d output=%q log=%q", args, code, output, log)
+		}
+		if args[1] == "prune" && !strings.Contains(output, "Dry run. No files were removed.") {
+			t.Fatalf("missing dry-run summary: %q", output)
+		}
+		if got, err := os.ReadFile(file); err != nil || string(got) != "cached config" {
+			t.Fatalf("%v changed cached file: %q, %v", args, got, err)
+		}
+	}
 	code, output, log = runOfflineCommand(t, acquisition, "", "cache", "prune", "--older-than", "24h", "--dry-run", "--json", "--offline")
 	var preview dependencycache.Cleanup
 	if err := json.Unmarshal([]byte(output), &preview); err != nil || code != 0 || preview.Files != 1 || !preview.DryRun || preview.Entries[0].Path != "configs/example" {
