@@ -13,7 +13,7 @@ require (
 	github.com/itchyny/gojq v0.12.19
 	github.com/kjanat/go-modules v0.10.0
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7
-	github.com/kjanat/wacogo v0.3.2
+	github.com/kjanat/wacogo v0.3.4
 	github.com/kjanat/wazero v1.12.2
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
@@ -30,11 +30,11 @@ require (
 	github.com/tidwall/jsonc v0.3.3
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/mod v0.43.0
-	golang.org/x/net v0.62.0
-	golang.org/x/sync v0.24.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
-	golang.org/x/tools v0.52.0
+	golang.org/x/net v0.63.0
+	golang.org/x/sync v0.25.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/text v0.44.0
+	golang.org/x/tools v0.53.0
 	mvdan.cc/gofumpt v0.12.0
 	mvdan.cc/sh/v3 v3.14.1
 )
