@@ -20,3 +20,6 @@ env = { SKIP_GO_GENERATE = "1" }
 
 [tasks.actionlint]
 source = "go"
+
+[tasks.lint]
+source = "mise"
