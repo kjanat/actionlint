@@ -6,6 +6,7 @@ package preparation
 
 import (
 	"encoding/json"
+	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
@@ -34,6 +35,60 @@ type Prepared struct {
 	// Skip explains why the tool should not check this script.
 	// An empty string allows checking.
 	Skip string
+	// Variants replace Source when templates have known values. Each variant
+	// has the rows of Source and shares its LineMap.
+	Variants []Variant
+}
+
+// Variant is Source with known values in place of masked templates.
+type Variant struct {
+	Source string
+	// Substitutions are ordered by row and column.
+	Substitutions []Substitution
+}
+
+// Substitution is a template that a variant replaces with one of its values.
+type Substitution struct {
+	Template string
+	Value    string
+	// Row and Column locate Template in the script. Column counts runes from 1.
+	Row, Column int
+	// Alternatives is the number of values the template can take.
+	Alternatives int
+}
+
+// StartColumn maps a start column on a script row of the variant to the
+// script. A start inside a value maps to the start of its template.
+func (v Variant) StartColumn(row, column int) int {
+	return v.scriptColumn(row, column, false)
+}
+
+// EndColumn maps an exclusive end column on a script row of the variant to
+// the script. An end inside a value maps to the end of its template.
+func (v Variant) EndColumn(row, column int) int {
+	return v.scriptColumn(row, column, true)
+}
+
+func (v Variant) scriptColumn(row, column int, end bool) int {
+	offset := 0
+	for _, s := range v.Substitutions {
+		if s.Row != row {
+			continue
+		}
+		start := s.Column + offset
+		if column < start || end && column == start {
+			break
+		}
+		value, template := utf8.RuneCountInString(s.Value), utf8.RuneCountInString(s.Template)
+		if column < start+value {
+			if end {
+				return s.Column + template
+			}
+			return s.Column
+		}
+		offset += value - template
+	}
+	return column - offset
 }
 
 // LineOrigin states what produced a row of prepared source.

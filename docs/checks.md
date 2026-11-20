@@ -1160,6 +1160,12 @@ ShellCheck parses `${{ }}` placeholders as shell syntax, which can cause false p
 Before calling ShellCheck, actionlint replaces each placeholder with underscores.
 For example, `echo '${{ matrix.os }}'` becomes `echo '________________'`.
 
+A native ShellCheck command checks the real text of placeholders whose string values are all known, such as
+`${{ inputs.release == 'true' && '--release' || '' }}`. actionlint runs ShellCheck once for each of those values and
+masks the other placeholders. Placeholders with fewer values repeat them, so the number of runs equals the largest number
+of values. When only some runs report a finding, its message names the values of the placeholders on its lines. A
+placeholder or value that spans lines stays masked.
+
 actionlint disables [SC2050][SC2050], [SC2194][SC2194], [SC2157][SC2157] and [SC2043][SC2043] because expression
 placeholders can trigger them. It also disables [SC1091][SC1091] because sourced files may exist only on the runner,
 and [SC2153][SC2153] and [SC2154][SC2154] because workflow environment variables can be supplied externally.

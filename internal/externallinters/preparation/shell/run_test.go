@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -118,5 +119,28 @@ func TestInvalidInvocationCannotBeOverriddenByDirective(t *testing.T) {
 		if err != nil || prepared.Skip == "" || prepared.Source != "" {
 			t.Fatalf("prepared=%+v error=%v", prepared, err)
 		}
+	}
+}
+
+func TestPrepareRunVariantsKeepPreparedRows(t *testing.T) {
+	t.Parallel()
+	empty := "${{ github.ref == 'x' && '#c' || '' }}"
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}}, empty+"\necho ${{ github.sha }}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	masked := strings.Repeat("_", len(empty))
+	if prepared.Source != "# shellcheck external-sources=false\nset -e -o pipefail\n"+masked+"\necho _________________\n" {
+		t.Fatalf("source %q", prepared.Source)
+	}
+	want := []preparation.Variant{
+		{Source: "# shellcheck external-sources=false\nset -e -o pipefail\n#c\necho _________________\n", Substitutions: []preparation.Substitution{{Template: empty, Value: "#c", Row: 1, Column: 1, Alternatives: 2}}},
+		{Source: "# shellcheck external-sources=false\nset -e -o pipefail\n\necho _________________\n", Substitutions: []preparation.Substitution{{Template: empty, Value: "", Row: 1, Column: 1, Alternatives: 2}}},
+	}
+	if !reflect.DeepEqual(prepared.Variants, want) {
+		t.Fatalf("variants %#v", prepared.Variants)
+	}
+	if prepared.LineMap(3) != (preparation.Line{Line: 1, Origin: preparation.LineScript}) {
+		t.Fatalf("row 3 maps to %+v", prepared.LineMap(3))
 	}
 }

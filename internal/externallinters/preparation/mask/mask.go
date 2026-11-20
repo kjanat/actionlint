@@ -40,14 +40,18 @@ func Expressions(text string) string {
 		}
 		stop := start + 3 + length
 		out.WriteString(text[:start])
-		for _, r := range text[start:stop] {
-			if r == '\n' || r == '\r' {
-				out.WriteRune(r)
-			} else {
-				out.WriteByte('_')
-			}
-		}
+		writeMask(&out, text[start:stop])
 		text = text[stop:]
+	}
+}
+
+func writeMask(out *strings.Builder, template string) {
+	for _, r := range template {
+		if r == '\n' || r == '\r' {
+			out.WriteRune(r)
+		} else {
+			out.WriteByte('_')
+		}
 	}
 }
 
