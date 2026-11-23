@@ -15,7 +15,21 @@ import { yamlExampleLines } from './yaml-examples.mjs';
 /** @typedef {{id: string, isResolved: boolean, path: string, comments: {nodes: Array<{body: string, viewerDidAuthor: boolean}>}}} ReviewThread */
 /** @typedef {{repository: {pullRequest: {reviewThreads: {pageInfo: {hasNextPage: boolean, endCursor: string | null}, nodes: ReviewThread[]}}}}} ReviewThreadsResponse */
 /** @typedef {{filename: string, patch: string, source: string}} ChangedFile */
-/** @typedef {Pick<import('@actions/github-script').AsyncFunctionArguments, 'github' | 'context' | 'core'> & {files: ChangedFile[]}} RunArguments */
+/** @typedef {import('@actions/github-script').AsyncFunctionArguments} ScriptArguments */
+/** @typedef {Parameters<ScriptArguments['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
+/**
+ * @typedef {object} RunArguments
+ * @property {{
+ *   graphql: {
+ *     (query: string, parameters: {owner: string, repo: string, pr: number, after: string | null}): Promise<ReviewThreadsResponse>,
+ *     (query: string, parameters: {id: string}): Promise<unknown>,
+ *   },
+ *   rest: {pulls: {createReview: (params: ReviewParams) => Promise<unknown>}},
+ * }} github
+ * @property {{repo: {owner: string, repo: string}, payload: {pull_request?: {number: number, head: {sha: string}}}}} context
+ * @property {Pick<ScriptArguments['core'], 'info' | 'warning'>} core
+ * @property {ChangedFile[]} files
+ */
 /** @typedef {{character: '`' | '~', length: number} | null} Fence */
 
 /** @type {Array<[RegExp, Lang]>} */
@@ -43,7 +57,7 @@ const TELLS = [
 	],
 	[
 		'filler phrase',
-		/\b(?:in other words|it(?:'s| is) (?:worth noting|important to note)|that said|under the hood|at its core|(?:simply put|put simply)|in short|in essence|bottom line|needless to say|when it comes to|at the end of the day|think of (?:it|this) as|no more,? no less|(?:that|which) is to say|here(?:'s| is) (?:why|the thing)|the (?:whole|entire) point|the key (?:insight|takeaway))\b/i,
+		/\b(?:in other words|it(?:'s| is) (?:worth noting|important to note)|that said|under the hood|at its core|(?:simply put|put simply)|in short(?!-)|in essence|bottom line|needless to say|when it comes to|at the end of the day|think of (?:it|this) as|no more,? no less|(?:that|which) is to say|here(?:'s| is) (?:why|the thing)|the (?:whole|entire) point|the key (?:insight|takeaway))\b/i,
 	],
 	[
 		'inflated diction',
@@ -276,6 +290,167 @@ export function groupsFromPatch(path, patch, source) {
 	return groups;
 }
 
+if (process.env.NODE_TEST_CONTEXT) {
+	const { test } = await import('node:test');
+	/** @type {typeof import('node:assert').strict} */
+	const assert = (await import('node:assert')).strict;
+
+	/** @param {string[]} lines @param {number} [start] @param {number} [from] @param {number} [to] */
+	const hunk = (lines, start = 1, from = start, to = lines.length) =>
+		[
+			`@@ -1 +${start} @@`,
+			...lines.slice(start - 1).map((line, index) => {
+				const number = start + index;
+				return `${number >= from && number <= to ? '+' : ' '}${line}`;
+			}),
+		].join('\n');
+	/** @param {string} path @param {string} patch @param {string[]} [source] */
+	const reasons = (path, patch, source) => groupsFromPatch(path, patch, source?.join('\n')).map(group => group.reasons);
+
+	test('flags a long implementation comment', () => {
+		const lines = [
+			'\t// Parse the value here.',
+			'\t// Keep the original around.',
+			'\t// Return both values.',
+			'\tparse(value)',
+		];
+		assert.deepEqual(reasons('rule.go', hunk(lines)), [['3 lines']]);
+	});
+
+	test('flags style tells in a one-line comment', () => {
+		for (
+			const [comment, ...expected] of [
+				['// Use the cache rather than parsing twice.', '"X rather than Y"'],
+				['// In short, renew the token.', 'filler phrase'],
+				['// Keep tokens in short-lived storage.'],
+				['// Renew the token — then retry.', 'em dash'],
+				["// Split fields on the '—' character."],
+			]
+		) {
+			assert.deepEqual(reasons('rule.go', hunk([comment])).flat(), expected, comment);
+		}
+	});
+
+	test('Go directives split comment groups', () => {
+		/** @param {string} path @param {string} first */
+		const split = (path, first) => reasons(path, hunk([first, '// Read the input.', '// Preserve its range.']));
+		for (
+			const directive of [
+				'//go:generate go run generator.go',
+				'//go:generate\tgo run generator.go',
+				'//go:build linux && amd64',
+				'//go:embed assets/*',
+				'\t//go:embed assets/*',
+				'//go:noinline',
+				'//line generated.go:12',
+				'//line generated.go:12:3',
+			]
+		) {
+			assert.deepEqual(split('generate.go', directive), [], directive);
+		}
+		for (
+			const prose of [
+				'// go:generate source files.',
+				'//go: generate source files.',
+				'//go:generate',
+				'\t//go:generate go run generator.go',
+				'//line generated.go:unknown',
+				'\t//line generated.go:12',
+			]
+		) {
+			assert.deepEqual(split('generate.go', prose), [['3 lines']], prose);
+		}
+		assert.deepEqual(split('generate.js', '//go:embed assets/*'), [['3 lines']]);
+	});
+
+	test('directive-adjacent prose retains style and length findings', () => {
+		const lines = [
+			'//go:generate echo "robust rather than elegant"',
+			'// Use the cache rather than parsing twice.',
+			'//go:generate go run generator.go',
+			'// Parse the value.',
+			'// Keep its position.',
+			'// Return its diagnostics.',
+			'//go:generate gofmt generated.go',
+		];
+		for (const patch of [hunk(lines), hunk(lines, 1, 2)]) {
+			for (const source of [undefined, lines.join('\n')]) {
+				assert.deepEqual(
+					groupsFromPatch('generate.go', patch, source).map(({ start, end, reasons }) => ({ start, end, reasons })),
+					[{ start: 2, end: 2, reasons: ['"X rather than Y"'] }, { start: 4, end: 6, reasons: ['3 lines'] }],
+				);
+			}
+		}
+	});
+
+	test('does not measure Go docs by length, reading their context from the full file', () => {
+		const parse = [
+			'// Parse reads the input.',
+			'// It keeps positions.',
+			'// It returns diagnostics.',
+			'//go:noinline',
+		];
+		const check = [
+			'// Check scans expressions.',
+			'// It keeps positions.',
+			'// It reports contexts.',
+			'// It stops early.',
+		];
+		const metadata = [
+			'type Metadata struct {',
+			'\t// Defaults holds input values.',
+			'\t// Each value includes its position.',
+			'\t// Values remain in source order.',
+			'\t// The checker reads these values.',
+			'\tDefaults []*Value',
+			'}',
+		];
+		for (
+			const { lines, start, from, to } of [
+				{ lines: [...parse, 'func Parse() {}'], start: 1, from: 1, to: 3 },
+				{ lines: [...check, 'func Check() {}'], start: 1, from: 1, to: 3 },
+				{ lines: metadata, start: 2, from: 3, to: 5 },
+			]
+		) {
+			assert.deepEqual(reasons('rule.go', hunk(lines), lines), []);
+			assert.deepEqual(reasons('rule.go', hunk(lines, start, from, to), lines), []);
+			assert.deepEqual(reasons('rule.go', hunk(lines, start, from, to)), [['3 lines']]);
+		}
+	});
+
+	test('scans Markdown prose but skips fenced code', () => {
+		const lines = ['That said, this is prose.', '', '```go', '// Robust code.', '```', '', '- Moreover, an item.'];
+		assert.deepEqual(reasons('docs/checks.md', hunk(lines)), [['filler phrase'], ['connective glue']]);
+	});
+
+	test('restores Markdown fence state before each diff hunk', () => {
+		const lines = ['````markdown', 'This contains a shorter ``` marker.', 'That said, this is fence content.', '````'];
+		assert.deepEqual(reasons('docs/checks.md', hunk(lines, 3, 3, 3), lines), []);
+	});
+
+	test('classifies YAML lines in a partial hunk from the full file', () => {
+		for (
+			const lines of [
+				['# run: |', '#   echo use this rather than that'],
+				['# tools:', '#   ruff:', '#     args: --fix rather than check'],
+			]
+		) {
+			const patch = hunk(lines, lines.length);
+			assert.deepEqual(reasons('workflow.yml', patch, lines), []);
+			assert.deepEqual(reasons('workflow.yml', patch), [['"X rather than Y"']]);
+		}
+	});
+
+	test('finds nothing in the commented examples of config_default.yaml', () => {
+		const path = new URL('../../../internal/input/configuration/config_default.yaml', import.meta.url);
+		const lines = readFileSync(path, 'utf8').split('\n');
+		const examples = lines.findIndex(line => line.startsWith('# Plugins check scripts')) + 1;
+		assert.ok(examples > 0);
+		const groups = groupsFromPatch('config_default.yaml', hunk(lines), lines.join('\n'));
+		assert.deepEqual(groups.filter(group => group.start >= examples), []);
+	});
+}
+
 /** @param {Group} group */
 export const keyFor = group =>
 	createHash('sha256')
@@ -295,6 +470,30 @@ export function bodyFor(group) {
 	return `<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
 		+ `Flagged for: ${group.reasons.join(', ')}.\n\n`
 		+ '[Writing instructions](https://github.com/kjanat/actionlint/blob/master/.agents/writing.md)';
+}
+
+if (process.env.NODE_TEST_CONTEXT) {
+	const { test } = await import('node:test');
+	/** @type {typeof import('node:assert').strict} */
+	const assert = (await import('node:assert')).strict;
+	const { existsSync } = await import('node:fs');
+
+	test('gives identical text on different lines different marker keys', () => {
+		const group = { path: 'docs/notes.md', start: 1, end: 1, text: 'That said, prose.', reasons: [] };
+		assert.notEqual(keyFor(group), keyFor({ ...group, start: 10, end: 10 }));
+	});
+
+	test('writes the marker, the reasons and a link to the writing instructions', () => {
+		const group = { path: 'rule.go', start: 1, end: 3, text: '// Text', reasons: ['3 lines', '"X instead of Y"'] };
+		const link = 'https://github.com/kjanat/actionlint/blob/master/.agents/writing.md';
+		assert.equal(
+			bodyFor(group),
+			`<!-- actionlint-comment-cop:${
+				keyFor(group)
+			} -->\nFlagged for: 3 lines, "X instead of Y".\n\n[Writing instructions](${link})`,
+		);
+		assert.ok(existsSync(new URL(`../../../${link.split('/blob/master/')[1]}`, import.meta.url)));
+	});
 }
 
 /** @param {unknown} error */
@@ -404,6 +603,112 @@ export default async function run({ github, context, core, files }) {
 	core.info(`Comment Cop: ${posted} posted, ${resolved} stale threads resolved, ${groups.length} present.`);
 }
 
+if (process.env.NODE_TEST_CONTEXT) {
+	const { test, mock } = await import('node:test');
+	/** @type {typeof import('node:assert').strict} */
+	const assert = (await import('node:assert')).strict;
+
+	/** @param {string} filename @param {string} source @returns {ChangedFile} */
+	const added = (filename, source) => ({
+		filename,
+		source,
+		patch: `@@ -1 +1 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`,
+	});
+	const files = [
+		added(
+			'docs/first.md',
+			'That said, the cache stores values.\nRead the cached entry.\n\n\nMoreover, refresh the entry.',
+		),
+		added('docs/second.md', 'Use the cache rather than fetching again.'),
+	];
+	/** @type {Group[]} */
+	const findings = [
+		{ path: files[0].filename, start: 1, end: 2, text: files[0].source.split('\n\n')[0], reasons: ['filler phrase'] },
+		{ path: files[0].filename, start: 5, end: 5, text: 'Moreover, refresh the entry.', reasons: ['connective glue'] },
+		{ path: files[1].filename, start: 1, end: 1, text: files[1].source, reasons: ['"X rather than Y"'] },
+	];
+
+	/** @param {ChangedFile[]} changed @param {Array<{body: string, viewerDidAuthor?: boolean, isResolved?: boolean}>} threads */
+	const runWith = async (changed, threads) => {
+		const nodes = threads.map(({ body, viewerDidAuthor = true, isResolved = false }, index) => ({
+			id: `thread-${index}`,
+			isResolved,
+			path: '',
+			comments: { nodes: [{ body, viewerDidAuthor }] },
+		}));
+		const page = { pageInfo: { hasNextPage: false, endCursor: null }, nodes };
+		const graphql = mock.fn(async (/** @type {string} */ _query, /** @type {object} */ _parameters) => ({
+			repository: { pullRequest: { reviewThreads: page } },
+		}));
+		const createReview = mock.fn(async (/** @type {ReviewParams} */ params) => params);
+		const info = mock.fn((/** @type {string} */ _message) => {});
+		await run({
+			files: changed,
+			github: { graphql, rest: { pulls: { createReview } } },
+			context: {
+				repo: { owner: 'owner', repo: 'repo' },
+				payload: { pull_request: { number: 42, head: { sha: 'a'.repeat(40) } } },
+			},
+			core: { info, warning: mock.fn() },
+		});
+		return {
+			reviews: createReview.mock.calls.map(call => call.arguments[0]),
+			resolved: graphql.mock.calls.slice(1).map(call => call.arguments[1]),
+			summary: info.mock.calls.map(call => call.arguments[0]),
+		};
+	};
+
+	test('submits every finding in one review', async () => {
+		const { reviews, summary } = await runWith(files, []);
+		assert.deepEqual(reviews, [{
+			owner: 'owner',
+			repo: 'repo',
+			pull_number: 42,
+			commit_id: 'a'.repeat(40),
+			event: 'COMMENT',
+			body: 'Please review the flagged wording in the inline comments.',
+			comments: [
+				{
+					path: 'docs/first.md',
+					line: 2,
+					side: 'RIGHT',
+					body: bodyFor(findings[0]),
+					start_line: 1,
+					start_side: 'RIGHT',
+				},
+				{ path: 'docs/first.md', line: 5, side: 'RIGHT', body: bodyFor(findings[1]) },
+				{ path: 'docs/second.md', line: 1, side: 'RIGHT', body: bodyFor(findings[2]) },
+			],
+		}]);
+		assert.deepEqual(summary, ['Comment Cop: 3 posted, 0 stale threads resolved, 3 present.']);
+	});
+
+	test('does not repeat findings that already have a thread', async () => {
+		const partial = await runWith(files, [{ body: bodyFor(findings[0]) }]);
+		assert.deepEqual(partial.reviews.map(review => review?.comments?.map(comment => comment.line)), [[5, 1]]);
+		const complete = await runWith(files, findings.map(finding => ({ body: bodyFor(finding) })));
+		assert.deepEqual([complete.reviews, complete.resolved], [[], []]);
+	});
+
+	test('resolves threads whose finding is gone', async () => {
+		const { reviews, resolved, summary } = await runWith([], [{ body: bodyFor(findings[0]) }]);
+		assert.deepEqual([reviews, resolved], [[], [{ id: 'thread-0' }]]);
+		assert.deepEqual(summary, ['Comment Cop: 0 posted, 1 stale threads resolved, 0 present.']);
+	});
+
+	test('ignores threads that are foreign, resolved or unmarked', async () => {
+		const gone = bodyFor({ ...findings[0], start: 9 });
+		const { resolved, summary } = await runWith(files, [
+			{ body: bodyFor(findings[0]), viewerDidAuthor: false },
+			{ body: gone, viewerDidAuthor: false },
+			{ body: gone, isResolved: true },
+			{ body: 'Please reword this.' },
+		]);
+		assert.deepEqual(resolved, []);
+		assert.deepEqual(summary, ['Comment Cop: 3 posted, 0 stale threads resolved, 3 present.']);
+	});
+}
+
 const git = (/** @type {string[]} */ args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
 
 /** @param {number} descriptor */
@@ -449,6 +754,11 @@ function readBytes(descriptor, size, position) {
 	}
 	return buffer;
 }
+
+/** @param {string} name */
+const scannable = name =>
+	langFor(name) !== null && !name.startsWith('vendor/') && !name.includes('/vendor/')
+	&& !name.startsWith('docs/releases/');
 
 /**
  * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string, maxBuffer?: number}} options
@@ -570,6 +880,129 @@ export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, h
 	}
 }
 
+if (process.env.NODE_TEST_CONTEXT) {
+	const { test } = await import('node:test');
+	/** @type {typeof import('node:assert').strict} */
+	const assert = (await import('node:assert')).strict;
+	const { readdirSync, writeFileSync } = await import('node:fs');
+	const { tmpdir } = await import('node:os');
+
+	/** @param {import('node:test').TestContext} t */
+	const repository = t => {
+		const directory = mkdtempSync(join(tmpdir(), 'comment-cop-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const origin = join(directory, 'origin');
+		mkdirSync(origin);
+		/** @param {string[]} args */
+		const git = args =>
+			execFileSync('git', ['-C', origin, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+		git(['init', '--quiet', '--initial-branch=master', '--template=']);
+		for (
+			const [key, value] of [
+				['user.name', 'Test'],
+				['user.email', 'test@example.invalid'],
+				['commit.gpgsign', 'false'],
+				['core.hooksPath', join(directory, 'no-hooks')],
+			]
+		) {
+			git(['config', key, value]);
+		}
+		/** @param {Record<string, string>} files */
+		const commit = files => {
+			for (const [name, source] of Object.entries(files)) writeFileSync(join(origin, name), source);
+			git(['add', '--all']);
+			git(['commit', '--quiet', '--allow-empty', '--message', 'Change']);
+			return git(['rev-parse', 'HEAD']);
+		};
+		/** @param {string} baseSha @param {string} headSha @param {number} [maxBuffer] */
+		const read = (baseSha, headSha, maxBuffer) =>
+			readPullRequestFiles({
+				cacheDirectory: join(directory, 'cache'),
+				repositoryUrl: origin,
+				baseSha,
+				headSha,
+				maxBuffer,
+			});
+		return { directory, git, commit, read };
+	};
+
+	test('skips unsupported files, vendored code and release notes', () => {
+		const paths = ['docs/checks.md', 'notes.txt', 'vendor/a.go', 'internal/vendor/a.go', 'docs/releases/v1.md'];
+		assert.deepEqual(paths.filter(scannable), ['docs/checks.md']);
+	});
+
+	test('reads a fork diff through cached Git objects without checking out PR code', t => {
+		const { directory, git, commit, read } = repository(t);
+		const ancestor = commit({ 'shared.md': 'Initial text.\n' });
+		const baseSha = commit({ 'base-only.md': 'Base branch update.\n' });
+		git(['checkout', '--quiet', '-b', 'contribution', ancestor]);
+		const filename = '[special] with spaces.md';
+		const source = '```go\n// That said, example code is excluded.\n```\n\nThat said, scan this prose.\n';
+		const first = read(baseSha, commit({ [filename]: source }));
+		assert.deepEqual(first.map(file => [file.filename, file.source]), [[filename, source]]);
+		assert.deepEqual(groupsFromPatch(filename, first[0].patch, source).map(group => group.start), [5]);
+		assert.deepEqual(read(baseSha, git(['rev-parse', 'HEAD'])), first);
+		const objects = join(directory, 'cache', 'repository.git');
+		assert.equal(git(['--git-dir', objects, 'rev-parse', '--is-bare-repository']), 'true');
+		assert.doesNotMatch(readFileSync(join(objects, 'config'), 'utf8'), /extraheader|token|\[remote/);
+		git(['rm', '--quiet', filename]);
+		const updated = read(baseSha, commit({ 'replacement.md': 'Moreover, scan the replacement.\n' }));
+		assert.deepEqual(updated.map(file => file.filename), ['replacement.md']);
+	});
+
+	test('rejects invalid Git revisions before fetching', () => {
+		const options = {
+			cacheDirectory: 'unused',
+			repositoryUrl: 'unused',
+			baseSha: '--upload-pack=bad',
+			headSha: 'a'.repeat(40),
+		};
+		assert.throws(() => readPullRequestFiles(options), /full Git commit SHA/);
+	});
+
+	test('reads every source and patch in a large diff with Unicode and binary files', t => {
+		const { commit, read } = repository(t);
+		const baseSha = commit({});
+		/** @type {Record<string, string>} */
+		const expected = { '[binary] with spaces.md': 'Binary\0content\n' };
+		for (let index = 0; index < 1_000; index++) {
+			expected[`file-${String(index).padStart(4, '0')}.md`] =
+				`That said, café 😀 ${index}.\n\ndiff --git this is prose\n`;
+		}
+		const files = read(baseSha, commit({ ...expected, 'unsupported.txt': 'Not a scanned file.' }));
+		assert.deepEqual(Object.fromEntries(files.map(file => [file.filename, file.source])), expected);
+		for (const { filename, patch, source } of files.filter(file => file.filename.startsWith('file-'))) {
+			assert.deepEqual(groupsFromPatch(filename, patch, source).map(group => group.start), [1]);
+		}
+	});
+
+	const line = 'That said, café 😀.\n';
+	/** @param {string} first */
+	const blobs = first => Object.fromEntries([0, 1, 2, 3].map(index => [`file-${index}.md`, first + line.repeat(399)]));
+	/** @type {Array<[string, Record<string, string>, Record<string, string>]>} */
+	const scenarios = [
+		['unsupported patch', {}, { 'small.md': line, 'unsupported.txt': line.repeat(4_000) }],
+		['combined blobs', blobs('Old text.\n'), blobs(line)],
+		['single patch and blob', {}, { 'large.md': line.repeat(4_000) }],
+	];
+	for (const [scenario, base, head] of scenarios) {
+		test(`reads supported files beyond the subprocess buffer limit: ${scenario}`, t => {
+			const { directory, commit, read } = repository(t);
+			const files = read(commit(base), commit(head), 16 * 1_024);
+			const supported = Object.entries(head).filter(([name]) => name.endsWith('.md'));
+			assert.deepEqual(files.map(({ filename, source }) => [filename, source]), supported);
+			for (const { filename, patch, source } of files) {
+				const before = (base[filename] ?? '').split('\n');
+				assert.deepEqual(
+					patch.split('\n').filter(row => row.startsWith('+') && !row.startsWith('+++')).map(row => row.slice(1)),
+					source.trimEnd().split('\n').filter((row, index) => row !== before[index]),
+				);
+			}
+			assert.deepEqual(readdirSync(join(directory, 'cache')), ['repository.git']);
+		});
+	}
+}
+
 function defaultBase() {
 	for (const ref of ['origin/master', 'master']) {
 		try {
@@ -577,9 +1010,7 @@ function defaultBase() {
 				encoding: 'utf8',
 				stdio: ['ignore', 'pipe', 'pipe'],
 			}).trim();
-		} catch {
-			// Ignore errors
-		}
+		} catch {}
 	}
 	throw new Error('no origin/master or master found; pass a base ref');
 }
@@ -598,11 +1029,6 @@ function untrackedPatch(name) {
 
 /** @param {string} output */
 const outputLines = output => output.split('\n').map(line => line.trim()).filter(Boolean);
-
-/** @param {string} name */
-const scannable = name =>
-	langFor(name) !== null && !name.startsWith('vendor/') && !name.includes('/vendor/')
-	&& !name.startsWith('docs/releases/');
 
 /** @param {string | undefined} base */
 export function scanLocal(base) {
@@ -624,7 +1050,7 @@ export function scanLocal(base) {
 	return groups.length === 0 ? 0 : 1;
 }
 
-if (import.meta.main) {
+if (import.meta.main && !process.env.NODE_TEST_CONTEXT) {
 	const args = process.argv.slice(2);
 	if (args.length > 1 || args.includes('--help') || args.includes('-h')) {
 		console.log('usage: comment-cop.mjs [<base-ref>]');

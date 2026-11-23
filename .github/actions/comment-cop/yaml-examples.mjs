@@ -79,3 +79,81 @@ export function yamlExampleLines(lines) {
 	}
 	return examples;
 }
+
+if (process.env.NODE_TEST_CONTEXT) {
+	const { test } = await import('node:test');
+	/** @type {typeof import('node:assert').strict} */
+	const assert = (await import('node:assert')).strict;
+
+	/** @param {string[]} lines @param {number[]} expected */
+	const check = (lines, expected) => assert.deepEqual([...yamlExampleLines(lines)], expected, lines.join('\n'));
+
+	test('separates prose from commented YAML examples', () => {
+		const lines = [
+			'# Tools are discovered on PATH.',
+			'# Python scripts are linted without execution.',
+			'# tools:',
+			'#   ruff: {select: [F, B, S]}',
+			'#   shellcheck:',
+			'#     # Inline directives remain active.',
+			'#     config: {shell: bash}',
+			'',
+			'# local-actions:',
+			'#   ./generated-action: ./src/action',
+			'# files:',
+			'#   includes:',
+			'#     - "**/*.yaml"',
+			'#     - "rather than.yml"',
+			'# ignores:',
+			'#   - rule: shellcheck',
+			'#     reason: Use the robust compatibility wrapper rather than the default.',
+			'',
+			'# Use defaults rather than loading another file.',
+		];
+		check(lines, [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
+	});
+
+	test('treats YAML sequence items as examples unless they are prose', () => {
+		check(['# - Use the cache rather than parsing twice.'], []);
+		check(['# - Note: use this rather than that'], []);
+		check(['# - name: build rather than deploy'], [1]);
+		for (const [prefix, key] of [['- ', 'name'], ['  - ', '"name"'], ['-   ', "'name'"]]) {
+			const indent = ' '.repeat(prefix.length);
+			const lines = [
+				`# ${prefix}${key}: build rather than deploy`,
+				`# ${indent}run: echo it`,
+				`# ${indent}shell: bash`,
+			];
+			check(lines, [1, 2, 3]);
+		}
+	});
+
+	test('keeps labeled prose out of adjacent examples', () => {
+		check(
+			['# Note: use the wrapper.', '# tools:', '#   ruff:', '#     select: [F]', '# Warning: be careful.', '# note: x'],
+			[2, 3, 4],
+		);
+		check(
+			[
+				'# Note: use the wrapper.',
+				'# image: ubuntu',
+				'# shell: bash',
+				'# working-directory: src',
+				'# Warning: be careful.',
+			],
+			[2, 3, 4],
+		);
+	});
+
+	test('treats commented block scalars as examples until their indentation ends', () => {
+		const headers = [['run:', '  '], ['- run:', '    '], ['-', '  '], ['  run:', '    ']];
+		for (
+			const [index, indicator] of ['|', '|-', '|+', '>', '>-', '>+', '|2', '|2-', '|-2', '>2+', '>+2', '| # x']
+				.entries()
+		) {
+			const [header, indent] = headers[index % headers.length];
+			const lines = [`# ${header} ${indicator}`, `# ${indent}echo it`, '#', `# ${indent}Note: text`, '# Note: text'];
+			check(lines, [1, 2, 3, 4]);
+		}
+	});
+}
