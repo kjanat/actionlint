@@ -8,16 +8,8 @@ export interface CommandResult {
 
 /**
  * Run a captured-source tool with separate argument tokens and no shell expansion.
- * Inherit the callback's environment, which actionlint already filters using the manifest.
- * Supply env to replace that environment for this command; no second SDK allowlist is applied.
- * @example
- * ```ts
- * import { runCommand } from '@kjanat-actionlint/plugin-sdk/process';
- * const result = await runCommand('scanner', ['--stdin'], {
- *   stdin: request.source, allowedExitCodes: [0, 1], timeoutMs: 10_000,
- * });
- * const findings: unknown = JSON.parse(result.stdout);
- * ```
+ * Inherit the callback's environment, which actionlint already filters with the manifest.
+ * Supply env to replace that environment for this command. The SDK applies no second allowlist.
  */
 export async function runCommand(
 	command: string,

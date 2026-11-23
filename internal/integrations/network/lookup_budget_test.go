@@ -199,7 +199,6 @@ func TestLookupBudgetResumeBeforeCancellationCleanup(t *testing.T) {
 		}); !errors.Is(err, context.Canceled) {
 			t.Fatalf("wait returned %v, want cancellation", err)
 		}
-		// Run the parent-cancellation cleanup after the wait has returned.
 		budget.stop(context.Cause(ctx))
 		time.Sleep(2 * time.Minute)
 		if !errors.Is(context.Cause(ctx), cause) || !budget.stopped || budget.timer.Stop() {

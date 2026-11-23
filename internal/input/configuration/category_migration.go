@@ -10,11 +10,8 @@ import (
 )
 
 // ErrRuleMetadataRequired means a category migration needs plugin descriptors.
-// Ordinary analysis may defer this conversion until plugins are registered.
 var ErrRuleMetadataRequired = errors.New("registered rule metadata required")
 
-// migrateRuleAliases changes identifiers before inheritance, without flattening
-// group defaults. The latter must be merged before their effect can be resolved.
 func (ruleSet RuleSet) migrateRuleAliases(root any) (any, bool, error) {
 	if !isMapping(root) {
 		return root, false, nil
@@ -135,8 +132,6 @@ func (ruleSet RuleSet) renameSelectorList(node any) (any, bool) {
 	return next, changed
 }
 
-// migrateRuleCategories rewrites an explicit migration candidate. Runtime
-// normalization keeps legacy controls until the complete registration is known.
 func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Descriptor) (any, bool, error) {
 	if !isMapping(root) {
 		return root, false, nil

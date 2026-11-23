@@ -21,51 +21,31 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// ToolSelection chooses how a tool provider runs. The zero value disables it.
+// ToolSelection disables the provider when it is the zero value.
 type ToolSelection struct {
-	// Command is the process command line. The provider's rule name selects
-	// the manifest's entry on PATH and lets repository configuration choose
-	// a backend; empty disables the process unless Process names an
-	// executable.
+	// An empty Command disables the process unless Process names an executable.
 	Command string
-	// Process adds arguments and environment to Command, or replaces it with
-	// Process.Executable. Optional makes the selection a default that is
-	// skipped, with a warning, when it cannot run.
+	// Process.Optional skips the selection with a warning when it cannot run.
 	Process *hostprocess.CommandOptions
-	// Backend replaces the process with a snippet engine.
 	Backend scriptengine.Backend
-	// Runner replaces the process with an in-process function that has no
-	// filesystem, such as an embedding program's ShellCheck build.
-	Runner func(args []string, stdin string) ([]byte, error)
-	// ManagedOnly permits a managed document analyzer without the native
-	// fallback.
+	// Runner has no filesystem access.
+	Runner      func(args []string, stdin string) ([]byte, error)
 	ManagedOnly bool
 }
 
-// Provider is a manifest bound to how it runs.
 type Provider struct {
-	Manifest toolmanifest.Manifest
-	// Programs resolves the manifest's transform digests.
+	Manifest  toolmanifest.Manifest
 	Programs  toolmanifest.Programs
 	Selection ToolSelection
-	// Bind completes a registration, such as with a managed document
-	// analyzer route; nil leaves it as is. RegisterProvider applies it to every
-	// registration it derives.
+	// Bind may be nil, and RegisterProvider applies it to every registration it derives.
 	Bind func(contract.Registration, Provider) contract.Registration
 }
 
-// selection is a Selection as a registration applies it.
 type selection struct {
 	ToolSelection
-	// fallback marks Backend as a default plugin, which a repository's
-	// tools.<name>.backend replaces.
 	fallback bool
 }
 
-// defaultCommand reports whether the selection runs the provider's own
-// default command: its rule name with no explicit choice beyond being
-// optional. A working directory chooses where the command runs, not which
-// command, so it does not count.
 func (s selection) defaultCommand(name string) bool {
 	if s.Backend != nil || s.Runner != nil || s.Command != name {
 		return false
@@ -78,7 +58,6 @@ func (s selection) defaultCommand(name string) bool {
 	return reflect.DeepEqual(options, hostprocess.CommandOptions{Optional: true})
 }
 
-// forConfig lets a repository backend replace a default plugin.
 func (s selection) forConfig(name string, cfg *configuration.Config) ToolSelection {
 	if s.fallback && cfg != nil && cfg.Tools[name].Backend != nil {
 		s.Backend, s.Command, s.Process = nil, name, &hostprocess.CommandOptions{Optional: true}
@@ -86,18 +65,10 @@ func (s selection) forConfig(name string, cfg *configuration.Config) ToolSelecti
 	return s.ToolSelection
 }
 
-// selected reports whether the selection can run the provider at all.
 func (s selection) selected(name string) bool {
 	return s.Backend != nil || s.Runner != nil || AllowsModule(name, s.Command, s.Process) || hostprocess.CommandEnabled(s.Command, s.Process)
 }
 
-// RegisterProvider registers a script tool provider from its process manifest and
-// selection. The manifest's preparation profile selects and prepares
-// scripts, its selectors route shells and action inputs, its capabilities
-// admit fixes and reported sources, format messages and map severities, and
-// tools.<name> configures the tool. A repository's tools.<name>.backend may
-// select a WebAssembly engine or, with --allow-config-processes, another
-// process for the default command.
 func RegisterProvider(p Provider) (contract.Registration, error) {
 	return register(p, selection{ToolSelection: p.Selection})
 }
@@ -136,13 +107,8 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 		Scope:                 scope,
 		SupportsActions:       true,
 		ScriptInputs:          slices.Clone(m.Selectors.Inputs),
-		// A run step that sets no shell runs in the runner's default shell,
-		// which only execution resolution knows, so selectors.shells needs
-		// it to match such steps. capabilities.resources needs each step's
-		// working directory. See decision b4 in
-		// docs/design/tool-providers-decisions.md.
-		RequiresExecution: len(m.Selectors.Shells) != 0 || len(m.Capabilities.Resources) != 0,
-		PrepareInput:      newPreparation(m, routeEngine, p.Programs).input,
+		RequiresExecution:     len(m.Selectors.Shells) != 0 || len(m.Capabilities.Resources) != 0,
+		PrepareInput:          newPreparation(m, routeEngine, p.Programs).input,
 		Enabled: func(c contract.Context) bool {
 			possible, err := ProjectMayEnable(name, c.Config, c.ProjectConfig)
 			return sel.selected(name) && (possible || err != nil)
@@ -196,8 +162,6 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 	return registration, nil
 }
 
-// engineLoader loads repository-selected WebAssembly engines through the
-// invocation's loader.
 func engineLoader(c contract.Context) func(string) (scriptengine.Backend, error) {
 	if c.LoadEngine == nil {
 		return nil
@@ -205,8 +169,6 @@ func engineLoader(c contract.Context) func(string) (scriptengine.Backend, error)
 	return func(path string) (scriptengine.Backend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
 }
 
-// transports builds the runner each configuration selects, sharing a
-// runner between configurations that select the same transport.
 type transports struct {
 	provider     Provider
 	selection    selection
@@ -217,15 +179,11 @@ type transports struct {
 	probes       *versionProbes
 }
 
-// versionProbes keeps one version probe per process transport key for every
-// runner a registration builds, so each command is probed, and a failed
-// probe warned about, once per registration.
 type versionProbes struct {
 	mu    sync.Mutex
 	byKey map[string]*process.VersionProbe
 }
 
-// get returns the probe of the transport with key, creating it when absent.
 func (p *versionProbes) get(key string) *process.VersionProbe {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -238,8 +196,6 @@ func (p *versionProbes) get(key string) *process.VersionProbe {
 	return p.byKey[key]
 }
 
-// forConfig returns the key of the runner cfg selects, building it once;
-// "" selects none.
 func (t *transports) forConfig(cfg *configuration.Config) (string, error) {
 	if key, ok := t.selected[cfg]; ok {
 		return key, nil
@@ -322,7 +278,6 @@ func (t *transports) build(cfg *configuration.Config) (string, error) {
 	return t.process(key, resolved, routeProcess, options == nil || !options.Optional)
 }
 
-// process builds the runner of a process transport.
 func (t *transports) process(key string, command *hostprocess.Command, via route, required bool) (string, error) {
 	m := t.provider.Manifest
 	backend, err := process.NewBackend(m, command, process.Options{Programs: t.provider.Programs, Required: required, Probe: t.probes.get(key), Warn: t.context.Warn, Debug: t.context.Debug, Skipped: func() {
@@ -337,16 +292,12 @@ func (t *transports) process(key string, command *hostprocess.Command, via route
 	return t.register(key, descriptor, backend, via)
 }
 
-// engine builds the runner of a snippet engine, which declares its own
-// template contract.
 func (t *transports) engine(key string, engine scriptengine.Backend) (string, error) {
 	if _, ok := t.built[key]; ok {
 		return key, nil
 	}
 	m := t.provider.Manifest
 	descriptor := scriptengine.Descriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
-	// The manifest bounds what findings carry; the engine states the
-	// resources it needs for each check.
 	if described, ok := engine.(scriptengine.DescribedBackend); ok {
 		descriptor.Resources = described.ScriptDescriptor().Resources
 	}
@@ -373,9 +324,6 @@ func (t *transports) register(key string, descriptor scriptengine.Descriptor, en
 	return key, nil
 }
 
-// templateContract is the template-effects contract an engine declares: the
-// result of its TemplateContract method, as embedding programs' backends
-// declare it, or the contract in its script descriptor.
 func templateContract(engine scriptengine.Backend) string {
 	if declared, ok := engine.(interface{ TemplateContract() string }); ok {
 		return declared.TemplateContract()
@@ -386,9 +334,6 @@ func templateContract(engine scriptengine.Backend) string {
 	return ""
 }
 
-// transportRouting runs each script, and each scope, with the transport its
-// configuration selects. A configuration whose optional transport cannot be
-// built is skipped.
 type transportRouting struct{ transports *transports }
 
 func (r transportRouting) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {

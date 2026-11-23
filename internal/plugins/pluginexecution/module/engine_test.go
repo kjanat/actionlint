@@ -162,7 +162,6 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 		instances = append(instances, instance)
 		if len(instances) == 1 {
 			// Cancel only after acquiring an instance and entering guest code.
-			// Compilation and scheduling speed cannot decide this test's outcome.
 			cancel()
 		}
 	})
@@ -349,8 +348,7 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
-			// Trap fixtures fail only their first deallocation. Both calls must
-			// fail, proving the second call receives a fresh instance.
+			// Trap fixtures fail only their first deallocation, and both calls must fail.
 			for range 2 {
 				_, err := engine.Check(t.Context(), scriptengine.Request{Source: "hello", Filename: "step.py"})
 				if err == nil || !strings.Contains(err.Error(), "engine lifecycle") {

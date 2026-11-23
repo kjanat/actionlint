@@ -19,7 +19,7 @@ func Condition(condition value.Value) (enabled, known bool) {
 
 func JobCondition(condition value.Value, hasNeeds bool) (enabled, known bool) {
 	if !hasNeeds {
-		// No ancestor can have failed. Cancellation still prevents assuming success.
+		// No ancestor can have failed.
 		return invocationConditionInStatuses(condition, []string{"success", "other"})
 	}
 	return Condition(condition)
@@ -47,19 +47,12 @@ const (
 )
 
 // NeverRuns proves a job or step condition false in every possible status.
-// For jobs, success requires a successful dependency chain, excluding failure in
-// that chain. For steps, success() and failure() inspect the same execution status.
-// cancelled() inspects the job even inside composites, whose other two status
-// functions inspect action_status instead.
-// Keep cancellation independent and leave unsupported expressions unknown.
-// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds
 func NeverRuns(expression syntax.Node) bool {
 	return conditionNeverRunsInStatuses(expression, []string{"success", "failure", "other"})
 }
 
 // AlwaysIgnoresCancellation reports an explicit always() in a condition that
-// cannot be proved false during cancellation. Unknown context values stay
-// unknown; a guard such as !cancelled() must hold on every possible true path.
+// cannot be proved false during cancellation.
 func AlwaysIgnoresCancellation(expression syntax.Node) bool {
 	hasAlways := false
 	syntax.Visit(expression, func(node, _ syntax.Node, entering bool) {
@@ -73,8 +66,6 @@ func AlwaysIgnoresCancellation(expression syntax.Node) bool {
 	return conditionMayRunCancelled(expression)
 }
 
-// CanRunDuringCancellation checks explicit status functions. Without one, GitHub
-// adds success() and cancellation stops the job. Context values stay unknown.
 func CanRunDuringCancellation(expression syntax.Node) bool {
 	hasStatus := false
 	syntax.Visit(expression, func(node, _ syntax.Node, entering bool) {
@@ -113,7 +104,7 @@ func conditionStatusTruth(expression syntax.Node, status string, cancelled bool)
 }
 
 // NeverRunsWithVariables proves a condition false for supplied context values
-// across execution statuses. Unsupported values and operations stay unknown.
+// across execution statuses.
 func NeverRunsWithVariables(expression syntax.Node, variables func(string) (any, bool)) bool {
 	for _, status := range []string{"success", "failure", "other"} {
 		for _, cancelled := range []bool{false, true} {
@@ -189,8 +180,6 @@ func conditionContextTruth(expression syntax.Node, status string, cancelled bool
 	return conditionUnknown
 }
 
-// Comparisons use operand values: && and || return an operand, rather
-// than converting it to bool. In particular, always() && 'x' is not true == 1.
 func conditionContextValue(expression syntax.Node, status string, cancelled bool, variables func(string) (any, bool)) (any, bool) {
 	if constant, known := evaluate.ExpressionValueWithLookup(expression, variables); known {
 		return constant, true

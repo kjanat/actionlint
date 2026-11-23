@@ -40,7 +40,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	t.Parallel()
 	declared := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "count": exprtypes.NumberType()})
 	// The supplied context follows the dispatch representation. Runny checks
-	// expression evaluation against it, not GitHub's construction of the payload.
+	// expression evaluation against it and leaves GitHub's construction of the payload untested.
 	variables := map[string]any{
 		"inputs": map[string]any{"flag": true, "count": float64(42)},
 		"github": map[string]any{"event": map[string]any{"inputs": map[string]any{"flag": "true", "count": "42"}}},

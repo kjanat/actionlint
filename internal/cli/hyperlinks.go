@@ -124,7 +124,6 @@ func fileLink(enabled bool, path string) string {
 	return terminalLink(true, label, fileURL(path))
 }
 
-// fileURL resolves path against the working directory and returns its file URI.
 func fileURL(path string) string {
 	if path == "" {
 		return ""

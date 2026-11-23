@@ -14,20 +14,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-// GlobRule is the single definition of the glob rule.
 var GlobRule = &define.Rule{
 	Name:        "glob",
 	Description: "Validate branch, tag, and path filter patterns",
 	Category:    "correctness",
 	Subcategory: "filters",
 	Recommended: true,
-	Help:        "Correct the pattern syntax and check how positive and negative patterns are ordered.",
+	Help:        "Fix the pattern syntax or the order of positive and negative patterns.",
 	Checks:      define.Fixed(define.Checks{Workflow: GlobWorkflow, Job: GlobJob}),
 }
 
 type globCheck struct{ reporting.Collector }
 
-// GlobWorkflow validates patterns in event declarations.
 func GlobWorkflow(n workflows.BoundWorkflow) []reporting.StepFinding {
 	rule := &globCheck{}
 
@@ -121,7 +119,7 @@ func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcetext.Position) {
 }
 
 func (rule *globCheck) checkRefGlob(s *definition.String) {
-	// Empty value is already checked by parser. Avoid duplicate errors
+	// The parser reports empty values.
 	if s == nil || s.Value == "" {
 		return
 	}
@@ -142,7 +140,7 @@ func (rule *globCheck) checkFilePathGlobs(filter *definition.WebhookEventFilter)
 		return
 	}
 	for _, v := range filter.Values {
-		// Empty value is already checked by parser. Avoid duplicate errors
+		// The parser reports empty values.
 		if v.Value != "" {
 			rule.globErrors(glob.ValidatePathGlob(v.Value), v.Pos, v.Quoted)
 		}

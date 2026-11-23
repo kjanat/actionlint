@@ -10,9 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// scanRuntimeScripts runs scan over every declared and invoked script whose
-// shell is known and which the shell would execute. Findings carry the source
-// range scan reports; a script without a mappable range yields no finding.
+// A script without a mappable range yields no finding.
 func scanRuntimeScripts(
 	ctx context.Context, input checkinputs.AnalyzerInput,
 	scan func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)),

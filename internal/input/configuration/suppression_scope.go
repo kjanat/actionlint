@@ -5,7 +5,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// ForSuppressions resolves source-scoped checks and their tool settings without workflow-only rule options.
 func (ruleSet RuleSet) ForSuppressions(config *Config, path, root string) (*Config, error) {
 	if config == nil {
 		return nil, nil
@@ -13,8 +12,6 @@ func (ruleSet RuleSet) ForSuppressions(config *Config, path, root string) (*Conf
 	return ruleSet.scopedConfigForFile(config, path, root, ruleSet.suppressionLintNode)
 }
 
-// ForAction projects only the settings consumed by action checks before merging
-// per-file overrides; action metadata has no jobs or workflow policy options.
 func (ruleSet RuleSet) ForAction(config *Config, path, root string) (*Config, error) {
 	selected := ruleSet.scopedRuleNames(func(descriptor rule.Declaration) bool {
 		return descriptor.SupportsActions || descriptor.Scope == rule.SourceConfiguration
@@ -57,8 +54,6 @@ func (ruleSet RuleSet) scopedConfigForFile(config *Config, path, root string, se
 	return ruleSet.ForFile(&next, path, root)
 }
 
-// suppressionLintNode keeps the rules whose findings belong to the checked
-// source itself, including tool providers scoped to the source.
 func (ruleSet RuleSet) suppressionLintNode(node any) any {
 	selected := ruleSet.scopedRuleNames(func(descriptor rule.Declaration) bool { return descriptor.Scope == rule.SourceConfiguration })
 	return selectLintRules(node, selected)

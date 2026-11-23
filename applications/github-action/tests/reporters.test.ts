@@ -126,17 +126,20 @@ test('document outlines preserve parse states, nested steps and compatible addit
 			name: 'Test',
 			parse_status: parseStatus,
 			triggers: ['push', 'workflow_dispatch'],
-			jobs: [{
-				id: 'build',
-				name: 'Build',
-				start: { line: 4, column: 3 },
-				needs: ['prepare'],
-				steps: [
-					{ id: 'checkout', kind: 'uses', uses: 'actions/checkout@v6' },
-					{ kind: 'parallel', steps: [{ name: 'Compile', kind: 'run', start: { line: 8, column: 9 } }] },
-					{ kind: 'future-kind', future_metadata: { enabled: true } },
-				],
-			}, { id: 'call', needs: [], uses: './.github/workflows/reusable.yml', steps: [] }],
+			jobs: [
+				{
+					id: 'build',
+					name: 'Build',
+					start: { line: 4, column: 3 },
+					needs: ['prepare'],
+					steps: [
+						{ id: 'checkout', kind: 'uses', uses: 'actions/checkout@v6' },
+						{ kind: 'parallel', steps: [{ name: 'Compile', kind: 'run', start: { line: 8, column: 9 } }] },
+						{ kind: 'future-kind', future_metadata: { enabled: true } },
+					],
+				},
+				{ id: 'call', needs: [], uses: './.github/workflows/reusable.yml', steps: [] },
+			],
 		}];
 		for (const completed of [true, false]) {
 			const source: unknown = completed
@@ -162,10 +165,14 @@ test('document outlines reject malformed known fields', () => {
 			[{ ...workflow, triggers: null }],
 			[{ ...workflow, triggers: [1] }],
 			[{ ...workflow, jobs: null }],
-			...[{ ...job, id: null }, { ...job, needs: null }, { ...job, needs: [1] }, { ...job, steps: null }, {
-				...job,
-				uses: false,
-			}, { ...job, start: { line: 0, column: 1 } }].map((invalidJob) => [{ ...workflow, jobs: [invalidJob] }]),
+			...[
+				{ ...job, id: null },
+				{ ...job, needs: null },
+				{ ...job, needs: [1] },
+				{ ...job, steps: null },
+				{ ...job, uses: false },
+				{ ...job, start: { line: 0, column: 1 } },
+			].map((invalidJob) => [{ ...workflow, jobs: [invalidJob] }]),
 			...[
 				{},
 				{ kind: 1 },
@@ -365,14 +372,13 @@ test('annotation policy is independent of serialization with auto enabled for Gi
 
 test('plain status logs preserve percent signs and cannot inject workflow commands', async () => {
 	const messages: string[] = [];
-	await report({ ...result, diagnostics: [] }, 'result.json', {
-		'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake',
-	}, {
-		annotations: 'false',
-		summary: false,
-		sarif: false,
-		review: false,
-	}, { log: (text) => messages.push(text), review: async () => assert.fail('review disabled') });
+	await report(
+		{ ...result, diagnostics: [] },
+		'result.json',
+		{ 'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake' },
+		{ annotations: 'false', summary: false, sarif: false, review: false },
+		{ log: (text) => messages.push(text), review: async () => assert.fail('review disabled') },
+	);
 	assert.deepEqual(messages, ['actionlint (100% coverage ::error::fake ## [error]fake): No findings']);
 });
 
@@ -563,16 +569,21 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 		for (const scenario of scenarios) {
 			const outputPath = join(directory, `${scenario.name}-outputs`);
 			const summaryPath = join(directory, `${scenario.name}-summary`);
-			const child = await capture(process.execPath, ['--experimental-test-module-mocks', launcher], {
-				RUNNER_TEMP: directory,
-				GITHUB_OUTPUT: outputPath,
-				GITHUB_STEP_SUMMARY: summaryPath,
-				ACTIONLINT_ACTION_BINARY: process.execPath,
-				ACTIONLINT_TEST_RESULT: scenario.data,
-				INPUT_ANNOTATIONS: scenario.annotations,
-				'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
-				'INPUT_PLUGIN-CACHE': 'false',
-			}, { timeoutMS: 5_000 });
+			const child = await capture(
+				process.execPath,
+				['--experimental-test-module-mocks', launcher],
+				{
+					RUNNER_TEMP: directory,
+					GITHUB_OUTPUT: outputPath,
+					GITHUB_STEP_SUMMARY: summaryPath,
+					ACTIONLINT_ACTION_BINARY: process.execPath,
+					ACTIONLINT_TEST_RESULT: scenario.data,
+					INPUT_ANNOTATIONS: scenario.annotations,
+					'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
+					'INPUT_PLUGIN-CACHE': 'false',
+				},
+				{ timeoutMS: 5_000 },
+			);
 			assert.equal(child.exitCode, scenario.code, child.stderr);
 			assert.ok(child.stdout.includes('::error::'));
 			const outputs = await readFile(outputPath, 'utf8');
@@ -650,17 +661,18 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 		assert.deepEqual(JSON.parse(await readFile(`${path}.sarif`, 'utf8')), result.sarif);
 		assert.ok((await readFile(stepSummary, 'utf8')).includes('SC2086'));
 		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
-		await report(result, path, { INPUT_FORMAT: 'json' }, {
-			annotations: 'true',
-			summary: false,
-			sarif: false,
-			review: false,
-		}, {
-			log: (text) => messages.push(text),
-			review: async () => {
-				assert.fail('review disabled');
+		await report(
+			result,
+			path,
+			{ INPUT_FORMAT: 'json' },
+			{ annotations: 'true', summary: false, sarif: false, review: false },
+			{
+				log: (text) => messages.push(text),
+				review: async () => {
+					assert.fail('review disabled');
+				},
 			},
-		});
+		);
 		assert.equal(messages.filter((text) => text.startsWith('::warning file=')).length, 2);
 	} finally {
 		await rm(directory, { recursive: true });

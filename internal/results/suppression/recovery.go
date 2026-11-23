@@ -8,8 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
-// recoverInlineSuppressionComments reads lexical comments when malformed YAML
-// prevents node construction.
 func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment {
 	document := sourcemap.NewDocument(string(source))
 	lines := document.Lines()
@@ -124,7 +122,6 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	}
 	for _, opening := range flow {
 		// An unfinished flow collection can place its syntax diagnostic at EOF.
-		// Keep that error within the opening declaration's suppression range.
 		blockEnds[opening] = len(lines) + 1
 	}
 	for i := range comments {

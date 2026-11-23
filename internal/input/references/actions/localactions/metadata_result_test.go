@@ -104,8 +104,6 @@ func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 					if _, _, err := cache.FindMetadata("./retry"); !errors.Is(err, failure) {
 						t.Fatalf("result capture silently retried its failed revision: %v", err)
 					}
-					// A new result gets a new capture owner; the metadata cache must
-					// still recover because it did not publish the interrupted entry.
 					bindCapturedActionSources(t, cache)
 				}
 				want := MetadataResolved

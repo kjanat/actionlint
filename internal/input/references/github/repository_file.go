@@ -27,8 +27,6 @@ func (f repositoryFile) Identity() actions.Identity { return f.identity }
 func (f repositoryFile) Content() string            { return f.content }
 func (f repositoryFile) Filename() string           { return f.filename }
 
-// LookupWorkflow uses workflow reference selection and the same HTTP client,
-// request accounting and immutable cache checks as action metadata.
 func (g *GitHub) LookupWorkflow(ctx context.Context, spec string) (reusableworkflows.RemoteFile, error) {
 	if !reusableworkflows.IsRemoteReference(spec) {
 		return reusableworkflows.RemoteFile{}, nil

@@ -15,7 +15,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// This small template schema exercises references, alternatives and inherited contexts.
 const testSchema = `{
   "definitions": {
     "action-root": {"mapping": {"properties": {"inputs": "inputs", "runs": "runs"}}},

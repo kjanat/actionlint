@@ -46,8 +46,8 @@ func resolveTemplate(r renderOptions) (renderOptions, error) {
 	return r, nil
 }
 
-// Debug output can arrive in fragments and from concurrent file checks. Emit
-// complete JSON log records without interleaving their contents.
+// commandJSONLogWriter emits complete JSON log records and interleaves no
+// contents. Debug output can arrive in fragments and from concurrent file checks.
 type commandJSONLogWriter struct {
 	mu      sync.Mutex
 	pending string

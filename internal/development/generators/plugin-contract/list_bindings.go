@@ -12,7 +12,6 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-// shareListBindings retains each generated element codec and shares list storage.
 func shareListBindings(data []byte) ([]byte, error) {
 	set := token.NewFileSet()
 	file, err := parser.ParseFile(set, "bindings.go", data, parser.ParseComments)

@@ -7,13 +7,10 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// NamedFileCommandError checks complete NAME=value and NAME<<delimiter records.
-// The runner uses this format for output, environment and state files.
-// See actions/runner 1ba885c2065fd9be317808ab3fd406f392635cf7,
+// NamedFileCommandError follows actions/runner 1ba885c2065fd9be317808ab3fd406f392635cf7,
 // src/Runner.Worker/FileCommandManager.cs, EnvFileKeyValuePairs.
 func NamedFileCommandError(text string) string {
-	// The runner removes CR before LF on Windows only. Since the platform is
-	// unknown, report an error only if both newline conventions reject the file.
+	// The runner removes CR before LF on Windows only.
 	unix := namedFileCommandError(text, false)
 	if unix == "" || namedFileCommandError(text, true) == "" {
 		return ""
@@ -66,9 +63,7 @@ func namedFileCommandError(text string, windows bool) string {
 	}
 }
 
-// OutputFileContents holds the final output-file text determined from a script.
-// Start and End are byte offsets for the destination word of the write that
-// starts the final contents. An overwrite discards earlier writes.
+// OutputFileContents holds byte offsets of the destination word of the write that starts the final contents.
 type OutputFileContents struct {
 	Text       string
 	Start, End int
@@ -80,12 +75,7 @@ type outputWrite struct {
 	start, end int
 }
 
-// KnownOutputFile determines the output-file contents for a supported Bash or sh
-// script. It handles literal echo/printf, cat/tee with literal text, pipes and
-// command groups. Unsupported commands, assignments, expansions or control flow
-// make the result unknown. It returns the combined writes so the caller can
-// check records assembled by several commands, including multiline values.
-// Each step starts with a fresh, empty command file, including when appending.
+// KnownOutputFile assumes each step starts with a fresh, empty command file, including when appending.
 func KnownOutputFile(text, shell string) (OutputFileContents, bool) {
 	if strings.ContainsAny(shell, " \t\r\n") {
 		// A custom shell template may run the script differently.

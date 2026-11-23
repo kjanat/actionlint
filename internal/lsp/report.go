@@ -18,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
-// FromReport converts prepared findings and captured sources to editor analysis.
 func FromReport(result *report.Analysis, directory string, documents map[string]Document) (Analysis, error) {
 	address := func(path string) string {
 		if path == "" {
@@ -172,12 +171,10 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 	return Analysis{Diagnostics: diagnostics, Sources: sources}, err
 }
 
-// UnavailableSourcesError identifies findings that lack usable captured source information.
 type UnavailableSourcesError struct{ paths []string }
 
 func (e *UnavailableSourcesError) Error() string {
 	return fmt.Sprintf("incomplete editor analysis: diagnostic sources unavailable for %d paths: %s", len(e.paths), strings.Join(e.paths, ", "))
 }
 
-// Paths returns the source paths whose captured text or coordinates were unavailable.
 func (e *UnavailableSourcesError) Paths() []string { return slices.Clone(e.paths) }

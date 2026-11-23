@@ -12,8 +12,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// Compiled code lives for the process. Each plugin owns a separate runtime and
-// guest memory, so closing one plugin leaves compiled code available to later loads.
 var sharedComponentCompilation = newComponentCompilation()
 
 type componentCompilation struct {

@@ -257,7 +257,6 @@ func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 	if _, err := p.Check(ctx, request); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled check: %v", err)
 	}
-	// Queue admission is also cancellable, without disturbing another caller.
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
 	}

@@ -15,10 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
-// Reference identifies the requested action, before a mutable ref is resolved.
 type Reference struct{ host, repository, directory, ref string }
 
-// ParseReference validates a remote uses reference for one host.
 func ParseReference(host, spec string) (Reference, error) {
 	u, err := url.Parse("https://" + host)
 	if err != nil || u.Host != host || u.Path != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || host == "" {
@@ -44,8 +42,6 @@ func ParseReference(host, spec string) (Reference, error) {
 	return Reference{host: strings.ToLower(host), repository: target.Owner + "/" + target.Repo, directory: directory, ref: target.Ref}, nil
 }
 
-// isLocalForm reports whether spec spells a workspace or self-repository path,
-// which has no owner.
 func isLocalForm(spec string) bool {
 	form := callreferences.FormOf(spec)
 	return form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository
@@ -56,8 +52,6 @@ func (r Reference) Repository() string { return r.repository }
 func (r Reference) Directory() string  { return r.directory }
 func (r Reference) Ref() string        { return r.ref }
 
-// Identity binds a manifest to an immutable repository commit and action path.
-// This identifies fetched content; it does not describe how a ref selected it.
 type Identity struct {
 	host, repository, commit, directory string
 	repositoryID                        repository.ID
@@ -90,7 +84,6 @@ func (i Identity) RepositoryID() repository.ID { return i.repositoryID }
 func (i Identity) Commit() string              { return i.commit }
 func (i Identity) Directory() string           { return i.directory }
 
-// Route records whether selection used a raw object ID or an exact lookup key.
 type Route struct {
 	object    bool
 	reference string
@@ -106,10 +99,8 @@ func RefRoute(reference string) (Route, error) {
 func (r Route) Object() bool      { return r.object }
 func (r Route) Reference() string { return r.reference }
 
-// ReferenceSelection records provider evidence for one action request. The original
-// selected object survives tag peeling; Identity identifies terminal content.
-// Observation labels are not freshness guarantees. Construction validates shape
-// and consistency, not the authenticity or completeness of supplied evidence.
+// ReferenceSelection construction does not validate the authenticity or
+// completeness of supplied evidence.
 type ReferenceSelection struct {
 	request    Reference
 	identity   Identity
@@ -143,9 +134,8 @@ func (s ReferenceSelection) Object() string     { return s.object }
 func (s ReferenceSelection) Route() Route       { return s.route }
 func (s ReferenceSelection) ObservedAt() string { return s.observedAt }
 
-// Manifest owns bytes obtained for a provider selection. Analysis parses the
-// same manifest for input, runtime and output checks. This is not proof that a
-// runner executed these bytes or that their transitive dependencies are pinned.
+// Manifest bytes are no proof that a runner executed them or that their
+// transitive dependencies are pinned.
 type Manifest struct {
 	selection ReferenceSelection
 	content   string
@@ -157,8 +147,6 @@ func NewManifest(selection ReferenceSelection, content []byte) (Manifest, error)
 	return NewManifestFile(selection, "action.yml", content)
 }
 
-// NewManifestFile records the selected metadata filename and contents,
-// including empty files. Analysis classifies empty metadata files as invalid.
 func NewManifestFile(selection ReferenceSelection, filename string, content []byte) (Manifest, error) {
 	if selection.identity.commit == "" {
 		return Manifest{}, errors.New("action manifest has no provider selection")

@@ -55,16 +55,12 @@ type LintRulesConfig struct {
 
 //go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/input/configuration -type ruleState,lintState,NetworkConfig,RepositoryConfig,SuppressionsPolicy -output internal/input/configuration/owned_state.gen.go
 
-// lintState owns private source data. Captured source is detached at decode and
-// is only read through copying projections.
 type lintState struct {
 	source    any `clone:"shared"`
 	locations map[string]document.Location
 }
 
-// ruleState owns prepared rule decisions. The shared handles are immutable:
-// RuleSet exposes detached descriptors, Settings expose detached options, and
-// binding sources are only read after preparation.
+// The shared handles in ruleState are immutable.
 type ruleState struct {
 	ruleSet         RuleSet `clone:"shared"`
 	resolved        map[string]ruleconfig.Level
@@ -74,7 +70,6 @@ type ruleState struct {
 	bindingSources  []bindingSource
 }
 
-// boundSetting shares an immutable Setting; its options can only be read as copies.
 type boundSetting struct {
 	ruleconfig.Setting `clone:"shared"`
 }
@@ -100,7 +95,6 @@ func ruleBindingSources(origin string, config *Config, locations ...map[string]d
 	return sources
 }
 
-// CopyConfig detaches public lint settings and the complete private owner state.
 func (c LintConfig) CopyConfig() (any, error) {
 	type plain LintConfig
 	copied, err := configdecode.DetachPublicFields(plain(c))
@@ -123,7 +117,6 @@ func (c *LintRulesConfig) CopyConfig() (any, error) {
 	return LintRulesConfig(next), nil
 }
 
-// DecodeConfig rejects misspelled lint settings.
 func (c *LintConfig) DecodeConfig(value any) error {
 	type plain LintConfig
 	var next plain
@@ -144,7 +137,6 @@ func (c *LintConfig) DecodeConfig(value any) error {
 	return nil
 }
 
-// DecodeConfig rejects misspelled rule groups.
 func (c *LintRulesConfig) DecodeConfig(value any) error {
 	type plain LintRulesConfig
 	var next plain
@@ -155,10 +147,6 @@ func (c *LintRulesConfig) DecodeConfig(value any) error {
 	return nil
 }
 
-// validateSettings checks every explicit rule setting: a built-in rule must
-// be in its own group, have a valid level and options of its options type;
-// plugin options must decode as a mapping. Rule binding calls it after structural
-// decoding and also validates settings created with NewSetting.
 func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 	groups := c.Groups()
 	maps.Copy(groups, c.LegacyGroups())
@@ -169,8 +157,7 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 			}
 			d, ok := ruleSet.FindRule(name)
 			if !ok {
-				// Loading does not yet have installed plugin descriptors. Their
-				// names, categories and schemas bind at analysis composition.
+				// Loading runs before installed plugin descriptors exist.
 				continue
 			}
 			legacyPlugin := category == "plugins" && (ruleSet.registered[ruleSet.ResolveAlias(name)] || ruleSet.LegacyGroup(name) == "external")
@@ -200,8 +187,6 @@ func ruleOptionsError(category, name string, err error) error {
 	return configdecode.Context(fmt.Sprintf("options for rule %q", name), configdecode.At(category, configdecode.At(name, configdecode.At("options", err))))
 }
 
-// validateOptions checks a rule's JSON Schema or decodes its registered Go type.
-// A rule with neither contract accepts no options.
 func validateOptions(d rule.Declaration, setting ruleconfig.Setting) error {
 	if !setting.HasOptions() {
 		return nil
@@ -216,16 +201,13 @@ func validateOptions(d rule.Declaration, setting ruleconfig.Setting) error {
 	return err
 }
 
-// ResolvedLevel returns the level selected for a rule after presets were applied.
 func (c *LintRulesConfig) ResolvedLevel(name string) (ruleconfig.Level, bool) {
 	level, ok := c.resolved[name]
 	return level, ok
 }
 
-// SetResolved records the levels selected after presets were applied.
 func (c *LintRulesConfig) SetResolved(levels map[string]ruleconfig.Level) {
 	c.resolved = levels
 }
 
-// CopyConfig copies the owned configuration state.
 func (v NetworkConfig) CopyConfig() (any, error) { return copyOwnedNetworkConfig(v), nil }

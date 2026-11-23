@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// executableState tracks mutations that invalidate indexed executable modes.
 type executableState struct {
 	sequential, pristine, actionPristine bool
 	repositoryUnknown                    bool
@@ -22,9 +21,7 @@ func newExecutableState(hosted, callerRepositoryUnknown bool) executableState {
 	}
 }
 
-// fork copies the state for a composite entry or call. The copy gets its own
-// changed and actionChanged maps, so the child's mode observations reach the
-// caller only through JoinComposite.
+// fork gives the copy its own changed and actionChanged maps for JoinComposite to merge back.
 func (state *executableState) fork() executableState {
 	forked := *state
 	forked.changed, forked.actionChanged = maps.Clone(state.changed), maps.Clone(state.actionChanged)
@@ -53,8 +50,7 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 	}
 }
 
-// ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
-// The fork shares the caller's ExecutableContext, so its findings go to the same Report.
+// ForkComposite shares the caller's ExecutableContext and Report.
 func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths execution.Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
 	scoped.executableState = rule.fork()
@@ -80,7 +76,6 @@ func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionP
 	return scoped
 }
 
-// JoinComposite merges the mode changes of an entry or call back into the caller.
 func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *ExecutableChecker) {
 	effects, isCall := context.Facts()
 	if !isCall || effects.Condition == invocation.ConditionEnabled {
@@ -100,7 +95,6 @@ func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *
 	rule.actionPristine = rule.actionPristine && child.actionPristine
 	rule.repositoryUnknown = child.repositoryUnknown
 	if effects.ContinueOnError {
-		// The caller may continue after a failed child checkout.
 		rule.pristine, rule.repositoryUnknown = false, true
 		rule.sequential = child.sequential
 		return

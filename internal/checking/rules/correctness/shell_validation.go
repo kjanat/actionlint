@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// checkShell validates builtin names and accepts custom shell templates.
 func checkShell(shell value.Value, platform runners.Platform, registries ...*commands.Registry) []results.Diagnostic {
 	node, known := shell.ScalarString()
 	if !known {
@@ -49,7 +48,7 @@ func checkShell(shell value.Value, platform runners.Platform, registries ...*com
 	available := getAvailableShellNames(platform)
 
 	if slices.Contains(available, name) {
-		return nil // ok
+		return nil
 	}
 
 	onPlatform := ""
@@ -57,13 +56,13 @@ func checkShell(shell value.Value, platform runners.Platform, registries ...*com
 	case runners.Windows:
 		for _, p := range getAvailableShellNames(runners.Any) {
 			if name == p {
-				onPlatform = " on Windows" // only when the shell is unavailable on Windows
+				onPlatform = " on Windows"
 			}
 		}
 	case runners.MacOrLinux:
 		for _, p := range getAvailableShellNames(runners.Any) {
 			if name == p {
-				onPlatform = " on macOS or Linux" // only when the shell is unavailable on macOS or Linux
+				onPlatform = " on macOS or Linux"
 			}
 		}
 	case runners.Any:

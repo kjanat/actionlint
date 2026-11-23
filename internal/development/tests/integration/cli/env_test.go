@@ -150,7 +150,6 @@ func TestEnvironmentConfigSelection(t *testing.T) {
 }
 
 func TestEnvironmentFiltersAndLogging(t *testing.T) {
-	// Use the same message filter with both parsers; explicit filters replace it.
 	t.Setenv("ACTIONLINT_IGNORE_REGEX", `["missing"]`)
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
 		if got := testRunCommand(commandBadWorkflow, args...); got.Status != 0 || got.Stdout+got.Stderr != "" {

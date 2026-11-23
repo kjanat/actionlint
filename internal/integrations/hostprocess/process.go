@@ -17,7 +17,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// Execution represents a single command line execution.
 type Execution struct {
 	MaxExitCode    int
 	RequireSuccess bool
@@ -29,17 +28,12 @@ type Execution struct {
 	UnsetEnv       []string
 	Dir            string
 	// InheritEnvironment starts the child with the host environment plus Env,
-	// minus UnsetEnv. Otherwise the child sees Env alone: tool providers run
-	// scrubbed and name every variable they pass through.
+	// minus UnsetEnv. Otherwise the child sees Env alone.
 	InheritEnvironment bool
-	// ExitCodes, when not empty, are the only statuses accepted, and a nonzero
-	// one only with nonempty stdout. They replace MaxExitCode and RequireSuccess.
+	// They replace MaxExitCode and RequireSuccess.
 	ExitCodes []int
 	// OutputLimit bounds combined stdout/stderr bytes while the child runs.
-	// Zero preserves the caller's existing capture behavior.
-	OutputLimit int64
-	// busyRetryWait replaces the pause after ETXTBSY. Tests use it to release
-	// the executable after the first busy start and before the retry.
+	OutputLimit   int64
 	busyRetryWait func(context.Context, time.Duration) error
 }
 
@@ -48,12 +42,9 @@ func (e *Execution) Run(ctx context.Context) ([]byte, error) {
 	return stdout, err
 }
 
-// RunStatus runs the execution and also returns the accepted exit status.
 func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	runContext, cancel := context.WithCancel(ctx)
 	defer cancel()
-	// The child command and the status checks work on detached copies, so the
-	// caller's slices are never shared with os/exec or the filters below.
 	args, unsetEnv, exitCodes := slices.Clone(e.Args), slices.Clone(e.UnsetEnv), slices.Clone(e.ExitCodes)
 
 	var stdout []byte
@@ -110,7 +101,6 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 				return nil, code, fmt.Errorf("%s exited with status %d but stdout was empty. stderr: %q", e.Cmd, code, stderr)
 			}
 
-			// Providers may use an allowed nonzero status to report findings.
 			return stdout, code, nil
 		}
 		return nil, 0, err
@@ -121,8 +111,6 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	return stdout, 0, nil
 }
 
-// waitForBusyRetry pauses before another attempt to start a busy executable.
-// It returns the context error when that context is done.
 func waitForBusyRetry(ctx context.Context, delay time.Duration) error {
 	timer := time.NewTimer(delay)
 	select {
@@ -155,15 +143,11 @@ func (e *Execution) command(ctx context.Context, args, unsetEnv []string) *exec.
 			})
 		})
 	}
-	// Let os/exec start the reader before copying stdin. Writing the whole script
-	// before Start can fill the pipe and deadlock, even with a single worker.
+	// Let os/exec start the reader before copying stdin.
 	cmd.Stdin = strings.NewReader(e.Stdin)
 	return cmd
 }
 
-// ProcessPool limits concurrent processes to avoid exhausting operating system
-// resources. Too many processes can hang the parent on macOS (issue #3) or
-// exhaust the available file descriptors.
 type ProcessPool struct {
 	Scope *Scope
 	Ctx   context.Context
@@ -173,7 +157,7 @@ type ProcessPool struct {
 
 // NewProcessPool creates a pool that runs up to par processes at once. The
 // context controls semaphore acquisition and child processes; cancelling it
-// stops running children. runtime.NumCPU() is a recommended value for par.
+// stops running children.
 func NewProcessPool(ctx context.Context, par int) *ProcessPool {
 	return &ProcessPool{
 		Ctx:  ctx,
@@ -195,12 +179,10 @@ func (proc *ProcessPool) Run(eg *errgroup.Group, exec *Execution, callback func(
 	})
 }
 
-// Wait waits for all goroutines started by the pool to finish.
 func (proc *ProcessPool) Wait() {
 	proc.wg.Wait()
 }
 
-// NewCommandRunner creates a command runner and resolves the executable path.
 func (proc *ProcessPool) NewCommandRunner(exe string, combineOutput bool) (*Command, error) {
 	return proc.ConfiguredCommandRunner(exe, nil, combineOutput)
 }
@@ -231,8 +213,6 @@ func (proc *ProcessPool) ConfiguredCommandRunner(exe string, options *CommandOpt
 	return cmd, nil
 }
 
-// EmbeddedCommand creates an in-process runner that the pool waits for alongside
-// native commands. It does not look up an executable.
 func (proc *ProcessPool) EmbeddedCommand(name string, runner func([]string, string) ([]byte, error)) *Command {
 	return &Command{proc: proc, Exe: name, Runner: runner}
 }
@@ -240,8 +220,6 @@ func (proc *ProcessPool) EmbeddedCommand(name string, runner func([]string, stri
 // Command runs a specific command through a ProcessPool. Call Wait to wait for
 // its runs and check for errors returned by their callbacks.
 type Command struct {
-	// runner replaces process execution for embedded checkers. It must honor
-	// the same arguments/stdout contract; callbacks still join through eg.
 	Runner         func(args []string, stdin string) ([]byte, error)
 	MaxExitCode    int
 	RequireSuccess bool
@@ -256,8 +234,6 @@ type Command struct {
 	Dir            string
 }
 
-// Run starts the command with the given arguments and stdin. After it finishes,
-// Run calls callback with stdout and any execution error.
 func (cmd *Command) Run(args []string, stdin string, callback func([]byte, error) error) {
 	cmd.RunInDirectory(args, stdin, cmd.Dir, callback)
 }
@@ -283,13 +259,10 @@ func (cmd *Command) RunInDirectory(args []string, stdin, dir string, callback fu
 	cmd.proc.Run(&cmd.eg, exec, callback)
 }
 
-// Wait waits until all goroutines for this command finish. Note that it does not wait for
-// goroutines for other commands.
 func (cmd *Command) Wait() error {
 	return cmd.eg.Wait()
 }
 
-// Fork shares process capacity while giving each document its own join boundary.
 func (proc *ProcessPool) Fork() *ProcessPool {
 	return &ProcessPool{Ctx: proc.Ctx, sema: proc.sema, wg: proc.wg, Scope: &Scope{}}
 }
@@ -301,8 +274,6 @@ func (proc *ProcessPool) Finish() error {
 	return proc.Scope.Finish()
 }
 
-// Execute runs one command synchronously under the pool's shared process limit.
-// Both synchronous backends and callback adapters use the same resource budget.
 func (cmd *Command) Execute(ctx context.Context, args []string, stdin string) ([]byte, error) {
 	cmd.proc.wg.Add(1)
 	defer cmd.proc.wg.Done()
@@ -314,11 +285,6 @@ func (cmd *Command) Execute(ctx context.Context, args []string, stdin string) ([
 	return execution.Run(ctx)
 }
 
-// Invoke runs execution synchronously under the pool's shared process limit.
-// The caller assembles the complete argument vector and environment; the
-// command contributes its executable, or its embedded runner, which reports
-// status 0. Unlike Execute, nothing of the command's own arguments,
-// environment or directory is added.
 func (cmd *Command) Invoke(ctx context.Context, execution Execution) ([]byte, int, error) {
 	cmd.proc.wg.Add(1)
 	defer cmd.proc.wg.Done()

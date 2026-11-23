@@ -206,7 +206,6 @@ func TestWorkflowPathsLastOverlayWins(t *testing.T) {
 	}
 }
 
-// Model the platform fallback without evidence from the host filesystem.
 func missingPathIdentity(windows bool) func(string, string) bool {
 	stat := func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
 	readDir := func(string) ([]os.DirEntry, error) { return nil, os.ErrNotExist }

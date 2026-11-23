@@ -13,9 +13,8 @@ import (
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
-// setTOMLList replaces the root assignment of member, or the [[member]]
-// tables, with entries. A file without the member gains a root assignment
-// after its #:schema preamble; a file that used [[member]] tables keeps them.
+// setTOMLList keeps existing [[member]] tables and adds a missing member as a
+// root assignment after the #:schema preamble.
 func setTOMLList(original []byte, member string, sequence []any, fields TableFields) ([]byte, error) {
 	var values []string
 	for _, entry := range sequence {
@@ -137,7 +136,6 @@ func setTOMLList(original []byte, member string, sequence []any, fields TableFie
 	return splice(original, position, position, replacement), nil
 }
 
-// tomlFields renders the members of one entry as TOML key = "value" pairs.
 func tomlFields(entry any, fields TableFields) ([]string, error) {
 	if fields == nil {
 		return nil, errors.New("TOML table entries need a field order")
@@ -157,7 +155,6 @@ func tomlFields(entry any, fields TableFields) ([]string, error) {
 	return rendered, nil
 }
 
-// tomlTables renders entries as [[member]] tables separated by blank lines.
 func tomlTables(member string, entries []any, fields TableFields, newline string) ([]byte, error) {
 	var tables []byte
 	for index, entry := range entries {
@@ -177,14 +174,11 @@ func tomlTables(member string, entries []any, fields TableFields, newline string
 	return tables, nil
 }
 
-// tomlSpan is a byte range of a TOML source.
 type tomlSpan struct {
 	start int
 	end   int
 }
 
-// tomlExpression is one top-level TOML expression with its full key path,
-// byte range and the comments it contains, keyed by offset.
 type tomlExpression struct {
 	kind     unstable.Kind
 	path     []string
@@ -193,10 +187,7 @@ type tomlExpression struct {
 	comments map[int][]byte
 }
 
-// rewriteTOML removes every expression under the top-level members and
-// appends value's members, encoded again, after the rest of the file. Parser
-// spans distinguish comments from '#' characters in strings. Comments that
-// introduce or sit inside a removed expression move above the new members.
+// rewriteTOML moves comments of removed expressions above the new members.
 func rewriteTOML(source []byte, value any, members []string) ([]byte, error) {
 	values, _ := value.(map[string]any)
 	canonical := make(map[string]any)
@@ -351,7 +342,6 @@ func tomlRangeOffsets(raw unstable.Range, sourceLength int) (int, int) {
 	return start, end
 }
 
-// underMembers reports whether a TOML key path starts with one of members.
 func underMembers(path, members []string) bool {
 	return len(path) > 0 && slices.Contains(members, path[0])
 }

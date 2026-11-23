@@ -16,23 +16,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// Reader receives the Store lifetime context and canonical document address.
-// Cancellation is cooperative. Close must join even a Reader ignoring ctx.
-// The caller must not mutate returned bytes concurrently with their capture.
-// A nil error promises complete content; partial reads must return an error.
+// Reader must return an error for a partial read.
 type Reader func(context.Context, string) ([]byte, error)
 
-// Overlay supplies explicit bytes before any backing reads can begin.
 type Overlay struct {
 	Path        string
 	Content     []byte
 	Coordinates sourcetext.Coordinates
 }
 
-// Store canonicalizes file paths through PhysicalPath and uses remote URLs unchanged.
-// Reader supplies file contents. CaptureRemote supplies downloaded contents.
-// Close must succeed before publication. On abort, cancel the lifetime context
-// before Close; Close itself does not cancel tasks or interrupt filesystem calls.
+// Store must Close successfully before publication. On abort, cancel the
+// lifetime context before Close.
 type Store struct {
 	ctx     context.Context
 	reader  Reader
@@ -63,14 +57,8 @@ type entry struct {
 	conflict    ConflictError
 }
 
-// conflicted reports a sticky conflict; the zero ConflictError records none.
 func (e *entry) conflicted() bool { return e.conflict != ConflictError{} }
 
-// New preflights all overlays before making the Store available. Conflicting
-// documents are Store data, exposed by Read, Lookup and the sealed Sources table;
-// they do not fail construction. Failures return no Store and an InitError.
-// A successful Store has no pending work. Cancellation stops the metadata wait,
-// not the OS call; InitError owns any remaining work until Join succeeds.
 func New(ctx context.Context, overlays []Overlay, reader Reader) (*Store, error) {
 	return newStoreWithResolver(ctx, overlays, reader, physicalDocument)
 }
@@ -108,8 +96,6 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		}
 		destinations[index] = document
 	}
-	// Canonical closes its alias notification and finishes counted work under
-	// one lock. Acquiring it here observes the final flight idle before mutation.
 	s.mu.Lock()
 	idle = s.idle
 	s.mu.Unlock()
@@ -200,16 +186,10 @@ func (s *Store) finishWork() {
 	}
 }
 
-// Canonical resolves each alias once outside the global lock. Caller cancellation
-// only cancels the wait; Close joins the metadata task. Discovered aliases,
-// including aliases from cancelled or conflicting requests, enter Sources.
 func (s *Store) Canonical(ctx context.Context, path string) (string, error) {
 	return s.canonical(ctx, path, true)
 }
 
-// CanonicalIdentity shares the alias memo and lifecycle without declaring a
-// source document. Repository roots and other identity-only metadata never
-// enter Sources. A later Canonical/Read can promote the alias before Close.
 func (s *Store) CanonicalIdentity(ctx context.Context, path string) (string, error) {
 	return s.canonical(ctx, path, false)
 }
@@ -285,8 +265,7 @@ func (s *Store) canonicalize(path string, name *alias) {
 	s.mu.Unlock()
 }
 
-// registerDocument requires s.mu. Identity resolution and document promotion
-// use the same alias flight, including when promotion arrives mid-resolution.
+// registerDocument requires s.mu.
 func (s *Store) registerDocument(path, document string) {
 	e := s.docs[document]
 	if e == nil {
@@ -399,8 +378,6 @@ func (s *Store) snapshot(e *entry) CapturedDocument {
 	return CapturedDocument{store: s, value: e.value, aliases: aliases}
 }
 
-// VerifyHandle rejects foreign, zero, stale or quarantined capture handles.
-// It checks owner identity without copying or comparing source bytes.
 func (s *Store) VerifyHandle(snapshot CapturedDocument) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -423,8 +400,6 @@ func (s *Store) verifyHandle(snapshot CapturedDocument) error {
 	return nil
 }
 
-// Verify rejects invalid handles and disagreeing externally supplied bytes.
-// Verification never reads content, changes a capture or promotes other evidence.
 func (s *Store) Verify(snapshot CapturedDocument, supplied []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -437,9 +412,8 @@ func (s *Store) Verify(snapshot CapturedDocument, supplied []byte) error {
 	return nil
 }
 
-// Close stops new Read calls and metadata tasks, then joins every started task.
-// It does not cancel the Store lifetime context. A failed join leaves Sources
-// inaccessible; retry Close after the outstanding tasks finish.
+// Close joins every started task without cancelling the Store lifetime context.
+// After a failed join, retry Close once the outstanding tasks finish.
 func (s *Store) Close(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("source capture close requires a caller context")

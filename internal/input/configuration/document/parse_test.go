@@ -46,10 +46,8 @@ func TestFormats(t *testing.T) {
 	}
 }
 
-// keyAt returns the position of the key or list item at pointer.
 func keyAt(n *Node, pointer string) sourcetext.Position { return n.Origins()[pointer].Key }
 
-// valueAt returns the position of the value at pointer.
 func valueAt(n *Node, pointer string) sourcetext.Position { return n.Origins()[pointer].Value }
 
 func TestDuplicateKeys(t *testing.T) {

@@ -10,9 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-// case() results are typed by merging every value branch with the default, so
-// a workflow using a string-valued case() where a number is required is
-// reported, while number-valued and unknown-valued ones pass.
 func TestCaseResultTypeInference(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

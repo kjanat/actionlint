@@ -10,9 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// ConfigureToolIntegrations replaces registered tools using declared contracts.
-// occupiedTools identifies already-selected script-engine providers. Integrated
-// analyzers are removed from standalone execution, making repeated calls safe.
+// ConfigureToolIntegrations is safe to call repeatedly. occupiedTools
+// identifies already selected script-engine providers.
 func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Options, error) {
 	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
 		return options, err

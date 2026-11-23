@@ -70,8 +70,6 @@ description: audit
 			}
 			t.Run(definition+"/"+property, func(t *testing.T) {
 				t.Parallel()
-				// Invalid shapes must be found even on optional fields. Replace an
-				// existing field, preserving the surrounding valid action.
 				invalid := "[]"
 				if actionMetadataSchema[child].kind == actionSchemaSequence {
 					invalid = "{}"
@@ -83,7 +81,6 @@ description: audit
 					if strings.HasPrefix(line, prefix) || strings.HasPrefix(line, fixture.indent[:max(0, len(fixture.indent)-2)]+"- "+property+":") {
 						colon := strings.IndexByte(line, ':')
 						lines[i] = line[:colon+1] + " " + invalid
-						// Drop that field's children when replacing a collection.
 						end := i + 1
 						for end < len(lines) && len(lines[end])-len(strings.TrimLeft(lines[end], " ")) > len(fixture.indent) {
 							end++

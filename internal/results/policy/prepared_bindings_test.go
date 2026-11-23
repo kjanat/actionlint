@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
-// preparePolicy mirrors the host's per-entry preparation and seals it before publication.
 func preparePolicy(rules configuration.RuleSet, caller *configuration.Config, p policy.DocumentInputs, sources map[string]*configuration.Config, findings []*finding.Finding) policy.DocumentInputs {
 	registry := rulebinding.NewRegistry(rules)
 	p.Scope = registry.Prepare(caller, caller, caller)

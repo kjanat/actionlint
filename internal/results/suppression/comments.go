@@ -11,8 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-// inlineSuppressionComment is a real YAML comment attached to a declaration.
-// Its position refers to the comment, independently of the YAML node's start.
+// inlineSuppressionComment carries the position of the comment itself.
 type inlineSuppressionComment struct {
 	pos        sourcetext.Position
 	text       string
@@ -21,7 +20,6 @@ type inlineSuppressionComment struct {
 	endLine    int
 }
 
-// Recognize directive prefixes in both parsed and recovered YAML comments.
 func isInlineSuppressionComment(text string) bool {
 	command := text
 	if boundary := strings.IndexAny(command, " \t["); boundary >= 0 {
@@ -30,8 +28,6 @@ func isInlineSuppressionComment(text string) bool {
 	return strings.HasPrefix(text, "actionlint:") || strings.HasPrefix(text, "actionlint-ignore") || command == "ignore" || command == "ignore-next-line"
 }
 
-// collectInlineSuppressionComments isolates YAML attachment and source recovery
-// from directive grammar and policy. Strings and script bodies are never comments.
 func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment {
 	if !bytes.Contains(source, []byte("actionlint:")) && !bytes.Contains(source, []byte("ignore")) {
 		return nil
@@ -99,7 +95,6 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 			commentEnd := endLine
 			// YAML can combine property and value comments into one string.
-			// Locate each physical comment independently within the node's range.
 			for part := range strings.SplitSeq(node.LineComment, "\n") {
 				comment := strings.TrimSpace(part)
 				if comment == "" {
@@ -133,8 +128,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				if node.Style&codec.FlowStyle == 0 || child.Kind != codec.ScalarNode {
 					nextLine--
 				}
-				// Flow siblings can share the scalar's closing line. Scalar
-				// recovery stops at its quote or final mapped content.
+				// Flow siblings can share the scalar's closing line.
 				childEnd = min(childEnd, nextLine)
 			}
 			visit(child, max(child.Line, childEnd))
@@ -165,7 +159,6 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	return comments
 }
 
-// Suppression extents use the same scalar scan that maps diagnostic positions.
 func inlineSuppressionScalarEnd(p *parser.Parser, node *codec.Node, endLine int) (int, int) {
 	if source := p.ScriptSource(node); source != nil {
 		return source.ContentStart.Line, min(source.ScalarEnd.Line, endLine)
@@ -173,7 +166,6 @@ func inlineSuppressionScalarEnd(p *parser.Parser, node *codec.Node, endLine int)
 	return node.Line, node.Line
 }
 
-// yamlClosingCommentLine finds the closing line even when a flow collection or scalar spans multiple lines.
 func yamlClosingCommentLine(node *codec.Node, comment string, lines []string, endLine int) int {
 	last := node
 	for len(last.Content) > 0 {
@@ -193,8 +185,7 @@ func yamlClosingCommentLine(node *codec.Node, comment string, lines []string, en
 	return 0
 }
 
-// readYAMLNodePrefixComments reads comments on tags, anchors, flow openers and
-// block scalar headers. Stop at value content, which can contain comment-like text.
+// readYAMLNodePrefixComments stops at value content, which can contain comment-like text.
 // YAML may overwrite these prefix comments with the final value comment.
 func readYAMLNodePrefixComments(node *codec.Node, lines []string, endLine int, read func(int, string, bool)) {
 	line := node.Line

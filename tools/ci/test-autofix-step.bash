@@ -47,7 +47,6 @@ expect_change true rm new-file
 expect_change false bash -c 'echo cache > ignored'
 expect_change false chmod +x tracked
 
-# Preserve both staged and unstaged changes in the caller's index.
 git add tracked
 echo unstaged >tracked
 index_before=$(git hash-object .git/index)
@@ -56,7 +55,6 @@ expect_change true bash -c 'echo updated > tracked'
 index_after=$(git hash-object .git/index)
 [[ "${index_after}" == "${index_before}" ]]
 
-# A failed tool must fail the step without publishing a success output.
 : >"${GITHUB_OUTPUT}"
 status=0
 bash "${script}" bash -c 'echo partial > tracked; exit 7' || status=$?
@@ -65,7 +63,6 @@ bash "${script}" bash -c 'echo partial > tracked; exit 7' || status=$?
 leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 [[ -z "${leftover}" ]]
 
-# Exercise selection against real Git trees, including added and removed inputs.
 expect_inputs() {
 	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false}
 	local output
@@ -129,13 +126,11 @@ check_input plugins/examples/insecure-download/main.go false false false
 tree=$(git write-tree)
 expect_inputs "${tree}" "${tree}" false false
 
-# An unavailable comparison must fail the job.
 status=0
 bash "${inputs_script}" missing-ref HEAD 2>"${temporary}/error" || status=$?
 [[ "${status}" != 0 ]]
 : >"${GITHUB_OUTPUT}"
 
-# A snapshot failure must stop before running the tool.
 git symbolic-ref HEAD refs/heads/unborn
 status=0
 bash "${script}" touch should-not-exist 2>"${temporary}/error" || status=$?

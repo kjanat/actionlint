@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// setYAMLList replaces or appends the top-level member key. A flow-style root
-// mapping is encoded again; otherwise only the member's lines change.
+// setYAMLList re-encodes a flow-style root mapping and otherwise changes only the member's lines.
 func setYAMLList(original []byte, key string, values []any) ([]byte, error) {
 	var document yaml.Node
 	if err := yaml.Unmarshal(original, &document); err != nil {
@@ -90,7 +89,6 @@ func setYAMLMember(original []byte, root *yaml.Node, member string, sequence *ya
 	return splice(original, start, end, data), nil
 }
 
-// isYAMLDocumentEnd reports whether line is a "..." document end marker.
 func isYAMLDocumentEnd(line []byte) bool {
 	line = bytes.TrimSuffix(line, []byte("\n"))
 	line = bytes.TrimSuffix(line, []byte("\r"))
@@ -108,7 +106,7 @@ func isYAMLDocumentEnd(line []byte) bool {
 	return len(rest) == 0 || rest[0] == '#'
 }
 
-// lineOffset returns the byte offset of the 1-based line among lines.
+// lineOffset takes a 1-based line.
 func lineOffset(lines [][]byte, line int) int {
 	offset := 0
 	for i := 0; i < line-1 && i < len(lines); i++ {
@@ -117,9 +115,6 @@ func lineOffset(lines [][]byte, line int) int {
 	return offset
 }
 
-// rewriteYAML encodes value and moves each comment of original to the setting
-// that origins locates at the comment's key, or at its value when the setting
-// has no key position.
 func rewriteYAML(original []byte, value any, origins map[string]Location) ([]byte, error) {
 	var source yaml.Node
 	if err := yaml.Unmarshal(original, &source); err != nil {

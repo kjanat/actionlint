@@ -15,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// providerPackage publishes a provider manifest and one executable per
-// platform as an index, the shape of a multi-platform binary provider.
 type providerPackage struct {
 	index, manifest, executable ocitest.Descriptor
 	reference                   string
@@ -38,7 +36,6 @@ func publishProvider(t *testing.T, registry *ocitest.Registry) providerPackage {
 	return providerPackage{index: index, manifest: manifest, executable: host, reference: registry.Reference(index)}
 }
 
-// options pulls oci:// sources into cache, or keeps nothing when cache is "".
 func options(t *testing.T, source, cache string) artifacts.Options {
 	t.Helper()
 	grant, err := artifacts.ExplicitSource(source)
@@ -73,8 +70,6 @@ func TestPullSelectsHostPlatform(t *testing.T) {
 			t.Fatalf("store lacks %s: %v", digest, err)
 		}
 	}
-	// Resolving reads the provider manifest only; the executable waits
-	// until the provider runs.
 	if got := registry.Fetches(pkg.executable); got != 0 {
 		t.Fatalf("Resolve fetched the executable %d times", got)
 	}
@@ -161,7 +156,6 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// An interrupted download that left the first half of the blob.
 	if err := os.WriteFile(path, original[:len(original)/2], 0o600); err != nil {
 		t.Fatal(err)
 	}

@@ -25,7 +25,6 @@ type OutputConfig struct {
 	Quiet *bool `yaml:"quiet,omitempty" jsonschema:"nullable"`
 }
 
-// DecodeConfig validates reporting defaults and preserves omitted values.
 func (c *OutputConfig) DecodeConfig(value any) error {
 	type plain OutputConfig
 	var next plain

@@ -30,7 +30,6 @@ import (
 // IgnorePatterns contains regular expressions that match diagnostic messages.
 type IgnorePatterns []*regexp.Regexp
 
-// Match reports whether a pattern matches the diagnostic message.
 func (pats IgnorePatterns) Match(message string) bool {
 	for _, r := range pats {
 		if r.MatchString(message) {
@@ -40,7 +39,6 @@ func (pats IgnorePatterns) Match(message string) bool {
 	return false
 }
 
-// DecodeConfig validates the shared configuration value.
 func (pats *IgnorePatterns) DecodeConfig(value any) error {
 	if value == nil {
 		*pats = nil
@@ -85,7 +83,6 @@ type PathConfig struct {
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
 
-// DecodeConfig preserves ignored legacy path keys while binding known settings.
 func (p *PathConfig) DecodeConfig(value any) error {
 	type plain PathConfig
 	var next plain
@@ -125,7 +122,7 @@ type PolicyConfig struct {
 	// disabled by default. Local references and references built with expressions are skipped.
 	RequireCommitHash *bool `yaml:"require-commit-hash" jsonschema:"nullable"`
 	// RequireActionMetadata requires usable fetched metadata for remote action
-	// references. Disabled by default; this does not enable network access.
+	// references. Disabled by default. RequireActionMetadata does not enable network access.
 	RequireActionMetadata *bool `yaml:"require-action-metadata" jsonschema:"nullable"`
 	// RequireJobTimeout requires jobs to declare `timeout-minutes` when set to `true`.
 	//
@@ -140,13 +137,12 @@ type PolicyConfig struct {
 	//
 	// `true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`.
 	// `{scope: job}` requires a declaration on every job, including reusable workflow calls.
-	// `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.
+	// `{}` enables workflow scope. This checks presence only and infers no job scopes.
 	//
 	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.
 	RequirePermissions *PermissionsPolicy `yaml:"require-permissions" jsonschema:"nullable"`
 }
 
-// DecodeConfig validates the shared configuration value.
 func (p *policyWire) DecodeConfig(value any) error {
 	type plain policyWire
 	var next plain
@@ -207,7 +203,6 @@ func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
 	return p.maxMinutes, true
 }
 
-// DecodeConfig validates the shared configuration value.
 func (p *JobTimeoutPolicy) DecodeConfig(value any) error {
 	var next JobTimeoutPolicy
 	switch selected := value.(type) {
@@ -281,7 +276,6 @@ func (p *PermissionsPolicy) Scope() string {
 	return p.scope
 }
 
-// DecodeConfig validates the shared configuration value.
 func (p *PermissionsPolicy) DecodeConfig(value any) error {
 	next := PermissionsPolicy{scope: "workflow"}
 	switch selected := value.(type) {
@@ -342,13 +336,13 @@ type Config struct {
 	// by the rule name of each tool provider, such as ruff or shellcheck.
 	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// LocalActions maps generated action directories to checked-in source directories.
-	// Both paths are relative to the repository root, using ./ or $/ prefixes.
+	// Both paths are relative to the repository root and use ./ or $/ prefixes.
 	// Known checkout placements are removed before matching. Sources resolve once
 	// to actual directories; mappings do not chain.
 	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	// Paths applies configuration to workflow files matching a glob pattern.
 	//
-	// Keys are paths relative to the repository root, using `/` separators and doublestar glob syntax,
+	// Keys are paths relative to the repository root. The keys use `/` separators and doublestar glob syntax,
 	// for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.
 	Paths map[string]PathConfig `yaml:"-"`
 	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
@@ -358,7 +352,6 @@ type Config struct {
 	Policy PolicyConfig `yaml:"-"`
 }
 
-// PathConfigs returns settings matching a path relative to the project root.
 func (cfg *Config) PathConfigs(path string) []PathConfig {
 	path = filepath.ToSlash(path)
 
@@ -380,14 +373,10 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 	return ret
 }
 
-// RequiresCommitHash returns whether the "require-commit-hash" policy is enabled. It returns false
-// when the receiver is nil or when the key is not set.
 func (cfg *Config) RequiresCommitHash() bool {
 	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
 }
 
-// RequiresJobTimeout returns the "require-job-timeout" policy. It returns nil when the receiver is
-// nil or when the key is not set.
 func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
 	if cfg == nil || cfg.Policy.RequireJobTimeout == nil {
 		return nil
@@ -395,7 +384,6 @@ func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
 	return new(*cfg.Policy.RequireJobTimeout)
 }
 
-// RequiresPermissions returns the "require-permissions" policy, or nil for an unset key or nil receiver.
 func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
 	if cfg == nil || cfg.Policy.RequirePermissions == nil {
 		return nil
@@ -416,7 +404,6 @@ func (ruleSet RuleSet) ParseConfig(b []byte, additional ...string) (*Config, err
 	return resolved.Config, nil
 }
 
-// ResolvedConfig keeps validated values and their provenance from the same document.
 type ResolvedConfig struct {
 	Provenance Provenance
 	Value      any
@@ -494,13 +481,10 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]document.Locatio
 	return ResolvedConfig{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
-// LoadConfig reads settings from a configuration file. Read also retains source provenance.
 func (ruleSet RuleSet) LoadConfig(path string, additional ...string) (*Config, error) {
 	return ruleSet.LoadConfigContext(context.Background(), path, additional...)
 }
 
-// LoadConfigContext reads settings with cancellable local or HTTPS inheritance.
-// ReadContext also retains source provenance for analysis and path interpolation.
 func (ruleSet RuleSet) LoadConfigContext(ctx context.Context, path string, additional ...string) (*Config, error) {
 	source, err := ruleSet.ReadContext(ctx, path, nil, nil, additional...)
 	if err != nil {
@@ -566,8 +550,6 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	return &LoadedFile{resolved, path}, nil
 }
 
-// sourceDigests hashes each source's content as it was loaded, keyed by
-// normalized address. Reports identify the configuration by these digests.
 func sourceDigests(contents map[string][]byte) map[string]string {
 	digests := make(map[string]string, len(contents))
 	for name, content := range contents {
@@ -593,8 +575,6 @@ func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte
 	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, nil, additional...)
 }
 
-// LoadRepositoryContext discovers configuration with cancellable inheritance.
-// Sources held by files are used without reading them again; files may be nil.
 func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), files *document.Files, additional ...string) (*LoadedFile, string, error) {
 	for _, f := range RepositoryConfigNames {
 		p := filepath.Join(root, ".github", f)

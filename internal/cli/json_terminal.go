@@ -43,7 +43,6 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode output.Color, data
 	if terminal {
 		if jq, err := execabs.LookPath("jq"); err == nil {
 			colored := mode == output.ColorAlways || (mode == output.ColorAuto && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
-			// Formatting is optional; external startup must not block output.
 			formatterCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 			formatted, err := formatJSONWithJQ(formatterCtx, jq, data, colored)
 			cancel()

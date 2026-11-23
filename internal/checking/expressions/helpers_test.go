@@ -56,8 +56,6 @@ func testStep(tb testing.TB, job workflows.BoundJob, index int) workflows.BoundS
 	return steps[index]
 }
 
-// Pure checker fixtures freeze synthetic typed models; they do not admit bytes
-// to a SourceSnapshots registry or claim captured parse provenance.
 func ownedWorkflowFixture(workflow *definition.Workflow) workflows.BoundWorkflow {
 	return workflows.Bind("unit-expression", "", workflow, false, "").Workflow()
 }

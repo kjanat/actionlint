@@ -8,16 +8,11 @@ import (
 )
 
 var (
-	// ErrInvalidSnapshot indicates an invalid snapshot handle.
 	ErrInvalidSnapshot = errors.New("invalid source capture snapshot")
 	ErrClosed          = errors.New("source capture store is closed")
 	ErrNotSealed       = errors.New("source capture store is not sealed")
 )
 
-// ConflictError quarantines a document whose admitted source evidence disagrees.
-// It is an immutable value: every holder receives its own copy of the sticky
-// conflict, and equal conflicts match under errors.Is. Match it with
-// errors.AsType[ConflictError]. The zero value records no conflict.
 type ConflictError struct {
 	document string
 	reason   string
@@ -30,7 +25,6 @@ func (e ConflictError) Error() string {
 func (e ConflictError) Document() string { return e.document }
 func (ConflictError) Code() string       { return "source-revision-conflict" }
 
-// CaptureError preserves a backing failure together with its canonical identity.
 type CaptureError struct {
 	document string
 	cause    error
@@ -49,15 +43,12 @@ func (e *CaptureError) Code() string {
 }
 func (e *CaptureError) Unwrap() error { return e.cause }
 
-// ReadError adds the caller's context to a read failure. For *CaptureError,
-// it displays the underlying cause, which includes the filename.
-// Unwrap exposes the original error for errors.As and Code.
 type ReadError struct {
 	context string
 	err     error
 }
 
-// NewReadError presents err, which must be non-nil, under context.
+// NewReadError requires a non-nil err.
 func NewReadError(context string, err error) *ReadError {
 	return &ReadError{context: context, err: err}
 }
@@ -72,15 +63,11 @@ func (e *ReadError) Error() string {
 
 func (e *ReadError) Unwrap() error { return e.err }
 
-// ClosedError rejects work started after Close begins.
 type ClosedError struct{}
 
 func (*ClosedError) Error() string { return ErrClosed.Error() }
 func (*ClosedError) Unwrap() error { return ErrClosed }
 
-// InitError owns metadata work left behind by a failed New. No partially built
-// Store or source data is exposed. Cancellation cannot interrupt an OS metadata
-// call: pending work can finish later, but remains unjoined until Join succeeds.
 type InitError struct {
 	cause   error
 	pending <-chan struct{}
@@ -101,11 +88,8 @@ func (e *InitError) Code() string {
 
 func (*InitError) Stage() string { return "capture" }
 
-// Pending reports metadata work that the constructor could not join.
 func (e *InitError) Pending() bool { return e.pending != nil && !e.joined.Load() }
 
-// Join waits only for the private metadata flight. It never publishes sources.
-// A timed-out join leaves ownership here so the caller can retry after release.
 func (e *InitError) Join(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("source capture initialization join requires a caller context")
@@ -126,9 +110,6 @@ func (e *InitError) Join(ctx context.Context) error {
 	return nil
 }
 
-// JoinError means work remains unjoined. Sources cannot be published until a
-// subsequent Close succeeds. Failed construction instead requires InitError.Join.
-// Its cause is the join caller's cancellation.
 type JoinError struct{ cause error }
 
 func (e *JoinError) Error() string { return fmt.Sprintf("source capture join failed: %v", e.cause) }

@@ -1,7 +1,6 @@
 import type { CancellationToken, Disposable, ProtocolConnection } from 'vscode-languageserver-protocol';
 import { RequestType } from 'vscode-languageserver-protocol';
 
-/** Files come from the editor host, including VS Code's workspace.fs API. */
 export const ReadFileRequest = new RequestType<{ uri: string }, string | null, void>('actionlint/readFile');
 
 export type FilesystemRequest = {
@@ -12,7 +11,7 @@ export type FileMetadata = {
 	name: string;
 	kind: 'file' | 'directory' | 'symlink' | 'other';
 	size: number;
-	/** Last modification time in milliseconds since the Unix epoch. */
+	/** Milliseconds since the Unix epoch. */
 	modified: number;
 };
 /** Return null for a missing entry. A realpath result contains a workspace URI. */
@@ -26,13 +25,12 @@ export type GitQueryResult = {
 	stdout: string;
 	stderr: string;
 	exitCode: number;
-	/** URI for path-valued output. Required for a successful rev-parse --show-toplevel. */
+	/** A successful rev-parse --show-toplevel requires this field. */
 	path?: string;
 };
 export const FilesystemRequest = new RequestType<FilesystemRequest, FilesystemResponse, void>('actionlint/filesystem');
 export const GitQueryRequest = new RequestType<GitQueryParams, GitQueryResult | null, void>('actionlint/gitQuery');
 
-/** Tools execute in the client host; their output follows their existing provider manifest. */
 export const RunToolRequest = new RequestType<
 	{
 		name: string;
@@ -47,13 +45,13 @@ export interface BrowserHost {
 	filesystem?(request: FilesystemRequest, cancellation: CancellationToken): Promise<FilesystemResponse>;
 	/** Return null for a work-tree lookup when Git confirms there is no enclosing repository. */
 	gitQuery?(request: GitQueryParams, cancellation: CancellationToken): Promise<GitQueryResult | null>;
-	/** Read UTF-8 workspace text. Return null for a missing file. Do not fetch arbitrary URLs. */
+	/** Return null for a missing file. Do not fetch arbitrary URLs. */
 	readFile(uri: string, cancellation: CancellationToken): Promise<string | null>;
-	/** Run a tool explicitly named in initializationOptions.tools. Return its standard output. */
+	/** Run only tools explicitly named in initializationOptions.tools. */
 	runTool?(name: string, args: string[], stdin: string, cancellation: CancellationToken): Promise<string>;
 }
 
-/** Attach host operations to a protocol connection before opening documents. */
+/** Call before opening documents. */
 export function provideBrowserHost(connection: Pick<ProtocolConnection, 'onRequest'>, host: BrowserHost): Disposable {
 	const filesystem = connection.onRequest(FilesystemRequest, (params, cancellation) => {
 		if (!host.filesystem) throw new Error('This host does not provide filesystem discovery operations');

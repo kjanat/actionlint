@@ -22,7 +22,6 @@ const (
 	MetadataMappingFailed
 )
 
-// MetadataResult describes an attempt to acquire an action manifest.
 type MetadataResult struct {
 	status    MetadataStatus
 	metadata  *actionmeta.Metadata

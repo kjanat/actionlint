@@ -29,27 +29,17 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
-// PluginPublisher is the identity a registry fixture publishes plugin versions
-// under. It is a plain value; the registry copies what it keeps.
 type PluginPublisher struct {
-	// PluginID is the plugin_id written into metadata and catalogue entries.
-	PluginID string
-	// BaseURL is the registry root serving index.json, statuses.json and records.
-	BaseURL string
-	// Name is the repository, such as github.com/publisher/plugin.
-	Name string
-	// Aliases are the catalogue aliases listed for Name.
-	Aliases []string
-	// RepositoryID is the GitHub repository ID that keys the record paths.
+	PluginID     string
+	BaseURL      string
+	Name         string
+	Aliases      []string
 	RepositoryID int
-	// Metadata supplies discovery metadata for fixtures that check it against a runtime export.
-	Metadata json.RawMessage
+	Metadata     json.RawMessage
 }
 
-// PluginRegistry serves the existing registry export format through a transport,
-// so CLI tests exercise HTTPS URLs without opening a server or reaching upstream.
-// Every method takes the lock that RoundTrip takes, so tests can change files
-// and the offline flag while the code under test is making requests.
+// PluginRegistry methods and RoundTrip share one lock, and tests can change
+// files and the offline flag while the code under test makes requests.
 type PluginRegistry struct {
 	mu           sync.Mutex
 	files        map[string][]byte
@@ -69,8 +59,6 @@ const (
 	emptyStatuses      = `{"schema_version":1,"releases":[]}`
 )
 
-// NewPluginRegistry serves a registry for FixturePluginName at
-// FixtureRegistryURL through Connections until the test ends.
 func NewPluginRegistry(t *testing.T) *PluginRegistry {
 	t.Helper()
 	r := &PluginRegistry{
@@ -89,10 +77,6 @@ func (r *PluginRegistry) Connections() acquisitionhttp.Connections { return r.co
 
 func (r *PluginRegistry) UserCacheDir() string { return r.userCacheDir }
 
-// transport exercises the standard HTTP client's DNS, pinning, TLS and Host
-// handling. Only in-memory connections are opened. A fixed-seed Ed25519 CA
-// avoids slow RSA generation; dynamically signed leaves preserve real hostname
-// verification for every fixture publisher and registry authority.
 func (r *PluginRegistry) transport(t *testing.T) *http.Transport {
 	t.Helper()
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{37}, ed25519.SeedSize))
@@ -120,8 +104,7 @@ func (r *PluginRegistry) transport(t *testing.T) *http.Transport {
 		if hello.ServerName != "" {
 			leaf.DNSNames = []string{hello.ServerName}
 		} else {
-			// TLS sends no SNI for literal IP authorities. The fixture's
-			// explicit-private tests select loopback endpoints only.
+			// TLS sends no SNI for literal IP authorities.
 			leaf.IPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
 		}
 		certificate, err := x509.CreateCertificate(rand.Reader, leaf, ca, key.Public(), key)
@@ -163,9 +146,8 @@ func (r *PluginRegistry) transport(t *testing.T) *http.Transport {
 	}
 }
 
-// fixtureDNS supplies one public numeric answer through the resolver's normal
-// DNS protocol. The production transport must validate and pin that answer
-// before the fixture dialer handles the connection; no external DNS is used.
+// The production transport must validate and pin the fixtureDNS answer before
+// the fixture dialer handles the connection.
 func fixtureDNS(ctx context.Context, _, _ string) (net.Conn, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -201,8 +183,6 @@ func fixtureDNS(ctx context.Context, _, _ string) (net.Conn, error) {
 	return client, nil
 }
 
-// RoundTrip records the request URL and serves the stored file, or 404 when no
-// file is stored for the URL. It fails every request while the registry is offline.
 func (r *PluginRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -226,42 +206,36 @@ func (r *PluginRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
 			r.pending[req.URL.String()] = pending[1:]
 		}
 	}
-	// Copy the response body before releasing the lock. The caller reads it later.
+	// Copy the response body before releasing the lock.
 	body := io.NopCloser(bytes.NewReader(bytes.Clone(data)))
 	return &http.Response{StatusCode: status, Header: http.Header{}, Body: body, Request: req}, nil
 }
 
-// SetOffline makes RoundTrip fail every request while offline is true.
-// Requests are still recorded.
+// SetOffline keeps recording requests while RoundTrip fails them.
 func (r *PluginRegistry) SetOffline(offline bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.offline = offline
 }
 
-// Requests returns a copy of the URLs requested since the registry was created
-// or since the last ResetRequests call.
 func (r *PluginRegistry) Requests() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return slices.Clone(r.requests)
 }
 
-// ResetRequests forgets the recorded request URLs.
 func (r *PluginRegistry) ResetRequests() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.requests = nil
 }
 
-// File returns a copy of the file served at url, or nil when none is stored.
 func (r *PluginRegistry) File(url string) []byte {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return bytes.Clone(r.files[url])
 }
 
-// Files returns a copy of every served file, keyed by URL.
 func (r *PluginRegistry) Files() map[string][]byte {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -272,7 +246,6 @@ func (r *PluginRegistry) Files() map[string][]byte {
 	return files
 }
 
-// SetFile serves a copy of data at url, replacing any stored file.
 func (r *PluginRegistry) SetFile(url string, data []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -280,8 +253,7 @@ func (r *PluginRegistry) SetFile(url string, data []byte) {
 	delete(r.pending, url)
 }
 
-// SetFileSequence serves first on the next request, then each next value on
-// later requests. The last value remains served after the sequence is exhausted.
+// SetFileSequence keeps serving the last value after the sequence is exhausted.
 func (r *PluginRegistry) SetFileSequence(url string, first []byte, next ...[]byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -297,7 +269,6 @@ func (r *PluginRegistry) SetFileSequence(url string, first []byte, next ...[]byt
 	r.pending[url] = sequence
 }
 
-// DeleteFile stops serving url, so requests for it get 404.
 func (r *PluginRegistry) DeleteFile(url string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -305,40 +276,30 @@ func (r *PluginRegistry) DeleteFile(url string) {
 	delete(r.pending, url)
 }
 
-// SetAliases replaces the catalogue aliases that later Add, AddArtifact and
-// Publish calls list for the fixture plugin.
 func (r *PluginRegistry) SetAliases(aliases ...string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.publisher.Aliases = slices.Clone(aliases)
 }
 
-// SetRepository changes the repository name and ID that later Add, AddArtifact
-// and Publish calls publish the fixture plugin under. Versions added earlier
-// stay in the version list the next Add or AddArtifact publishes.
+// SetRepository keeps earlier versions in the next published version list.
 func (r *PluginRegistry) SetRepository(name string, repositoryID int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.publisher.Name, r.publisher.RepositoryID = name, repositoryID
 }
 
-// RecordURL returns the URL of the fixture plugin's version record for tag.
 func (r *PluginRegistry) RecordURL(tag string) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return recordURL(r.publisher, tag)
 }
 
-// Add publishes tag with wasm as its plugin.wasm asset and returns the served
-// artifact bytes.
 func (r *PluginRegistry) Add(t *testing.T, tag string, wasm []byte) []byte {
 	t.Helper()
 	return r.AddArtifact(t, tag, "plugin.wasm", wasm)
 }
 
-// AddArtifact publishes one version's selected asset and lists it in the
-// catalogue together with every version added before. It returns a copy of the
-// served artifact bytes.
 func (r *PluginRegistry) AddArtifact(t *testing.T, tag, asset string, wasm []byte) []byte {
 	t.Helper()
 	r.mu.Lock()
@@ -349,10 +310,7 @@ func (r *PluginRegistry) AddArtifact(t *testing.T, tag, asset string, wasm []byt
 	return bytes.Clone(data)
 }
 
-// AddPlugin publishes tag of another plugin through the same transport. The
-// catalogue at publisher.BaseURL then lists only that plugin and tag, and an
-// empty statuses.json is served there unless one already exists. It returns a
-// copy of the served artifact bytes.
+// AddPlugin makes the catalogue at publisher.BaseURL list only that plugin and tag.
 func (r *PluginRegistry) AddPlugin(t *testing.T, publisher PluginPublisher, tag string, wasm []byte) []byte {
 	t.Helper()
 	r.mu.Lock()
@@ -365,7 +323,6 @@ func (r *PluginRegistry) AddPlugin(t *testing.T, publisher PluginPublisher, tag 
 	return bytes.Clone(data)
 }
 
-// Publish changes catalogue visibility without removing immutable records.
 func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 	t.Helper()
 	r.mu.Lock()
@@ -382,8 +339,6 @@ func recordURL(publisher PluginPublisher, tag string) string {
 	return publisher.BaseURL + "plugins/" + publisherKey(publisher) + "/versions/" + version + ".json"
 }
 
-// writeArtifact stores the artifact for tag and its version record in files and
-// returns the stored artifact bytes.
 func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublisher, tag, asset string, wasm []byte) []byte {
 	t.Helper()
 	format, _, err := artifacts.Sniff(wasm)
@@ -420,8 +375,7 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 	section = append(section, []byte("actionlint.plugin")...)
 	section = append(section, metadata...)
 	data := bytes.Clone(wasm[:8])
-	// Sniff validated the section lengths. Copy complete outer sections so
-	// replacing discovery metadata does not alter embedded modules or components.
+	// Replacing discovery metadata must leave embedded modules and components intact.
 	for rest := wasm[8:]; len(rest) > 0; {
 		original := rest
 		id := rest[0]
@@ -449,8 +403,6 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 	return data
 }
 
-// writeCatalogue stores the catalogue at publisher.BaseURL listing only the
-// publisher's plugin, and the plugin manifest listing versions.
 func writeCatalogue(t *testing.T, files map[string][]byte, publisher PluginPublisher, versions ...string) {
 	t.Helper()
 	manifestPath := "plugins/" + publisherKey(publisher) + "/index.json"
@@ -471,18 +423,12 @@ func writeCatalogue(t *testing.T, files map[string][]byte, publisher PluginPubli
 	files[publisher.BaseURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"%d","owner_id":"5","provider":"github","repository":%q,"plugin_id":%q},"versions":%s}`, publisher.RepositoryID, strings.TrimPrefix(publisher.Name, "github.com/"), publisher.PluginID, data)
 }
 
-// NewDefaultPluginRegistry serves an official plugin identity for each of
-// aliases, in order, without network or guest execution. The minimal component
-// envelopes support installation tests without running a linter.
 func NewDefaultPluginRegistry(t *testing.T, aliases ...string) *PluginRegistry {
 	t.Helper()
 	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0}, aliases...)
 }
 
-// NewDefaultPluginRegistryWithArtifact serves an official plugin identity for
-// each of aliases, in order, with the supplied component, allowing config
-// inspection to load its rule descriptors. The identity at index i has
-// repository ID 10+i.
+// NewDefaultPluginRegistryWithArtifact gives the identity at index i repository ID 10+i.
 func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte, aliases ...string) *PluginRegistry {
 	t.Helper()
 	r := NewPluginRegistry(t)

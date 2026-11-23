@@ -217,8 +217,6 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	}
 }
 
-// readEnvelope retains the response result; message is intentionally only the
-// request decoder used by the server.
 func readEnvelope(r *bufio.Reader) (map[string]any, error) {
 	m, err := readRawEnvelope(r)
 	if err != nil {
@@ -327,7 +325,6 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 	if params["version"] != float64(2) || len(params["diagnostics"].([]any)) != 0 {
 		t.Fatal(params)
 	}
-	// An invalid ranged update is rejected without changing version 2 or killing the server.
 	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]any{"range": editorRange{editorPosition{0, 99}, editorPosition{0, 100}}, "text": "x"}}})
 	if receive()["method"] != "window/logMessage" {
 		t.Fatal("invalid notification was not reported")
@@ -443,7 +440,6 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 	if len(published[dependencyURI]["diagnostics"].([]any)) != 0 || published[uri]["version"] != float64(2) {
 		t.Fatalf("removed dependency was not cleared: %+v", published)
 	}
-	// Re-add the dependency, then close its only caller. Both publications clear.
 	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]string{"text": "uses dependency"}}})
 	publications()
 	send("textDocument/didClose", nil, map[string]any{"textDocument": Document{URI: uri}})

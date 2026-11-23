@@ -14,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Check reports declaration problems using resolved matrix facts.
 func Check(resolution matrix.Resolution, mixedTypes bool) []results.Diagnostic {
 	axes := resolution.Axes()
 	var findings []results.Diagnostic

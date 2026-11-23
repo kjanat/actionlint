@@ -9,7 +9,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// syntax is the grammar of a configuration file, selected by its extension.
 type syntax uint8
 
 const (
@@ -17,11 +16,9 @@ const (
 	yamlSyntax syntax = iota
 	// jsonSyntax is selected for .json and .jsonc; both accept comments and trailing commas.
 	jsonSyntax
-	// tomlSyntax is selected for .toml.
 	tomlSyntax
 )
 
-// syntaxOf selects the grammar of path from its extension, ignoring a URL query and letter case.
 func syntaxOf(path string) syntax {
 	switch strings.ToLower(filepath.Ext(strings.SplitN(path, "?", 2)[0])) {
 	case ".toml":
@@ -33,8 +30,6 @@ func syntaxOf(path string) syntax {
 	}
 }
 
-// ParseConfigDocument reads one configuration document in the syntax selected by path.
-// Every value is located in path.
 func ParseConfigDocument(path string, data []byte) (*Node, error) {
 	var parsed *parsedSource
 	var err error
@@ -52,7 +47,6 @@ func ParseConfigDocument(path string, data []byte) (*Node, error) {
 	return parsed.node(), nil
 }
 
-// Marshal encodes value in the syntax selected by path without comments.
 func Marshal(path string, value any) ([]byte, error) {
 	switch syntaxOf(path) {
 	case jsonSyntax:

@@ -16,7 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// PermissionsRule is the single definition of the permissions rule.
 var PermissionsRule = &define.Rule{
 	Name:        "permissions",
 	Description: "Validate token permission scopes and access levels",
@@ -24,7 +23,7 @@ var PermissionsRule = &define.Rule{
 	Subcategory: "permissions",
 	Recommended: true,
 	Help:        "Use supported permission scopes and read, write or none access levels.",
-	Examples: []rule.Example{rule.WorkflowExample("Choose an allowed access level for the permission scope.",
+	Examples: []rule.Example{rule.WorkflowExample("Use an allowed access level.",
 		"    permissions:\n      contents: execute\n", "    permissions:\n      contents: read\n")},
 	Checks: define.Fixed(define.Checks{Workflow: checkWorkflowPermissions, Job: checkJobPermissions}),
 }
@@ -63,7 +62,6 @@ type (
 	}
 )
 
-// permissionDiagnostics validates explicit permission declarations against the known scopes and levels.
 func permissionDiagnostics(input permissionDeclaration) []results.Diagnostic {
 	scopes := permissions.Scopes()
 	var findings []results.Diagnostic

@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
-// Both the author example and host-boundary fixture use the real optional import.
-// The fixture additionally queries an unauthorized revision.
 func TestGuestReadsOnlyCurrentScriptAnnotations(t *testing.T) {
 	t.Parallel()
 	for _, fixture := range []string{"source-annotations", "source-annotations-example"} {

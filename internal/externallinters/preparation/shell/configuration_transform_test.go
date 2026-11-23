@@ -80,9 +80,7 @@ func TestRenderDirectivesOfNoneIsEmpty(t *testing.T) {
 	}
 }
 
-// ShellCheck reads quotes in a directive value literally, so a path is
-// wrapped in a quote type it does not contain, and left bare only when it
-// holds both types and no whitespace that would start another directive key.
+// ShellCheck reads quotes in a directive value literally.
 func TestDirectivePathQuotesWithAQuoteThePathDoesNotContain(t *testing.T) {
 	t.Parallel()
 	for path, want := range map[string]string{

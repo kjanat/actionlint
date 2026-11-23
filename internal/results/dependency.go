@@ -19,5 +19,4 @@ func DependencyAddress(address string) (source, pin string, ok bool) {
 	return parts[0] + "/" + parts[1] + "/" + parts[4], parts[3], true
 }
 
-// IdenticalDependencyLocation marks another pin with the same source and finding.
 const IdenticalDependencyLocation = "Identical dependency finding at another pin."

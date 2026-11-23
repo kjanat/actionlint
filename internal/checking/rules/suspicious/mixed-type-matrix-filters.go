@@ -4,7 +4,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 )
 
-// MixedTypeMatrixFiltersRule is the single definition of the mixed-type-matrix-filters rule.
 var MixedTypeMatrixFiltersRule = &define.Rule{
 	Name:        "mixed-type-matrix-filters",
 	Description: "Flag matrix filters that compare different or unknown scalar types",

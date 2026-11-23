@@ -21,7 +21,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	t.Parallel()
 	graph, calls, scripts := invocationContextPagedGraph(t, 257)
 	var logs []string
-	// 257 pages take about 1s natively; race and coverage builds run 10x slower
+	// 257 pages take about 1s natively. Race and coverage builds run 10x slower
 	// than the default limit allows. The limit is not under test here.
 	guest, err := LoadComponentPlugin(t.Context(), "testdata/plugins/misbehave.wasm", Options{Timeout: time.Minute, Log: func(line string) { logs = append(logs, line) }})
 	if err != nil {

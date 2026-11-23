@@ -40,8 +40,6 @@ func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflows.Bou
 	return slices.Collect(action.Steps())
 }
 
-// sourceFixtureBase explicitly retains the working directory used by these
-// legacy relative-path fixtures; production receives its session base instead.
 func sourceFixtureBase(tb testing.TB) string {
 	tb.Helper()
 	base, err := os.Getwd()

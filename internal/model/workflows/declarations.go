@@ -10,16 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// declarationSet collects the mappings and dependencies one document declares.
-// It holds only the new slices it builds; each method reads the BoundDocument it is
-// given.
 type declarationSet struct {
 	mappings     []facts.Mapping
 	dependencies []facts.Dependency
 }
 
-// Declarations returns the mappings and dependencies the document declares. A
-// nil BoundDocument declares none.
+// Declarations accepts a nil BoundDocument, which declares none.
 func (b *BoundDocument) Declarations() ([]facts.Mapping, []facts.Dependency) {
 	if b == nil || b.workflow == nil {
 		return nil, nil

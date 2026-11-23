@@ -84,7 +84,6 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 	}
 }
 
-// Live verification is opt-in; ordinary tests use the checked-in reference results.
 func TestScalarSourceReferenceLive(t *testing.T) {
 	t.Parallel()
 	image := os.Getenv("ACTIONLINT_REFERENCE_IMAGE")
@@ -142,7 +141,6 @@ func TestScalarSourceReferenceLive(t *testing.T) {
 				return result
 			}
 			recorded := normalize(fixture.Response)
-			// Exclude the recorded transport's envelope fields from the Runny comparison.
 			delete(recorded, "id")
 			delete(recorded, "protocolVersion")
 			if diff := cmp.Diff(recorded, normalize(output)); diff != "" {

@@ -13,8 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// executableRule is what the probe needs from the executable-bit rule: the
-// invocation hooks, checkout placement and the current script paths.
 type executableRule interface {
 	workflowvisit.InvocationParticipant
 	workflowvisit.CheckoutParticipant

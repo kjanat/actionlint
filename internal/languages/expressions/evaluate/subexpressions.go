@@ -10,17 +10,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// SubexpressionResults records constant results for one syntax tree. Conditional
-// branches can have local failures without making their parent fail. Branches
-// proved unused are absent; unknown context values are not substituted.
 type SubexpressionResults struct {
 	root   syntax.Node
 	byNode map[syntax.Node]exprvalues.EvaluationResult
 }
 
-// EvaluateSubexpressions records the root's demanded evaluation first. It then
-// inspects branches whose execution depends on unknown values, following the
-// shared function argument-demand contract. It does not evaluate skipped branches.
 func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
 	results := make(map[syntax.Node]exprvalues.EvaluationResult)
 	expressionResult(root, nil, nil, results)
@@ -70,12 +64,10 @@ func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]exprvalue
 	return functions.DemandForArgument(function.Signatures[0].EvaluationPolicy, index, len(args), args) == functions.DemandSkipped
 }
 
-// Result returns a detached value and whether this node has a recorded result. A missing
-// result means the branch was skipped or the node belongs to another tree.
+// Result reports false for a skipped branch or a node from another tree.
 func (results SubexpressionResults) Result(node syntax.Node) (exprvalues.EvaluationResult, bool) {
 	result, found := results.byNode[node]
 	return result.Clone(), found
 }
 
-// Expression returns the syntax tree used to compute these results.
 func (results SubexpressionResults) Expression() syntax.Node { return results.root }

@@ -8,7 +8,6 @@ import (
 )
 
 // GitHub rejected the empty steps list in https://github.com/kjanat/beepboop/actions/runs/43332264931.
-// Runny accepts that list; this test covers GitHub's additional server validation.
 func TestEmptyJobDefaultSeverity(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

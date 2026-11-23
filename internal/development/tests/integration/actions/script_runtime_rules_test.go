@@ -72,8 +72,6 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 func TestScriptRuntimePublicGPGAction(t *testing.T) {
 	t.Parallel()
 	// These exact public files were fetched without executing their commands.
-	// The first revision contains the failures described in PR343 comment
-	// 6713776814. The second is the fixed revision cited in that comment.
 	for _, tc := range []struct {
 		file string
 		want int

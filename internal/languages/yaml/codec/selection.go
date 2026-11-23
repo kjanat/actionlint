@@ -7,13 +7,11 @@ import (
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
-// Selected marks a struct field for source projection. Its value carries no data.
 type Selected struct{ _ byte }
 
 func (*Selected) YAMLSelectionTarget() {}
 
 // Select visits selected struct fields synchronously in constructor order.
-// Only selected values are exposed; native parser nodes remain inside the session.
 func (c Cursor) Select(target any, visit func(*Selected, Cursor) error) error {
 	return c.selectFields(target, visit, c.claim)
 }

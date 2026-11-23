@@ -7,19 +7,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 )
 
-// WorkflowOutline describes selected workflow declarations recovered by a parser.
-// ParseStatus is complete, partial (a tree with parser errors), or failed (no tree).
-// A complete parse can still produce validity findings or an analysis failure.
 type WorkflowOutline struct {
-	Path        string       `json:"path"`
-	Name        string       `json:"name,omitempty"`
+	Path string `json:"path"`
+	Name string `json:"name,omitempty"`
+	// ParseStatus is complete, partial (a tree with parser errors), or failed (no tree).
 	ParseStatus string       `json:"parse_status"`
 	Triggers    []string     `json:"triggers"`
 	Jobs        []JobOutline `json:"jobs"`
 }
 
-// JobOutline describes a workflow job.
-// Jobs appear in source order. Start points to the job key, when available.
 type JobOutline struct {
 	ID    string
 	Name  string
@@ -29,8 +25,7 @@ type JobOutline struct {
 	Steps []StepOutline
 }
 
-// Reference classifies Uses with callrefs.ClassifyWorkflow; it is nil when the job
-// calls no workflow.
+// Reference is nil when the job calls no workflow.
 func (j JobOutline) Reference() callreferences.UsesReference {
 	return callreferences.ClassifyWorkflow(j.Uses)
 }
@@ -45,7 +40,6 @@ type jobWire struct {
 	Steps     []StepOutline                `json:"steps"`
 }
 
-// MarshalJSON encodes the job's declarations.
 func (j JobOutline) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jobWire{
 		ID: j.ID, Name: j.Name, Start: j.Start, Needs: j.Needs,
@@ -53,7 +47,6 @@ func (j JobOutline) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON validates the encoded reference; Reference derives it from uses.
 func (j *JobOutline) UnmarshalJSON(data []byte) error {
 	var value jobWire
 	wire := struct {
@@ -70,24 +63,19 @@ func (j *JobOutline) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// unknownStepKind is the Kind of a step whose execution form was not
-// recognized. Recognized kinds are the names from definition.ExecKind.
 const unknownStepKind = "unknown"
 
-// StepOutline identifies a declared step without exporting scripts or parser internals.
-// Kind is run, uses, wait, cancel, parallel, or unknown; consumers must allow new kinds.
-// Steps contains the children of a parallel group, in declaration order.
 type StepOutline struct {
 	ID    string
 	Name  string
 	Start *sourcetext.Position
+	// Consumers of Kind must allow new kinds.
 	Kind  string
 	Uses  string
 	Steps []StepOutline
 }
 
-// Reference classifies Uses with callrefs.Classify; it is nil when the step uses
-// no action.
+// Reference is nil when the step uses no action.
 func (s StepOutline) Reference() callreferences.UsesReference { return callreferences.Classify(s.Uses) }
 
 type stepWire struct {
@@ -100,7 +88,6 @@ type stepWire struct {
 	Steps     []StepOutline                `json:"steps,omitempty"`
 }
 
-// MarshalJSON encodes the step's declarations.
 func (s StepOutline) MarshalJSON() ([]byte, error) {
 	return json.Marshal(stepWire{
 		ID: s.ID, Name: s.Name, Start: s.Start, Kind: s.Kind,
@@ -108,8 +95,6 @@ func (s StepOutline) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON validates the encoded reference and restores nested parallel
-// steps; Reference derives the reference from uses.
 func (s *StepOutline) UnmarshalJSON(data []byte) error {
 	var value stepWire
 	wire := struct {

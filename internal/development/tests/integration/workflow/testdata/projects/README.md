@@ -1,6 +1,6 @@
 `TestProjectWorkflowFixtures` in `fixtures_test.go` checks the projects in this directory.
 
-Each subdirectory represents one project. Its neighboring `<project>.out` file lists the expected diagnostics, one per
+Each project's neighboring `<project>.out` file lists the expected diagnostics, one per
 line, sorted by file path and source position. An empty file means the check should report no diagnostics.
 
 For each fixture, this test scans `<project>/workflows/`. It reads local actions

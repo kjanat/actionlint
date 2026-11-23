@@ -41,7 +41,7 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			})
 		}
 		// Without a non-string scalar proof, JSON may introduce quote delimiters
-		// even without attacker control; pass it through the environment.
+		// even without attacker control.
 		for _, expression := range []string{
 			"toJSON(" + path + " && false)",
 			"toJSON('safe' || " + path + ")",

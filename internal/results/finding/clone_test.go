@@ -13,7 +13,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// referenceFinding sets every reference field of a finding.
 func referenceFinding() *Finding {
 	return &Finding{
 		Reference: &sourcetext.Reference{Document: "doc", Node: "node"},

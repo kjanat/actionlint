@@ -39,8 +39,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		return result, errors.New("must contain one document")
 	}
 
-	// Token offsets identify source locations and duplicate keys. The decoded
-	// values above come from encoding/json and are not rebuilt by this walk.
+	// Token offsets identify source locations and duplicate keys.
 	tokens := json.NewDecoder(bytes.NewReader(clean))
 	tokens.UseNumber()
 	start := func() int {

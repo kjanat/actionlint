@@ -13,19 +13,14 @@ import (
 
 var allPermissionScopes = permissions.Scopes()
 
-// PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.
 type PermissionLevel int
 
 const (
-	// PermissionLevelNone means the scope grants no access.
 	PermissionLevelNone PermissionLevel = iota
-	// PermissionLevelRead means the scope grants read access.
 	PermissionLevelRead
-	// PermissionLevelWrite means the scope grants write access, which includes read access.
 	PermissionLevelWrite
 )
 
-// String returns the level as it is written in a "permissions:" mapping.
 func (l PermissionLevel) String() string {
 	switch l {
 	case PermissionLevelRead:
@@ -37,8 +32,7 @@ func (l PermissionLevel) String() string {
 	return "none"
 }
 
-// PermissionScopeLevels maps a permission scope name to its access level. A scope absent from the
-// map is PermissionLevelNone.
+// PermissionScopeLevels treats a scope absent from the map as PermissionLevelNone.
 type PermissionScopeLevels map[string]PermissionLevel
 
 func parsePermissionLevel(v string) PermissionLevel {
@@ -66,7 +60,6 @@ func clampPermissionLevel(scope string, l PermissionLevel) PermissionLevel {
 	return l
 }
 
-// permissionsKind classifies a "permissions:" declaration.
 type permissionsKind int
 
 const (
@@ -75,15 +68,13 @@ const (
 	PermissionsDeclared
 )
 
-// ResolvedPermissions is the outcome of resolving one "permissions:" declaration. levels is only
-// meaningful when kind is PermissionsDeclared.
+// ResolvedPermissions levels are only meaningful when kind is PermissionsDeclared.
 type ResolvedPermissions struct {
 	Kind   permissionsKind
 	Levels PermissionScopeLevels
 }
 
-// EffectivePermissions applies job, workflow and repository defaults in that
-// order. An explicit invalid declaration stops inheritance. The returned map
+// EffectivePermissions stops inheritance at an explicit invalid declaration. The returned map
 // does not share storage with defaults or the published declarations.
 func EffectivePermissions(workflow, job *definition.Permissions, defaults ResolvedPermissions) ResolvedPermissions {
 	if job != nil {
@@ -95,8 +86,6 @@ func EffectivePermissions(workflow, job *definition.Permissions, defaults Resolv
 	return ResolvedPermissions{Kind: defaults.Kind, Levels: maps.Clone(defaults.Levels)}
 }
 
-// permissionsSource is the raw shape of a "permissions:" value. Exactly one of the two forms is
-// used: scopes non-nil for the mapping form, all set for the "read-all"/"write-all" scalar form.
 type permissionsSource struct {
 	all    string
 	scopes map[string]string
@@ -134,8 +123,6 @@ func resolvePermissions(src permissionsSource) ResolvedPermissions {
 	return ResolvedPermissions{PermissionsDeclared, ls}
 }
 
-// ResolvePermissions resolves a parsed "permissions:" section. A nil node
-// means the section is absent.
 func ResolvePermissions(p *definition.Permissions) ResolvedPermissions {
 	if p == nil {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
@@ -155,8 +142,6 @@ func ResolvePermissions(p *definition.Permissions) ResolvedPermissions {
 	return ResolvedPermissions{Kind: PermissionsInvalid}
 }
 
-// ResolvePermissionsYAML resolves a raw "permissions:" YAML node. A nil node or a node with a zero
-// Kind means the section is absent.
 func ResolvePermissionsYAML(n *codec.Node) ResolvedPermissions {
 	if n == nil || n.Kind == 0 {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
@@ -175,9 +160,7 @@ func ResolvePermissionsYAML(n *codec.Node) ResolvedPermissions {
 	return ResolvedPermissions{Kind: PermissionsInvalid}
 }
 
-// DefaultPermissionLevels returns the levels GitHub grants when neither the calling job nor the
-// caller workflow declares "permissions:". The repository's "Workflow permissions" setting decides
-// this and actionlint cannot read it, so the assumption is selected by configuration.
+// DefaultPermissionLevels takes the repository's "Workflow permissions" setting from configuration.
 func DefaultPermissionLevels(permissive bool) PermissionScopeLevels {
 	if !permissive {
 		return PermissionScopeLevels{

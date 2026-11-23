@@ -8,12 +8,9 @@ import (
 // WorkflowCommandState follows stdout command processing in actions/runner
 // 1ba885c2065fd9be317808ab3fd406f392635cf7, ActionCommand.TryParseV2 and
 // ActionCommandManager.TryProcessCommand. Unknown output must end the caller's
-// analysis: it could contain a stop command with an unknown resume token.
+// analysis. It could contain a stop command with an unknown resume token.
 type WorkflowCommandState struct{ stopToken string }
 
-// WorkflowCommandProblem describes text resembling a runner command that the
-// runner prints verbatim. Valid commands can still be rejected by an extension;
-// extension-specific properties and server feature flags are not checked here.
 func (s *WorkflowCommandState) WorkflowCommandProblem(line string) string {
 	line = strings.TrimLeft(line, " \t\r\v\f")
 	if !strings.HasPrefix(line, "::") {
@@ -34,8 +31,7 @@ func (s *WorkflowCommandState) WorkflowCommandProblem(line string) string {
 		}
 		return ""
 	}
-	// Restrict candidates to command-shaped names. This excludes namespace/type
-	// syntax and dynamic output, while retaining misspelled command names.
+	// Restrict candidates to command-shaped names, including misspelled ones.
 	if !closed {
 		end := strings.IndexAny(name, ":\t\r\n")
 		if end >= 0 {

@@ -20,8 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Command runs the CLI with caller-provided streams. Each invocation has its own
-// argument parser and option state, so a Command can be reused.
+// Command can be reused across invocations.
 type Command struct {
 	Stdin       io.Reader
 	Stdout      io.Writer
@@ -33,14 +32,12 @@ func (cmd *Command) commandStreams() output.Streams {
 	return output.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
 }
 
-// Main runs the CLI and returns its exit status. Args includes the executable
-// name, as in os.Args.
+// Main expects args to include the executable name, as in os.Args.
 func (cmd *Command) Main(args []string) int {
 	return cmd.MainContext(context.Background(), args)
 }
 
-// MainContext runs the CLI with a context that also controls external linters.
-// Cancellation returns exit status 3. Args includes the executable name.
+// MainContext returns exit status 3 on cancellation.
 func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
 	ctx, networkAccounting := accounting.TrackRequests(ctx)
 	app := newCommandApp(ctx, cmd)
@@ -99,8 +96,6 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 	modern := !legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0])
 	if modern {
 		app.errorJSON = app.errorJSON || requestsJSON(app.root.Flags(), rest[1:], true)
-		// Parsing can fail before a command's RunE records its full operation.
-		// Keep metadata-command errors out of the analysis-result contract.
 		app.inv.Operation = operation(rest[0])
 		if rest[0] == "pre-commit" {
 			app.inv.Operation = operationCheck

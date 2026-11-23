@@ -83,8 +83,7 @@ func shellInputFailure(err error) (shellscriptinputs.ResultOptionInputString, er
 	return shellscriptinputs.ResultOptionInputStringErr{Value: err.Error()}, nil
 }
 
-// Only run scripts with supplied text can request preparation, even when the
-// graph describes additional occurrences.
+// Only run scripts with supplied text can request preparation.
 func suppliedOccurrences(input checkinputs.AnalyzerInput) map[invocation.ID]struct{} {
 	occurrences := make(map[invocation.ID]struct{}, len(input.Scripts)+len(input.Invoked))
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {

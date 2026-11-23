@@ -6,8 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// BeginComposite initializes the expression contexts owned by one action invocation.
-// Caller values are unknown; step output declarations are added as steps execute.
 func (rule *Visitor) BeginComposite(body workflows.ActionBody) {
 	rule.compositeScript = true
 	rule.inputsTy = new(exprtypes.NewMapObjectType(exprtypes.StringType()))
@@ -16,8 +14,6 @@ func (rule *Visitor) BeginComposite(body workflows.ActionBody) {
 	rule.scriptSources = body.ExpressionSources()
 }
 
-// CheckCompositeStep checks invocation-dependent references and script sinks.
-// Declaration validation owns syntax, context availability and call diagnostics.
 func (rule *Visitor) CheckCompositeStep(step workflows.BoundStep) error {
 	mark := len(rule.errs)
 	err := rule.VisitStep(step)
@@ -35,7 +31,6 @@ func (rule *Visitor) filterCompositeFindings(mark int) {
 	}
 }
 
-// CheckCompositeOutputs checks output values against the invocation's final steps.
 func (rule *Visitor) CheckCompositeOutputs(body workflows.ActionBody) {
 	mark := len(rule.errs)
 	for output := range body.OutputValues() {

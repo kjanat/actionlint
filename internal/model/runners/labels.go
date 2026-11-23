@@ -107,8 +107,7 @@ type checker struct {
 	unknownLabels bool
 }
 
-// LabelSet distinguishes a complete additional-label set from unavailable
-// repository knowledge. Its zero value leaves additional labels unknown.
+// LabelSet zero value leaves additional labels unknown.
 type LabelSet struct {
 	patterns []string
 	known    bool
@@ -118,8 +117,7 @@ func KnownLabels(patterns []string) LabelSet {
 	return LabelSet{patterns: slices.Clone(patterns), known: true}
 }
 
-// LabelRejections returns spelling and compatibility rejections without assigning a lint rule.
-// Unknown repository labels do not establish that an unrecognized name is invalid.
+// LabelRejections never treats an unrecognized name as invalid when repository labels are unknown.
 func LabelRejections(job workflows.BoundJob, customLabels LabelSet) []runnerapi.Rejection {
 	if !job.Present() {
 		return nil

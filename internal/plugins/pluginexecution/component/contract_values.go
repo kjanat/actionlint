@@ -89,7 +89,6 @@ func liftRevisions(value wacogo.Val) (map[string]string, error) {
 	return revisions, nil
 }
 
-// Keep schema metadata valid before it reaches editors or generated references.
 func validOptionsSchema(raw string) (json.RawMessage, error) {
 	if raw == "" {
 		return nil, nil

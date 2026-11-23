@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
-// FunctionEvaluationPolicy describes argument demand independently of return types.
 type FunctionEvaluationPolicy uint8
 
 const (
@@ -19,28 +18,19 @@ const (
 	EvaluateCase
 )
 
-// FuncSignature describes a function's argument and return types.
 type FuncSignature struct {
-	// Name is the function name.
 	Name string
 	// Ret declares the function's return domain, including for invalid calls.
-	// A known result can refine this domain without replacing the declaration.
-	Ret exprtypes.Type
-	// Params describes the types consumed after parameter conversion. Accepted
-	// source types, conversion outcomes and converted values are recorded separately
-	// for each argument. The final parameter repeats for variadic signatures.
+	Ret    exprtypes.Type
 	Params []exprtypes.Type
 	// VariableLengthParams allows zero or more arguments of the final parameter
 	// type. When true, Params must contain at least one type.
 	VariableLengthParams bool
 	// MaxParams is a parser limit. Zero means the signature has no upper limit.
-	MaxParams int
-	// IsConstFunc is true when the function returns a constant when all parameters are constants.
-	IsConstFunc bool
-	// CompositeStringFallback accepts composite values without string conversion.
+	MaxParams               int
+	IsConstFunc             bool
 	CompositeStringFallback bool
-	// EvaluationPolicy describes which arguments the function evaluates.
-	EvaluationPolicy FunctionEvaluationPolicy
+	EvaluationPolicy        FunctionEvaluationPolicy
 }
 
 func (sig *FuncSignature) String() string {
@@ -55,8 +45,7 @@ func (sig *FuncSignature) String() string {
 	return fmt.Sprintf("%s(%s%s) -> %s", sig.Name, strings.Join(ts, ", "), elip, sig.Ret.String())
 }
 
-// Builtins declares function signatures and their supported constant implementations.
-// Keys use lowercase names because function lookup ignores case.
+// Builtins keys use lowercase names. Function lookup ignores case.
 // https://docs.github.com/en/actions/learn-github-actions/expressions#functions
 var Builtins = map[string]Function{
 	"contains": {Signatures: []*FuncSignature{
@@ -119,7 +108,7 @@ var Builtins = map[string]Function{
 		Ret:              exprtypes.StringType(),
 		Params: []exprtypes.Type{
 			exprtypes.StringType(),
-			exprtypes.AnyType(), // variable length
+			exprtypes.AnyType(),
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
@@ -224,10 +213,7 @@ var Builtins = map[string]Function{
 	}}, implementation: evaluateCase, inspect: inspectCase},
 }
 
-// Global variables
-
-// ParameterAt returns the consumed type at index for a call with count arguments.
-// The caller validates argument count before requesting a parameter.
+// ParameterAt requires a validated argument count.
 func (sig *FuncSignature) ParameterAt(index, count int) exprtypes.Type {
 	if sig.EvaluationPolicy == EvaluateCase {
 		if index < count-1 && index%2 == 0 {
@@ -238,7 +224,6 @@ func (sig *FuncSignature) ParameterAt(index, count int) exprtypes.Type {
 	return sig.Params[min(index, len(sig.Params)-1)]
 }
 
-// AcceptsArgumentCount checks arity and parser limits without evaluating arguments.
 func (sig *FuncSignature) AcceptsArgumentCount(count int) bool {
 	if sig.MaxParams > 0 && count > sig.MaxParams {
 		return false

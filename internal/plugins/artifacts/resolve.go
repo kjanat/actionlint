@@ -22,25 +22,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// Options bounds artifact acquisition independently of runtime execution limits.
 type Options struct {
-	// Network grants private access only to an invocation-selected authority.
-	// The zero value confines automatic acquisition to public destinations.
+	// The zero Network confines automatic acquisition to public destinations.
 	Network     acquisitionhttp.Grant
 	Connections acquisitionhttp.Connections
-	// CacheDir stores verified downloads pinned by SHA256. Empty disables caching.
+	// An empty CacheDir disables caching.
 	CacheDir string
-	// Timeout defaults to 30 seconds, including redirects and response reading.
+	// Timeout includes redirects and response reading.
 	Timeout time.Duration
-	// MaxBytes bounds both distributed and decompressed bytes; defaults to 128 MiB.
+	// MaxBytes bounds both distributed and decompressed bytes.
 	MaxBytes int64
-	// PullOCI pulls oci:// sources; the oci subpackage's Pull is the
-	// implementation. Nil refuses oci:// sources.
+	// A nil PullOCI refuses oci:// sources.
 	PullOCI PullOCI
 }
 
-// RequireRemotePin checks execution inputs without fetching their bytes.
-// Inspection may acquire unpinned URLs to discover their digest; execution may not.
 func RequireRemotePin(source string) error {
 	if pluginreference.IsOCI(source) {
 		_, err := pluginreference.ParseOCI(source)
@@ -62,7 +57,6 @@ const (
 	DefaultMaxBytes = 128 << 20
 )
 
-// withDefaults returns options with the default Timeout and MaxBytes set.
 func (o Options) withDefaults() Options {
 	if o.Timeout <= 0 {
 		o.Timeout = DefaultTimeout
@@ -73,10 +67,6 @@ func (o Options) withDefaults() Options {
 	return o
 }
 
-// Resolve accepts paths, absolute file URIs, HTTP(S) URLs and oci:// digest
-// references, which Options.PullOCI pulls. A URI fragment of #sha256=<hex>
-// pins the distributed bytes. Unpinned URLs are always fetched.
-// Options.Timeout bounds the whole pull.
 func Resolve(ctx context.Context, source string, options Options) (*Artifact, error) {
 	options = options.withDefaults()
 	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
@@ -155,8 +145,6 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	return &Artifact{Info: info, Bytes: data}, nil
 }
 
-// Import verifies candidate bytes before adding them to the download cache.
-// Callers open local inputs within their selected catalogue root.
 func Import(ctx context.Context, input io.Reader, digest string, options Options) error {
 	if pluginreference.CheckDigest(digest) != nil || options.CacheDir == "" {
 		return errors.New("candidate import requires a digest and cache directory")
@@ -259,8 +247,7 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 	req.Header.Set("Accept-Encoding", "identity")
 	resp, err := client.Do(req)
 	if err != nil {
-		// Transport errors may still embed a signed redirect URL. Preserve context
-		// errors but keep arbitrary transport details out of diagnostics.
+		// Transport errors may still embed a signed redirect URL.
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}

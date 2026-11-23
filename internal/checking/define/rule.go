@@ -16,61 +16,38 @@ const (
 	documentationPrefix = "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#"
 )
 
-// ScriptCheck analyzes the scripts of one document. It reports findings with
-// an empty Rule; the rule's name is attached to them.
+// ScriptCheck reports findings with an empty Rule, and the adapter attaches the rule's name.
 type ScriptCheck func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error)
 
-// Rule is the single definition of a native rule.
-//
-// Name, Description, Category and Subcategory are required. Provider defaults
-// to "actionlint", Maturity to the stable maturity, DocumentationURL to the
-// rule's section in docs/rules.md, and Explanation to Description written as
-// a sentence.
-//
-// At most one of Checks, Walker and Script may be set. A rule that sets none
-// is declaration-only and names in DeclaredBy the component that reports its
-// findings.
+// Rule requires Name, Description, Category and Subcategory, and sets at most one of Checks, Walker and Script.
 type Rule struct {
-	// Declaration holds the rule's metadata and configuration requirements.
-	// Construct its Options with [Options].
+	// Construct Declaration.Options with [Options].
 	rule.Declaration
 
-	// Prepare acquires facts before construction. Nil means none are needed.
 	Prepare func(RuleInputs) (InputPreparation, error)
-	// Enabled reports whether the rule runs for these inputs. Nil means always.
 	Enabled func(RuleInputs) bool
 
-	// Checks supplies stateless checks of published workflow views. The
-	// adapter traverses workflows and, for rules that support actions,
-	// composite bodies, and attaches the rule's name to findings without one.
 	Checks func(RuleInputs) Checks
-	// Walker supplies a stateful traversal. The base carries the rule's name
-	// and description and is embedded in the returned visitor.
+	// Walker must embed the base in the returned visitor.
 	Walker func(RuleInputs, workflowvisit.Base) workflowvisit.Rule
-	// Script analyzes document scripts.
 	Script ScriptCheck
 
-	// DeclaredBy names the component that reports the findings of a
-	// declaration-only rule.
+	// DeclaredBy names the component that reports a declaration-only rule's findings.
 	DeclaredBy string
 }
 
-// Options returns a constructor of zero option values of type T.
 func Options[T any]() func() any {
 	return func() any { return new(T) }
 }
 
-// Fixed supplies checks that need no inputs.
 func Fixed(checks Checks) func(RuleInputs) Checks {
 	return func(RuleInputs) Checks { return checks }
 }
 
-// Executable reports whether the rule runs anything.
 func (r *Rule) Executable() bool {
 	return r.Checks != nil || r.Walker != nil || r.Script != nil
 }
 
-// Validate reports a definition that cannot be declared or executed.
 func (r *Rule) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
 		return errors.New("rule has no name")
@@ -97,14 +74,10 @@ func (r *Rule) Validate() error {
 	return nil
 }
 
-// Base returns a fresh traversal accumulator carrying the rule's name and
-// description, as [Rule.Walker] receives it.
 func (r *Rule) Base() workflowvisit.Base {
 	return workflowvisit.NewBase(r.Name, r.Description)
 }
 
-// ResolvedDeclaration returns the rule's declaration with defaults applied.
-// Each call returns an independent value.
 func (r *Rule) ResolvedDeclaration() rule.Declaration {
 	declaration := r.Clone()
 	if declaration.Maturity == "" {
@@ -129,12 +102,9 @@ func sentence(text string) string {
 	return text + "."
 }
 
-// Visits reports whether the rule executes as a workflow traversal, through
-// Checks or Walker.
 func (r *Rule) Visits() bool { return r.Checks != nil || r.Walker != nil }
 
-// NewVisitor constructs the traversal of a rule that [Rule.Visits]. It does
-// not run Prepare or consult Enabled, and returns nil for any other rule.
+// NewVisitor skips Prepare and Enabled, and returns nil for a rule that does not visit.
 func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
 	switch {
 	case r.Checks != nil:
@@ -146,8 +116,6 @@ func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
 	}
 }
 
-// ScriptAnalyzer returns the document analyzer of a rule that sets Script.
-// It reports false for any other rule.
 func (r *Rule) ScriptAnalyzer() (results.Analyzer, bool) {
 	if r.Script == nil {
 		return nil, false
@@ -155,10 +123,7 @@ func (r *Rule) ScriptAnalyzer() (results.Analyzer, bool) {
 	return scriptAnalyzer{declaration: r.ResolvedDeclaration(), analyze: r.Script}, true
 }
 
-// scriptAnalyzer runs a rule's Script as a document analyzer and attaches the
-// rule's name to findings without one. Rule cannot implement the analyzer
-// contract itself: its declaration's Descriptor field would collide with the
-// contract's Descriptor method.
+// Rule's Descriptor field would collide with the analyzer contract's Descriptor method.
 type scriptAnalyzer struct {
 	declaration rule.Declaration
 	analyze     ScriptCheck

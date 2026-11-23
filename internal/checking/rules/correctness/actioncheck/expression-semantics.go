@@ -16,16 +16,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
-// expressionSemanticFindings checks metadata expressions using the declaration's
-// types. Values from individual workflow calls are unavailable here.
 func expressionSemanticFindings(expressions []actionmeta.ParsedExpression, field string, advisories bool) []actionmeta.ExpressionProblem {
 	var findings []actionmeta.ExpressionProblem
 	for _, expression := range expressions {
 		checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 		checker.SetContextAvailability(actionmeta.AllowedContexts(field))
 		contexts.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
-		// Output names and values are unknown here. Each output is a string;
-		// the outputs property is an object.
 		step := outputs.StepType(exprtypes.NewMapObjectType(exprtypes.StringType()))
 		checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
 		evaluation := evaluate.EvaluateSubexpressions(expression.Node)

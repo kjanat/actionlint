@@ -20,9 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// TestDisabledToolIsNotResolved checks that a configured plugin whose alias is
-// a disabled tool id is neither downloaded nor loaded, and that the id
-// counts as known.
 func TestDisabledToolIsNotResolved(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
@@ -78,9 +75,6 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 	}
 }
 
-// TestNamedPluginToolIsAccepted checks that --tool accepts the same plugin
-// ids as --no-tool, here a selected release's name and alias, and that naming a
-// plugin keeps it running.
 func TestNamedPluginToolIsAccepted(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)

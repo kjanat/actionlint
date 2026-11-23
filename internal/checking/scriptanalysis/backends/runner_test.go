@@ -34,8 +34,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// scriptFixture keeps the scalar's original lines and columns by placing its
-// anchor before an appended workflow, whose step runs it through an alias.
 func scriptFixture(t *testing.T, input string) scriptanalysis.Unit {
 	t.Helper()
 	content := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
@@ -63,8 +61,6 @@ func scriptFixture(t *testing.T, input string) scriptanalysis.Unit {
 	return scriptanalysis.Unit{Run: &definition.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 }
 
-// generated prepares a script as a shell preparation does: a kept shebang,
-// then a generated directive and startup line, then the script.
 func generated(script string) preparation.Prepared {
 	var out strings.Builder
 	var lines []preparation.Line
@@ -223,7 +219,6 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 			}
 		})
 	}
-	// Without a line map the engine saw the masked script itself.
 	script := scriptFixture(t, input)
 	fix, ok := scriptFix(script.Source(), preparation.Prepared{Source: mask.Expressions(script.Text())}, scriptengine.Fix{Replacements: []scriptengine.Replacement{replacement(1, 6, `"`)}})
 	if !ok || len(fix.Edits) != 1 {
@@ -231,7 +226,6 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 	}
 }
 
-// reportingBackend is a process-like backend whose results the test scripts.
 type reportingBackend struct {
 	directory  string
 	result     func(scriptengine.Request) process.DecodedCheck
@@ -327,8 +321,6 @@ func TestReportedSourceFindings(t *testing.T) {
 	}
 }
 
-// Template effects describe the snippet, so a provider declaring both the
-// template contract and reported sources keeps its findings in read files.
 func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
@@ -472,7 +464,6 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 			select {
 			case <-started:
 			case <-time.After(10 * time.Second):
-				// A serial runner never starts the second check; release it anyway.
 			}
 		}
 		close(release)
@@ -491,9 +482,6 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 	}
 }
 
-// A snippet engine that requests the directory resource receives the
-// working directory, and its declared capabilities admit fixes and findings
-// in files it read, as a manifest's do for a process provider.
 func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
@@ -531,7 +519,6 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	if !registration.RequiresExecution {
 		t.Fatal("an engine requesting the directory needs execution facts")
 	}
-	// The preparation's excluded codes travel with the request.
 	prepare := func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: "echo $x\n", Excluded: []string{"X9"}}, nil
 	}
@@ -546,8 +533,6 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	if len(findings) != 2 || len(findings[0].Fixes) != 1 || !findings[1].Source.RawScript || !strings.HasSuffix(findings[1].Path, "lib.sh") {
 		t.Fatalf("findings %+v", findings)
 	}
-	// The display copy is the bytes the engine read, and the scope recorded
-	// the read for watchers.
 	if string(engineRead) != "echo $x\n" || string(findings[1].Source.Content) != string(engineRead) {
 		t.Fatalf("engine read %q, finding shows %q", engineRead, findings[1].Source.Content)
 	}
@@ -556,8 +541,6 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	}
 }
 
-// directoryEngine is a snippet engine requesting the directory resource that
-// reports a finding in source.
 func directoryEngine(t *testing.T, source string, requests *[]scriptengine.Request) contract.Runner {
 	t.Helper()
 	backend := routingBackend(func(_ context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
@@ -568,8 +551,6 @@ func directoryEngine(t *testing.T, source string, requests *[]scriptengine.Reque
 	return buildEngineRunner(t, descriptor, backend, engineOptions{})
 }
 
-// A working directory outside the workspace gets no grant: the check fails
-// before the engine runs.
 func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
@@ -582,7 +563,6 @@ func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "outside workspace root") || len(requests) != 0 {
 		t.Fatalf("requests %+v err %v", requests, err)
 	}
-	// A symlink below the workspace that leaves it is refused as well.
 	link := filepath.Join(workspace, "escape")
 	if err := os.Symlink(outside, link); err != nil {
 		t.Skipf("cannot create symlinks: %v", err)
@@ -593,9 +573,6 @@ func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 	}
 }
 
-// A reported source is shown only through the grant: a symlink in the
-// working directory pointing out of the workspace is not read, and without
-// a grant nothing is reread by path.
 func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
@@ -613,7 +590,6 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 			t.Fatalf("symlinked source: findings %+v err %v", findings, err)
 		}
 	}
-	// A missing working directory gets no grant and is not sent.
 	script.Execution.Directory = filepath.Join(workspace, "missing")
 	requests = nil
 	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{script}})

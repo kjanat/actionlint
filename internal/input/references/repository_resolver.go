@@ -9,7 +9,6 @@ type repositoryBoundResolver struct {
 	access   RepositoryAccess
 }
 
-// BindRepositoryAccess gives a resolver repository access for each of its calls.
 func BindRepositoryAccess(provider Resolver, access RepositoryAccess) Resolver {
 	return repositoryBoundResolver{provider: provider, access: access}
 }

@@ -9,20 +9,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// ExpressionScope supplies GitHub context types and the availability for one
-// workflow field. Invocation-specific types can replace its initial types later.
 type ExpressionScope struct{ key string }
 
 func (scope ExpressionScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return NarrowEventTypes(guard, truth, lookup)
 }
 
-// DefaultExpressionScope supplies initial types without enabling context
-// references or location-restricted functions. Select field availability before
-// checking references.
+// DefaultExpressionScope enables no context references or location-restricted
+// functions. Select field availability before checking references.
 func DefaultExpressionScope() ExpressionScope { return ExpressionScope{} }
 
-// WorkflowExpressionScope selects the names and overloads for a workflow field.
 func WorkflowExpressionScope(key string) ExpressionScope { return ExpressionScope{key: key} }
 
 func (scope ExpressionScope) ContextTypes() map[string]exprtypes.Type {
@@ -39,8 +35,6 @@ func (scope ExpressionScope) FunctionAvailability() map[string]functions.Availab
 	return FunctionAvailability(allowed)
 }
 
-// FunctionAvailability resolves the generated location table against an explicit
-// list of permitted function names.
 func FunctionAvailability(allowed []string) map[string]functions.Availability {
 	availability := make(map[string]functions.Availability, len(SpecialFunctionNames))
 	for name, locations := range SpecialFunctionNames {

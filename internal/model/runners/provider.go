@@ -12,11 +12,9 @@ import (
 
 type builtinProvider struct{ custom LabelSet }
 
-// GitHubProvider evaluates selectors using built-in labels and supplied custom labels.
 func GitHubProvider(custom LabelSet) runnerapi.Provider { return builtinProvider{custom: custom} }
 
-// githubHostedArchitectures records the documented CPU architecture for each
-// hosted label. Custom label spelling never supplies an architecture.
+// Custom label spelling never supplies an architecture.
 var githubHostedArchitectures = map[string]string{
 	"ubuntu-slim": "x64", "ubuntu-latest": "x64", "ubuntu-latest-4-cores": "x64", "ubuntu-latest-8-cores": "x64", "ubuntu-latest-16-cores": "x64",
 	"ubuntu-22.04": "x64", "ubuntu-24.04": "x64", "ubuntu-26.04": "x64",

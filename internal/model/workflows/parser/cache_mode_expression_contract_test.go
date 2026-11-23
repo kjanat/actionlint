@@ -85,7 +85,6 @@ jobs:
 					if recorded, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || recorded != kind {
 						t.Fatalf("%s: metadata recorded %s (declared %t), want %s", id, recorded, declared, kind)
 					}
-					// Metadata keeps only the mode; the parsed declaration keeps its source.
 					mode := definition.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
 					want := sourcetext.Position{Line: line, Column: 17}
 					if line == 2 || aliased {

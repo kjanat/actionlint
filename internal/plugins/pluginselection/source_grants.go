@@ -23,7 +23,6 @@ func SourcesFromArguments(paths []string, acquisition dependencycache.Acquisitio
 	return sources, nil
 }
 
-// ArtifactOptions supplies cache settings and the grant attached to source.
 func (s *Sources) ArtifactOptions(source string) artifacts.Options {
 	options := pluginacquisition.ArtifactOptions(s.Acquisition)
 	options.Network = s.NetworkGrants[source]

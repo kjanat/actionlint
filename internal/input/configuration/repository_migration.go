@@ -48,8 +48,6 @@ func migratePermissions(node any, key string) (any, error) {
 	}
 }
 
-// migrateRepositoryValue converts a legacy value, read from key, for the
-// repository fact it moves to.
 func migrateRepositoryValue(fact string, value any, key string) (any, error) {
 	switch fact {
 	case "variables":
@@ -61,7 +59,6 @@ func migrateRepositoryValue(fact string, value any, key string) (any, error) {
 	}
 }
 
-// migrateRepositoryFacts moves old knowledge settings without changing a rule's level.
 func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 	if !isMapping(root) {
 		return root, false, nil

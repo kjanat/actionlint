@@ -8,20 +8,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// Error is a syntax or semantic finding in an expression. Rule and Code identify
-// the check independently of its wording and source coordinates.
 type Error struct {
-	// Message describes the finding.
 	Message string
-	// Offset is the byte offset where the finding starts.
-	Offset int
+	Offset  int
 	// EndOffset is the exclusive byte end of the diagnostic's intended range.
 	EndOffset int
-	// Position is where the finding starts in the expression.
-	Position sourcetext.Position
-	// Rule identifies the configurable check; Code identifies its diagnostic kind.
-	Rule string
-	Code string
+	Position  sourcetext.Position
+	Rule      string
+	Code      string
 	// Advisory marks a finding that does not invalidate the expression.
 	Advisory bool
 }
@@ -34,9 +28,7 @@ func (e *Error) String() string {
 	return e.Error()
 }
 
-// detached copies e for a caller. Callers rebase positions onto their
-// documents in place; a copy keeps that from rewriting the error a lexer,
-// parser or checker still holds and may report again.
+// Callers rebase positions in place, and the lexer, parser or checker may still report the original.
 func (e *Error) detached() *Error {
 	if e == nil {
 		return nil
@@ -45,7 +37,6 @@ func (e *Error) detached() *Error {
 	return &copied
 }
 
-// detachErrors copies each error in errs into fresh storage.
 func detachErrors(errs []*Error) []*Error {
 	out := make([]*Error, len(errs))
 	for i, err := range errs {

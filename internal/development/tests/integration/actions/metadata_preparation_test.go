@@ -52,7 +52,6 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 			findings++
 		}
 	}
-	// Both invocations share one source declaration and one acquired manifest.
 	if provider.requests != 1 || findings != 1 {
 		t.Fatalf("repeated calls: requests=%d input findings=%d diagnostics=%+v", provider.requests, findings, result.Diagnostics)
 	}

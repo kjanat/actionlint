@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// shellcheckManifest is the bundled ShellCheck provider.
 var shellcheckManifest = func() toolmanifest.Manifest {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {
@@ -22,7 +21,6 @@ var shellcheckManifest = func() toolmanifest.Manifest {
 	return manifests[index]
 }()
 
-// shellcheckRoute negotiates the bundled ShellCheck provider's settings.
 var shellcheckRoute = func() documentRoute {
 	transform, err := integrationconfig.New(shellcheckManifest, bundledproviders.Program)
 	if err != nil {

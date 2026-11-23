@@ -9,16 +9,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 )
 
-// ToolOptions asks providers which tools are possible for a resolved configuration.
 type ToolOptions struct {
 	Presets  configuration.Presets
 	Required func(*configuration.Config, *configuration.Config) ([]string, error)
 }
 type ExternalToolRequirements map[string]bool
 
-// RequiredTools resolves configuration for each input without reading workflows or
-// starting analyzers. Empty paths discovers the working directory's workflows and actions.
-// Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
+// RequiredTools reads no workflows and starts no analyzers. Empty paths discovers
+// the working directory's workflows and actions.
 func (a *InputPreparer) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
 	needed := ExternalToolRequirements{}
 	explicit := make(map[string]bool)

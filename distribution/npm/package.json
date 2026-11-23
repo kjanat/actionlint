@@ -10,11 +10,14 @@
   "scripts": {
     "build": "node src/cli.ts build",
     "test": "node --test test/*.test.ts",
-    "typecheck": "tsc-rs --noEmit -p tsconfig.json"
+    "typecheck": "tsrs --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@kjanat/dreamcli": "catalog:",
     "@zip.js/zip.js": "^2.24.0",
     "tar-stream": "^3.2.2"
+  },
+  "devDependencies": {
+    "tsrs": "catalog:"
   }
 }

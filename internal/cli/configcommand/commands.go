@@ -90,9 +90,6 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 	return err
 }
 
-// WriteSchema writes the configuration JSON schema to out. Beyond the
-// published actionlint.schema.json, it describes tools.<name> for every tool
-// provider that the --plugin flags or the selected configuration install.
 func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition dependencycache.Acquisition) error {
 	manifests, err := assembly.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
@@ -128,7 +125,6 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 	return errors.Join(err, encoder.Close())
 }
 
-// Run migrates the selected configuration.
 func (req MigrateOptions) Run(ctx context.Context, streams output.Streams, acquisition dependencycache.Acquisition) (int, error) {
 	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {

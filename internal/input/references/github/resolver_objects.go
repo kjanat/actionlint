@@ -38,7 +38,6 @@ type repositoryResponse struct {
 	DefaultBranch string `json:"default_branch"`
 }
 
-// Open checks repository identity and read access before resolving references.
 func (g *GitHub) Open(ctx context.Context, request references.Request) (references.RepositorySession, error) {
 	if g.mode != Online {
 		return nil, errors.New("GitHub repository access is unavailable while network access is off or offline")

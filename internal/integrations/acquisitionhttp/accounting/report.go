@@ -1,10 +1,8 @@
-// Package accounting accounts for invocation-owned network operations and admits
-// requests against observed quotas. Reports contain no URLs or credentials.
+// Package accounting counts invocation network operations, and its reports contain no URLs or credentials.
 package accounting
 
 import "time"
 
-// RequestKind separates HTTP API requests, artifact traffic and Git operations.
 type RequestKind string
 
 const (
@@ -14,13 +12,11 @@ const (
 	Git       RequestKind = "git"
 	OCI       RequestKind = "oci"
 	Delegated RequestKind = "delegated"
-	// Cache identifies lookups in a local cache of remote data. They make no
-	// network request and count only CacheHits and CacheMisses.
+	// Cache lookups count only CacheHits and CacheMisses.
 	Cache RequestKind = "cache"
 )
 
-// CredentialStatus describes credentials supplied, not proof of an authenticated
-// identity. External processes have unknown credential status without a request report.
+// CredentialStatus describes the supplied credentials and proves no authenticated identity.
 type CredentialStatus string
 
 const (
@@ -29,8 +25,6 @@ const (
 	CredentialsUnknown  CredentialStatus = "unknown"
 )
 
-// Priority distinguishes dependency acquisition, optional enrichment and quota
-// control traffic. Priority labels alone do not reserve future request units.
 type Priority string
 
 const (
@@ -39,10 +33,9 @@ const (
 	Control    Priority = "control"
 )
 
-// RequestOptions identifies why a request is needed. QuotaCost is an upper bound in the
-// server's quota units; zero means unknown. REST requests default to one unit.
+// RequestOptions treats QuotaCost as an upper bound in server quota units, and zero means unknown.
 type RequestOptions struct {
-	// Purpose is a fixed label such as plugin-registry, never a URL or ref value.
+	// Purpose is a fixed label such as plugin-registry and holds no URL or ref.
 	Purpose     string
 	Priority    Priority
 	RequestKind RequestKind
@@ -50,15 +43,7 @@ type RequestOptions struct {
 	QuotaCost   uint64
 }
 
-// RequestCounts combines operations with the same host, credential status, protocol and purpose.
-// An external resolver reports its own requests with the same record in a
-// RequestReport: it sets Host, RequestKind, Credentials, Attempts and Failures,
-// and the tracker reads no other field of a reported record.
-// Host is an authority without credentials, paths or queries.
-// Attempts counts transport calls, including failures before a response arrives.
-// QuotaRejections counts rejected requests or batch checks, never transport attempts.
-// UnreportedResolverCalls counts resolver calls without a complete request report.
-// CacheMisses counts local cache lookups that found no usable entry.
+// RequestCounts from an external resolver set only Host, RequestKind, Credentials, Attempts and Failures, and Host holds no credentials, path or query.
 type RequestCounts struct {
 	ResolverCalls            uint64           `json:"resolver_calls"`
 	Host                     string           `json:"host"`
@@ -75,17 +60,13 @@ type RequestCounts struct {
 	ResolverReportedAttempts uint64           `json:"resolver_reported_attempts"`
 }
 
-// RequestReport is a resolver's account of its own network activity.
-// AllRequestsReported means every remote attempt is included, including failed
-// attempts. Omission does not mean zero.
+// RequestReport sets AllRequestsReported only when it includes every remote attempt, failed ones too.
 type RequestReport struct {
 	AllRequestsReported bool            `json:"all_requests_reported"`
 	Requests            []RequestCounts `json:"requests"`
 }
 
-// QuotaStatus is the latest conservative observation for a host and credential scope.
-// Independent credentials can produce separate rows with identical public labels.
-// No credential fingerprint is published.
+// QuotaStatus publishes no credential fingerprint.
 type QuotaStatus struct {
 	Host        string           `json:"host"`
 	Credentials CredentialStatus `json:"credentials"`

@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-// Decode populates action metadata from an owned YAML node graph.
 func Decode(root *codec.Node, metadata *Metadata) error {
 	if metadata == nil {
 		return errors.New("action metadata target must not be nil")

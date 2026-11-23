@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 try {
 	await main();
 } catch (error) {
-	// Emergency fallback if result initialization or finalization itself failed.
+	// Run this emergency fallback if result initialization or finalization itself failed.
 	process.exitCode = error instanceof InputError ? 2 : 3;
 	try {
 		await writeOutputs(environment['GITHUB_OUTPUT'], {

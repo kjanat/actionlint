@@ -19,7 +19,7 @@ class VerificationError extends Error {}
 
 function sameSourceLines(left: Buffer, right: Buffer): boolean {
 	if (left.equals(right)) return true;
-	// Latin-1 preserves every byte; only CRLF pairs are normalized, without running Git filters.
+	// Latin-1 preserves every byte. This function normalizes only CRLF pairs and runs no Git filters.
 	return left.toString('latin1').replaceAll('\r\n', '\n') === right.toString('latin1').replaceAll('\r\n', '\n');
 }
 
@@ -36,7 +36,6 @@ function originMatches(remote: string, server: string, repository: string): bool
 	}
 }
 
-// Verify local source lines against the run's commit before linking into its repository.
 export function sourceLinkVerifier(
 	environment: Environment,
 	onFailure?: (stage: string) => void,
@@ -50,7 +49,7 @@ export function sourceLinkVerifier(
 	const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
 	Object.assign(env, {
 		GIT_CONFIG_NOSYSTEM: '1',
-		// Git accepts /dev/null on Windows; Node's \\.\nul device path is not a valid Git config path.
+		// Git accepts /dev/null on Windows. Git rejects Node's \\.\nul device path as a config path.
 		GIT_CONFIG_GLOBAL: '/dev/null',
 		GIT_TERMINAL_PROMPT: '0',
 		GIT_NO_REPLACE_OBJECTS: '1',

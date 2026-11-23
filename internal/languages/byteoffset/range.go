@@ -59,9 +59,7 @@ func Offset(content []byte, model sourcetext.Coordinates, p sourcetext.Position)
 	return 0, fmt.Errorf("source position %v is outside the document", p)
 }
 
-// RawLFPosition returns the sourcetext.RawLF position of a byte offset in content,
-// clamping the offset to the content. It is the inverse of Offset for RawLF:
-// lines end at LF only, and columns count Unicode scalars.
+// RawLFPosition clamps offset to content, ends lines at LF only and counts columns in Unicode scalars.
 func RawLFPosition(content []byte, offset int) sourcetext.Position {
 	offset = max(0, min(offset, len(content)))
 	prefix := content[:offset]
@@ -71,8 +69,7 @@ func RawLFPosition(content []byte, offset int) sourcetext.Position {
 	}
 }
 
-// Range validates both endpoints and order; zero-width ranges, including EOF,
-// are valid. Zero endpoints, reversed ranges and YAML CRLF interiors are not.
+// Range accepts zero-width ranges, including EOF, and rejects zero endpoints, reversed ranges and YAML CRLF interiors.
 func Range(content []byte, model sourcetext.Coordinates, start, end sourcetext.Position) (int, int, error) {
 	a, err := Offset(content, model, start)
 	if err != nil {

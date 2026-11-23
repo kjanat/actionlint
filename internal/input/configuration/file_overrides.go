@@ -32,7 +32,6 @@ type Override struct {
 	partial      *document.Node
 }
 
-// DecodeConfig validates paths and records which fields were omitted or reset.
 func (o *Override) DecodeConfig(value any) error {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -63,7 +62,6 @@ func (o *Override) DecodeConfig(value any) error {
 	return nil
 }
 
-// CopyConfig copies typed settings and their captured partial independently.
 func (o Override) CopyConfig() (any, error) {
 	type plain Override
 	copied, err := configdecode.DetachPublicFields(plain(o))
@@ -81,7 +79,6 @@ func (o Override) CopyConfig() (any, error) {
 	return Override(next), nil
 }
 
-// EncodeConfig preserves omitted fields in partial overlays during round trips.
 func (o Override) EncodeConfig() (any, error) {
 	var value any
 	if o.partial != nil {
@@ -126,7 +123,6 @@ func lintConfigValue(config LintConfig) (any, error) {
 	return value, nil
 }
 
-// ForFile gives each checked file its own effective settings.
 func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, error) {
 	if config == nil {
 		return nil, nil

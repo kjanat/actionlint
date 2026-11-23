@@ -244,8 +244,6 @@ func TestStandaloneMetadataConstruction(t *testing.T) {
 		if err != nil || outline.DocumentPath() != "action.yml" {
 			t.Fatalf("standalone construction: %+v, %v", outline, err)
 		}
-		// YAML null has no action declarations; a report projection must not
-		// invent a parser error for it.
 		if content == "null\n" && outline.ParseStatus != "failed" {
 			t.Fatalf("null document acquired action declarations: %+v", outline)
 		}

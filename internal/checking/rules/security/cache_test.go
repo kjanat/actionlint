@@ -39,7 +39,6 @@ jobs:
 	if repeated := check.Job(first); !reflect.DeepEqual(findings, repeated) {
 		t.Fatal("repeated callback changed the finding")
 	}
-	// Without a declared ceiling, both reusable calls require their own finding.
 	decoded.CacheMode = nil
 	workflow = workflows.Bind("without-ceiling", source, decoded, false, "").Workflow()
 	first, _ = workflow.Job("z_first")

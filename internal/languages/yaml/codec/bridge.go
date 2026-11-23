@@ -112,8 +112,7 @@ func translate(err error) error {
 	return err
 }
 
-// ParseYAML reads the first YAML document into an owned syntax graph.
-// Empty input returns a non-nil zero-kind node; malformed YAML returns nil and its parse error.
+// ParseYAML returns a non-nil zero-kind node for empty input.
 func ParseYAML(data []byte) (*Node, error) {
 	var node upstream.Node
 	if err := upstream.Unmarshal(data, &node); err != nil {
@@ -125,9 +124,7 @@ func ParseYAML(data []byte) (*Node, error) {
 	return fromParser(&node, nil)
 }
 
-// FollowingDocument reports where a second YAML document starts. GitHub reads
-// a workflow as exactly one document. Malformed input reports none; Parse owns
-// that error.
+// FollowingDocument reports where a second YAML document starts, and GitHub reads a workflow as exactly one document.
 func FollowingDocument(data []byte) (Mark, bool) {
 	decoder := upstream.NewDecoder(bytes.NewReader(data))
 	var first, second upstream.Node

@@ -5,9 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// ExplicitSource grants the initial HTTP authority named by an invocation or
-// public API argument. Configuration, locks and caches must not call it.
-// Local sources need no network grant. OCI tags are accepted for explicit pinning.
+// ExplicitSource must not be called by configuration, locks or caches.
 func ExplicitSource(source string) (acquisitionhttp.Grant, error) {
 	if pluginreference.IsOCI(source) {
 		ref, err := pluginreference.ParseOCITag(source)

@@ -59,7 +59,6 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 						}
 					})
 				}
-				// Different contents supplied under two spellings of the same path conflict.
 				t.Run(roots[0]+"Conflict", func(t *testing.T) {
 					t.Parallel()
 					_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.InputFile{

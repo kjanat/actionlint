@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// pluginInstallSpellings lists every accepted spelling of plugin install.
 var pluginInstallSpellings = [][]string{
 	{"plugin", "install"},
 	{"plugin", "add"},
@@ -81,7 +80,6 @@ func TestPluginInstallSpellingsShareHelp(t *testing.T) {
 func TestPluginAliasesStayOutOfHelpAndCompletion(t *testing.T) {
 	t.Parallel()
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	// Help and completion both start each listed command line with its name.
 	listed := func(output string) []string {
 		var names []string
 		for line := range strings.Lines(ansi.ReplaceAllString(output, "")) {

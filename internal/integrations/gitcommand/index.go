@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// Index is a read-only snapshot of the prospective tree and its watcher input.
 type Index struct {
 	Modes map[string]string
 	Path  string
@@ -31,8 +30,8 @@ func ReadIndex(ctx context.Context, root string) (result Index, err error) {
 		return result, err
 	}
 	// Intent-to-add entries appear in ls-files, but are absent from the
-	// prospective tree. Compare cached views so deleted worktree files are
-	// handled too, without writing a tree or parsing Git's debug format.
+	// prospective tree. Compare cached views to handle deleted worktree files
+	// too, without writing a tree or parsing Git's debug format.
 	additions := make(map[string]struct{})
 	for _, visibility := range []string{"--ita-visible-in-index", "--ita-invisible-in-index"} {
 		output, err := Query(ctx, git, root, nil, "diff", "--cached", "--name-status", "-z",

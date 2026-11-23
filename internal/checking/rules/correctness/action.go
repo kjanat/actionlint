@@ -34,9 +34,6 @@ var InvalidActionReferenceRule = &define.Rule{
 	},
 }
 
-// ruleAction is a rule to check running action in steps of jobs.
-// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
-// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type ruleAction struct {
 	workflowvisit.Base
 	reporting.Logger
@@ -47,7 +44,6 @@ type ruleAction struct {
 	lifecycle  actionmeta.LifecycleContext
 }
 
-// WithLifecycle supplies the execution facts shared by workflow and action checks.
 func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *ruleAction {
 	if rule.lifecycle != context {
 		rule.validation = newActionMetadataValidation()
@@ -56,7 +52,6 @@ func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *rule
 	return rule
 }
 
-// NewRuleAction checks references using local metadata and acquired remote definitions.
 func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache localactions.ActionMetadataDocumentLookup, remote *remote.ResolvedActions) *ruleAction {
 	return &ruleAction{
 		Base:  base,
@@ -65,7 +60,6 @@ func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache localacti
 	}
 }
 
-// VisitStep is callback when visiting Step node.
 func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 	e, ok := n.Action()
 	if !ok || e.Uses == nil {
@@ -73,7 +67,6 @@ func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 	}
 
 	if e.Uses.ContainsExpression() {
-		// Cannot parse specification made with interpolation. Give up
 		return nil
 	}
 
@@ -85,11 +78,9 @@ func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 
 	switch callreferences.FormOf(spec) {
 	case callreferences.FormWorkspace:
-		// Relative to repository root
 		return rule.checkLocalAction(spec, spec, e)
 	case callreferences.FormSelfRepository:
 		// Relative to the repository and commit that contain the running workflow.
-		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := callreferences.SelfRepositoryLocal(spec)
 		if !ok {
 			rule.Report(actioncheck.InvalidReference(reporting.SourcePosition(e.Uses), spec, "self-repository references do not support an '@ref' suffix"))
@@ -130,8 +121,6 @@ func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 	return nil
 }
 
-// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
-// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *definition.ExecAction) error {
 	if callreferences.FormOf(displaySpec) == callreferences.FormSelfRepository {
 		localSpec = displaySpec

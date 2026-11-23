@@ -13,10 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 )
 
-// checkingOptions builds the checking options that `check` and `lsp` share
-// from the flags and environment both commands read. legacy selects the
-// legacy grammar, in which an explicit configuration file does not replace
-// the project's configuration. Each command sets its own remaining fields.
+// checkingOptions with legacy set keeps the project's configuration beside an
+// explicit configuration file.
 func (c checkInvocation) checkingOptions(workingDir string, acquisition dependencycache.Acquisition, log io.Writer, legacy bool) (checking.Options, error) {
 	options := checking.Options{
 		WorkingDir:           workingDir,

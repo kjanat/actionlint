@@ -71,8 +71,6 @@ func liftRunnerDataset(value wacogo.Val) (runnerapi.DatasetStatus, error) {
 	return status, err
 }
 
-// liftValidatedRunnerSupport lifts a runner-provider 0.3.0 support
-// catalogue and validates it for scope.
 func liftValidatedRunnerSupport(value wacogo.Val, scope string) (runnerapi.SupportCatalog, error) {
 	catalog, err := liftRunnerSupport(value)
 	if err != nil {

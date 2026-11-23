@@ -14,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// References reads the effective plugin list and reports whether it was declared.
 func References(value any) ([]pluginreference.Reference, bool, error) {
 	if err := ValidateRoot(value); err != nil {
 		return nil, false, err
@@ -57,8 +56,6 @@ func pluginManifestSequence(refs []pluginreference.Reference) ([]any, error) {
 	return sequence, nil
 }
 
-// EditManifest returns original with its plugins setting replaced by refs.
-// It checks that the edit changes no other setting and declares exactly refs.
 func EditManifest(path string, original []byte, refs []pluginreference.Reference) ([]byte, error) {
 	editor, err := document.NewEditor(path, original)
 	if err != nil {
@@ -67,7 +64,6 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	return editPlugins(editor, refs)
 }
 
-// editPlugins replaces the plugins setting of a parsed file with refs.
 func editPlugins(editor *document.Editor, refs []pluginreference.Reference) ([]byte, error) {
 	before := editor.Root().Value()
 	if err := ValidateRoot(before); err != nil {

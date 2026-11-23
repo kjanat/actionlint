@@ -2,7 +2,6 @@ package syntax
 
 import "strings"
 
-// StaticReference returns a context path for static dot or literal bracket access.
 func StaticReference(expr Node) string {
 	path, _ := ReferencePath(expr)
 	return strings.Join(path, ".")

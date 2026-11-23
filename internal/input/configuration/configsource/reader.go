@@ -1,5 +1,4 @@
-// Package configsource acquires local and public HTTPS configuration
-// sources. Parsing and inheritance live in package document.
+// Package configsource acquires local and public HTTPS configuration sources.
 package configsource
 
 import (
@@ -18,11 +17,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
-// MaxBytes bounds each remote configuration document independently of its format.
 const MaxBytes = 4 << 20
 
-// Reader uses a context to read configuration sources. When supplied, the
-// contents reader handles all sources, including HTTPS, without network fallback.
+// Reader sends every source, including HTTPS, to a supplied contents reader without network fallback.
 type Reader struct {
 	ctx      context.Context
 	contents files.Contents
@@ -34,7 +31,6 @@ func New(ctx context.Context, contents files.Contents, connections acquisitionht
 		Transport: publicHTTPS{connections: connections},
 		Timeout:   30 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			// A byte-only reader cannot report the final origin to inheritance.
 			return errors.New("config redirects are unsupported; use the final HTTPS URL so relative extends keep their declaring origin")
 		},
 	}}
@@ -50,8 +46,7 @@ func (p publicHTTPS) RoundTrip(request *http.Request) (*http.Response, error) {
 	return transport.RoundTrip(request)
 }
 
-// ReadFile returns detached bytes. Remote acquisition is available only for an
-// explicit HTTPS source address; ordinary filesystem reads cannot trigger it.
+// ReadFile acquires remote content only for an explicit HTTPS source address.
 func (r *Reader) ReadFile(name string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
@@ -63,7 +58,6 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 }
 
 // ReadConfig shares configuration bytes within a command that uses WithReadCache.
-// ReadFile always reads current contents, including workflows changed by fixes.
 func (r *Reader) ReadConfig(name string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
@@ -101,9 +95,6 @@ func (r *Reader) readFile(name string) ([]byte, error) {
 	return bytes.Clone(content), nil
 }
 
-// Acquisition errors contain immutable failure data, never a transport's
-// retained request or a custom reader's writable error. Filesystem and context
-// classifications remain available through errors.Is and errors.As.
 type readError struct {
 	message                                                                   string
 	canceled, deadline, notExist, permission, invalid, exist, closed, offline bool

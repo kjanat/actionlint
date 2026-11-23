@@ -19,8 +19,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// probeBundledVersion runs the version probe of the bundled provider named
-// name against executable and returns its error.
 func probeBundledVersion(t *testing.T, name, executable string) error {
 	t.Helper()
 	manifests, err := toolmanifest.Bundled()
@@ -50,8 +48,7 @@ func TestNativeRuffDefaultAndPyflakesSelection(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	// Keep tool-manager shims in the repository's version context. Both the
-	// native command and actionlint disable configuration discovery below.
+	// Keep tool-manager shims in the repository's version context.
 	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", "")
 	t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", "")
 	t.Setenv("ACTIONLINT_TOOL_RUFF_ENV", "")

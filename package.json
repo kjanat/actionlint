@@ -49,7 +49,7 @@
     "biome": "npm:@biomejs/biome@2.6.6",
     "pkg-pr-new": "0.0.93",
     "runner-run": "^0.28",
-    "tsc-rs": "^0.8",
+    "tsrs": "catalog:",
     "typescript": "npm:@typescript/typescript6@^6",
     "vscode-languageserver-textdocument": "^1",
     "yaml-language-server": "https://pkg.pr.new/kjanat/yaml-language-server/yaml-language-server@a438106"
@@ -72,11 +72,11 @@
   },
   "allowScripts": {
     "@actions/github-script": false,
-    "core-js": false,
-    "tsc-rs": true
+    "core-js": false
   },
   "catalog": {
-    "@kjanat/dreamcli": "^5.0.0",
-    "ansispeck": "^0.4.3"
+    "@kjanat/dreamcli": "^5.6.0",
+    "ansispeck": "^0.4.3",
+    "tsrs": "7.1.0-beta.tsrs4"
   }
 }

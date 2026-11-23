@@ -1,4 +1,4 @@
-//! Finite compatibility probe, not an actionlint port or a production host.
+//! This crate is a finite compatibility probe.
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use wasmtime::component::{Component, Linker, ResourceTable};

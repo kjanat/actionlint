@@ -1,4 +1,4 @@
-// Package invocation owns static call occurrences and expansion state.
+// Package invocation records call occurrences and expansion state.
 package invocation
 
 import (
@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// Errors returned for programming or input misuse.
 var (
 	ErrInvalidEntry       = errors.New("invocation: invalid entry")
 	ErrInvalidSource      = errors.New("invocation: invalid source identity")
@@ -37,25 +36,20 @@ var (
 	ErrInvalidCondition   = errors.New("invocation: invalid condition")
 )
 
-// EntryKind distinguishes workflow entries from standalone action entries.
 type EntryKind string
 
-// Entry kinds.
 const (
 	EntryWorkflow EntryKind = "workflow"
 	EntryAction   EntryKind = "action"
 )
 
-// Valid reports whether k is a known entry kind.
 func (k EntryKind) Valid() bool { return k == EntryWorkflow || k == EntryAction }
 
-// Entry is the analysis root. It has no incoming call.
 type Entry struct {
 	Kind      EntryKind
 	Reference sourcetext.Reference
 }
 
-// ID is a deterministic occurrence identifier (lowercase hex SHA-256).
 type ID string
 
 func (id ID) valid() bool {
@@ -70,7 +64,6 @@ func (id ID) valid() bool {
 	return true
 }
 
-// Condition describes execution independently of declaration validation.
 type Condition uint8
 
 const (
@@ -84,25 +77,20 @@ func (c Condition) valid() bool {
 	return c == ConditionEnabled || c == ConditionSkipped || c == ConditionRuntimeDependent
 }
 
-// Budget bounds expansion of one entry, including scripts in the entry itself.
 type Budget struct {
-	// MaxDepth is the maximum number of call edges from the entry.
 	MaxDepth int
-	// MaxCalls is the maximum number of recorded call occurrences.
 	MaxCalls int
 	// MaxScripts bounds run and action-input occurrences, including when no
 	// script analyzer consumes them. Exhaustion stops the entry.
 	MaxScripts int
 }
 
-// Application defaults per entry.
 const (
 	DefaultMaxDepth   = 10
 	DefaultMaxCalls   = 10000
 	DefaultMaxScripts = 10000
 )
 
-// DefaultBudget returns the application composition budget.
 func DefaultBudget() Budget {
 	return Budget{MaxDepth: DefaultMaxDepth, MaxCalls: DefaultMaxCalls, MaxScripts: DefaultMaxScripts}
 }
@@ -114,10 +102,8 @@ func (b Budget) validate() error {
 	return nil
 }
 
-// ScriptKind identifies how a script is declared.
 type ScriptKind string
 
-// Script kinds.
 const (
 	ScriptRun         ScriptKind = "run"
 	ScriptActionInput ScriptKind = "action-input"
@@ -125,7 +111,6 @@ const (
 
 const idPrefix = "actionlint:invocation:v1\x00"
 
-// digest hashes the domain prefix and length-prefixed fields.
 func digest(domain string, fields ...string) ID {
 	buf := []byte(idPrefix + domain + "\x00")
 	for _, f := range fields {
@@ -148,7 +133,6 @@ func validateRef(name string, ref sourcetext.Reference) error {
 	return nil
 }
 
-// NewRootID returns the entry ID. Revision and address are not part of it.
 func NewRootID(kind EntryKind, ref sourcetext.Reference) (ID, error) {
 	if !kind.Valid() {
 		return "", fmt.Errorf("%w: kind %q", ErrInvalidEntry, string(kind))
@@ -159,7 +143,6 @@ func NewRootID(kind EntryKind, ref sourcetext.Reference) (ID, error) {
 	return digest("root", string(kind), ref.Document, ref.Node), nil
 }
 
-// NewCallID returns the call ID for a parent and call-site reference.
 func NewCallID(parent ID, site sourcetext.Reference) (ID, error) {
 	if !parent.valid() {
 		return "", fmt.Errorf("%w: malformed parent", ErrInvalidID)
@@ -170,8 +153,6 @@ func NewCallID(parent ID, site sourcetext.Reference) (ID, error) {
 	return digest("call", string(parent), site.Document, site.Node), nil
 }
 
-// NewScriptID returns the script occurrence ID for a declaration within the
-// entry or call identified by owner. Run scripts have no input name.
 func NewScriptID(owner ID, decl sourcetext.Reference, kind ScriptKind, input string) (ID, error) {
 	if !owner.valid() {
 		return "", fmt.Errorf("%w: malformed owner", ErrInvalidID)
@@ -197,14 +178,11 @@ func NewScriptID(owner ID, decl sourcetext.Reference, kind ScriptKind, input str
 	return digest("script", string(owner), decl.Document, decl.Node, string(kind), input), nil
 }
 
-// Call is one recorded call occurrence. Caller and target declarations stay
-// separate: Site is the caller's declaration, the target lives in Outcome.
 type Call struct {
 	Context
 	Outcome Outcome
 }
 
-// Stop identifies the first declaration rejected by a call or script budget.
 type Stop struct {
 	Parent ID
 	Site   sourcetext.Reference
@@ -222,7 +200,6 @@ func (e budgetError) Is(target error) bool {
 	return e.stop.Limit == LimitTotal && target == ErrCallBudget || e.stop.Limit == LimitScripts && target == ErrScriptBudget
 }
 
-// Graph is an immutable published invocation graph. Accessors return copies.
 type Graph struct {
 	entry       Entry
 	root        ID
@@ -238,28 +215,21 @@ type Graph struct {
 	incomplete  bool
 }
 
-// Valid reports whether g was published by a Builder.
 func (g Graph) Valid() bool { return g.root != "" }
 
-// Entry returns the analysis entry.
 func (g Graph) Entry() Entry { return g.entry }
 
-// RootID returns the entry occurrence ID.
 func (g Graph) RootID() ID { return g.root }
 
-// Budget returns the limits the graph was built under.
 func (g Graph) Budget() Budget { return g.budget }
 
-// Calls returns all recorded calls in creation order.
 func (g Graph) Calls() []Call { return slices.Clone(g.calls) }
 
-// CallCount returns the number of recorded calls.
 func (g Graph) CallCount() int { return len(g.calls) }
 
 // CallRange returns calls[start:end] in creation order; callers check bounds.
 func (g Graph) CallRange(start, end int) []Call { return slices.Clone(g.calls[start:end]) }
 
-// Call returns the call with the given ID.
 func (g Graph) Call(id ID) (Call, bool) {
 	i, ok := g.index[id]
 	if !ok {
@@ -268,7 +238,6 @@ func (g Graph) Call(id ID) (Call, bool) {
 	return g.calls[i], true
 }
 
-// Has reports whether id names the entry or a recorded call.
 func (g Graph) Has(id ID) bool {
 	if id == "" {
 		return false
@@ -277,7 +246,6 @@ func (g Graph) Has(id ID) bool {
 	return ok || id == g.root
 }
 
-// Depth returns the number of call edges from the entry to id.
 func (g Graph) Depth(id ID) (int, bool) {
 	if id != "" && id == g.root {
 		return 0, true
@@ -286,7 +254,6 @@ func (g Graph) Depth(id ID) (int, bool) {
 	return c.Depth(), ok
 }
 
-// Children returns the direct calls of id in creation order.
 func (g Graph) Children(id ID) []Call {
 	var out []Call
 	for _, c := range g.calls {
@@ -297,8 +264,6 @@ func (g Graph) Children(id ID) []Call {
 	return out
 }
 
-// Path returns the calls from the outermost call down to id, excluding the
-// entry. The path of the entry is empty.
 func (g Graph) Path(id ID) ([]Call, bool) {
 	if id != "" && id == g.root {
 		return nil, true
@@ -317,7 +282,6 @@ func (g Graph) Path(id ID) ([]Call, bool) {
 	return path, true
 }
 
-// Chain returns the IDs from the entry through id inclusive.
 func (g Graph) Chain(id ID) ([]ID, bool) {
 	path, ok := g.Path(id)
 	if !ok {
@@ -331,15 +295,12 @@ func (g Graph) Chain(id ID) ([]ID, bool) {
 	return chain, true
 }
 
-// Stop returns the first exhausted call or script budget boundary.
 func (g Graph) Stop() (Stop, bool) { return g.stop, g.hasStop }
 
-// EntryInterruption returns interruption outside an unfinished call.
 func (g Graph) EntryInterruption() (Outcome, bool) {
 	return g.entryStop, g.entryStop.Valid()
 }
 
-// Incomplete reports unavailable bodies, unresolved calls or interrupted expansion.
 func (g Graph) Incomplete() bool { return g.incomplete }
 
 type recordState uint8
@@ -355,8 +316,7 @@ type record struct {
 	state recordState
 }
 
-// Builder owns occurrence state while traversal runs. It is not safe for
-// concurrent use.
+// Builder is unsafe for concurrent use.
 type Builder struct {
 	entry       Entry
 	root        ID
@@ -374,8 +334,6 @@ type Builder struct {
 	interrupted bool
 }
 
-// NewBuilder starts a graph for an entry. Pass DefaultBudget for application
-// limits.
 func NewBuilder(kind EntryKind, ref sourcetext.Reference, budget Budget) (*Builder, error) {
 	root, err := NewRootID(kind, ref)
 	if err != nil {
@@ -394,10 +352,8 @@ func NewBuilder(kind EntryKind, ref sourcetext.Reference, budget Budget) (*Build
 	}, nil
 }
 
-// RootID returns the entry occurrence ID, the parent of top-level calls.
 func (b *Builder) RootID() ID { return b.root }
 
-// IsBudgetStop accepts wrappers only when every cause is this builder's stop.
 func (b *Builder) IsBudgetStop(err error) bool {
 	if !b.hasStop || err == nil {
 		return false
@@ -421,21 +377,16 @@ func (b *Builder) IsBudgetStop(err error) bool {
 	return ok && exhausted.stop == b.stop
 }
 
-// Admission describes what Begin did with an attempted call.
 type Admission uint8
 
-// Admission results.
 const (
 	// Admitted means a pending record exists; resolve it after lookup.
 	Admitted Admission = iota + 1
-	// DepthLimited means a final non-expanded frontier record was stored.
 	DepthLimited
 	// Stopped means a call or script budget was exhausted; no call was allocated.
 	Stopped
 )
 
-// Ticket is the result of Begin. A Stopped ticket carries the budget boundary
-// that rejected it; other tickets carry the admitted call context.
 type Ticket struct {
 	context Context
 	status  Admission
@@ -452,10 +403,8 @@ func (t Ticket) Context() (Context, bool) {
 	return t.context, true
 }
 
-// Status returns the admission result.
 func (t Ticket) Status() Admission { return t.status }
 
-// Err returns the original budget error for a stopped admission, otherwise nil.
 func (t Ticket) Err() error {
 	if t.status != Stopped {
 		return nil
@@ -463,9 +412,6 @@ func (t Ticket) Err() error {
 	return budgetError{t.stop}
 }
 
-// Begin admits a call under the entry or an open expanded call context.
-// It checks parent and site validity and duplicate traversal, then the total
-// budget, then depth, all before metadata acquisition.
 func (b *Builder) Begin(parentContext Context, site sourcetext.Reference, facts Facts) (Ticket, error) {
 	if b.published {
 		return Ticket{}, ErrPublished
@@ -533,9 +479,8 @@ func (b *Builder) add(r record) {
 	b.records = append(b.records, r)
 }
 
-// Resolve records the lookup outcome of a pending call. It returns the stored
-// outcome: an expanded target that is already active becomes a cycle. Descend
-// into the call only when the result is expanded.
+// Resolve returns the stored outcome. Descend into the call only when the
+// result is expanded.
 func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
 	if !b.Owns(context) {
 		return Outcome{}, ErrForeignContext
@@ -570,8 +515,6 @@ func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
 	return lookup, nil
 }
 
-// callerResolvable reports whether a caller may settle a pending call with an
-// outcome of kind.
 func callerResolvable(kind OutcomeKind) bool {
 	switch kind {
 	case OutcomeExpanded, OutcomeOpaque, OutcomeUnavailable, OutcomeUnresolved, OutcomeDynamic:
@@ -585,8 +528,6 @@ func sameDeclaration(a, c sourcetext.Reference) bool {
 	return a.Document == c.Document && a.Node == c.Node
 }
 
-// activeOwner finds the nearest ancestor whose expanded target declares the
-// same document/node, including the standalone action entry itself.
 func (b *Builder) activeOwner(parent ID, target sourcetext.Reference) (ID, sourcetext.Reference, bool) {
 	for p := parent; p != b.root; {
 		rec := b.records[b.index[p]]
@@ -601,8 +542,7 @@ func (b *Builder) activeOwner(parent ID, target sourcetext.Reference) (ID, sourc
 	return "", sourcetext.Reference{}, false
 }
 
-// Close ends the body of an expanded call. Every child must be final. Closing
-// an interrupted call is a no-op so callers can unwind uniformly.
+// Close requires every child to be final. Closing an interrupted call is a no-op.
 func (b *Builder) Close(context Context) error {
 	if !b.Owns(context) {
 		return ErrForeignContext
@@ -630,10 +570,6 @@ func (b *Builder) Close(context Context) error {
 	return nil
 }
 
-// Interrupt marks the deepest unfinished call interrupted and returns its context.
-// A pending call becomes interrupted; an open expanded call keeps its target
-// on the interrupted outcome and is closed. Ancestors stay expanded and must
-// still be closed.
 func (b *Builder) Interrupt(cause Reason, detail string) (Context, error) {
 	if b.published {
 		return Context{}, ErrPublished
@@ -660,7 +596,6 @@ func (b *Builder) Interrupt(cause Reason, detail string) (Context, error) {
 	return rec.call.Context, nil
 }
 
-// InterruptEntry records interruption before or between top-level calls.
 func (b *Builder) InterruptEntry(cause Reason, detail string) error {
 	if b.published {
 		return ErrPublished
@@ -680,8 +615,6 @@ func (b *Builder) InterruptEntry(cause Reason, detail string) error {
 	return nil
 }
 
-// Publish seals the builder and returns the immutable graph. It fails while
-// any reservation is pending or any expanded body is open.
 func (b *Builder) Publish() (Graph, error) {
 	if b.published {
 		return Graph{}, ErrPublished

@@ -9,9 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// gitModes reads each repository's Git index once per analysis. Every rule
-// gets the same snapshot for a root, so the directory and case-folding indexes
-// it builds on first use are shared too.
 type gitModes struct {
 	mu      sync.Mutex
 	entries map[string]func() *execution.IndexSnapshot

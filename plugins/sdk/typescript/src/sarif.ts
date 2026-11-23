@@ -5,10 +5,10 @@ import type { Diagnostic, Severity } from '#index';
 import { array, positiveInteger, record, text } from '#process';
 
 /**
- * Decode SARIF 2.1.0 results, accepting only artifact URIs allowed by the caller.
+ * Decode SARIF 2.1.0 results and accept only artifact URIs on the caller's allow list.
  * Pass captured source to convert UTF-16 columns and calculate omitted end columns.
  * Runs without columnKind require source when a column could depend on its unit.
- * Native suppressions with no review status or an accepted status are honored.
+ * The decoder honors native suppressions with no review status or an accepted status.
  * Report findings with rejected or under-review suppressions. Malformed suppression records throw.
  * @example
  * ```ts

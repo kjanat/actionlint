@@ -7,14 +7,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
-// Trigger identifies a possible event and optional activity filters. Unknown
-// events/activities stay open, including reusable workflows' inherited events.
 type Trigger struct {
 	Name    string
 	Actions []string
 }
 
-// FromTriggers builds a payload type from the selected events and activities.
 func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 	b := builder{cache: map[int]exprtypes.Type{}, active: map[int]bool{}}
 	var selected []exprtypes.EventVariant
@@ -27,8 +24,7 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 		var dispatch exprtypes.ObjectType
 		hasDispatch := false
 		if trigger.Name == "repository_dispatch" {
-			// OpenAPI indexes this shared schema by an example event_type. That
-			// example is not a restriction on user-defined dispatch activities.
+			// OpenAPI indexes this shared schema by an example event_type.
 			var combined member
 			for _, action := range slices.Sorted(maps.Keys(variants)) {
 				combined = combine(combined, b.build(variants[action]))
@@ -43,9 +39,8 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 			actions, _ = DefaultActivities(trigger.Name)
 		}
 		if len(actions) == 0 {
-			// Events without a types filter can still carry webhook actions, e.g.
-			// deployment's "created" payload. The registry decides syntax validity;
-			// the catalogue supplies each possible payload for an actionless trigger.
+			// Events without a types filter can still carry webhook actions, such as
+			// deployment's "created" payload.
 			if trigger.Name != "repository_dispatch" {
 				actions = slices.Sorted(maps.Keys(variants))
 			}
@@ -77,8 +72,6 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 	return exprtypes.NewEventType(selected)
 }
 
-// Keep the established Actions repository metadata overlay on each alternative,
-// so narrowing cannot discard it. Copy only the path being changed.
 func workflowRunPayload(object exprtypes.ObjectType) exprtypes.ObjectType {
 	runType, _ := object.Property("workflow_run")
 	run, ok := runType.Object()
@@ -95,9 +88,6 @@ func workflowRunPayload(object exprtypes.ObjectType) exprtypes.ObjectType {
 	return object.With("workflow_run", run.Type())
 }
 
-// member is a payload type that may be absent, as for "absent" and "null"
-// schema nodes and for a strict object's undeclared properties. When present
-// is false, ty is the zero Type.
 type member struct {
 	ty      exprtypes.Type
 	present bool
@@ -115,7 +105,6 @@ func (b *builder) build(id int) member {
 		return present(t)
 	}
 	// Recursive payloads are finite at runtime but have unbounded schema depth.
-	// Keep the recursive edge open instead of expanding or rejecting it.
 	if b.active[id] {
 		return present(exprtypes.AnyType())
 	}
@@ -156,7 +145,6 @@ func (b *builder) build(id int) member {
 	return present(t)
 }
 
-// known types an absent member as any.
 func known(m member) exprtypes.Type {
 	if !m.present {
 		return exprtypes.AnyType()
@@ -169,8 +157,8 @@ func mappedMember(o exprtypes.ObjectType) member {
 	return member{t, ok}
 }
 
-// combine preserves all properties offered by any possible event. Missing and
-// null variants are not a reason to erase a known property's type.
+// combine keeps every property offered by any possible event. A missing or
+// null variant keeps a known property's type.
 func combine(a, b member) member {
 	if !a.present {
 		return b
@@ -198,9 +186,6 @@ func combine(a, b member) member {
 	return present(exprtypes.AnyType())
 }
 
-// combineObjects returns a strict object holding the properties of x and y.
-// A property in both has the combined type. The declared spelling from y wins
-// over the one from x.
 func combineObjects(x, y exprtypes.ObjectType) exprtypes.Type {
 	var o exprtypes.ObjectBuilder
 	o.SetDisplayName("object")
@@ -223,9 +208,6 @@ func combineObjects(x, y exprtypes.ObjectType) exprtypes.Type {
 	return o.Build().Type()
 }
 
-// setMember stores t under key in o and keeps the spelling that from declared
-// for key. A declared spelling always lower-cases to its key, so SetProperty
-// stores it under the same key.
 func setMember(o *exprtypes.ObjectBuilder, from exprtypes.ObjectType, key string, t exprtypes.Type) {
 	if spelling := from.PropertyName(key); spelling != key {
 		o.SetProperty(spelling, t)

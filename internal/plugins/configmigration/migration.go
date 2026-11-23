@@ -22,8 +22,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-// Migration previews the syntax conversion and default plugin declarations.
-// Applying it verifies dependencies before writing exact plugin declarations.
 type Migration struct {
 	*configuration.FileMigration
 	project       *installation.Project
@@ -31,8 +29,6 @@ type Migration struct {
 	updatePlugins bool
 }
 
-// Prepare previews migrating the configuration at path. When the legacy file
-// needs rule metadata, it is read from cached plugin manifests.
 func Prepare(ctx context.Context, path string, options installation.DefaultPluginOptions) (*Migration, error) {
 	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
 	if errors.Is(err, configuration.ErrRuleMetadataRequired) {
@@ -71,8 +67,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	var refs []pluginreference.Reference
 	switch {
 	case !declaredLocally && project.Manifest.Declared:
-		// Keep inherited declarations inherited. Writing the effective list into
-		// the leaf would freeze future changes made by the shared base.
+		// Writing the effective list into the leaf would freeze changes from the shared base.
 		refs = slices.Clone(project.Manifest.References)
 		updatePlugins = false
 	default:
@@ -148,8 +143,7 @@ func (m *Migration) Apply(ctx context.Context) error {
 	return nil
 }
 
-// MigrateFile automatically upgrades a selected legacy local file.
-// Files already using current syntax are never implicitly enrolled in plugins.
+// MigrateFile never enrolls files that already use current syntax in plugins.
 func MigrateFile(ctx context.Context, path string, options installation.DefaultPluginOptions) error {
 	return migrateConfig(ctx, path, "", options)
 }
@@ -235,8 +229,6 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 	return filepath.IsLocal(relative), nil
 }
 
-// MigrateSelection upgrades the local configs selection would read before
-// runtime plugin selection.
 func MigrateSelection(ctx context.Context, selection pluginselection.PluginSelection, directory string, input checkrequest.Request, options installation.DefaultPluginOptions) error {
 	if selection.Disabled || len(selection.Paths) != 0 {
 		return nil
@@ -299,8 +291,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.PluginSelec
 		}{root, path})
 	}
 	if len(seen) > 1 {
-		// Check existing plugin scopes before planning migrations. pluginselection.PluginSelection is
-		// read-only and catches active configs in repositories with no legacy file.
+		// Check existing plugin scopes before planning migrations.
 		if _, err := selection.SelectForCache(ctx, directory, input); err != nil {
 			return err
 		}

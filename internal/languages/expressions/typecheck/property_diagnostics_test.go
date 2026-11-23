@@ -29,7 +29,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
 			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-			// displayNme is equally close to two declared names: never guess.
+			// displayNme is equally close to two declared names. The checker never guesses.
 			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
 			gh, _ := contexts.BuiltinGlobalVariableTypes["github"].Object()
 			gh = gh.With("event", exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"author": author.Type()}).Type()).Type())

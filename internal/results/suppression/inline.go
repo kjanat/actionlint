@@ -11,8 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Directive is a validated inline exception over a physical source range.
-// Position identifies its comment; Lines bound the declaration it covers.
 type Directive struct {
 	Position sourcetext.Position
 	Lines    sourcetext.LineRange
@@ -20,8 +18,6 @@ type Directive struct {
 	Reason   string
 }
 
-// ParseInlineSuppressions reads real YAML comments, recovers comments in malformed documents, and
-// validates directives against the caller's ordered rule catalogue.
 func ParseInlineSuppressions(source []byte, rules []string, names rule.Names) ([]Directive, []results.Diagnostic) {
 	var directives []Directive
 	var findings []results.Diagnostic
@@ -108,21 +104,15 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, 
 	return Directive{Position: comment.pos, Lines: sourcetext.LineRange{First: target, Last: max(target, comment.endLine)}, Rules: rules, Reason: strings.TrimSpace(reason)}, nil
 }
 
-// Decision independently controls whether an exception hides findings and
-// whether using that exception produces a policy diagnostic.
 type Decision struct{ Suppress, Report bool }
 
-// Evaluation contains the source-local exceptions permitted by policy.
-// Invocation/source ownership is supplied by the host before calling Suppresses.
+// Evaluation callers check invocation and source ownership before calling Suppresses.
 type Evaluation struct {
 	ranges map[string][]sourcetext.LineRange
 	names  rule.Names
 }
 
-// Evaluate applies restrictions to already validated directives. A nil policy
-// permits every exception. It returns the permitted exceptions and the policy
-// diagnostics for prohibited ones. Grammar diagnostics are evaluated by the same
-// ranges as analyzer diagnostics; policy diagnostics are emitted after filtering.
+// Evaluate permits every exception when policy is nil.
 func Evaluate(directives []Directive, policy func(string) Decision, names rule.Names) (Evaluation, []results.Diagnostic) {
 	result := Evaluation{ranges: make(map[string][]sourcetext.LineRange), names: names}
 	var reports []results.Diagnostic
@@ -148,7 +138,6 @@ func Evaluate(directives []Directive, policy func(string) Decision, names rule.N
 	return result, reports
 }
 
-// Suppresses reports whether a finding's origin lines overlap an allowed exception.
 func (e Evaluation) Suppresses(ruleName string, origin sourcetext.LineRange) bool {
 	return slices.ContainsFunc(e.ranges[e.names.ResolveAlias(ruleName)], origin.Overlaps)
 }

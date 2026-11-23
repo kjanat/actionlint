@@ -14,8 +14,6 @@ import (
 
 // Composite outputs are published through the manifest's value mapping:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#outputs-for-composite-actions
-// These cases promote the saved issue #361 reproductions in
-// .review-artifacts/pr343-output-completeness to permanent host regressions.
 func TestNestedCompositeOutputReferences(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

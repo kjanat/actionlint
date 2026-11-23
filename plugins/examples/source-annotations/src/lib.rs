@@ -1,5 +1,5 @@
-//! Inspect YAML comments attached to scripts through the optional host interface.
-//! Comments inside a script scalar are script text, not YAML annotations.
+//! This plugin reads YAML comments on scripts through the optional host interface.
+//! Comments inside a script scalar are script text.
 
 use actionlint_extension_api::kjanat::actionlint::source_annotations as annotations;
 use actionlint_extension_api::{

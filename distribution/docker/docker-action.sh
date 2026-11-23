@@ -1,14 +1,13 @@
 #!/bin/sh
 
-# Keep the published Docker Action's positional protocol around the ordinary CLI.
-# Positions 5 and 6 hold the shellcheck and pyflakes inputs, which are ignored;
-# INPUT_DISABLE-TOOLS from the environment turns tools off.
+# Positions 5 and 6 hold the shellcheck and pyflakes inputs. The script ignores them.
+# The INPUT_DISABLE-TOOLS environment variable turns tools off.
 if [ "$#" -ne 9 ]; then
 	printf '%s\n' '::error title=Invalid action input::The action received an unexpected number of inputs'
 	exit 2
 fi
 
-# Unlike absent JavaScript inputs, empty positional values are invalid here.
+# Empty positional values are invalid here. Absent JavaScript inputs are valid.
 for input in "format=$2" "fail-on-error=$9"; do
 	if [ -z "${input#*=}" ]; then
 		printf "::error title=Invalid action input::Input '%s' must not be empty\n" "${input%%=*}"

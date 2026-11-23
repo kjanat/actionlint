@@ -31,47 +31,28 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Register selects scripts by the supplied shell names. Backends with
-// language-specific preparation can supply their own registration.
 func Register(descriptor rule.Descriptor, shells []string, backend scriptengine.Backend) (contract.Registration, error) {
 	return RegisterEngine(scriptengine.Descriptor{Rule: descriptor, Shells: shells}, backend)
 }
 
-// RegisterEngine routes both shell snippets and declared action-input sites.
 func RegisterEngine(descriptor scriptengine.Descriptor, backend scriptengine.Backend) (contract.Registration, error) {
 	return registerEngine(descriptor, backend, engineOptions{})
 }
 
-// engineOptions configure a runner beyond its descriptor and backend.
 type engineOptions struct {
-	// enabled further restricts the scripts of a configuration.
 	enabled func(contract.Context) bool
-	// prepare replaces expression masking and plugin options for every
-	// selected script.
 	prepare func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
-	// batch replaces prepare with a preparation bound to one batch, which
-	// may reject the settings of its scopes once. With it, run scripts
-	// reach the preparation even when no shell selects them; the profile
-	// skips the ones it does not prepare.
-	batch func(context.Context, scriptanalysis.Batch) (func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error), error)
-	// filename is the virtual name of run snippets; its extension also names
-	// action-input snippets. Empty keeps "actionlint-script".
+	// With batch set, run scripts reach the preparation even when no shell selects them.
+	batch    func(context.Context, scriptanalysis.Batch) (func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error), error)
 	filename string
 	findings findingCapabilities
 }
 
-// findingCapabilities declare what a backend's diagnostics may carry and
-// how their messages read.
 type findingCapabilities struct {
-	// fixes admits suggested edits.
-	fixes bool
-	// reportedSources admits findings in files the engine read.
+	fixes           bool
 	reportedSources bool
-	// messageTemplate formats messages from {code}, {severity}, {row},
-	// {column} and {message}; empty keeps the engine's message.
 	messageTemplate string
-	// severities maps engine severities to host severities; an unmapped
-	// severity becomes a warning. Empty passes severities through.
+	// An unmapped severity becomes a warning.
 	severities map[string]severity.Severity
 }
 
@@ -94,8 +75,6 @@ func registerEngine(descriptor scriptengine.Descriptor, backend scriptengine.Bac
 	for _, input := range descriptor.ScriptInputs {
 		inputs[input] = struct{}{}
 	}
-	// An engine's own capabilities admit what its diagnostics carry; its
-	// transport already rejected anything it did not declare.
 	options.findings.fixes = options.findings.fixes || descriptor.Fixes
 	options.findings.reportedSources = options.findings.reportedSources || descriptor.ReportedSources
 	directory := slices.Contains(descriptor.Resources, checkinputs.ToolDirectory)
@@ -126,14 +105,10 @@ type runner struct {
 	backend          scriptengine.Backend
 	context          contract.Context
 	options          engineOptions
-	// directory sends the working directory to an engine that requested the
-	// directory resource.
-	directory bool
+	directory        bool
 }
 
-// processRunner is a backend that runs one native process per check: it
-// takes preparation variables, reports the files the engine read and may run
-// checks at once, each holding a slot of the shared process pool.
+// processRunner may run checks at once, and each check holds a slot of the shared process pool.
 type processRunner interface {
 	Run(context.Context, scriptengine.Request, map[string]string) (process.DecodedCheck, error)
 	Concurrent() bool
@@ -154,8 +129,6 @@ func (r runner) scriptEnabled(cfg *configuration.Config) bool {
 	return r.options.enabled(c)
 }
 
-// check is one prepared request for the batch script at index. Scope is
-// the script's, which bounds a directory grant.
 type check struct {
 	index    int
 	prepared preparation.Prepared
@@ -163,9 +136,7 @@ type check struct {
 	scope    *scriptanalysis.Scope
 }
 
-// outcome is the backend's answer to one check. Copies, set when the check
-// had a directory grant, holds the display copy of each reported source read
-// through that grant; reported sources missing from it are unreadable.
+// Reported sources missing from copies are unreadable.
 type outcome struct {
 	skipped     bool
 	diagnostics []scriptengine.Diagnostic
@@ -175,8 +146,6 @@ type outcome struct {
 	err         error
 }
 
-// Analyze prepares the selected scripts, checks them, concurrently when the
-// backend allows, and maps the diagnostics back in script order.
 func (r runner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 	checks, failures := r.prepare(ctx, batch)
 	if err := ctx.Err(); err != nil {
@@ -195,7 +164,6 @@ func (r runner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]cont
 	return out, failures
 }
 
-// prepare selects, prepares and validates the scripts this tool checks.
 func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]check, error) {
 	var checks []check
 	var failures error
@@ -276,8 +244,6 @@ func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]chec
 		}
 		request := scriptengine.Request{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
 		request.Environment = script.Environment
-		// Process backends and engines that requested the directory resource
-		// receive the directory.
 		if directory, known := script.WorkingDirectory(); (reporting || r.directory) && known {
 			request.Directory = directory
 		}
@@ -286,9 +252,6 @@ func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]chec
 	return checks, failures
 }
 
-// check runs every request, in parallel for a concurrent process backend.
-// Each process still waits for a slot of the shared pool. A check with
-// variants runs once per variant, and their outcomes merge.
 func (r runner) check(ctx context.Context, checks []check) []outcome {
 	type job struct {
 		check int
@@ -337,8 +300,6 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 	return outcomes
 }
 
-// runs are the requests for c: one per variant, or c itself without
-// variants.
 func (c check) runs() []check {
 	if len(c.prepared.Variants) == 0 {
 		return []check{c}
@@ -351,7 +312,6 @@ func (c check) runs() []check {
 	return runs
 }
 
-// findings maps one check's diagnostics to findings in the workflow.
 func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([]contract.ToolFinding, error) {
 	var out []contract.ToolFinding
 	var failures error
@@ -369,8 +329,6 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 				failures = errors.Join(failures, fmt.Errorf("tool %s reported a finding in %q but does not declare reported sources", r.descriptor.Name, d.Source))
 				continue
 			}
-			// Template effects describe the masked snippet. A file the engine
-			// read has no template expressions, so it carries none.
 			if d.TemplateEffect != "" && d.TemplateEffect != scriptengine.TemplateEffectNone {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned template effect %q for reported source %q", r.descriptor.Name, d.TemplateEffect, d.Source))
 				continue
@@ -406,11 +364,6 @@ func (r runner) findings(c check, script scriptanalysis.Unit, result outcome) ([
 	return out, failures
 }
 
-// scriptFinding maps a snippet diagnostic through the prepared line map. A
-// diagnostic on a generated directive is a configuration error; one on a
-// generated startup line is dropped unless its severity is error. An
-// unmapped start falls back to the script key; an unmapped or reversed end is
-// dropped.
 func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d scriptengine.Diagnostic) (*contract.ToolFinding, error) {
 	row, endRow := d.Location.Line, d.EndLocation.Line
 	hasEnd := d.EndLocation != (sourcetext.Position{})
@@ -455,8 +408,6 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d scriptengin
 	return &finding, nil
 }
 
-// configurationError reports a diagnostic on a line preparation generated
-// from the tool's configuration.
 func (r runner) configurationError(d scriptengine.Diagnostic) error {
 	if d.Code == "" {
 		return fmt.Errorf("tools.%s.config: %s", r.descriptor.Name, d.Message)
@@ -464,8 +415,6 @@ func (r runner) configurationError(d scriptengine.Diagnostic) error {
 	return fmt.Errorf("tools.%s.config: %s: %s", r.descriptor.Name, d.Code, d.Message)
 }
 
-// message formats a finding message from the manifest's template. Row and
-// column are script coordinates after line mapping.
 func (r runner) message(d scriptengine.Diagnostic, row, column int) string {
 	if r.options.findings.messageTemplate == "" {
 		return d.Message
@@ -473,8 +422,6 @@ func (r runner) message(d scriptengine.Diagnostic, row, column int) string {
 	return strings.NewReplacer("{code}", d.Code, "{severity}", d.Severity, "{row}", strconv.Itoa(row), "{column}", strconv.Itoa(column), "{message}", d.Message).Replace(r.options.findings.messageTemplate)
 }
 
-// severity maps an engine severity to a host severity through the
-// manifest's table, logging a severity the table does not list.
 func (r runner) severity(tool string) severity.Severity {
 	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(tool)
 	if !listed {
@@ -489,7 +436,6 @@ func (r runner) debug(format string, args ...any) {
 	}
 }
 
-// filename is the virtual snippet name of a request.
 func (r runner) filename(script scriptanalysis.Unit) string {
 	if script.Input != nil {
 		return inputFilename(script.Input.Site, strings.TrimPrefix(path.Ext(r.options.filename), "."))
@@ -500,8 +446,6 @@ func (r runner) filename(script scriptanalysis.Unit) string {
 	return "actionlint-script"
 }
 
-// inputFilename names an action-input snippet. The extension comes from the
-// tool's snippet filename; engines without one name it from the language.
 func inputFilename(site checkinputs.ScriptInput, extension string) string {
 	if extension == "" {
 		extension = site.Language

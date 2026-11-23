@@ -24,7 +24,7 @@ const inputs = [
 test('Docker wrapper preserves nine literal arguments and native exit status', async () => {
 	const temporary = await mkdtemp(join(tmpdir(), 'actionlint-docker-inputs-'));
 	try {
-		// Record env's literal assignments without a shell importing hyphenated names.
+		// Record env's literal assignments. No shell imports the hyphenated names.
 		await writeFile(join(temporary, 'env'), '#!/bin/sh\nprintf "%s\\n" "$@"\nexit 1\n', { mode: 0o755 });
 		const values = [
 			'first file.yaml\nsecond.yaml',

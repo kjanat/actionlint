@@ -106,8 +106,6 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 	}
 }
 
-// Configuring a document analyzer under tools.<name> produces an error.
-// Only tool providers can be configured in that section.
 func TestAnalyzerNameIsNotATool(t *testing.T) {
 	t.Parallel()
 	for _, config := range []string{

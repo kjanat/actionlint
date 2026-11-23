@@ -171,8 +171,6 @@ func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 	}
 }
 
-// Findings that point into the same foreign file share one copy of it in the
-// reported sources, and that copy is not the findings' own Source.
 func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 	t.Parallel()
 	script := []byte("echo $A\necho $B\n")

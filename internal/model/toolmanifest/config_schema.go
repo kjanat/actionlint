@@ -11,12 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// hostConfigKeys are the tools.<name> keys the host owns. A shorthand cannot
-// shadow them.
 var hostConfigKeys = []string{"enabled", "backend", "config"}
 
-// validateConfigSchema compiles an engine configuration schema without
-// granting it filesystem or network reads.
+// validateConfigSchema grants the schema no filesystem or network reads.
 func validateConfigSchema(field string, schema json.RawMessage) error {
 	if len(schema) == 0 {
 		return nil
@@ -27,15 +24,10 @@ func validateConfigSchema(field string, schema json.RawMessage) error {
 	return nil
 }
 
-// schemaProperties is the part of a configuration schema a shorthand path
-// walks: the properties declared at each nesting level.
 type schemaProperties struct {
 	Properties map[string]json.RawMessage `json:"properties"`
 }
 
-// validateConfigShorthands requires every shorthand to set a property the
-// configuration schema declares, at every level of its path, and none to
-// shadow a host-owned key.
 func validateConfigShorthands(m Manifest) error {
 	if len(m.ConfigShorthands) == 0 {
 		return nil

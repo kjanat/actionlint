@@ -26,7 +26,6 @@ func TestAgenticWorkflowCompiledLockDiscoveryAndAnalysis(t *testing.T) {
 	if err := os.WriteFile(lockPath, fixture, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// The source Markdown is deliberately not supplied as Actions YAML.
 	if err := os.WriteFile(filepath.Join(workflowDir, "smoke-claude-auto.md"), []byte("---\nengine: claude\n---\nReview issues.\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

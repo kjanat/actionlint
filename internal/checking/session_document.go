@@ -54,8 +54,6 @@ import (
 
 const concurrentMetadataLookups = 8
 
-// analysisSession holds invocation resources assembled by the application.
-// The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
 	checkCompletion checkCompletion
 	runnerReportsMu sync.Mutex
@@ -82,7 +80,6 @@ type analysisSession struct {
 	rulePresets     configuration.Presets
 }
 
-// check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
 	processes *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
@@ -161,8 +158,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if !document.CanAnalyze() || len(document.SyntaxErrors) != 0 || document.ParseError != nil {
 		s.checkCompletion.markIncomplete(snapshot.Reference())
 	}
-	// Resolve the requested path before sealing the captures. This records
-	// metadata path aliases, including Windows drive spellings, for later lookups.
+	// The requested path must resolve before the captures are sealed.
 	if path != "" {
 		displayAddress := path
 		if path != "<stdin>" && !filepath.IsAbs(path) {
@@ -250,8 +246,6 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	resultPolicy := policy.DocumentInputs{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
 	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
 	resultPolicy.IgnoreSelectors = s.ignoreSelectors
-	// Suppression findings use paths relative to the working directory. Add those
-	// paths to the source-reference lookup to identify the declaring document.
 	reported := maps.Clone(references)
 	for document, index := range references {
 		if relative, err := filepath.Rel(s.workingDir, document); err == nil {

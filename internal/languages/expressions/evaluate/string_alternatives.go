@@ -15,11 +15,7 @@ const (
 	maxAlternativeDepth   = 64
 )
 
-// StringAlternatives returns a complete, bounded set of string results for
-// constants, case() branches and && / || choices. Unknown predicates select
-// among known outputs; an unknown output, invalid predicate or exceeded budget
-// makes the whole set unknown. It never substitutes a predicate's contents into
-// a result.
+// StringAlternatives never substitutes a predicate's contents into a result, and an unknown output makes the whole set unknown.
 func StringAlternatives(expr syntax.Node) ([]string, bool) {
 	values, complete := valueAlternatives(expr, 0)
 	if !complete {
@@ -79,8 +75,6 @@ func booleanFunction(name string) bool {
 	return false
 }
 
-// logicalAlternatives keeps the left results that && or || returns as they
-// are and adds the right operand's results when the left can pass control on.
 func logicalAlternatives(n *syntax.LogicalOpNode, depth int) ([]any, bool) {
 	if n.Kind != syntax.LogicalOpNodeKindAnd && n.Kind != syntax.LogicalOpNodeKindOr {
 		return nil, false
@@ -170,9 +164,7 @@ func unionStrings(first, second []string) ([]string, bool) {
 	return first, true
 }
 
-// TemplateStringAlternatives preserves literal template pieces and combines
-// complete expression result sets. Evaluated text is data: it is never parsed
-// again as an expression, including text containing expression delimiters.
+// TemplateStringAlternatives never parses evaluated text again as an expression.
 func TemplateStringAlternatives(source string) ([]string, bool) {
 	results := []string{""}
 	for {

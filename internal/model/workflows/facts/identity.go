@@ -20,7 +20,6 @@ type References struct {
 	Positions map[[2]int]sourcetext.Reference
 }
 
-// SourceIndex publishes references without decoded-node pointers.
 type SourceIndex struct {
 	Document  sourcetext.Reference
 	Steps     []sourcetext.Reference
@@ -37,14 +36,12 @@ func (r References) SourceIndex() SourceIndex {
 	return SourceIndex{Document: r.Document, Steps: steps, Jobs: maps.Clone(r.Jobs), Positions: maps.Clone(r.Positions)}
 }
 
-// Index derives the source references of workflow for the document named path.
-// action selects action-manifest step addresses.
+// Index uses action-manifest step addresses when action is true.
 func Index(path string, content []byte, workflow *definition.Workflow, action bool) References {
 	return buildSkeleton(workflow, action).bind(path, content)
 }
 
-// skeleton records declaration identity read from the decoded tree. bind supplies
-// only document identity and revision; it never rereads mutable syntax values.
+// skeleton never rereads mutable syntax values.
 type skeleton struct {
 	jobs []skeletonJob
 }

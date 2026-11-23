@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// Invocation supplies the already-resolved caller and action scope.
-// Participants own analyzer-specific configuration and state adaptation.
 type Invocation struct {
 	Bindings   *rulebinding.Scope
 	Context    invocation.Context
@@ -21,7 +19,6 @@ type Invocation struct {
 	Actions localactions.ActionMetadataLookup
 }
 
-// InvocationParticipant observes resolved action execution without producing child rules.
 type InvocationParticipant interface {
 	Rule
 	EnterInvocation(Invocation) error
@@ -30,15 +27,12 @@ type InvocationParticipant interface {
 	LeaveInvocation(invocation.Context) error
 }
 
-// ExpandedActionParticipant checks the call site of an expanded child before
-// entering that child's invocation. Opaque call sites use VisitOpaqueAction.
+// ExpandedActionParticipant runs before the child invocation, and opaque call sites use VisitOpaqueAction.
 type ExpandedActionParticipant interface {
 	InvocationParticipant
 	VisitExpandedAction(workflows.BoundStep) error
 }
 
-// CheckoutParticipant adapts its own script paths to the checkout placement
-// that actions resolved for the current invocation.
 type CheckoutParticipant interface {
 	ApplyCheckout(*localactions.Resolver)
 }

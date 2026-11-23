@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// EmptyJobRule is the single definition of the empty-job rule.
 var EmptyJobRule = &define.Rule{
 	Name:        "empty-job",
 	Description: "Report jobs without steps",
@@ -21,12 +20,11 @@ var EmptyJobRule = &define.Rule{
 	Recommended: true,
 	Explanation: "GitHub rejects jobs without steps unless they call a reusable workflow.",
 	Help:        "Add steps, call a reusable workflow with uses, or remove the job.",
-	Examples: []rule.Example{rule.WorkflowExample("Give the job steps to run.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		"    steps: []\n", "")},
 	Checks: define.Fixed(define.Checks{Job: EmptyJob}),
 }
 
-// EmptyJob reports a job that runs no steps. Reusable workflow calls have none.
 func EmptyJob(job workflows.BoundJob) []reporting.StepFinding {
 	if job.WorkflowCall != nil || job.DeclaredUses != nil {
 		return nil

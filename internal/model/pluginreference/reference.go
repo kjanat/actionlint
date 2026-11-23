@@ -15,7 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
-// DefaultRegistry is the public actionlint plugin catalogue.
 const DefaultRegistry = "https://plugins.actionlint.kjanat.dev/"
 
 var (
@@ -25,7 +24,6 @@ var (
 	versionPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*(/[A-Za-z0-9][A-Za-z0-9._+-]*)*$`)
 )
 
-// ValidVersion accepts exact release tags, including slash-separated tag names.
 func ValidVersion(version string) bool {
 	if len(version) > 128 || !versionPattern.MatchString(version) || strings.Contains(version, "..") || strings.HasSuffix(version, ".") {
 		return false
@@ -38,8 +36,6 @@ func ValidVersion(version string) bool {
 	return true
 }
 
-// ValidRepository validates forge-qualified repository paths for declarations
-// and catalogue identities.
 func ValidRepository(name string) bool {
 	if len(name) > 523 {
 		return false
@@ -70,9 +66,6 @@ func ValidRepository(name string) bool {
 	return true
 }
 
-// ValidName accepts a repository selector or a package beneath its GitHub
-// repository. GitLab's nested namespaces already share this path grammar;
-// authenticated catalogue evidence establishes its repository boundary.
 func ValidName(name string) bool {
 	if ValidRepository(name) {
 		return true
@@ -89,9 +82,6 @@ func ValidName(name string) bool {
 	return true
 }
 
-// Reference declares a registry alias or repository, requested release, and catalogue.
-// Only Parse, New and NewCandidate build one, so values remain normalized.
-// The zero Reference declares nothing.
 type Reference struct {
 	name            string
 	version         string
@@ -100,24 +90,14 @@ type Reference struct {
 	candidateDigest string
 }
 
-// Name returns the registry alias or forge-qualified repository. For a direct
-// declaration it returns the artifact URL without its #sha256= pin.
 func (r Reference) Name() string { return r.name }
 
-// Version returns "latest" or an exact release tag, never a resolved artifact.
-// It is empty for a direct declaration.
 func (r Reference) Version() string { return r.version }
 
-// Registry returns the normalized catalogue URL, ending in "/". It is empty
-// for a direct declaration.
 func (r Reference) Registry() string { return r.registry }
 
-// CandidateDigest binds a local candidate declaration to one verified artifact.
-// It is empty for unpinned local install requests and published registries.
 func (r Reference) CandidateDigest() string { return r.candidateDigest }
 
-// ParsePluginReference accepts an alias, owner/repo or forge-qualified repository/package,
-// optionally followed by @latest or an exact release tag.
 func ParsePluginReference(value string) (Reference, error) {
 	if strings.Contains(value, "://") {
 		return directURL(value)
@@ -131,20 +111,14 @@ func ParsePluginReference(value string) (Reference, error) {
 
 // DirectSource returns a SHA-pinned artifact URL or oci:// digest reference,
 // or empty for registry entries.
-// Direct declarations already contain their immutable pin and need no lock row.
 func (r Reference) DirectSource() string { return r.direct }
 
-// IsAlias reports a registry-assigned shorthand, whose repository is resolved
-// by that registry and recorded in the project lock.
 func (r Reference) IsAlias() bool { return r.direct == "" && ValidAlias(r.name) }
 
-// ValidAlias checks the shared catalogue and declaration shorthand syntax.
 func ValidAlias(name string) bool { return shortNamePattern.MatchString(name) }
 
-// Equal compares normalized declaration identities and selection intent.
 func (r Reference) Equal(other Reference) bool { return r == other }
 
-// Normalize validates either supported declaration form.
 func (r Reference) Normalize() (Reference, error) {
 	if r.direct != "" {
 		return directURL(r.direct)
@@ -155,8 +129,6 @@ func (r Reference) Normalize() (Reference, error) {
 	return New(r.name, r.version, r.registry)
 }
 
-// NewCandidate binds an exact canonical package from an explicit local registry
-// to the SHA256 digest verified during installation.
 func NewCandidate(name, version, registry, digest string) (Reference, error) {
 	ref, err := New(name, version, registry)
 	if err != nil {
@@ -203,9 +175,6 @@ func directURL(value string) (Reference, error) {
 	return Reference{name: name, direct: u.String()}, nil
 }
 
-// directOCI accepts oci://<host>/<repository>@sha256:<hex>, the form ParseOCI
-// accepts. The digest pins the image index or manifest, so a tag is refused:
-// actionlint plugin install resolves tags before it writes a declaration.
 func directOCI(value string) (Reference, error) {
 	ref, err := ParseOCI(value)
 	if err != nil {
@@ -215,8 +184,6 @@ func directOCI(value string) (Reference, error) {
 	return Reference{name: name, direct: ref.String()}, nil
 }
 
-// New validates and normalizes a plugin declaration. Empty version and registry
-// select latest stable and DefaultRegistry respectively.
 func New(name, version, registry string) (Reference, error) {
 	name = strings.ToLower(name)
 	if strings.Count(name, "/") == 1 {
@@ -258,8 +225,6 @@ func New(name, version, registry string) (Reference, error) {
 	return Reference{name: name, version: version, registry: u.String()}, nil
 }
 
-// LocalRegistryDirectory accepts an explicit absolute file URI. Local candidate
-// catalogues have no authenticated publisher and cannot substitute for HTTPS registries.
 func LocalRegistryDirectory(raw string) (string, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "file" || u.Host != "" || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") || strings.Contains(u.Path, "\\") || strings.HasPrefix(u.Path, "//") {
@@ -276,7 +241,6 @@ func LocalRegistryDirectory(raw string) (string, error) {
 	return filepath.Clean(name), nil
 }
 
-// String preserves the declared alias or full repository identity.
 func (r Reference) String() string {
 	if r.direct != "" {
 		return r.direct

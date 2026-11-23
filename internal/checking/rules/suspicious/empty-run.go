@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// EmptyRunRule is the single definition of the empty-run rule.
 var EmptyRunRule = &define.Rule{
 	Name:        "empty-run",
 	Description: "Report steps with an empty run script",
@@ -15,18 +14,15 @@ var EmptyRunRule = &define.Rule{
 	Subcategory: "steps",
 	LegacyGroup: "style",
 	Recommended: true,
-	Explanation: "Report run steps whose script is empty. GitHub accepts the step, but it runs nothing.",
-	Help:        "Write the commands the step should run, or remove the step.",
-	Examples: []rule.Example{rule.WorkflowExample("Write the commands the step runs.",
+	Explanation: "Report run steps with an empty script.",
+	Help:        "Add commands, or remove the step.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		"    steps:\n      - run:\n", "    steps:\n      - run: echo ok\n")},
 	Checks: define.Fixed(define.Checks{Step: EmptyRun}),
 }
 
-// EmptyRun reports a run step whose script is empty.
 func EmptyRun(step workflows.BoundStep) []reporting.StepFinding {
 	run, ok := step.Run()
-	// Only a string run value carries a source scalar; other kinds already
-	// have a syntax-check finding.
 	if !ok || run.Run == nil || !run.Run.SourceScalar.HasSource || run.Run.Value != "" {
 		return nil
 	}

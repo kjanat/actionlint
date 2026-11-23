@@ -64,27 +64,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
 	ExecutionEnvironment
-	RemoteActions   actions.Provider
-	RemoteWorkflows reusableworkflows.Provider
-	Repository      func(context.Context, string) repository.Settings
-	// Tests may shorten teardown without changing the production policy.
+	RemoteActions      actions.Provider
+	RemoteWorkflows    reusableworkflows.Provider
+	Repository         func(context.Context, string) repository.Settings
 	captureJoinTimeout time.Duration
 	Sources            []workspace.InputFile
 	SourceOverlays     []SourceOverlay
 	DiskSources        bool
 	NoIgnore           bool
-	// Checks holds the analyzers and tools registerChecks validated, and the
-	// rule set they extend.
-	Checks          *registeredChecks
-	IgnorePatterns  configuration.IgnorePatterns
-	IgnoreSelectors policy.IgnoreSelectors
-	OnRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
-	WorkingDir      string
-	// LocalDependencyRoot supplies the explicit base for prepared sources without
-	// a repository identity. Empty leaves their local dependency root unknown.
+	Checks             *registeredChecks
+	IgnorePatterns     configuration.IgnorePatterns
+	IgnoreSelectors    policy.IgnoreSelectors
+	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
+	WorkingDir         string
+	// An empty LocalDependencyRoot leaves the dependency root unknown.
 	LocalDependencyRoot  string
 	ReadFile             func(string) ([]byte, error)
 	RulePresets          configuration.Presets
@@ -95,7 +90,6 @@ type analysisRequest struct {
 	AllowConfigProcesses bool
 }
 
-// analysisResult contains findings, their sources, and every local input read during analysis.
 type analysisResult struct {
 	report.Analysis
 	files     []analyzedFile
@@ -119,7 +113,6 @@ func (f *inputFiles) addConfig(cfg *configuration.Config, provenance configurati
 	f.AddConfig(cfg, provenance, project, workingDir)
 }
 
-// runAnalysis checks resolved workflows and action manifests without rendering diagnostics.
 func runAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
 	log := request.LogWriter
 	if log == nil {
@@ -128,8 +121,7 @@ func runAnalysis(ctx context.Context, request analysisRequest) (*analysisResult,
 	return run(ctx, request, log, request.LogLevel)
 }
 
-// sourceCaptureJoinTimeout bounds teardown of non-cooperative content/metadata IO.
-// A join failure prevents publication; it never turns into a partial result.
+// A join failure blocks publication.
 const sourceCaptureJoinTimeout = 5 * time.Second
 
 type sourceCaptureInitialization interface {
@@ -247,8 +239,6 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcetext.YAML})
 		}
 	}
-	// The capture reader reuses selected file contents from allSources.
-	// Explicit editor overlays supply their contents through overlays.
 	selectedDocuments := make(map[string]int, len(allSources))
 	captures, err := newCaptures(lifetime, overlays, func(_ context.Context, path string) ([]byte, error) {
 		if index, selected := selectedDocuments[path]; selected {
@@ -356,7 +346,6 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			return nil, err
 		}
 	}
-	// Local dependencies use the project root or an explicitly supplied dependency root.
 	type workflowCacheKey struct {
 		root    string
 		mirrors references.MirrorAccess
@@ -557,10 +546,8 @@ type actionDocuments struct {
 	mu       sync.Mutex
 	byPath   map[string]outline.Action
 	requests map[string]struct{}
-	// remote holds the remote action manifests composition parsed, by
-	// captured document identity, so complete need not parse them again.
-	remote map[string]parsing.Document
-	err    error
+	remote   map[string]parsing.Document
+	err      error
 }
 
 type actionDocument struct {
@@ -577,8 +564,6 @@ func (d *actionDocuments) request(address string) {
 	d.requests[address] = struct{}{}
 }
 
-// parsed records a remote action manifest composition parsed from captured.
-// It is safe to call on a nil receiver, which records nothing.
 func (d *actionDocuments) parsed(captured capture.CapturedDocument, document parsing.Document) {
 	if d == nil {
 		return
@@ -595,9 +580,6 @@ func (d *actionDocuments) parsed(captured capture.CapturedDocument, document par
 	d.remote[identity] = document
 }
 
-// complete outlines consumed manifests from sealed bytes; it never resumes
-// analysis. It reuses the document composition parsed for a remote manifest
-// and parses only a manifest analysis captured but never parsed.
 func (d *actionDocuments) complete(captures *capture.Store, consumed []string) error {
 	if _, err := captures.Sources(); err != nil {
 		return err
@@ -622,8 +604,6 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 			continue
 		}
 		if !parsed {
-			// Analysis stopped after capturing this manifest but before
-			// parsing it, so its sealed bytes are parsed here once.
 			document = parsing.Action(address, snapshot.Bytes())
 		}
 		d.add(identity, outline.FromAction(address, document.Metadata, document.ParseError))
@@ -671,7 +651,6 @@ func (r *analysisResult) publishDiagnostics() error {
 	batches := make([]policy.Batch, len(r.files))
 	collected := make(map[string]int)
 	for _, file := range r.files {
-		// A rule that ran without findings still counts as selected.
 		for _, descriptor := range file.rules {
 			if _, seen := collected[descriptor.Name]; !seen {
 				collected[descriptor.Name] = 0
@@ -713,9 +692,7 @@ func (r *analysisResult) publishDiagnostics() error {
 	return err
 }
 
-// completedRules counts, per rule, the linted entry documents where the rule
-// was selected and no incomplete check names it. An incomplete check without a
-// rule counts against every rule of its source or entry.
+// An incomplete check without a rule counts against every rule of its source or entry.
 func (r *analysisResult) completedRules() map[string]int {
 	type ruleSource struct{ rule, document, revision string }
 	incomplete := map[ruleSource]bool{}
@@ -741,8 +718,7 @@ func (r *analysisResult) completedRules() map[string]int {
 	return completed
 }
 
-// revalidateCaptures is the final publication boundary: a handle admitted before
-// a later conflict cannot publish an entry, observation or entry outline.
+// revalidateCaptures is the final publication boundary.
 func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.TableRow, workingDir string, prior error) error {
 	admitted := make(map[string]capture.TableRow, len(rows))
 	withheld := 0
@@ -863,7 +839,6 @@ type sourceAnalysisError struct {
 func (e *sourceAnalysisError) Error() string { return e.err.Error() }
 func (e *sourceAnalysisError) Unwrap() error { return e.err }
 
-// LegacyAnalysisError preserves the root-command single-file and batch error messages.
 func LegacyAnalysisError(err error) error {
 	if source, ok := errors.AsType[*sourceAnalysisError](err); ok {
 		if source.batch {

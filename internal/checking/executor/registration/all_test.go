@@ -30,13 +30,10 @@ func TestAllHoldsValidUniquelyNamedRules(t *testing.T) {
 	}
 }
 
-// TestAllListsEveryDefinedRule keeps the ordered list complete: a rule defined
-// in source but missing from All, or listed twice, would silently never run or
-// run twice.
 func TestAllListsEveryDefinedRule(t *testing.T) {
 	t.Parallel()
 	defined := map[string]int{}
-	root := filepath.Join("..", "..") // internal/checking
+	root := filepath.Join("..", "..")
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err

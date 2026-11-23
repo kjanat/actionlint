@@ -1,5 +1,4 @@
 // Package checking coordinates input selection, rule execution and runtime ownership.
-// It has no terminal, command parser, output destination or exit-code policy.
 package checking
 
 import (
@@ -40,21 +39,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// Options selects configuration and analysis backends for one application session.
 type Options struct {
 	ExecutionEnvironment
-	// Processes shares the invocation's process budget with native analyzers.
-	// Nil creates an application-owned pool.
 	Processes     *hostprocess.ProcessPool
 	RemoteActions actions.Provider
-	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
-	// them when it also implements workflows.Provider.
+	// If RemoteWorkflows is nil, RemoteActions supplies reusable workflows
+	// when it also implements workflows.Provider.
 	RemoteWorkflows reusableworkflows.Provider
-	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
-	Repository func(context.Context, string) repository.Settings
-	Tools      []contract.Registration
-	Resolver   references.Resolver
-	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
+	// A nil Repository leaves facts unknown.
+	Repository        func(context.Context, string) repository.Settings
+	Tools             []contract.Registration
+	Resolver          references.Resolver
 	SuggestCommitPins bool
 	WorkingDir        string
 	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
@@ -64,19 +59,14 @@ type Options struct {
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
-	// ConfigSources holds the configuration files already parsed in this run,
-	// such as those the command read for its output settings. Plugin selection
-	// and the session merge them without reading or parsing them again. Nil
-	// makes assembly.CheckProjects start one set per check. It is ignored when ReadFile
-	// or SourceOverlays supply other bytes than the files on disk.
+	// ConfigSources is ignored when ReadFile or SourceOverlays supply bytes
+	// other than the files on disk.
 	ConfigSources     *document.Files
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
-	NoIgnore  bool
-	Analyzers []results.AnalyzerRegistration
-	ReadFile  func(string) ([]byte, error)
-	// SourceOverlays supplies all editor buffers, independently of selected
-	// entries. They become explicit YAML captures before analysis begins.
+	NoIgnore                     bool
+	Analyzers                    []results.AnalyzerRegistration
+	ReadFile                     func(string) ([]byte, error)
 	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
@@ -91,9 +81,6 @@ type Options struct {
 	AllowConfigProcesses bool
 }
 
-// sharedConfigSources returns the parsed configuration files this check may
-// use. A session that reads through ReadFile or SourceOverlays reads other bytes
-// than the files on disk, so it shares nothing.
 func (options Options) sharedConfigSources() *document.Files {
 	if options.ReadFile != nil || len(options.SourceOverlays) != 0 {
 		return nil
@@ -107,10 +94,6 @@ type SourceOverlay struct {
 	Content []byte
 }
 
-// PrepareInvocation loads the enforced lifecycle policies and fixes the
-// runner evaluation date once, so every Check given the returned options
-// shares them. Check prepares its options itself; a caller that splits one
-// invocation into several checks calls PrepareInvocation first.
 func PrepareInvocation(ctx context.Context, options Options) (Options, error) {
 	options, err := prepareEnforcedLifecycle(ctx, options)
 	if err != nil {
@@ -120,7 +103,6 @@ func PrepareInvocation(ctx context.Context, options Options) (Options, error) {
 	return options, nil
 }
 
-// Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input checkrequest.Request) (result *report.Analysis, err error) {
 	options, err = PrepareInvocation(ctx, options)
 	if err != nil {
@@ -198,8 +180,6 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 				path = filepath.Clean(path)
 			}
 			overlays[index] = SourceOverlay{Path: path, Content: bytes.Clone(overlay.Content)}
-			// For duplicate path spellings, discovery reads the lexicographically
-			// smallest content. Capture preflight validates every variant before analysis.
 			previous, exists := byAlias[path]
 			if !exists || bytes.Compare(overlays[index].Content, overlays[previous].Content) < 0 {
 				byAlias[path] = index
@@ -336,7 +316,6 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
 	case checkrequest.Prepared:
-		// Prepared sources were analyzed above and never reach selection.
 		fallthrough
 	default:
 		return nil, fmt.Errorf("unknown input kind %d", input.Kind)
@@ -371,11 +350,8 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 	return typo == "" && !hasWorkflows, listed, nil
 }
 
-// Analyze checks supplied snapshots through the same runtime ownership path as Check.
-// It does not discover configuration or read the supplied source paths. Each
-// source's Config is used as supplied, so a configuration file must be loaded
-// with ConfigurationRules plus the rules of options' analyzers and tools; the
-// analysis does not normalize its rule settings again.
+// Analyze callers must load each source's Config with ConfigurationRules plus
+// the rules of the options' analyzers and tools.
 func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, checkrequest.Request{Kind: checkrequest.Prepared, Sources: sources})

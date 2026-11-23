@@ -14,8 +14,7 @@ export interface ShellcheckClient {
 	cancel: () => void;
 }
 
-// Run ShellCheck in a worker with a time limit. A timeout or trap discards the worker;
-// the next check can start a new one without reloading the editor.
+// A timeout or trap discards the ShellCheck worker, and the next check starts a new one.
 export async function loadShellcheck(): Promise<ShellcheckClient> {
 	const response = await fetch(shellcheckAssets.wasm);
 	if (!response.ok) throw new Error(`Could not load ShellCheck WASM: HTTP ${response.status}`);
@@ -65,8 +64,7 @@ export async function loadShellcheck(): Promise<ShellcheckClient> {
 
 	function initialize(): Promise<unknown> {
 		if (ready) return ready;
-		// Worker entry URLs must be same-origin. This module bootstrap imports the
-		// pinned CDN worker, whose relative import loads shellcheck.mjs from that CDN.
+		// Worker entry URLs must be same-origin.
 		bootstrap = URL.createObjectURL(
 			new Blob([`import ${JSON.stringify(shellcheckAssets.worker)};`], { type: 'text/javascript' }),
 		);

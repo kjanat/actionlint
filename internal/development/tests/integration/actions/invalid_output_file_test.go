@@ -15,7 +15,6 @@ import (
 
 func TestInvalidOutputFileStandaloneAndCalledComposite(t *testing.T) {
 	t.Parallel()
-	// Test only the output-writing step from PR comment 6710252262.
 	// The runner rejects the first line, `{`, as an invalid output record.
 	const action = `name: Output format regression
 description: Check a named output file

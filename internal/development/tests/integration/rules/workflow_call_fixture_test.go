@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// workflowCallVisitor exercises the production adapter with prepared workflow inputs.
 func workflowCallVisitor(tb testing.TB, workflow workflows.BoundWorkflow, cache *reusableworkflows.MetadataCache, facts repository.Settings) workflowvisit.Rule {
 	tb.Helper()
 	var uses []string

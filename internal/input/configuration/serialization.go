@@ -7,7 +7,6 @@ import (
 
 type policyWire PolicyConfig
 
-// Unmarshal reads YAML configuration and applies the shared migrations and validation.
 func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {
 	parsed, err := document.ParseConfigDocument("actionlint.yaml", source)
 	if err != nil {
@@ -45,7 +44,6 @@ func (ruleSet RuleSet) decodeValue(value any, dst *Config, bindProviders bool) e
 	return nil
 }
 
-// EncodeValue returns the current configuration syntax as ordinary Go values.
 func (ruleSet RuleSet) EncodeValue(cfg *Config) (any, error) {
 	if cfg == nil {
 		return nil, nil
@@ -90,7 +88,6 @@ func (ruleSet RuleSet) EncodeValue(cfg *Config) (any, error) {
 	return next, err
 }
 
-// Marshal writes the current configuration in YAML format.
 func (ruleSet RuleSet) Marshal(cfg *Config) ([]byte, error) {
 	value, err := ruleSet.EncodeValue(cfg)
 	if err != nil {

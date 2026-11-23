@@ -13,11 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// moduleRoot reads the generated actionlint.schema.json and schemas/.
 func moduleRoot(name string) ([]byte, error) { return fs.ReadFile(os.DirFS("../../../.."), name) }
 
-// installed is a tool provider a plugin installs. Its settings accept only
-// level: low or high.
 func installed(configFiles bool) toolsettings.Provider {
 	return toolsettings.Provider{
 		Rule: rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},

@@ -13,16 +13,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// UnpinnedReferenceRule is the single definition of the unpinned-reference rule.
 var UnpinnedReferenceRule = &define.Rule{
 	Name:        "unpinned-reference",
 	Aliases:     []rule.Alias{{Name: "require-commit-hash", Deprecated: true}},
-	Description: "Require full commit SHAs for actions and workflows, and digests for images",
+	Description: "Require full commit SHAs for actions and workflows, and digests for docker:// actions",
 	Category:    "security",
 	Subcategory: "dependencies",
 	LegacyGroup: "policy",
 	Policy:      "require-commit-hash",
-	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
+	Help:        "Pin uses references to a full commit SHA and docker:// action images to a digest.",
 	Options:     define.Options[ruleconfig.CommitHashOptions](),
 	Checks: func(c define.RuleInputs) define.Checks {
 		options := new(ruleconfig.CommitHashOptions)
@@ -39,7 +38,6 @@ var UnpinnedReferenceRule = &define.Rule{
 	Enabled: func(c define.RuleInputs) bool { return c.Config.RequiresCommitHash() },
 }
 
-// UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
 func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
 	return define.Checks{
 		Job:  func(job workflows.BoundJob) []reporting.StepFinding { return CommitHashJob(job, excluded) },
@@ -137,9 +135,6 @@ func (rule *commitHashCheck) checkJob(n workflows.BoundJob) {
 	)
 }
 
-// Return the {ref} part of a {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref} specification. The
-// second return value is false when the specification has another form. The invalid-action-reference rule reports the forms
-// which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
 	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository || form == callreferences.FormContainer {
 		return "", false

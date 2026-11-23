@@ -22,7 +22,7 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	// Probe a small native executable: copying this package's race test binary
+	// Probe a small native executable. Copying this package's race test binary
 	// makes first startup compete with the production probe's five-second limit.
 	probe := filepath.Join(t.TempDir(), name)
 	build := exec.CommandContext(t.Context(), "go", "build", "-race=false", "-o", probe, "./internal/development/tests/integration/cli/testdata/ruff-probe")

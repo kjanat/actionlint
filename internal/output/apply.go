@@ -13,7 +13,7 @@ import (
 )
 
 // ApplyEdits prepares all replacement files and verifies every revision before the
-// first rename. Renames are atomic per file, not across a multi-file transaction.
+// first rename. Each rename is atomic for its own file. Renames across files share no transaction.
 // The returned paths identify completed writes even when a later write fails.
 func ApplyEdits(ctx context.Context, p edits.Plan, reader *files.Reader) (written []string, err error) {
 	p.Changes = slices.Clone(p.Changes)

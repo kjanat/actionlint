@@ -1,5 +1,5 @@
-//! Offline Buildkite queue mapping example. A supplied snapshot describes queue
-//! labels and explicit platform guarantees; it never implies GitHub image parity.
+//! This example maps Buildkite queues offline. A supplied snapshot describes queue
+//! labels and explicit platform guarantees. No snapshot entry implies GitHub image parity.
 wit_bindgen::generate!({ path: "../../protocol/wit", world: "runner-plugin" });
 
 use exports::kjanat::actionlint0_2_0::runner_provider::{

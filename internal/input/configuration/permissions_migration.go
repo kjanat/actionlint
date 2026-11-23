@@ -7,9 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
-// permissionsRule replaced three retired rules and policy.require-permissions.
-// Their settings need option conversions that an alias cannot express, so
-// migration names the rule here.
 const permissionsRule = "missing-permissions"
 
 func migratedPermissionsName(name string) string {

@@ -13,9 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// NewShellScriptInputBuilder exposes the profile's shell interpretation, template masking and
-// source preparation to plugins through the public WIT import. It prepares
-// only scripts whose occurrence is unique among scripts.
+// NewShellScriptInputBuilder prepares only scripts whose occurrence is unique among scripts.
 func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellScriptInputBuilder {
 	byOccurrence := make(map[invocation.ID]checkinputs.Script, len(scripts))
 	duplicates := make(map[invocation.ID]struct{})
@@ -45,9 +43,7 @@ func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellS
 	}
 }
 
-// BuildShellScriptInput supplies masked source, attached comments and interpreter
-// facts. The plugin selects the languages it supports and interprets its own
-// directives. Invalid interpreter invocations return no input.
+// BuildShellScriptInput returns no input for an invalid interpreter invocation.
 func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
 	shell := Shell{Name: script.Shell, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
 	if script.Runtime != nil && script.Runtime.Shell.Known() {

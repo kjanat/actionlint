@@ -32,9 +32,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// ociProvider is a binary tool provider published to an OCI registry: an
-// index whose image manifest for this host holds the provider manifest, the
-// jq transform it names and the executable, which is this test binary.
 type ociProvider struct {
 	registry   *ocitest.Registry
 	reference  string
@@ -64,7 +61,6 @@ func publishOCIProvider(t *testing.T) ociProvider {
 		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
 		"capabilities": map[string]any{"fixes": false, "reported_sources": false, "message_template": "oci: {code}: {message}"},
 		"process": map[string]any{
-			// The entry names the command; the store supplies the executable.
 			"entry": "oci-tool", "args": []string{"-test.run=^TestLocalManifestToolHelper$", "--", "{var:filename}"}, "stdin": "source",
 			"env": map[string]string{"ACTIONLINT_LOCAL_MANIFEST_HELPER": "1"}, "env_passthrough": []string{"TMPDIR", "TEMP", "TMP"},
 			"config": map[string]any{"render": "none"},
@@ -86,8 +82,6 @@ func ociFindings(t *testing.T, result *report.Analysis) []results.Diagnostic {
 	return slices.DeleteFunc(results.Diagnostics(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "oci-tool" })
 }
 
-// A provider pulled from an OCI registry runs its stored executable through
-// the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	t.Parallel()
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
@@ -119,9 +113,6 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	}
 }
 
-// A configuration file cannot authorize its private OCI endpoint, even when
-// the invocation authorizes native execution. Selecting --config grants no
-// network authority either.
 func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 	t.Parallel()
 	for _, explicit := range []bool{false, true} {
@@ -189,7 +180,6 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	}
 }
 
-// OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
 	t.Parallel()
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}

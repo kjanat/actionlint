@@ -34,10 +34,7 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 	}
 }
 
-// SuppressionsPolicy controls whether inline and configured exceptions may hide diagnostic
-// findings. Its configuration representation is a boolean or a rules/report mapping.
-// A nil pointer or zero value permits suppressions. Use DisallowSuppressions
-// to construct an enabled policy.
+// SuppressionsPolicy permits suppressions when nil or zero, and DisallowSuppressions constructs an enabled policy.
 type SuppressionsPolicy struct {
 	names     rule.Names `clone:"shared"`
 	report    SuppressionReport
@@ -45,10 +42,7 @@ type SuppressionsPolicy struct {
 	locations map[string]int
 }
 
-// DisallowSuppressions enables restrictions with report set to "suppression",
-// "violation", or "all". With no rule IDs, it applies to all suppressible rules.
-// It rejects unknown report values and rule IDs, removes duplicate IDs, and owns
-// a copy of the selection. Assign the result to Config.Policy.DisallowSuppressions.
+// DisallowSuppressions applies to all suppressible rules when no rule IDs are given.
 func (ruleSet RuleSet) DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
 	mode, ok := parseSuppressionReport(report)
 	if !ok {
@@ -66,14 +60,11 @@ func (ruleSet RuleSet) DisallowSuppressions(report string, rules ...string) (*Su
 	return p, nil
 }
 
-// Enabled reports whether suppression restrictions are enabled.
-// Nil and zero-value policies return false.
 func (p *SuppressionsPolicy) Enabled() bool {
 	return p != nil && p.report != SuppressionsAllowed
 }
 
-// Report returns "suppression", "violation", or "all", or an empty string when
-// the policy is disabled.
+// Report returns an empty string when the policy is disabled.
 func (p *SuppressionsPolicy) Report() string {
 	if p == nil {
 		return ""
@@ -86,15 +77,13 @@ func (p *SuppressionsPolicy) Report() string {
 	case ReportAll:
 		return "all"
 	case SuppressionsAllowed:
-		// Allowed suppressions report nothing.
 		fallthrough
 	default:
 		return ""
 	}
 }
 
-// Rules returns a copy of the explicit rule selection. Nil means all suppressible
-// rules when Enabled is true, or no restriction when Enabled is false.
+// Rules returns nil for all suppressible rules when Enabled is true.
 func (p *SuppressionsPolicy) Rules() []string {
 	if !p.Enabled() {
 		return nil
@@ -102,8 +91,6 @@ func (p *SuppressionsPolicy) Rules() []string {
 	return slices.Clone(p.rules)
 }
 
-// DecodeConfig validates the shared configuration value. Each successful decode replaces the
-// previous rule selection and reporting mode.
 func (p *SuppressionsPolicy) DecodeConfig(value any) error {
 	next := SuppressionsPolicy{report: ReportAll, locations: make(map[string]int)}
 	switch selected := value.(type) {
@@ -164,5 +151,4 @@ func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {
 	return p.report
 }
 
-// CopyConfig copies the owned configuration state.
 func (p *SuppressionsPolicy) CopyConfig() (any, error) { return copyOwnedSuppressionsPolicy(*p), nil }

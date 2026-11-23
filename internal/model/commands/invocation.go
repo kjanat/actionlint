@@ -28,7 +28,7 @@ const (
 	Unknown Status = "unknown"
 )
 
-// Token offsets address the original command, before runner substitution.
+// Token offsets index the original command, before runner substitution.
 type Token struct {
 	Value string `json:"value"`
 	Start int    `json:"start"`
@@ -49,9 +49,6 @@ type OptionSetting struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// Option describes one interpreter option. Choices validates a required next
-// argument; Group records its named setting. Effect records a fixed setting.
-// Input changes where the interpreter reads source (command or stdin).
 type Option struct {
 	Short     string   `json:"short,omitempty"`
 	Long      string   `json:"long,omitempty"`
@@ -64,10 +61,6 @@ type Option struct {
 	ExitAfter string   `json:"exit_after,omitempty"`
 }
 
-// Definition belongs to an interpreter or wrapper provider. Prefix selects a
-// wrapper subcommand; Delegate validates the following arguments with another
-// registered definition. Extends borrows its options and language. IDs can name
-// definitions supplied by another plugin; unresolved IDs produce Unknown.
 type Definition struct {
 	ID                   string   `json:"id"`
 	Executables          []string `json:"executables,omitempty"`
@@ -106,7 +99,6 @@ func WithRegistry(ctx context.Context, registry *Registry) context.Context {
 	return context.WithValue(ctx, registryKey{}, registry)
 }
 
-// FromContext returns nil when a lower-level caller supplies no session context.
 func FromContext(ctx context.Context) *Registry {
 	if ctx == nil {
 		return nil
@@ -147,9 +139,8 @@ func ExecutableName(program string) string {
 	return path.Base(strings.ReplaceAll(program, `\`, "/"))
 }
 
-// Arguments follows the .NET process argument rules used by the runner, not
-// POSIX shell parsing: single quotes are literal. Backslashes escape double
-// quotes according to CRT rules. No expansion or command execution occurs.
+// Arguments follows the .NET process argument rules used by the runner.
+// Single quotes are literal, and backslashes escape double quotes by CRT rules.
 // https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs
 func Arguments(text string, offset int) []Token {
 	var tokens []Token
@@ -256,8 +247,6 @@ func (r *Registry) AnalyzeFor(command string, implicit bool, platform ArgumentPl
 	return r.analyze(result, definition.ID, args, nil)
 }
 
-// Validate reuses a named provider without requiring its executable selector.
-// Wrappers and sibling plugins can pass their forwarded arguments here.
 func (r *Registry) Validate(definitionID string, arguments []Token) Invocation {
 	return r.analyze(Invocation{Status: Unknown, Input: "unknown", Arguments: slices.Clone(arguments)}, definitionID, arguments, nil)
 }
@@ -416,7 +405,6 @@ func (r *Registry) analyze(result Invocation, id string, args []Token, chain []s
 	return result
 }
 
-// CloneDefinitions detaches provider-owned option and selector slices.
 func CloneDefinitions(definitions []Definition) []Definition {
 	result := make([]Definition, len(definitions))
 	for i, definition := range definitions {

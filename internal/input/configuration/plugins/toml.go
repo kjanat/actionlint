@@ -5,9 +5,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// pluginTableFields orders the members of one plugin declaration for a TOML
-// inline table or [[plugins]] table: source for a direct artifact, otherwise
-// name, version, a non-default registry and sha256.
 func pluginTableFields(entry any) ([][2]string, error) {
 	var declarations configuration.PluginDeclarations
 	if err := declarations.DecodeConfig([]any{entry}); err != nil {

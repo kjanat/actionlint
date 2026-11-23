@@ -451,7 +451,6 @@ function readBytes(descriptor, size, position) {
 }
 
 /**
- * Fetch both revisions together, then read PR files from Git objects without checking them out.
  * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string, maxBuffer?: number}} options
  * @returns {ChangedFile[]}
  */

@@ -10,24 +10,18 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-// CommitHashOptions selects exceptions to immutable action references. The
-// zero value excludes nothing.
+// CommitHashOptions excludes nothing in its zero value.
 type CommitHashOptions struct {
-	// exclude holds validated doublestar patterns. Excludes matches them
-	// without validating again.
+	// exclude holds validated doublestar patterns.
 	exclude []string
 }
 
-// commitHashWire is the wire form of CommitHashOptions.
 type commitHashWire struct {
 	Exclude []string `yaml:"exclude"`
 }
 
-// NewCommitHashOptions returns options that exclude references matching any of
-// the patterns. A pattern is a repository, action-path, or docker://image glob.
-// Repository patterns such as my-org/* also cover actions and workflows within
-// matching repositories. Include @ref to restrict an exception to that ref.
-// An empty or malformed pattern is an error.
+// NewCommitHashOptions accepts repository, action-path and docker://image
+// globs, and an @ref restricts an exception to that ref.
 func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
 	for _, pattern := range exclude {
 		if pattern == "" || !doublestar.ValidatePattern(pattern) {
@@ -37,7 +31,6 @@ func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
 	return &CommitHashOptions{exclude: slices.Clone(exclude)}, nil
 }
 
-// DecodeConfig reads the exclude list and rejects malformed patterns.
 func (o *CommitHashOptions) DecodeConfig(value any) error {
 	var wire commitHashWire
 	if err := configdecode.Decode(value, &wire); err != nil {
@@ -51,7 +44,6 @@ func (o *CommitHashOptions) DecodeConfig(value any) error {
 	return nil
 }
 
-// EncodeConfig writes the exclude list.
 func (o *CommitHashOptions) EncodeConfig() (any, error) {
 	if o == nil {
 		return commitHashWire{}, nil
@@ -59,7 +51,6 @@ func (o *CommitHashOptions) EncodeConfig() (any, error) {
 	return commitHashWire{Exclude: slices.Clone(o.exclude)}, nil
 }
 
-// Excludes matches the reference without changing how any other rule checks it.
 func (o *CommitHashOptions) Excludes(spec string) bool {
 	if o == nil {
 		return false

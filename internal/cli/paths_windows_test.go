@@ -25,7 +25,6 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(tool), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	// This empty stub is used only for command-path resolution.
 	if err := os.WriteFile(tool, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}

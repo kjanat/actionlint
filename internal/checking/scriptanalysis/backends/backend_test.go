@@ -54,10 +54,6 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 	}
 }
 
-// TestRequiresExecutionFollowsShellsAndResources checks decision b4 as
-// amended: a provider resolves each run step's shell and directory when its
-// manifest declares selectors.shells or capabilities.resources, and not when
-// it selects action inputs only.
 func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 	t.Parallel()
 	inputs := []checkinputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
@@ -84,8 +80,6 @@ func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 	}
 }
 
-// envelopeManifest describes a process provider exchanging the JSON check
-// request and result envelope with its engine.
 func envelopeManifest(name string, shells []string) toolmanifest.Manifest {
 	return toolmanifest.Manifest{
 		SchemaVersion: toolmanifest.SchemaVersion, ID: "example.com/" + name, Version: "1", Role: toolmanifest.RoleScript,

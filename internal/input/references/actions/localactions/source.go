@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-// checkMappedSource rejects mapped source directories and files that resolve outside the repository.
 func checkMappedSource(root, source string) error {
 	resolvedRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {

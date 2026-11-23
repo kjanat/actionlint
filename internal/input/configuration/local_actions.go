@@ -9,11 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
-// LocalActionSources maps generated local action directories to source directories.
 type LocalActionSources map[string]string
 
 // Canonical keys make equivalent ./ and $/ aliases override each other during extends merging.
-// Each source document has already been validated before this function runs.
 func normalizeLocalActionSourceNode(value any) {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -42,7 +40,6 @@ func normalizedLocalActionSources(sources LocalActionSources) (LocalActionSource
 	return result, nil
 }
 
-// DecodeConfig validates and normalizes explicit source mappings.
 func (sources *LocalActionSources) DecodeConfig(value any) error {
 	if value == nil {
 		*sources = nil

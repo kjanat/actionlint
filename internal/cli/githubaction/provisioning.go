@@ -47,7 +47,6 @@ func (req *lintRequest) pluginInput() checkrequest.Request {
 	return checkrequest.Request{Kind: checkrequest.Repository, Directory: req.workingDir}
 }
 
-// PluginPlan lets the launcher restore portable bytes before any plugin download.
 func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition dependencycache.Acquisition) int {
 	ctx := context.Background()
 	req, err := provisioningRequest(env, acquisition)

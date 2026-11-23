@@ -232,8 +232,7 @@ func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := repositoryWorkflowSource(t, "actions-rs")
 	findings := testutil.WorkflowDiagnostics(t, string(source), "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}")
-	// The two constant job conditions are truthy. The inner fromJSON uses valid
-	// loose runner syntax, verified against both Runny engines; it is not an error.
+	// The inner fromJSON uses valid loose runner syntax, verified against both Runny engines.
 	truthy, scriptValues, information := 0, 0, 0
 	for _, finding := range findings {
 		switch {

@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
-// Restoring one digest must satisfy every reference to those bytes, including
-// candidates and per-file tool overrides. Planning must work before a cache exists.
 func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Parallel()
 	cache := t.TempDir()
@@ -51,8 +49,6 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	}
 }
 
-// Invalid candidate locations must fail before a restore key can refer to
-// different bytes or interpret URI credentials, paths or fragments as a digest.
 func TestCachePlanRejectsMalformedCandidateSources(t *testing.T) {
 	t.Parallel()
 	digest := strings.Repeat("a", 64)

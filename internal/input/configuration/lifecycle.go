@@ -36,7 +36,6 @@ type LifecycleStart struct {
 	On     string `yaml:"on,omitempty" jsonschema:"enum=effective-date,description=Start on the effective date."`
 }
 
-// DecodeConfig requires exactly one notification start form.
 func (s *LifecycleStart) DecodeConfig(value any) error {
 	object, ok := value.(map[string]any)
 	if !ok || len(object) != 1 {
@@ -51,7 +50,6 @@ func (s *LifecycleStart) DecodeConfig(value any) error {
 	return nil
 }
 
-// Compile validates the complete policy list and returns immutable domain policies.
 func (c LifecycleConfig) Compile(origin string) ([]lifecycle.Policy, error) {
 	return c.compile(origin, nil, "")
 }

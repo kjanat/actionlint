@@ -257,7 +257,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 		panic(err)
 	}
 
-	// Root directory must be internal/development/tests/integration/workflow/testdata/examples/ since some workflow assumes it
+	// Root directory must be internal/development/tests/integration/workflow/testdata/examples/. Some workflow assumes it.
 	proj := workspace.Identity(dir)
 
 	_, fs, err := testFindAllWorkflowsInDir("err")
@@ -273,7 +273,6 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Check each example workflow file caused at least one error
 CheckFiles:
 	for _, f := range files {
 		for _, e := range errs {
@@ -323,8 +322,6 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Resolve the relative repository path from the process working directory.
-			// Discovery and configuration then use that repository as their root.
 			cwd, err := os.Getwd()
 			if err != nil {
 				t.Fatal(err)

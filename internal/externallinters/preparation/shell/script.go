@@ -20,12 +20,10 @@ func Header(src string) (header, body string) {
 	return src[:end], src[end:]
 }
 
-// Script is a run block prepared for a tool: generated directive and startup
-// lines inserted where the tool honours them.
 type Script struct {
 	text string
-	// sourceLines maps each prepared row to the run block row it holds; zero
-	// denotes a generated directive or startup command, never workflow source.
+	// sourceLines maps each prepared row to its run block row. Zero
+	// denotes a generated directive or startup command. Other values denote workflow source.
 	sourceLines               []int
 	startupFirst, startupLast int
 }
@@ -88,7 +86,6 @@ func Prepare(src, directives, startup string) Script {
 	return script
 }
 
-// Text is the prepared source.
 func (script Script) Text() string { return script.text }
 
 // Substitute returns the prepared source with each script row taken from
@@ -127,8 +124,6 @@ func (script Script) OriginalLine(line int) int {
 	return script.sourceLines[line-1]
 }
 
-// Line maps prepared row line to the run block row it holds, or to the
-// generated directive or startup line it is.
 func (script Script) Line(line int) preparation.Line {
 	if original := script.OriginalLine(line); original != 0 {
 		return preparation.Line{Line: original, Origin: preparation.LineScript}

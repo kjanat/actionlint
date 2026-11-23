@@ -10,8 +10,7 @@ import (
 	"github.com/kjanat/go-yaml/v4/plugin/limit"
 )
 
-// Session accounts for construction across one sequential schema traversal.
-// Its source graph must not change before Close.
+// Session is for one sequential traversal, and its source graph must not change before Close.
 type Session struct {
 	nodes                  map[*Node]*upstream.Node
 	originals              map[*upstream.Node]*Node
@@ -21,17 +20,12 @@ type Session struct {
 	closed                 bool
 }
 
-// constructionLimits checks the alias and construction counts a session
-// accumulates across all of its loads.
 type constructionLimits interface {
 	CheckAlias(aliases, constructions int) error
 }
 
-// nestingLimit checks each load's nesting depth with go-yaml's default limit.
-// Depth does not accumulate across loads, so it is not part of the session.
 var nestingLimit = limit.New()
 
-// Cursor identifies a source occurrence together with its enclosing aliases.
 type Cursor struct {
 	session *Session
 	node    *Node
@@ -44,7 +38,6 @@ type aliasCrossing struct {
 	parent *aliasCrossing
 }
 
-// Entered is a resolved occurrence whose construction has already been counted.
 type Entered struct {
 	cursor Cursor
 	claim  *rootClaim
@@ -68,7 +61,6 @@ func Open(root *Node) (*Session, Cursor, error) {
 // Close invalidates the session and every cursor derived from it.
 func (s *Session) Close() { s.closed = true }
 
-// Finish returns a fatal traversal error before any collected schema errors.
 func (s *Session) Finish(err error) error {
 	if s.fatal != nil {
 		return s.fatal
@@ -76,7 +68,6 @@ func (s *Session) Finish(err error) error {
 	return joinDecodeErrors(err)
 }
 
-// Wrap locates a schema error without discarding already located diagnostics.
 func (s *Session) Wrap(n *Node, err error) error {
 	if s.fatal != nil {
 		return s.fatal
@@ -94,7 +85,6 @@ func (s *Session) Wrap(n *Node, err error) error {
 // Node returns the original occurrence, which may be an alias.
 func (c Cursor) Node() *Node { return c.node }
 
-// Node returns the original concrete node reached by Enter.
 func (e Entered) Node() *Node { return e.cursor.node }
 
 func (c Cursor) check() error {
@@ -131,8 +121,7 @@ func (c Cursor) count() error {
 	return nil
 }
 
-// Enter counts this occurrence and any document or alias nodes traversed to it.
-// Unselected children are never expanded or counted.
+// Enter counts this occurrence and the document or alias nodes on its path, and never expands unselected children.
 func (c Cursor) Enter() (Entered, error) {
 	for {
 		if err := c.check(); err != nil {
@@ -169,7 +158,6 @@ func (c Cursor) Enter() (Entered, error) {
 	}
 }
 
-// Pairs yields mapping occurrences in source order, carrying enclosing aliases.
 func (e Entered) Pairs() iter.Seq2[Cursor, Cursor] {
 	return func(yield func(Cursor, Cursor) bool) {
 		if e.cursor.node == nil || e.cursor.node.Kind != MappingNode {
@@ -185,7 +173,6 @@ func (e Entered) Pairs() iter.Seq2[Cursor, Cursor] {
 	}
 }
 
-// Items yields sequence occurrences in source order, carrying enclosing aliases.
 func (e Entered) Items() iter.Seq[Cursor] {
 	return func(yield func(Cursor) bool) {
 		if e.cursor.node == nil || e.cursor.node.Kind != SequenceNode {
@@ -201,7 +188,6 @@ func (e Entered) Items() iter.Seq[Cursor] {
 	}
 }
 
-// Decode constructs a hook-free Go value using this occurrence's alias context.
 func (c Cursor) Decode(target any) error { return c.decode(target, c.claim) }
 
 // Decode uses the entered root's count once. Further decodes count it again.
@@ -265,7 +251,6 @@ func checkDecodeType(t reflect.Type, selected bool, seen map[decodeShape]bool) e
 			return fmt.Errorf("YAML hooks require an explicit schema traversal: %v", t)
 		}
 	}
-	// Only container kinds reach further types; every other kind is a leaf.
 	kind := t.Kind()
 	if kind == reflect.Pointer || kind == reflect.Slice || kind == reflect.Array {
 		return checkDecodeType(t.Elem(), false, seen)

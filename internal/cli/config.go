@@ -67,7 +67,6 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if asJSON {
 		return output.WriteJSONRecord(out, map[string]string{"path": path})
 	}
-	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)
 	if err != nil {
 		return err

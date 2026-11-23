@@ -6,15 +6,13 @@ import (
 	"sync"
 )
 
-// LogLevel selects analysis logging verbosity.
 type LogLevel int
 
 const (
-	// LogLevelNone disables logging.
 	LogLevelNone LogLevel = 0
-	// LogLevelVerbose enables verbose logging, as actionlint's -verbose option does.
+	// LogLevelVerbose matches actionlint's -verbose option.
 	LogLevelVerbose = 1
-	// LogLevelDebug shows all log output including debug information.
+	// LogLevelDebug includes debug information.
 	LogLevelDebug = 2
 )
 

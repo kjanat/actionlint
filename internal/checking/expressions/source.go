@@ -45,7 +45,6 @@ func (rule *Visitor) expressionPosition(offset int, end bool) *sourcetext.Positi
 	return position
 }
 
-// scalarPosition returns the position of an optional scalar.
 func scalarPosition(s *definition.String) *sourcetext.Position {
 	if s == nil {
 		return nil

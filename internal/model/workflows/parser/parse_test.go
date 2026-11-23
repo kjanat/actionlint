@@ -463,7 +463,6 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 					t.Fatalf("job %q exec=%T want run", name, run)
 				}
 			}
-			// Prove the fixture detects indexing projected aliases: the final flow use overwrites the anchor context.
 			root, err := codec.ParseYAML([]byte(input))
 			if err != nil {
 				t.Fatal(err)

@@ -25,16 +25,12 @@ func validateSuppressionRuleName(reserved rule.Names, name string) error {
 }
 
 type extensionRoleSet struct {
-	analyzer bool
-	// runner is the negotiated runner-provider version, nil without the role.
-	runner runnerProtocol
-	// script is the negotiated script-engine version, nil without the role.
+	analyzer          bool
+	runner            runnerProtocol
 	script            scriptEngineProtocol
 	toolIntegration   bool
 	referenceResolver bool
-	// templateEffects is the negotiated template-effects version, nil
-	// without the role.
-	templateEffects *templateEffectsProtocol
+	templateEffects   *templateEffectsProtocol
 }
 
 // extensionRoles negotiates the roles a component exports. A component
@@ -97,9 +93,6 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	return roles, nil
 }
 
-// negotiateVersion records export as the component's version of a
-// versioned role, stored in role. It fails for a version outside accepted,
-// a non-instance export, or a second version of the role.
 func negotiateVersion[V versionedRole](export wacogo.ExportDesc, accepted []V, role *V, kind string) error {
 	index := slices.IndexFunc(accepted, func(version V) bool { return version.interfaceName() == export.Name })
 	if index < 0 {
@@ -125,7 +118,6 @@ type importRequirements struct {
 	repositoryObjects bool
 }
 
-// validateImports checks grants and records optional host features in one pass.
 func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 	var required importRequirements
 	hostName := wasmparser.CanonicalizeImportName(HostInterface)

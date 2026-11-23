@@ -8,11 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
-// CachedResolver shares exact resolutions, including consumer kind and
-// expected repository identity, within one session. Concurrent requests for
-// the same Request wait for a single call to the wrapped resolver. Successful
-// resolutions are kept; failures are not. A waiter whose leader was cancelled
-// resolves the request itself instead of sharing the cancellation.
+// CachedResolver caches successful resolutions for one session. A waiter whose
+// leader was cancelled resolves the request itself.
 type CachedResolver struct {
 	resolver Resolver
 	mu       sync.Mutex
@@ -20,7 +17,6 @@ type CachedResolver struct {
 	pending  map[Request]*pendingResolution
 }
 
-// NewCachedResolver caches resolutions of resolver for one session.
 func NewCachedResolver(resolver Resolver) *CachedResolver {
 	return &CachedResolver{resolver: resolver}
 }
@@ -32,9 +28,8 @@ type pendingResolution struct {
 	abandoned bool
 }
 
-// Resolve returns the session's resolution of request, asking the wrapped
-// resolver only when no earlier or concurrent call can supply it. Waiting for
-// a concurrent call does not consume the reference lookup budget.
+// Resolve does not consume the reference lookup budget while it waits for a
+// concurrent call.
 func (c *CachedResolver) Resolve(ctx context.Context, request Request) (ResolutionRecord, error) {
 	for {
 		if err := ctx.Err(); err != nil {

@@ -8,10 +8,8 @@ import (
 	"strings"
 )
 
-// Worktree is the commit a repository's HEAD names and the paths that differ
-// from it in the index or working tree.
 type Worktree struct {
-	// Head is the full commit ID HEAD names. It is empty before the first commit.
+	// Head is the full commit ID of HEAD. Head is empty before the first commit.
 	Head string
 	// Changes lists modified, added, deleted, renamed and untracked paths
 	// relative to the repository root, with forward slashes, in Git's order.
@@ -19,12 +17,9 @@ type Worktree struct {
 	Changes []string
 }
 
-// Dirty reports whether any path differs from HEAD.
 func (w Worktree) Dirty() bool { return len(w.Changes) != 0 }
 
-// ReadWorktree reads HEAD and the uncommitted changes of the repository at
-// root with two local Git queries. It does not fetch, prompt or run the
-// repository's fsmonitor.
+// ReadWorktree never fetches, prompts or runs the repository's fsmonitor.
 func ReadWorktree(ctx context.Context, root string) (Worktree, error) {
 	if err := ctx.Err(); err != nil {
 		return Worktree{}, err
@@ -51,8 +46,7 @@ func ReadWorktree(ctx context.Context, root string) (Worktree, error) {
 	return worktree, err
 }
 
-// ParseStatusPaths reads the paths of `git status --porcelain=v1 -z` output.
-// For a rename or copy it returns the new path and skips the original one.
+// ParseStatusPaths returns the new path of a rename or copy and skips the original.
 func ParseStatusPaths(output string) ([]string, error) {
 	var paths []string
 	records := strings.Split(output, "\x00")

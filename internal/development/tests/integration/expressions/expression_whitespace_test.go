@@ -112,8 +112,6 @@ jobs:
 	}
 }
 
-// checkJobField analyzes a one-job workflow carrying field and expects no
-// diagnostic when want is empty, otherwise exactly one containing want.
 func checkJobField(t *testing.T, field, want string) {
 	t.Helper()
 	source := `on: push

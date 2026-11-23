@@ -38,19 +38,14 @@ type Loaded struct {
 	ScriptEngines []ScriptEngineRegistration
 	Modules       []*module.Engine
 	deferred      []*deferredScriptEngine
-	// Providers contains process tool manifests read from local paths or OCI sources.
-	Providers []SelectedProvider
-	// NamedTools lists tool IDs selected by the invocation. configure checks each ID.
-	NamedTools []string
-	// SkippedTools lists disabled tool IDs that matched plugins that were not loaded.
-	SkippedTools []string
-	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
-	ToolIDs      []string
-	Acquisition  dependencycache.Acquisition
-	DisableTools bool
+	Providers     []SelectedProvider
+	NamedTools    []string
+	SkippedTools  []string
+	ToolIDs       []string
+	Acquisition   dependencycache.Acquisition
+	DisableTools  bool
 }
 
-// SelectedProvider records the files and execution authority of one selected process plugin.
 type SelectedProvider struct {
 	Files      toolproviders.ProviderFiles
 	Network    acquisitionhttp.Grant
@@ -95,7 +90,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			if sources.DisableTools {
 				continue
 			}
-			// A local manifest names a command found on PATH; nothing is fetched.
+			// A local manifest names a command found on PATH, and nothing is fetched.
 			manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
@@ -145,8 +140,6 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: toolproviders.ProviderFiles{Manifest: manifest, Source: path}, Network: networkPolicy, Repository: sources.Configured})
 			continue
 		}
-		// Metadata is read only when --tool or --no-tool named an id, so
-		// unusual metadata cannot fail a run that names none.
 		if !sources.DisableTools && (len(sources.DisabledTools) != 0 || len(sources.NamedTools) != 0) {
 			ids, err := MetadataTools(artifact.Info.Metadata)
 			if err != nil {
@@ -214,7 +207,6 @@ func (l *Loaded) RunnerProviders() []runnerapi.Registration {
 	return registrations
 }
 
-// BeginAnalysis releases expired deferred-engine failures before a new analysis.
 func (l *Loaded) BeginAnalysis(ctx context.Context) error {
 	now := time.Now()
 	for _, engine := range l.deferred {
@@ -248,9 +240,7 @@ func (l *Loaded) Close(ctx context.Context) error {
 	return err
 }
 
-// MetadataTools returns the engine name and rule names that static plugin
-// metadata declares. It reads the inspected metadata without running the
-// plugin.
+// MetadataTools reads static plugin metadata without running the plugin.
 func MetadataTools(metadata json.RawMessage) ([]string, error) {
 	if len(metadata) == 0 {
 		return nil, nil

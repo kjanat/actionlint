@@ -69,7 +69,7 @@ func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 			}
 		})
 	}
-	// A source anchors at the request directory; without one there is none.
+	// A source anchors at the request directory. Without a request directory, a source has no anchor.
 	e := &Engine{checkVersion: 3, metadata: Metadata{Capabilities: Capabilities{ReportedSources: true}}}
 	if got := e.checkFindings3(scriptengine.Diagnostic{Source: "lib.sh"}, ""); !strings.Contains(got, "carried no directory") {
 		t.Fatalf("source without a directory: %q", got)

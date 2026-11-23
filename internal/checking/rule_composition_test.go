@@ -118,9 +118,6 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 	}
 	proj := workspace.Identity(dir)
 
-	// Measure performance of traversing with checks except for external process rules (shellcheck, pyflakes)
-	// Reading file content is not included in benchmark measurement.
-
 	for _, name := range []string{"minimal", "small", "large"} {
 		var f string
 		switch name {

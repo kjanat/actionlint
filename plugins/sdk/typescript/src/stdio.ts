@@ -6,19 +6,9 @@ import { executeDocumentCheck, executeScriptCheck } from '#index';
 
 /**
  * Read one JSON script request from stdin and write one validated SDK response to stdout.
- * This native-runtime helper is exported from `/stdio`, not the web-safe package root.
- * pack generates this entrypoint; call manually only when writing a custom runner. Keep stdout
- * reserved for protocol JSON; send progress and logs to stderr.
- * @example
- * ```ts
- * import { serveScriptEngine } from '@kjanat-actionlint/plugin-sdk/stdio';
- *
- * await serveScriptEngine(({ source, filename }) => source.startsWith('eval') ? [{
- *   filename, code: 'no-eval', message: 'Avoid eval', location: { row: 1, column: 1 },
- * }] : []);
- * ```
+ * `pack` generates this entrypoint. Call it yourself only from a custom runner.
+ * Write logs to stderr. Stdout carries protocol JSON only.
  * @param check Script callback; thrown errors become protocol failures.
- * @param limits Maximum UTF-8 input/output bytes, each defaulting to 8 MiB. Keep stdout free of logs.
  */
 export async function serveScriptEngine(
 	check: ScriptCheck,
@@ -44,18 +34,8 @@ export async function serveScriptEngine(
 
 /**
  * Serve one complete-document request over stdin/stdout, including requested dependency facts.
- * This native-runtime helper is exported from `/stdio`, not the web-safe package root.
- * pack generates this entrypoint for document callbacks; stdout must contain protocol data only.
- * @example
- * ```ts
- * import { serveDocumentEngine } from '@kjanat-actionlint/plugin-sdk/stdio';
- *
- * await serveDocumentEngine(({ source, filename }) => source.startsWith('TODO') ? [{
- *   filename, code: 'document-note', message: 'Resolve the TODO', location: { row: 1, column: 1 },
- * }] : []);
- * ```
+ * `pack` generates this entrypoint. Stdout carries protocol JSON only.
  * @param check Document callback; thrown errors become protocol failures.
- * @param limits Maximum UTF-8 input/output bytes, each defaulting to 8 MiB.
  */
 export async function serveDocumentEngine(
 	check: DocumentCheck,

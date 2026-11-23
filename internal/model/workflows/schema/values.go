@@ -11,9 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
-// Shape describes evaluated expression values. Unlike
-// ExprType.Assignable, it distinguishes strict schema booleans from truthiness
-// and optional object properties from required ones.
+// Shape distinguishes strict schema booleans from truthiness and optional
+// object properties from required ones.
 type Shape interface {
 	ValidateType(exprtypes.Type, string) []string
 }
@@ -46,8 +45,6 @@ func (shape workflowExpressionScalar) ValidateType(ty exprtypes.Type, path strin
 	return []string{fmt.Sprintf("%s must be %s but found %s", path, shape, ty.String())}
 }
 
-// validate dispatches nested shapes over this package's closed set of
-// implementations, so validation stays within statically known methods.
 func validate(shape Shape, ty exprtypes.Type, path string) []string {
 	switch shape := shape.(type) {
 	case workflowExpressionScalar:
@@ -253,16 +250,13 @@ func LiteralErrors(shape Shape, value any, path string) []string {
 	return errors
 }
 
-// Property finds a case-insensitive schema property, including evaluated keys.
-// It returns the zero value when no key matches.
+// Property matches keys case-insensitively and returns the zero value when none matches.
 func Property[T any](properties map[string]T, name string) T {
 	value, _ := LookupProperty(properties, name)
 	return value
 }
 
-// LookupProperty finds a case-insensitive schema property, including evaluated
-// keys. An exact key match wins over a case-insensitive one. ok is false when
-// no key matches.
+// LookupProperty prefers an exact key match over a case-insensitive one.
 func LookupProperty[T any](properties map[string]T, name string) (value T, ok bool) {
 	if value, ok := properties[name]; ok {
 		return value, true
@@ -275,9 +269,8 @@ func LookupProperty[T any](properties map[string]T, name string) (value T, ok bo
 	return value, false
 }
 
-// MatrixType returns the type of the matrix context for an evaluated matrix
-// declaration of type ty. Each row's array element type becomes the property
-// type, and include combinations add or merge properties.
+// MatrixType turns each row's array element type into a property type, and
+// include combinations add or merge properties.
 func MatrixType(ty exprtypes.Type) exprtypes.ObjectType {
 	object, ok := ty.Object()
 	if !ok {
@@ -326,11 +319,8 @@ func MatrixType(ty exprtypes.Type) exprtypes.ObjectType {
 	return result.Build()
 }
 
-// Services is the mapping of named job services to their container declarations.
 var Services Shape = workflowExpressionObject{mapped: Container(true)}
 
-// StringList accepts zero or more non-empty string values.
 var StringList Shape = workflowExpressionArray{elem: NonEmpty}
 
-// Matrix describes the declaration before expanding individual combinations.
 var Matrix Shape = Strategy.props["matrix"]

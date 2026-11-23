@@ -1,9 +1,7 @@
 package scriptengine
 
-// TemplateEffectsContract identifies the semantics of template provenance filtering.
 const TemplateEffectsContract = "kjanat:actionlint/template-effects@0.1.0"
 
-// TemplateEffect describes how masking template expressions affected a diagnostic.
 type TemplateEffect string
 
 const (

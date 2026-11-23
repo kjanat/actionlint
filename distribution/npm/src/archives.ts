@@ -75,7 +75,7 @@ async function zipMembers(archive: Buffer, wanted: ReadonlySet<string>): Promise
 	return files;
 }
 
-/** Reads selected files into memory. Archive paths are never written to disk. */
+/** Reads selected files into memory and writes no archive path to disk. */
 export async function archiveMembers(
 	archive: Buffer,
 	format: ArchiveFormat,

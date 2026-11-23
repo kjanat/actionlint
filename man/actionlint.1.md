@@ -15,520 +15,303 @@ header: General Commands Manual
 
 # DESCRIPTION
 
-**actionlint** checks GitHub Actions workflow files without executing the workflows. This is
-the maintained `kjanat/actionlint` fork, distributed as the Go module `actionlint.kjanat.dev/v2`.
-
-Checks include workflow syntax, expression types and context availability, action inputs and
-outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
-job dependencies, parallel steps, runner labels, event filters, schedules, and YAML anchors.
-Security checks report potentially unsafe expression interpolation in scripts and hard-coded
-credentials. ShellCheck and Ruff check shell and Python scripts through registry
-Wasm plugins by default.
-
-Repository policy checks can require immutable action references and job timeouts.
-These checks are enabled explicitly in the configuration file. Cache safety policies
-are enabled by default; ordinary workflow checks do not require configuration.
+**actionlint** checks GitHub Actions workflow files without running them. It checks syntax,
+expression types, action inputs and outputs, reusable workflows, runner labels, schedules and
+script injection. ShellCheck and Ruff check shell and Python scripts through registry Wasm
+plugins by default.
 
 # USAGE
 
-With no arguments inside a Git repository, **actionlint** discovers and checks
-its workflow and action files. Outside a repository, it prints help to stdout
-and exits 0. **actionlint check** explicitly requests repository discovery;
-it exits 3 outside a repository or if no inputs are found.
-Pass explicit files, directories, glob patterns or **-** for stdin. Directories
-find action manifests and YAML below **.github/workflows**, including in nested
-repositories. Each repository uses its own ignores, configuration and plugins.
-Directories and glob matches respect file filters; literally named files override
-them. Quote glob patterns for actionlint to expand them. Leading **~/** expands
-to the home directory. Overlapping inputs check each physical file once.
-**-C** *DIR* runs from another directory; repeat it to resolve each relative
-directory from the previous one. Input, output and configuration paths use that directory.
+With no arguments inside a Git repository, **actionlint** checks the repository's workflow and
+action files. Outside a repository, it prints help and exits 0. **actionlint check** exits 3
+outside a repository or when it finds no inputs.
+
+Pass files, directories, glob patterns or **-** for stdin. Quote glob patterns to let
+actionlint expand them.
 
     $ actionlint check
     $ actionlint file1.yaml file2.yaml
     $ actionlint check file1.yaml --output-format=json
     $ actionlint check --stdin-filename .github/workflows/ci.yml -
 
-The root and **check** accept options before or after filenames.
-**--** forces subsequent arguments to be filenames.
-A command name selects the command. Pass `./NAME` to check a file named like a command.
-
-**actionlint --help** shows common options and commands. Run
-**actionlint check --help** for all checking options, which the root invocation
-also accepts.
+Options can come before or after filenames. **--** makes later arguments filenames. Pass
+`./NAME` to check a file named like a command.
 
 # COMMANDS
 
 **fix** [**--apply**] [**--include-suggested**] [*FILES...*]
-: Preview edits as JSON; apply validated edits explicitly and recheck changed sources.
+: Preview edits as JSON. **--apply** writes validated edits and rechecks the changed files.
 
 **lsp**
-: Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
+: Run the language server over stdin and stdout.
 
 **cache warm** [*FILES...*]
 : Download configuration, plugins and remote action metadata for offline checks.
-Refresh the default plugin selections. Lint findings do not affect the exit status.
 
 **cache dir**, **cache list**
-: Print the cache location, or list cached files with their sizes and modification
-times. Both commands support **--json** and do not create a missing cache.
+: Print the cache location, or list cached files.
 
 **cache prune** [**--older-than** *DURATION*] [**--dry-run**]
-: Remove cached downloads and compiled modules last written more than 30 days ago.
-Accept durations such as `24h` and `168h`. Retain registry records so selected
-versions keep their matching release metadata.
+: Remove cache files written more than 30 days ago.
 
 **cache clean** [**--dry-run**]
-: Remove cached configuration, downloads, remote metadata, registry selections
-and compiled modules. Retain plugin revocation records. Project configuration
-is unchanged. Both removal commands support **--json**, work offline and stay
-within the cache directory. Warm the cache again before checking offline.
+: Remove the whole cache except plugin revocation records.
 
 **plugin search** [*QUERY*], **plugin versions** *PLUGIN*
-: Discover canonical repository names and exact published tags from the registry.
-Use **--registry** to select a compatible HTTPS catalogue. **--json** includes
-details about compatibility with this host when listing versions.
+: Search the registry for plugins, or list the published tags of one plugin.
 
 **plugin install** [*PLUGIN*] [**--version** *TAG|latest*]
-: Declare a dependency in the config's root **plugins** list and download it
-without executing it. Accepts `owner/repo@tag` and forge-qualified names.
-Save the canonical package and exact version in configuration; verified release
-metadata and artifact bytes live in the shared user cache. Without a name, install
-declared dependencies, preserving matching pins.
-The default selector for new dependencies is the highest stable full semantic version;
-prereleases and arbitrary tags require exact selection. A registry listing does not prove
-that a plugin will run with this host. Runner targets still require explicit selection.
+: Add a plugin to the config's **plugins** list and download it. Without a name, the command
+installs every declared plugin. The default version is the highest stable release. Prereleases
+need an exact tag.
 
 **plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
-: List declared dependencies; resolve new versions and update configuration;
-remove a declaration; or acquire declared exact releases into the shared cache.
-Update accepts **--version** for one named plugin. Exact selectors stay exact;
-latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
-preserve configuration. Checks restore missing pinned artifacts and reuse verified
-cached bytes offline. Configuration selects plugin releases. Removal leaves the shared cache intact. Use **--config**
-for a custom config or outside a repository. Management rejects **--no-config**.
+: List, update or remove declared plugins, or download declared releases into the cache. Use
+**--config** outside a repository.
 
 **plugin inspect** *PATH-OR-URI*
-: Read artifact metadata without executing a guest.
+: Read plugin metadata without running the plugin.
 
 **check** [*flags*] [*files*...]
-: Check workflows with the modern option grammar. Uses the same engine and
-repository discovery as the root invocation.
+: Check workflows with the modern option grammar.
 
 **config init** [**--json** | **--jsonc** | **--toml** | **--yaml** | **--yml**]
-: Create a repository config with its editor schema URL. YAML is the default.
-The format flag also selects the filename extension. JSONC and TOML include commented rule examples.
-The command refuses to overwrite an existing supported config file.
+: Create a repository config. YAML is the default. The command refuses to overwrite an existing
+config.
 
 **config path**
-: Print the selected configuration path without parsing it, or nothing if absent.
+: Print the selected configuration path.
 
 **config show** [**--origin**]
-: Show effective configuration as YAML. **--json** returns `path` and `config`.
-With `--origin`, include sources keyed by JSON Pointer: `default` or `config`,
-missing/null/value state, and positions for file settings.
+: Show the effective configuration. **--origin** adds the source of each setting.
 
 **config validate**
-: Validate with the analysis configuration loader.
+: Validate the configuration.
 
 **config schema**
-: Print the configuration JSON schema, with a **tools** entry for each tool
-provider manifest that **--plugin** or the configuration installs.
+: Print the configuration JSON schema.
 
 **rules** [*name*]
-: List checks by category,
-alphabetically within each group, or explain one check. **--json** returns the
-alphabetical array of rule metadata.
+: List checks, or explain one check.
 
 **doctor**
-: Inspect configuration and external-tool resolution without executing tools.
-Directory, configuration and executable paths use `file://` links when hyperlinks
-are enabled. Link targets support Windows drive and UNC paths and encode special characters.
-Missing optional tools are reported; malformed selected config returns status 3.
+: Inspect configuration and tool resolution without running tools.
 
 **completion** *shell*
-: Print the generated completion script for the selected shell.
+: Print a shell completion script.
 
 **version**
-: Show version and build details. Supports **--json**.
+: Show version and build details.
 
 # FLAGS
 
+Options apply to the root and to **check** unless noted. Run **--help-legacy** for old
+single-dash spellings.
+
 **--resolve-with** *EXECUTABLE*
-: Opt in to remote dependency resolution with a literal provider executable.
+: Resolve remote dependencies with this executable.
 
 **--resolver-arg** *VALUE*
-: Pass a literal argument to the resolver. Repeat for multiple arguments.
+: Pass an argument to the resolver. Repeatable.
 
 **--offline**
-: Block network requests and use cached configuration, plugins and remote metadata.
-Missing dependencies produce warnings. A missing required config or plugin stops
-the check with a warning and exit status zero. Installed native linters and cached
-WebAssembly plugins can run. Remote resolver processes are skipped. Actionlint does
-not sandbox network access inside native tools. Use **actionlint cache warm** with
-the files to check before disconnecting.
+: Block network requests and use the cache. A missing required config or plugin stops the
+check with a warning and exit status 0. Native tools can still reach the network. Run
+**actionlint cache warm** before going offline.
 
 **--online**
-: Allow network requests. This is the default and cannot be combined with
-**--offline**. Remote metadata lookups read the cache first,
-then each repository's Git reference list from `github.com` and manifests from
-`raw.githubusercontent.com`. If the raw host fails, the mirror settings determine
-whether actionlint tries `cdn.jsdelivr.net` before GitHub REST. By default, only
-repositories known to be public can use that mirror.
-Online requests use `GH_TOKEN`, falling back to `GITHUB_TOKEN`.
-
-These options belong to the root and to **check**, unless noted otherwise.
-The root accepts single- and double-dash spellings; **check**
-uses long options and short aliases. Run **--help-legacy** for old spellings.
+: Allow network requests. Requests use `GH_TOKEN` or `GITHUB_TOKEN`.
 
 **--output-format**, **--output**, **-o** *MODE*
-: Select `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, or `github`. The default is
-`pretty`. Repeat the flag to emit multiple formats in order; duplicate formats are
-emitted once. **--output** is a supported alias. `pretty` shows captured source, range
-indicators, diagnostic-specific advice, related locations and fix descriptions, wrapping
-messages and paths. JSON emits a versioned analysis result
-with completion status, diagnostics, and configuration context. JSONL emits one diagnostic
-per line. GitHub annotations are emitted only when explicitly selected.
+: Select `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif` or `github`. The default
+is `pretty`. Repeat the flag to emit several formats.
 
 **--diagnostic-width** *COLUMNS*
-: Wrap `pretty` diagnostics at this width. Accepts 40 to 400. Default: 100.
-Requires **--output-format**=pretty.
+: Wrap `pretty` diagnostics at 40 to 400 columns. Default: 100.
 
 **--dependency-findings** *MODE*
-: Show dependency findings in pretty output. Use `compact` for a summary and
-details for findings that can make the check fail, or `full` for all details.
-The default is `compact`.
+: Show dependency findings in `compact` (default) or `full` detail.
 
 **--json**
-: Select JSON output. With help, version, config, rules or doctor, emit JSON
-metadata. Operational errors are JSON objects on stderr.
+: Select JSON output. With help, version, config, rules or doctor, print JSON metadata.
 
 **--json-pretty**[=*BOOL*]
-: Format JSON and SARIF on a terminal with installed jq. Default: true. False
-keeps the original JSON. Unavailable or failing jq falls back to built-in output.
-Explicitly enabling this flag also selects JSON if no other output format is
-specified. The default value and `--json-pretty=false` do not select JSON.
-Explicit true also indents JSON in pipes and files without color codes or a jq
-dependency. Without an explicit pretty flag, pipes and files keep their original
-output. JSONL, templates and stderr records keep their existing format.
+: Format JSON and SARIF with jq on a terminal. Default: true. Explicit true also selects JSON
+when no other format is set, and indents JSON in pipes and files.
 
 **--template**, **--format**, **-f** *TEMPLATE*
-: Render diagnostics with a Go template. `{{json .}}` returns a JSON diagnostic array. Cannot be
-combined with a built-in output selector. A nonempty template takes precedence
-over the legacy **--oneline** option.
+: Render diagnostics with a Go template.
 
 **--template-file** *PATH*
-: Read a Go template from a file. Cannot be combined with an inline template.
+: Read a Go template from a file.
 
 **--output-file** *PATH*
-: Write results to the given path. `-` means stdout. An existing destination
-prompts `Overwrite? [y/N]` in an interactive terminal before analysis. Enter or a
-negative answer keeps the file and stops the check. Replacement happens only
-after analysis completes, including analysis that found problems. A failure
-preserves a previous report. The output cannot also be a selected input.
+: Write results to *PATH*. `-` means stdout. actionlint asks before it replaces an existing
+file.
 
 **-y**, **--yes**
-: Answer yes to confirmation prompts. Required to replace an existing report
-when stderr is not a terminal or when `-` supplies workflow stdin. Confirmation
-never consumes workflow input. Piping `yes` also works in an interactive terminal.
+: Answer yes to prompts. Replacing a report needs **--yes** when stderr is not a terminal or
+workflow input comes from stdin.
 
 **--color**[=*MODE*]
-: On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
-On the root, use boolean syntax such as `-color=false`.
-Help uses the same controls: automatic styling follows stderr's terminal status,
-**NO_COLOR**, and **TERM=dumb**. With **GITHUB_ACTIONS=true**, help and text
-diagnostics also use color in workflow logs without a terminal, even with
-**TERM=dumb**. Regular files and **--output-file** reports stay plain in auto mode;
-custom templates receive no added color. Put root color flags before **--help**.
-Redirected structured output contains no terminal color codes. Optional jq
-formatting can color JSON and SARIF written directly to a terminal.
+: On **check**, select `auto`, `always` or `never`. A bare flag means `always`. On the root,
+use boolean syntax such as `-color=false`.
 
 **--no-color**
-: Disable color. This supported legacy option wins over the root's **--color**
-boolean regardless of argument order.
+: Disable color.
 
 **--hyperlinks** *MODE*
-: Select `auto` (default), `always`, or `never` for OSC 8 links in help and doctor.
-`always` and `never` override the environment. In `auto`, non-empty
-**NO_HYPERLINKS** disables links before non-empty **FORCE_HYPERLINKS** enables
-them; otherwise the output must be a TTY with a known capable terminal
-(stderr for help, stdout for doctor).
-Unknown terminals and multiplexers default to plain URLs. Explicit `always`
-can enable links through a multiplexer configured to pass them through.
-Color controls are independent. Destination URLs stay visible when links are
-disabled. JSON, diagnostics, templates, version output and generated completion
-scripts receive no added hyperlink sequences. Put root flags before **--help**.
-See https://no-hyperlinks.org/spec for the convention.
+: Select `auto` (default), `always` or `never` for OSC 8 links in help and doctor.
 
 **-C**, **--directory** *DIR*
-: Run from another directory. Repeat to resolve each relative directory from
-the previous one. Input, output and configuration paths use the selected directory.
+: Run from *DIR*. Repeat to resolve each relative directory from the previous one.
 
 **--config**, **--config-file** *PATH*
-: Select the configuration file. This takes precedence over repository discovery. **--config-file**
-is the supported legacy name. Also available on **config** and **doctor**.
+: Select the configuration file.
 
 **--no-config**, **--no-rc**, **--norc**
-: Use defaults without loading a configuration file. Cannot be combined with a
-nonempty explicit config path. Also available on **config** and **doctor**.
+: Use defaults without a configuration file.
 
 **--no-ignore**
-: Include Git-ignored files during discovery. Configured file filters still apply.
+: Include Git-ignored files during discovery.
 
-**--ignore-regex**, **--ignore** *REGEXP*
-: Suppress findings whose messages or `CODE: message` match this Go regular expression. Repeat to
-add patterns. **--ignore** is the
-supported legacy name.
+**--ignore-regex** *REGEXP*
+: Suppress findings whose message or `CODE: message` matches this Go regular expression.
+Repeatable.
+
+**--ignore** *RULE*
+: Ignore a *RULE*, diagnostic code or rule/code. Repeatable.
 
 **--plugin** *PATH*
-: Load a WebAssembly component plugin that implements `kjanat:actionlint/analyzer@0.2.0`
-or `kjanat:actionlint/runner-provider` version 0.2.0 or 0.3.0.
-Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
-10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
-*PATH* may also be an `oci://`*HOST*`/`*REPOSITORY*`@sha256:`*HEX* reference to a
-WebAssembly module or a tool provider published to an OCI registry; see
-[Plugins](../docs/plugins.md#pull-from-an-oci-registry).
-
-**--registry** *URL*
-: Select an HTTPS static catalogue for **plugin search**, **plugin versions** or
-**plugin install**. Default: `https://plugins.actionlint.kjanat.dev/`.
+: Load a WebAssembly component plugin from a file or an
+`oci://`*HOST*`/`*REPOSITORY*`@sha256:`*HEX* reference. Repeatable. Each analysis gets 64 MiB
+of memory and 10 seconds.
 
 **--runner-target** *TARGET*
-: Select the runner execution target. Defaults to `github`; installing a provider
-does not change the target. Also available on **lsp**.
+: Select the runner execution target. Default: `github`.
 
 **--runner-provider** *NAME*
-: Select the authoritative runner provider for the target. Ambiguous providers
-require an explicit selection. Also available on **lsp**.
+: Select the runner provider for the target.
 
 **--runner-snapshot** *FILE*
-: Read a fixed JSON snapshot containing `content`, `scope`, `obtained_at`,
-`freshness` (`fresh`, `stale`, or `missing`) and `complete`. Maximum 8 MiB. The
-content is provider-specific. Restart the language server to refresh the snapshot.
-Also available on **lsp**.
+: Read runner information from a JSON snapshot of up to 8 MiB.
 
 **--runner-scope** *SCOPE*
-: Set the organization/repository scope for runner information. Defaults to the project root.
-The snapshot and provider answers must match this scope. Also available on **lsp**.
+: Set the organization or repository scope for runner information. Default: the project root.
 
 **--runner-service** *SERVICE*
-: Select the workflow execution service: `github.com`, `github-data-residency`,
-`ghes`, or `unknown`. This overrides **repository.service** in configuration.
-Without an override, the GitHub execution host supplies **GITHUB_SERVER_URL**;
-an absent host value leaves the service unknown. Also available on **lsp**.
+: Select `github.com`, `github-data-residency`, `ghes` or `unknown`. This flag overrides
+**repository.service**.
 
 **--runner-service-version** *VERSION*
-: Supply a GHES version with **--runner-service** set to `ghes`, such as `3.19` or `3.19.2`.
-An omitted version remains unknown. Cloud retirement dates do not apply to GHES.
-Also available on **lsp**.
+: Set the GHES version, such as `3.19`.
 
 **--as-of** *DATE*
-: Assess lifecycle events on `YYYY-MM-DD`. Defaults to today's UTC date, captured
-once per invocation. Also available on **lsp**.
+: Assess lifecycle events on `YYYY-MM-DD`. Default: today in UTC.
 
 **--runner-as-of** *DATE*
-: Alias for **--as-of**. If both are supplied, their dates must match.
+: Alias for **--as-of**.
 
 **--enforce-policy** *FILE* or *URL*
-: Require lifecycle policies from an explicit local file or HTTPS URL. Repeat to
-load multiple policy files. Also available on **lsp** and **cache warm**.
+: Require lifecycle policies from a file or HTTPS URL. Repeatable.
 
 **--stdin-filename** *PATH*
-: Set the path used for stdin diagnostics and project detection. The default is
-`<stdin>`. Use an existing workflow path to select its repository context.
+: Set the path for stdin diagnostics. A workflow path selects its repository. Default:
+`<stdin>`.
 
 **--log-level** *LEVEL*
-: Select `none`, `info`, or `debug`. The default is `none`.
+: Select `none` (default), `info` or `debug`.
 
 **--quiet**, **-q**
-: Suppress progress, debug logs and summaries. Also available on information and config commands.
+: Suppress progress, debug logs and summaries.
 
 **--strict**
-: Select all stable rules, preserving explicit group/rule exceptions, bounds, scopes
-  and rule-ID/path suppressions. Includes stable suspicious checks. Does not enable nursery rules or invent
-  required actions. Environment default: `ACTIONLINT_STRICT`.
+: Enable stable correctness, security and suspicious rules and fail on warnings and errors.
+Explicit exceptions and suppressions still apply.
 
 **--experimental**
-: Enable nursery rules except those explicitly excluded. Explicit false
-  clears nursery selections without affecting stable suspicious rules. Environment default:
-  `ACTIONLINT_EXPERIMENTAL`. May be combined with **--strict**.
+: Enable nursery rules.
 
 **--summary**
-: Print selected file and finding counts on stderr after checking. Findings are
-also counted per file and per rule/diagnostic code, highest counts first. In JSON
-modes this is a JSON record with a `summary` field. Default: true.
-Use `--summary=false` or **--quiet** to suppress it.
+: Print file and finding counts on stderr. Default: true.
 
 **--verbose**, **-v**
-: Enable progress logging. Prefer **--log-level**=info on **check**.
+: Enable progress logging.
 
 **--network-stats**
-: Write a final JSON record with a `network` field to stderr. Group transport
-attempts by host, supplied credentials, protocol, purpose and priority. Include
-failures, blocked requests, observed quotas and opaque delegated lookups.
-Diagnostic output on stdout does not change. Credentials, paths and query strings
-are excluded. See the network accounting section in `docs/usage.md`.
+: Write network request statistics to stderr as a JSON record.
 
 **--debug**
-: Enable debug logging. On the legacy route, **--verbose** wins when both
-flags are true. An explicit **--log-level** selects the requested new log level.
+: Enable debug logging.
 
 **--oneline**
-: Print one diagnostic per line. Prefer **--output-format**=oneline.
+: Print one diagnostic per line.
 
 **--tool** *ID*[=*COMMAND*]
-: Run the tool *ID*, such as `shellcheck` or `ruff`, and fail when it cannot run.
-A bare *ID* uses the tool's own command on PATH; `ID=COMMAND` selects a custom
-executable or command line. `ID=false` and `ID=` disable the tool. Repeatable;
-the last value for an *ID* wins. Explicit selections ignore the tool's environment
-variables and repository backend. Also available on **doctor** and **lsp**.
-Unknown ids are rejected with the list of valid ids once plugins load.
+: Run the tool *ID*, such as `shellcheck` or `ruff`, and fail if it cannot run. `ID=COMMAND`
+selects a custom command. `ID=false` disables the tool. Repeatable. The last **--tool** or
+**--no-tool** for an ID wins.
 
 **--no-tool** *ID*
-: Disable the tool *ID* and override its environment settings. Plugins
-providing the tool are not loaded: a selected plugin whose name or alias is *ID* is
-not downloaded. Repeatable.
+: Disable the tool *ID*.
 
 **--no-tools**
-: Disable all external linter checks, including native executables and Wasm tool
-plugins. Override individual **--tool** flags and configured backends. Built-in
-workflow checks still run.
-
-**--dry-run**
-: Show the files **cache prune** or **cache clean** would remove without changing
-the cache.
-
-**--older-than** *DURATION*
-: Select the minimum time since a cache file was written for **cache prune**.
-The default is `720h`, or 30 days. This does not measure when a file was last used.
+: Disable all external linters.
 
 **--shellcheck** *COMMAND*
-: Deprecated option from actionlint v1, declared by the bundled ShellCheck tool.
-The same as **--tool** `shellcheck=COMMAND`; an empty command disables ShellCheck.
-Each use prints a warning.
+: Deprecated. **--shellcheck** works like **--tool** `shellcheck=COMMAND`.
 
 **--pyflakes** *COMMAND*
-: Deprecated option from actionlint v1, declared by the bundled Ruff tool. Selects
-Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. An empty command or
-`false` disables Ruff. The command value is never executed.
+: Deprecated. **--pyflakes** selects Ruff's Pyflakes rules. actionlint never runs the command.
 
 **--allow-config-processes**
-: Authorize native executables selected by trusted repository configuration,
-including inherited files and file overrides. Without this flag, selecting
-`tools.<name>.backend.process` reports an error before the executable is launched.
-Explicit CLI and environment tool selections authorize their own executable.
-
-For each tool ID, the last **--tool** or **--no-tool** option wins.
+: Allow native executables from repository configuration. Without this flag,
+`tools.<name>.backend.process` is an error.
 
 **--init-config**, **--init**
-: Aliases for **config init**, supported on the root and **config** command.
-The positional **init** and **init-config** commands invoke the same operation.
+: Aliases for **config init**.
 
 **--completion**, **--completions** *SHELL*
-: Root-only supported aliases for **completion** *SHELL*. Accept `bash`, `fish`,
-`powershell`, `zsh`, `pwsh`, shell executable paths, and `auto`. Cobra generates
-all four completion scripts. Install bash-completion for Bash and run compinit
-for Zsh. Regenerate saved scripts after upgrading.
+: Root-only aliases for **completion** *SHELL*.
 
 **--version**, **-V**
-: Root-only version flag. Prints three lines of text. Use the
-**version** command for the new presentation or **version --json** for metadata.
-Lowercase **-v** continues to enable verbose logging.
-On **plugin install** and **plugin update**, **--version** instead takes an exact
-release tag or `latest` as described above.
+: Print the version. Root only. On **plugin install** and **plugin update**, **--version** takes
+a release tag or `latest`.
 
 **--help**, **-h**
-: Show grouped help on stderr, or JSON command metadata on stdout with **--json**.
+: Show help on stderr.
 
 **--help-legacy**
-: Explain supported legacy option spellings and parsing rules without
-introducing deprecation warnings.
+: Explain legacy option spellings.
 
 # CONFIGURATION
 
-Configuration is optional. In a detected repository, actionlint reads the first of
-`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, `.github/actionlint.jsonc` and
-`.github/actionlint.toml` that exists. **--config-file** selects a different
-file. A selected file can inherit settings through `extends`; it is not merged
-with a separate repository file or a user-global configuration.
-
-The available settings are:
+A file can inherit settings through `extends`.
 
 **repository.runners**
-: Additional runner-label patterns. Patterns use Go `path.Match` glob syntax.
+: Extra runner-label glob patterns.
 
 **repository.variables**
-: Available names in the `vars` context, mapped to optional string values. An empty mapping
-allows no configuration variables. Omission inherits host knowledge; `null` makes it unknown.
+: Names allowed in the `vars` context. `null` makes the set unknown.
 
 **repository.secrets**
-: Allowed secret names, compared case-insensitively. Omission inherits host knowledge; `null` makes it unknown.
-The built-in secrets `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG`, and
-secrets declared in `on.workflow_call.secrets`, are allowed even with an empty list.
+: Allowed secret names. Built-in secrets such as `GITHUB_TOKEN` are always allowed.
 
 **repository.default-workflow-permissions**
-: Permission assumption for a local reusable workflow call when neither the calling job nor
-its workflow declares `permissions`. Use `read` or `write`. Omission inherits host knowledge;
-`null` makes it unknown. `id-token` still requires an explicit grant. This setting does not
-change the repository's actual GitHub permissions.
+: The permission, `read` or `write`, that actionlint assumes for a local reusable workflow call
+without `permissions`.
 
 **lint.message-ignores**
-: Map repository-relative glob patterns to message regular expressions. Patterns use `/`
-separators and support `**` and brace alternatives. These expressions apply in addition
-to **--ignore**.
+: Map path glob patterns to message regular expressions.
 
-**lint.rules.security.unpinned-reference**
-: When enabled, require action and reusable workflow references to use 40- or 64-digit hexadecimal
-commit IDs, and `docker://` images to use digests. Local references and expression-based
-references are skipped.
-
-**lint.rules.conventions.job-timeout**
-: When enabled, require `timeout-minutes` on jobs that run steps. Set `level: on` and
-`options: { min-minutes: 5, max-minutes: 60 }` for inclusive bounds on literal timeout values.
-Either bound can be omitted; each must be finite and positive, and the minimum cannot exceed
-the maximum. Jobs calling reusable workflows are skipped; expression-based timeouts are not compared.
-
-**lint.rules.security.explicit-permissions**
-: When enabled, require a workflow-level `permissions` declaration.
-Use `{ level: on, options: { scope: job } }` to require one on every job, including reusable workflow calls, even when
-the workflow declares permissions. Empty mappings, named scopes, `read-all`, and `write-all`
-satisfy the check. This policy checks declaration presence; it does not infer least privilege.
-
-**lint.rules.security.cache-write-untrusted**
-: Enabled by default. Report explicit cache write grants on low-trust triggers that can access
-default-branch caches. Set to `off` to disable this check.
-
-**lint.rules.security.cache-call-unrestricted**
-: Enabled by default. Require an explicit cache access limit on reusable workflow calls under
-those low-trust triggers. A workflow-level declaration can supply the limit. Set to `off`
-to disable this check.
-
-**lint.rules.correctness.cache-operation**
-: Enabled by default. Report official cache actions disabled by the effective explicit cache
-mode, including restrictions inherited through nested local reusable workflow calls.
-Set to `off` to disable this check.
-
-**lint.rules.conventions.forbidden-suppression**
-: When enabled, prohibit inline and configured exceptions for diagnostic rules. To select
-specific rules, set a nonempty `rules` list under `options`. The `report` option selects
-`all` (default), `suppression`, or `violation`. Omission or `off` permits exceptions.
-
-Registered diagnostic rules accept line-scoped exceptions with exact rule IDs and an optional reason:
+An inline comment suppresses a finding for the rule IDs it names:
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
 ```
 
-Alternatively, place `# actionlint:ignore-next-line RULE -- REASON` immediately before the
-reported declaration. The trailing forms `# actionlint-ignore RULE`, `# ignore RULE`
-and `# ignore[RULE]` also work. Before a declaration, `# actionlint-ignore-next-line RULE`
-and `# ignore-next-line RULE` work too. Separate
-multiple rule IDs with commas, spaces, or both; the `-- REASON` suffix is optional.
-These directives can suppress any registered diagnostic rule. CLI and configured
-ignore patterns still apply afterwards. See the configuration document for the full trigger
-list, cache action modes, nested-call behavior, and suppression controls.
-
-Other policy checks are off until enabled. For example:
+`# actionlint:ignore-next-line RULE -- REASON` on the line before a declaration works too.
+Separate several rule IDs with commas or spaces.
 
 ```yaml
 repository:
@@ -540,100 +323,49 @@ lint:
   rules:
     security:
       unpinned-reference: on
-      explicit-permissions: on
     conventions:
       job-timeout:
         level: on
         options: { min-minutes: 5, max-minutes: 60 }
-  message-ignores:
-    ".github/workflows/**/*.{yml,yaml}": ['shellcheck reported issue in this script: SC2086:.+']
 ```
-
-The repository supplies `actionlint.schema.json` for editor completion and validation. See the
-configuration document below for the schema URL and full matching rules.
 
 # EXTERNAL LINTERS
 
-ShellCheck checks supported shell scripts in `run:` steps.
-Native executables must be available through `PATH` or the corresponding command flag.
-If an optional default command cannot be resolved, its integration is skipped;
-**--verbose** explains why. An explicitly selected tool fails the check if it cannot run.
+ShellCheck checks `bash`, `sh`, `dash` and `ksh` scripts in `run:` steps.
 
     $ actionlint --no-tool shellcheck
     $ actionlint --tool shellcheck='shellcheck -e SC2086'
 
-Command strings are parsed into an executable and arguments, not executed by a shell. Shell
-pipes and redirections are not supported in these flags. Your arguments precede actionlint's
-own arguments, so do not supply input filenames or override ShellCheck's output format.
+No shell runs the command. Your arguments precede actionlint's own. Do not pass input files or
+change ShellCheck's output format.
 
-actionlint uses JSON1 output and disables rc-file discovery with `--norc` by default.
-Set `tools.shellcheck.config` to inline settings, an rc-file path, or a directory containing
-`.shellcheckrc` or `shellcheckrc`. An rc path replaces `--norc` with `--rcfile`; relative
-config paths resolve from the selected actionlint configuration file's directory.
-Additional options can use **--shellcheck** arguments or `SHELLCHECK_OPTS`.
-
-ShellCheck runs for recognized `bash`, `sh`, `dash`, and `ksh` interpreters or a supported
-dialect selected by a leading `# shellcheck shell=...` directive. Unresolved explicit
-shell expressions, unknown wrappers, and non-shell scripts are otherwise skipped. Global
-dialect settings and command flags alone do not select them. If no shell is configured
-and the runner's default shell is unknown, the shell remains unknown.
+actionlint passes `--norc` to ShellCheck. Set `tools.shellcheck.config` to inline settings, an
+rc file, or a directory that contains one.
 
 # OUTPUT
 
-Diagnostics go to standard output. Command usage, progress logs, and fatal errors go to standard
-error. The default diagnostic includes the file, line, column, message, rule name, and source
-snippet. **--oneline** omits the snippet; **--format** replaces the diagnostic presentation.
+Diagnostics go to stdout. Usage, logs and fatal errors go to stderr. The output format does not
+change the exit status.
 
-The Go template receives a sequence of errors. Each has `Message`, `Snippet`, `Kind`, `Filepath`,
-`Line`, `Column`, and `EndColumn` fields. Line and column numbers start at 1. Custom template
-functions include `json`, `replace`, `escapeData`, `escapeProperty`, `toPascalCase`,
-`allKinds`, and `getVersion`. For GitHub Actions workflow commands, `escapeData`
-encodes `%`, CR, and LF in the message body; `escapeProperty` also encodes `:` and
-`,` in property values. Both accept strings and support template pipelines.
-
-JSON:
+Templates receive a list of errors with `Message`, `Snippet`, `Kind`, `Filepath`, `Line`,
+`Column` and `EndColumn` fields.
 
     $ actionlint --json
-
-JSON Lines:
-
     $ actionlint --output jsonl
-
-Custom lines:
-
     $ actionlint --format '{{range .}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]\n{{end}}'
-
-Backslash escapes such as `\n` in the format string are expanded before the template is parsed.
-
-SARIF uses the bundled template and needs no separate template file:
-
     $ actionlint --output sarif > actionlint.sarif
 
-The CLI's **--format** accepts template text. The GitHub Action's `format` input instead accepts
-names such as `json` and `sarif`. Changing output format does not change the lint exit status.
-
-Native JSON returns a versioned analysis result shared with the GitHub Action.
-Each diagnostic contains `rule`, `message`, `path`, `start`, `end`, and an optional source-line
-`snippet`. Positions use one-based Unicode character columns and exclusive end positions;
-a range may end on a later line. A clean single-file check includes these fields:
+Each JSON diagnostic has `rule`, `message`, `path`, `start` and `end`. Columns count Unicode
+characters from 1, and end positions are exclusive. A clean single-file check includes these
+fields:
 
 ```json
 {"schema_version":1,"status":"success","completed":true,"exit_code":0,"file_count":1,"diagnostics":[],"hints":[]}
 ```
 
-The result also includes `configurations` with selected settings and their origins.
-See [Analysis results](https://github.com/kjanat/actionlint/blob/HEAD/docs/results.md)
-for the schema, types, and compatibility rules.
-JSON Lines writes one diagnostic per line with `schema_version: 1` on every record, or nothing
-for a clean check. The legacy `{{json .}}` template emits a diagnostic array with an inclusive
-`end_column`.
-
-In JSON modes, incomplete checks emit the result on standard error with `completed: false`,
-an `error`, and a nonzero `exit_code`. An empty `diagnostics` array alone does not indicate success.
-Argument errors before operation selection contain only `error` and `exit_code`.
-Requested progress or debug logs are separate JSON Lines records with a `log` field on standard
-error. **--quiet** suppresses these log records. Standard output contains only the requested result.
-An early failure can leave standard output empty; always check the exit status.
+See [Analysis results](https://github.com/kjanat/actionlint/blob/HEAD/docs/results.md) for the
+schema. An incomplete check writes its JSON result to stderr with `completed: false`. Check the
+exit status. An empty `diagnostics` array alone does not mean success.
 
 Machine-readable metadata:
 
@@ -641,15 +373,9 @@ Machine-readable metadata:
     $ actionlint --version --json
     $ actionlint --init-config --json
 
-JSON help describes flag names, shorthand, types, default spellings, groups, choices, repeatability,
-legacy aliases, and exit codes. JSON version includes `name`, `version`, `installed_from`,
-`go_version`, `os`, and `goarch`. JSON config creation returns `{"path":"..."}`.
-
 # SHELL COMPLETION
 
-**--completion** generates native completion scripts for Bash, Fish, Zsh, and PowerShell. Cobra generates these scripts from the CLI flag definitions. Scripts
-complete long flags, short options, flag values, and workflow paths. Bash requires the
-`bash-completion` package; Zsh requires `compinit`. Load one into the current shell session:
+Bash needs the `bash-completion` package. Regenerate saved scripts after upgrading actionlint.
 
 Bash:
 
@@ -659,7 +385,7 @@ Fish:
 
     $ actionlint --completion fish | source
 
-Zsh, after initializing its completion system:
+Zsh:
 
     $ autoload -Uz compinit && compinit
     $ source <(actionlint --completion zsh)
@@ -670,135 +396,61 @@ PowerShell:
 actionlint --completion powershell | Out-String | Invoke-Expression
 ```
 
-For persistent installation, save Bash output in a directory loaded by bash-completion, Fish
-output as `~/.config/fish/completions/actionlint.fish`, or Zsh output as `_actionlint` in a
-directory on `fpath`. Load PowerShell output from your profile. Regenerate saved scripts after
-upgrading actionlint so they reflect the installed CLI. See the usage document for setup examples.
-
 # ENVIRONMENT
 
-**ACTIONLINT_CONFIG**, **ACTIONLINT_NO_CONFIG**, **ACTIONLINT_CONFIG_ORIGIN**
-: Configuration selection and origin-display defaults. Explicit config flags
-override environment selection. **config init** ignores these defaults.
+**ACTIONLINT_CONFIG**, **ACTIONLINT_NO_CONFIG**, **ACTIONLINT_CONFIG_ORIGIN**,
+**ACTIONLINT_STDIN_FILENAME**, **ACTIONLINT_IGNORE_REGEX**, **ACTIONLINT_OUTPUT_FORMAT**,
+**ACTIONLINT_JSON**, **ACTIONLINT_JSON_PRETTY**, **ACTIONLINT_TEMPLATE**,
+**ACTIONLINT_TEMPLATE_FILE**, **ACTIONLINT_OUTPUT_FILE**, **ACTIONLINT_LOG_LEVEL**,
+**ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**, **ACTIONLINT_COLOR**, **ACTIONLINT_HYPERLINKS**
+: Defaults for the matching flags. Explicit flags win. **ACTIONLINT_IGNORE_REGEX** is a JSON
+string array.
 
-**ACTIONLINT_STDIN_FILENAME**, **ACTIONLINT_IGNORE_REGEX**
-: Stdin filename and message-filter defaults. The filter value is a JSON string
-array. Explicit ignore flags replace that list.
-
-**ACTIONLINT_OUTPUT_FORMAT**, **ACTIONLINT_JSON**, **ACTIONLINT_TEMPLATE**,
-**ACTIONLINT_TEMPLATE_FILE**, **ACTIONLINT_OUTPUT_FILE**
-: Output defaults. Explicit format flags replace environment format selection.
-Templates and output files apply only to checks.
-
-**ACTIONLINT_JSON_PRETTY**
-: Whether terminal JSON may use installed **jq**. Default: true. The
-**--json-pretty=false** flag disables this. Explicit **--json-pretty** also
-indents JSON in pipes and files without color codes or a jq dependency.
-Missing or failing jq falls back
-to built-in output.
-
-**ACTIONLINT_LOG_LEVEL**, **ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**
-: Logging and summary defaults. Explicit flags, including false values, take precedence.
-
-**ACTIONLINT_COLOR**, **ACTIONLINT_HYPERLINKS**
-: Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
-override these defaults; explicit CLI controls take precedence over the environment.
-
-`ACTIONLINT_TOOL_<ID>_BIN`
-: Literal executable name or path of the bundled tool `<ID>`, upper-cased with
-dashes replaced by underscores, such as `ACTIONLINT_TOOL_SHELLCHECK_BIN`. Empty
-disables the tool.
-
-`ACTIONLINT_TOOL_<ID>_FLAGS`
-: Additional arguments as a JSON string array or a quoted argument list. No shell
-execution or variable expansion is performed.
-
-`ACTIONLINT_TOOL_<ID>_ENV`
-: Child environment overrides, as a JSON object or quoted NAME=value entries and
-variable names. JSON null or bare names forward inherited values; strings set values.
-**--tool** and **--no-tool** override the BIN, FLAGS and ENV settings together.
-
-See [Environment variables](../docs/env.md) for precedence, defaults and examples.
-
-**PATH**
-: Used to find ShellCheck, including the executable selected by their command flags.
+`ACTIONLINT_TOOL_<ID>_BIN`, `ACTIONLINT_TOOL_<ID>_FLAGS`, `ACTIONLINT_TOOL_<ID>_ENV`
+: The executable, extra arguments and child environment for the tool *ID*, such as
+`ACTIONLINT_TOOL_SHELLCHECK_BIN`. An empty `_BIN` disables the tool.
 
 **NO_COLOR**
-: Any nonempty value, including `0` or `false`, disables automatic color; an empty
-value has no effect. **--color** can force color; **--no-color** always disables it.
-See the [NO_COLOR convention](https://no-color.org/).
-
-**GITHUB_ACTIONS**
-: The value `true` enables automatic color for help and text diagnostics in workflow
-logs. **NO_COLOR** and explicit color controls still apply. This does not enable hyperlinks.
+: A nonempty value, including `0`, disables automatic color.
 
 **NO_HYPERLINKS**, **FORCE_HYPERLINKS**
-: In `auto` mode, a nonempty **NO_HYPERLINKS** disables help and doctor links. Otherwise,
-a nonempty **FORCE_HYPERLINKS** enables them even in redirected output.
-An empty value has no effect; `0` counts as nonempty. Explicit hyperlink modes
-override both variables. These controls are independent of color.
+: A nonempty value disables or forces links in `auto` mode.
+
+**GITHUB_ACTIONS**
+: The value `true` enables color in workflow logs.
 
 **SHELL**, **PSModulePath**
-: Used by **--completion auto**. A supported shell named by `SHELL` takes precedence over the
-PowerShell fallback indicated by a nonempty `PSModulePath`.
+: **--completion auto** reads these variables to detect the shell.
 
 **SHELLCHECK_OPTS**
-: Additional options interpreted by the external ShellCheck process.
+: ShellCheck reads extra options from this variable.
 
 # FILES
 
-**.github/workflows/**
-: Workflow directory scanned when no filenames are provided.
-
 **.github/actionlint.yaml**, **.github/actionlint.yml**, **.github/actionlint.json**, **.github/actionlint.jsonc**, **.github/actionlint.toml**
-: Optional repository configuration; the first existing name in that order is read.
+: Repository configuration. actionlint reads the first file that exists, in this order.
 
 # DOCUMENTS
 
-Detailed documentation for this release and current installation options are available online.
+**Checks**
+: https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md
 
-## Checks
+**Installation**
+: https://github.com/kjanat/actionlint/blob/master/docs/install.md
 
-https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md
+**Usage**
+: https://github.com/kjanat/actionlint/blob/HEAD/docs/usage.md
 
-Full list of all checks done by actionlint with example inputs, outputs, and playground links.
+**Configuration**
+: https://github.com/kjanat/actionlint/blob/HEAD/docs/config.md
 
-## Installation
+**API**
+: https://github.com/kjanat/actionlint/blob/HEAD/docs/api.md
 
-https://github.com/kjanat/actionlint/blob/master/docs/install.md
-
-Installation instructions for npm, Homebrew, AUR, Scoop, aqua, mise, release archives, the download
-script, Docker, and Go, plus the status of WinGet and upstream-only package names.
-
-## Usage
-
-https://github.com/kjanat/actionlint/blob/HEAD/docs/usage.md
-
-CLI usage, shell completion, output templates, the GitHub Action, Docker images, and editor
-and CI integrations.
-
-## Configuration
-
-https://github.com/kjanat/actionlint/blob/HEAD/docs/config.md
-
-Repository configuration, runner labels, variables, secrets, and policy checks.
-
-## Go API
-
-https://github.com/kjanat/actionlint/blob/HEAD/docs/api.md
-
-Supported CLI, language-server and plugin integration interfaces.
-
-## References
-
-https://github.com/kjanat/actionlint/blob/HEAD/docs/reference.md
-
-Links to resources.
+**References**
+: https://github.com/kjanat/actionlint/blob/HEAD/docs/reference.md
 
 # USAGE ON GITHUB ACTIONS
-
-The published v1 GitHub Action runs actionlint and ShellCheck in a Docker image.
-It reports GitHub annotations by default and fails when problems are found:
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -814,9 +466,7 @@ jobs:
       - uses: kjanat/actionlint@v1
 ```
 
-The v1 Action requires a Linux runner with a reachable Docker daemon. The upcoming
-v2 Action runs the actionlint binary using Node 24 and has not been published yet.
-To run the binary directly, including on macOS or Windows with Bash, use the download script:
+To run the binary directly, including on macOS or on Windows with Bash, use the download script:
 
 ```yaml
 - name: Check workflow files
@@ -826,38 +476,19 @@ To run the binary directly, including on macOS or Windows with Bash, use the dow
   shell: bash
 ```
 
-The script accepts `latest` to resolve the newest release, or a specific version. Without a
-version argument, it uses the default recorded in the script. It writes the executable to the
-current directory and, on GitHub Actions, exposes its path as the
-`executable` step output. External linters must be available separately when using the binary.
+The script takes `latest` or a version.
 
 # EXIT STATUS
 
-`actionlint` command exits with one of the following exit statuses.
-
-- **0**: The command completed. A check returns this status when no finding reaches
-  its failure threshold.
-- **1**: The check completed with at least one finding that reaches its failure
-  threshold. Errors fail a check by default. With **--strict**, warnings also fail it.
-- **2**: Command-line parsing or option validation failed, such as an unknown flag, missing value,
-  unknown output mode, or incompatible output flags.
-- **3**: Initialization or linting failed, for example because a file cannot be read, a project
-  cannot be found, or a configuration, ignore pattern, or output template is invalid.
-
-# PLAYGROUND
-
-The WebAssembly playground runs actionlint in your browser. Workflow linting happens locally in
-the browser; it does not execute workflows or run the external ShellCheck programs.
-
-https://kjanat.github.io/actionlint/
-
-Paste a workflow into the editor to see diagnostics update as you type. Select a diagnostic to
-jump to its source position.
+- **0**: The command succeeded, and no finding reached its failure threshold.
+- **1**: At least one finding reached its failure threshold. Errors fail a check by default.
+  With **--strict**, warnings fail it too.
+- **2**: The command line is invalid, such as an unknown flag or conflicting output flags.
+- **3**: Initialization or linting failed, such as an unreadable file or invalid configuration.
 
 # BUGS
 
-Report problems with this fork to its issue tracker. Include the output of **--version**, the
-relevant configuration, and a minimal workflow that reproduces the problem.
+Include the **--version** output, your configuration and a minimal workflow in bug reports.
 
 https://github.com/kjanat/actionlint/issues
 

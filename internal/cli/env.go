@@ -53,8 +53,6 @@ func (a *commandApp) envBool(name string, target *bool, flags ...string) error {
 	return nil
 }
 
-// Apply defaults after parsing so either grammar can explicitly override them.
-// Only the selected operation reads its settings; completion never reads them.
 func (a *commandApp) applyEnvironment() error {
 	if a.inv.Operation == operationCompletion {
 		return nil
@@ -170,9 +168,6 @@ func (a *commandApp) checkEnvironment() error {
 	return nil
 }
 
-// externalToolEnvironment reads a tool's _BIN, _FLAGS and _ENV variables
-// through lookup, which returns the name and value of the variable that
-// holds a suffix. It returns nil when none is set.
 func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*hostprocess.CommandOptions, error) {
 	options := &hostprocess.CommandOptions{}
 	if name, bin, ok := lookup("_BIN"); ok {

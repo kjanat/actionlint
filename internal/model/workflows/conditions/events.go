@@ -8,8 +8,7 @@ import (
 )
 
 // ReachableEvents excludes events only when the condition is provably false
-// across execution statuses. Other context values and invalid conditions are
-// unknown. The returned slice does not share storage with events.
+// across execution statuses.
 func ReachableEvents(events []string, condition string) []string {
 	if condition == "" {
 		return slices.Clone(events)

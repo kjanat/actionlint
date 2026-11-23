@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
-// MetadataState distinguishes usable, unavailable and invalid manifest evidence.
 type MetadataState string
 
 const (
@@ -17,8 +16,7 @@ const (
 	MetadataInvalid     MetadataState = "invalid"
 )
 
-// MetadataAvailability retains why metadata-dependent checks could or could not
-// run. Its zero value is unavailable/not-fetched; unavailable is never invalid.
+// MetadataAvailability zero value is unavailable and not fetched.
 type MetadataAvailability struct {
 	state     MetadataState
 	selection ReferenceSelection
@@ -73,15 +71,11 @@ func (m MetadataAvailability) ManifestPath() string {
 	return m.filename
 }
 
-// Coverage records the outcome for one distinct remote reference requested by
-// metadata-dependent analysis. It does not claim execution or transitive coverage.
 type Coverage struct {
 	Reference    string
 	Availability MetadataAvailability
 }
 
-// MetadataReport is the detached JSON/API projection of one coverage outcome.
-// When metadata is unavailable, Reason explains why and selection fields are empty.
 type MetadataReport struct {
 	Reference      string                       `json:"reference"`
 	State          MetadataState                `json:"state"`

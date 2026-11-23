@@ -10,8 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
-// UnusedFormatArguments reports arguments absent from a known format template.
-// Invalid placeholders are evaluation failures, reported separately by the language checker.
 func UnusedFormatArguments(root syntax.Node, calls typecheck.CheckedCalls) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {

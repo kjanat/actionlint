@@ -1,7 +1,7 @@
-// Package oci pulls oci:// plugin sources through oras-go. It is the only
-// package that imports oras-go: oras-go is the transport, and every manifest
-// and blob it fetches is verified against its digest and published to the
-// artifact Store, which stays the cache. Pass Pull as
+// Package oci pulls oci:// plugin sources through oras-go. This package is the
+// only package that imports oras-go. oras-go is the transport, and this package
+// verifies every fetched manifest and blob against its digest and publishes it
+// to the artifact Store, which stays the cache. Pass Pull as
 // artifact.Options.PullOCI.
 package oci
 
@@ -35,10 +35,6 @@ const (
 	dockerManifest     = "application/vnd.docker.distribution.manifest.v2+json"
 )
 
-// repository returns an anonymous oras-go client for the repository of ref.
-// The client answers the registry's bearer challenge with an anonymous
-// token and retries as oras-go's retry client does, honouring Retry-After;
-// the caller's context deadline bounds every pull.
 func repository(ref pluginreference.OCIReference, options artifacts.Options) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(ref.Host() + "/" + ref.Repository())
 	if err != nil {
@@ -64,8 +60,6 @@ func repository(ref pluginreference.OCIReference, options artifacts.Options) (*r
 	return repo, nil
 }
 
-// document holds the fields of an image index or image manifest that the
-// host reads.
 type document struct {
 	MediaType string               `json:"mediaType"`
 	Manifests []ocispec.Descriptor `json:"manifests"`
@@ -76,8 +70,6 @@ func (d document) index() bool {
 	return d.MediaType == ocispec.MediaTypeImageIndex || d.MediaType == dockerManifestList || d.MediaType == "" && d.Manifests != nil
 }
 
-// puller fetches the manifests and blobs of one oci:// source through the
-// store.
 type puller struct {
 	ref    pluginreference.OCIReference
 	repo   *remote.Repository
@@ -98,7 +90,6 @@ func newPuller(ref pluginreference.OCIReference, options artifacts.Options) (*pu
 	return &puller{ref: ref, repo: repo, store: artifacts.Store{Dir: options.CacheDir}, limit: limit}, nil
 }
 
-// withTimeout bounds ctx by options.Timeout, or artifact.DefaultTimeout.
 func withTimeout(ctx context.Context, options artifacts.Options) (context.Context, context.CancelFunc) {
 	timeout := options.Timeout
 	if timeout <= 0 {
@@ -107,7 +98,6 @@ func withTimeout(ctx context.Context, options artifacts.Options) (context.Contex
 	return context.WithTimeout(ctx, timeout)
 }
 
-// cached verifies stored bytes. Online callers fetch missing or corrupt blobs again.
 func (p *puller) cached(ctx context.Context, digest string, limit int64) ([]byte, bool, error) {
 	data, err := p.store.Read(ctx, digest, limit)
 	switch {
@@ -129,7 +119,6 @@ func (p *puller) cached(ctx context.Context, digest string, limit int64) ([]byte
 	}
 }
 
-// manifest returns the verified index or image manifest with SHA256 digest.
 func (p *puller) manifest(ctx context.Context, digest string) (document, error) {
 	data, ok := p.inline[digest]
 	var err error
@@ -162,7 +151,6 @@ func (p *puller) manifest(ctx context.Context, digest string) (document, error) 
 	return parsed, nil
 }
 
-// blob returns the verified bytes of the layer desc.
 func (p *puller) blob(ctx context.Context, desc ocispec.Descriptor) ([]byte, error) {
 	digest, err := descriptorDigest(desc)
 	if err != nil {
@@ -188,8 +176,6 @@ func (p *puller) blob(ctx context.Context, desc ocispec.Descriptor) ([]byte, err
 	return data, nil
 }
 
-// Embedded descriptors bind bytes exactly as fetched descriptors do. Keep the
-// selected inline manifests available even when persistent caching is disabled.
 func (p *puller) cacheEmbedded(ctx context.Context, desc ocispec.Descriptor, limit int64) ([]byte, error) {
 	digest, err := descriptorDigest(desc)
 	if err != nil {
@@ -204,9 +190,7 @@ func (p *puller) cacheEmbedded(ctx context.Context, desc ocispec.Descriptor, lim
 	return desc.Data, nil
 }
 
-// platforms returns the image manifest digest of every platform the root
-// serves, keyed by "<os>/<arch>", or artifact.AnyPlatform for a lone image
-// manifest.
+// platforms maps each platform the root serves to its image manifest digest.
 func (p *puller) platforms(ctx context.Context) (map[string]string, error) {
 	root, err := p.manifest(ctx, p.ref.Digest())
 	if err != nil {
@@ -245,8 +229,6 @@ func (p *puller) platforms(ctx context.Context) (map[string]string, error) {
 	return platforms, nil
 }
 
-// layers returns the layers of the image manifest digest and the index of
-// its primary layer.
 func (p *puller) layers(ctx context.Context, digest string) ([]ocispec.Descriptor, int, error) {
 	parsed, err := p.manifest(ctx, digest)
 	if err != nil {
@@ -271,8 +253,6 @@ func (p *puller) layers(ctx context.Context, digest string) ([]ocispec.Descripto
 	return parsed.Layers, primary, nil
 }
 
-// hostManifest returns the platform key and the image manifest digest the
-// root serves this host: its own platform, or artifact.AnyPlatform.
 func (p *puller) hostManifest(ctx context.Context) (platform, manifest string, err error) {
 	platforms, err := p.platforms(ctx)
 	if err != nil {
@@ -288,8 +268,6 @@ func (p *puller) hostManifest(ctx context.Context) (platform, manifest string, e
 	return "", "", fmt.Errorf("no image manifest for platform %s; the index serves %s", platform, strings.Join(slices.Sorted(maps.Keys(platforms)), ", "))
 }
 
-// hostLayers returns the layers of the image manifest the root serves this
-// host.
 func (p *puller) hostLayers(ctx context.Context) ([]ocispec.Descriptor, error) {
 	_, manifest, err := p.hostManifest(ctx)
 	if err != nil {
@@ -300,12 +278,8 @@ func (p *puller) hostLayers(ctx context.Context) ([]ocispec.Descriptor, error) {
 }
 
 // Pull pulls the image manifest of ref for this host and its primary layer
-// into the store, and returns that layer: a WebAssembly module, whose kind
-// Sniff detects, or a tool provider manifest, which is also the artifact's
-// metadata. Info.Blobs lists every layer digest, but Pull fetches no other
-// layer: Layer and PullLayers do, so an executable is downloaded only when
-// the provider is about to run, or by an explicit install, sync or cache
-// fill. It implements artifact.PullOCI.
+// into the store, and returns that layer. Info.Blobs lists every layer digest,
+// but Pull fetches no other layer.
 func Pull(ctx context.Context, ref pluginreference.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "plugin-oci", Priority: accounting.Required, RequestKind: accounting.OCI})
 	ctx, cancel := withTimeout(ctx, options)
@@ -317,9 +291,6 @@ func Pull(ctx context.Context, ref pluginreference.OCIReference, options artifac
 	return pull.resolve(ctx)
 }
 
-// Cached reconstructs an OCI artifact exclusively from verified stored blobs.
-// It creates no registry client and refuses missing or corrupt content without
-// network access. It implements artifact.PullOCI for cache-only consumers.
 func Cached(ctx context.Context, ref pluginreference.OCIReference, options artifacts.Options) (*artifacts.Artifact, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -367,10 +338,8 @@ func (p *puller) resolve(ctx context.Context) (*artifacts.Artifact, error) {
 	return &artifacts.Artifact{Info: info, Bytes: data}, nil
 }
 
-// Layer returns the verified bytes of the layer with SHA256 digest hex in
-// the image manifest the oci:// source serves this host. It reads the store
-// first and fetches and publishes a missing or corrupt blob. A digest that
-// is not a layer of that manifest is refused.
+// Layer reads the store first and fetches and publishes a missing or corrupt
+// blob.
 func Layer(ctx context.Context, source, digest string, options artifacts.Options) ([]byte, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -393,8 +362,6 @@ func Layer(ctx context.Context, source, digest string, options artifacts.Options
 	return pull.blob(ctx, layers[index])
 }
 
-// PullLayers pulls every layer of the image manifest the oci:// source
-// serves this host into the store, so the source can run offline later.
 func PullLayers(ctx context.Context, source string, options artifacts.Options) error {
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "plugin-oci", Priority: accounting.Required, RequestKind: accounting.OCI})
 	ctx, cancel := withTimeout(ctx, options)
@@ -419,8 +386,6 @@ func PullLayers(ctx context.Context, source string, options artifacts.Options) e
 	return nil
 }
 
-// Digests plans the verified blobs needed by this host. It fetches only the
-// pinned index and selected image manifest, never artifact or executable layers.
 func Digests(ctx context.Context, source string, options artifacts.Options) ([]string, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -451,10 +416,6 @@ func Digests(ctx context.Context, source string, options artifacts.Options) ([]s
 	return digests, nil
 }
 
-// Describe returns the image manifest and layer digests of every platform
-// the oci:// source serves, keyed like artifact.Info.Platform. It fetches
-// manifests only, never layers, so it reads no executable of another
-// platform.
 func Describe(ctx context.Context, source string, options artifacts.Options) (map[string]artifacts.OCIPlatform, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -521,8 +482,6 @@ func Pin(ctx context.Context, source string, options artifacts.Options) (string,
 	return pinned.String(), nil
 }
 
-// descriptorDigest returns the SHA256 hex of desc and refuses other
-// algorithms.
 func descriptorDigest(desc ocispec.Descriptor) (string, error) {
 	hex, ok := strings.CutPrefix(desc.Digest.String(), "sha256:")
 	if !ok || pluginreference.CheckDigest(hex) != nil {

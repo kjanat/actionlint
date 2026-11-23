@@ -4,7 +4,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 )
 
-// SyntaxCheckRule is the single definition of the syntax-check rule.
 var SyntaxCheckRule = &define.Rule{
 	ExecutionFailure: true,
 	Name:             "syntax-check",
@@ -12,7 +11,7 @@ var SyntaxCheckRule = &define.Rule{
 	Category:         "correctness",
 	Subcategory:      "syntax",
 	Recommended:      true,
-	Help:             "Check the indicated YAML field and its expected GitHub Actions value type.",
+	Help:             "Give the reported field a value of its expected type.",
 	SupportsActions:  true,
 	DeclaredBy:       "workflow parser and action metadata traversal",
 }

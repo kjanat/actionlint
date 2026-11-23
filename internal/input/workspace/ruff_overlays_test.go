@@ -56,7 +56,6 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if strings.Contains(overlayText, "null") {
 			want = nil
 		}
-		// The flat target-version key is folded into the tool's config.
 		if got := resolved["tools"].(map[string]any)["ruff"].(map[string]any)["config"].(map[string]any)["target-version"]; got != want {
 			t.Fatalf("overlay %q resolved to %v, want %v", overlayText, got, want)
 		}

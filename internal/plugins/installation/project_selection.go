@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-// OpenForSelection reads declarations without granting permission to edit a symlinked configuration.
-// files shares the parsed sources with later loads in the same run; it may be nil.
+// OpenForSelection grants no permission to edit a symlinked configuration, and files may be nil.
 func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition dependencycache.Acquisition, directory, configPath string, readMode plugins.ReadMode, files *document.Files) (*Project, error) {
 	configPath, err := projectConfigPath(directory, configPath)
 	if err != nil {

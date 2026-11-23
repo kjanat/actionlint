@@ -9,12 +9,10 @@ import (
 )
 
 // IgnoreOrigin distinguishes executions of shared YAML anchors.
-// It never changes displayed locations or the scope of inline comments.
 type IgnoreOrigin struct {
 	StepPosition                *sourcetext.Position
 	Job, StepID, StepName, Uses string
-	// metadata uses the owning action's YAML location for inner selectors.
-	Metadata bool
+	Metadata                    bool
 }
 
 func (origin *IgnoreOrigin) Matches(job, step, uses string) bool {
@@ -31,8 +29,7 @@ func originSelector(s *definition.String) string {
 	return s.Value
 }
 
-// IgnoreOrigin returns the suppression selectors of the job. Each call
-// returns a new value the caller owns.
+// IgnoreOrigin returns a new value owned by the caller on each call.
 func (j BoundJob) IgnoreOrigin() *IgnoreOrigin {
 	if !j.Present() {
 		return &IgnoreOrigin{}
@@ -44,8 +41,7 @@ func (j BoundJob) IgnoreOrigin() *IgnoreOrigin {
 	return origin
 }
 
-// IgnoreOrigin returns the suppression selectors of the step declared in job.
-// Each call returns a new value the caller owns.
+// IgnoreOrigin returns a new value owned by the caller on each call.
 func (s BoundStep) IgnoreOrigin(job string) *IgnoreOrigin {
 	if !s.Present() {
 		return &IgnoreOrigin{Job: job}
@@ -60,7 +56,6 @@ func (s BoundStep) IgnoreOrigin(job string) *IgnoreOrigin {
 	return origin
 }
 
-// Position returns the step's source position.
 func (s BoundStep) Position() (sourcetext.Position, bool) {
 	if !s.Present() || s.Pos == nil {
 		return sourcetext.Position{}, false
@@ -137,7 +132,6 @@ func actionInputSourceIndex(action *definition.ExecAction) map[sourcetext.Positi
 	return index
 }
 
-// Position returns the job's source position.
 func (j BoundJob) Position() (sourcetext.Position, bool) {
 	if !j.Present() || j.Pos == nil {
 		return sourcetext.Position{}, false
@@ -145,7 +139,6 @@ func (j BoundJob) Position() (sourcetext.Position, bool) {
 	return *j.Pos, true
 }
 
-// Position returns the position of the workflow's first mapping key.
 func (w BoundWorkflow) Position() (sourcetext.Position, bool) {
 	if !w.Present() || w.Pos == nil {
 		return sourcetext.Position{}, false
@@ -153,7 +146,6 @@ func (w BoundWorkflow) Position() (sourcetext.Position, bool) {
 	return *w.Pos, true
 }
 
-// Kind reports the step's execution kind; it reports false when the step has no execution.
 func (s BoundStep) Kind() (definition.ExecKind, bool) {
 	if !s.Present() || s.Exec == nil {
 		return 0, false
@@ -161,7 +153,6 @@ func (s BoundStep) Kind() (definition.ExecKind, bool) {
 	return s.Exec.Kind(), true
 }
 
-// ExpressionSources maps decoded action scalars to their captured YAML.
 func (a ActionBody) ExpressionSources() map[sourcetext.Position]*definition.ScriptSource {
 	if !a.Present() {
 		return nil

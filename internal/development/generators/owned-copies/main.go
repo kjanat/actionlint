@@ -275,7 +275,7 @@ func (g *generator) accessible(t types.Type) error {
 }
 
 // mutable checks the whole type, including private fields. Foreign private
-// references require a shared contract because generated code cannot access them.
+// references require a shared contract, since generated code cannot access them.
 func (g *generator) mutable(t types.Type, active map[types.Type]bool) (bool, error) {
 	t = types.Unalias(t)
 	if active[t] {

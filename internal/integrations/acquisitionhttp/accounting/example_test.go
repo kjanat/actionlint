@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 )
 
-// exampleTransport supplies an offline response; no server is contacted.
 type exampleTransport struct{}
 
 func (exampleTransport) RoundTrip(*http.Request) (*http.Response, error) {

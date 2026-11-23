@@ -5,31 +5,22 @@ import (
 	"strings"
 )
 
-// ContextEnvironment describes a runner-exported equivalent of a context value.
-// It says nothing about assignments made later inside a user script.
 type ContextEnvironment struct {
 	name          string
 	compositeOnly bool
 }
 
-// Name is the environment variable exported by the runner.
 func (e ContextEnvironment) Name() string { return e.name }
 
-// Available reports whether the binding exists in this kind of run step.
 func (e ContextEnvironment) Available(composite bool) bool {
 	return e.name != "" && (!e.compositeOnly || composite)
 }
 
-// ContextEnvironmentFor resolves a static, case-insensitive context reference.
-// Only string values with equivalent environment representations are included.
-// Source: actions/runner src/Runner.Worker/{GitHubContext,RunnerContext}.cs.
+// ContextEnvironmentFor follows actions/runner src/Runner.Worker/{GitHubContext,RunnerContext}.cs.
 func ContextEnvironmentFor(reference string) ContextEnvironment {
 	return contextEnvironments[strings.ToLower(reference)]
 }
 
-// RuntimeEnvironmentNames lists predefined names recognized by the runner.
-// Some, such as RUNNER_DEBUG, are populated only under particular conditions;
-// this list supplies no value or guarantee that a variable is nonempty.
 func RuntimeEnvironmentNames(composite bool) []string {
 	names := []string{"CI", "GITHUB_ACTIONS", "GITHUB_REF_PROTECTED"}
 	for _, environment := range contextEnvironments {

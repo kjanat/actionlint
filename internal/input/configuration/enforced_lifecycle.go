@@ -24,7 +24,6 @@ type EnforcedLifecyclePolicies struct {
 	files    []string
 }
 
-// Policies returns the policies from all specified configuration chains.
 func (p *EnforcedLifecyclePolicies) Policies() []lifecycle.Policy {
 	if p == nil {
 		return nil
@@ -32,7 +31,6 @@ func (p *EnforcedLifecyclePolicies) Policies() []lifecycle.Policy {
 	return slices.Clone(p.policies)
 }
 
-// Files returns the configuration files used to load the policies.
 func (p *EnforcedLifecyclePolicies) Files() []string {
 	if p == nil {
 		return nil
@@ -40,7 +38,6 @@ func (p *EnforcedLifecyclePolicies) Files() []string {
 	return slices.Clone(p.files)
 }
 
-// ReadEnforcedLifecyclePolicies loads each explicit policy chain using read.
 func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, error)) (*EnforcedLifecyclePolicies, error) {
 	result := &EnforcedLifecyclePolicies{}
 	for _, path := range paths {

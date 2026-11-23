@@ -1,7 +1,6 @@
 package syntax
 
-// DisplayReference formats a reference for diagnostics using its source spelling.
-// Dynamic indexes appear as [] and array projections as .* .
+// DisplayReference shows dynamic indexes as [] and array projections as .* .
 func DisplayReference(n Node) string {
 	switch n := n.(type) {
 	case *VariableNode:

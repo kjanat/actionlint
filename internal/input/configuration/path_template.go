@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// PathContext contains the local directories available to path interpolation.
-// ActionPath identifies the composite action being analyzed.
 type PathContext struct {
 	ConfigDir  string
 	GitDir     string

@@ -18,7 +18,6 @@ type Span struct {
 	DocumentEnd sourcetext.Position
 }
 
-// end is the exclusive source position after the span's mapped text.
 func (s Span) end(value string) sourcetext.Position {
 	if s.DocumentEnd.Line != 0 {
 		return s.DocumentEnd
@@ -39,12 +38,7 @@ func (s Span) at(value string, offset int, exclusive bool) sourcetext.Position {
 }
 
 // Locate maps a byte offset of the decoded value to the YAML source. spans
-// must be sorted by End, as Decode returns them. An exclusive position ends a
-// range: it may equal a span's End but not its Start. Bytes synthesized while
-// decoding, such as folded whitespace, report false. Block chomping and quoted
-// folding can append unmapped line feeds or spaces, so an exclusive position at
-// the end of value after only such blanks maps to the end of the final mapped
-// text.
+// must be sorted by End, as Decode returns them.
 func Locate(value string, spans []Span, offset int, exclusive bool) (sourcetext.Position, bool) {
 	if exclusive && offset == len(value) && len(spans) != 0 {
 		index := len(spans) - 1
@@ -67,8 +61,6 @@ func Locate(value string, spans []Span, offset int, exclusive bool) (sourcetext.
 	return span.at(value, offset, exclusive), true
 }
 
-// spanIndex returns the first span ending after offset, or at offset for an
-// exclusive position. len(spans) means no span qualifies.
 func spanIndex(spans []Span, offset int, exclusive bool) int {
 	low, high := 0, len(spans)
 	for low < high {
@@ -83,12 +75,8 @@ func spanIndex(spans []Span, offset int, exclusive bool) int {
 	return low
 }
 
-// LineSpans splits spans at the line feeds of value, so each result lies on
-// one text line. A span ending with a line feed also yields a zero-width span
-// at the start of the next line. When only synthesized blanks follow the final
-// mapped text, a zero-width span at the end of value maps to that text's end.
-// The result lets a reader map (line, column) pairs without byte offsets; see
-// the span record in plugins/protocol/wit/analyzer.wit.
+// LineSpans splits spans at the line feeds of value, and each result lies on
+// one text line. See the span record in plugins/protocol/wit/analyzer.wit.
 func LineSpans(value string, spans []Span) []Span {
 	var result []Span
 	var last *Span

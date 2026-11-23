@@ -5,7 +5,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// SourceComments publishes YAML attachments independently of the decoded scalar.
 func SourceComments(source []definition.ScalarComment) []SourceComment {
 	comments := make([]SourceComment, 0, len(source))
 	for _, comment := range source {
@@ -18,7 +17,6 @@ func SourceComments(source []definition.ScalarComment) []SourceComment {
 	return comments
 }
 
-// CommentPlacement identifies a YAML comment's attachment to a declaration.
 type CommentPlacement uint8
 
 const (

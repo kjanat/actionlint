@@ -94,7 +94,6 @@ tools:
 				if !reflect.DeepEqual(second.Configurations[0], want) {
 					t.Fatal("retained callback changed a previously returned selection")
 				}
-				// A new cache entry must also see the unmodified resolved source.
 				project := workspace.Identity(filepath.Join(dir, "other"))
 				third, err := session.Content("ci.yml", nil, project, false)
 				if err != nil {

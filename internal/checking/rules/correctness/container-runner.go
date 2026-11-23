@@ -19,7 +19,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// ContainerRunnerRule is the single definition of the container-runner rule.
 var ContainerRunnerRule = &define.Rule{
 	ExecutionFailure: true,
 	Name:             "container-runner",
@@ -27,12 +26,11 @@ var ContainerRunnerRule = &define.Rule{
 	Category:         "correctness",
 	Subcategory:      "runners",
 	Recommended:      true,
-	Explanation:      "GitHub-managed job containers, service containers and Docker actions require Linux and a Docker daemon. Report an error for known Windows or macOS selections. Warn for GitHub-hosted ubuntu-slim: it includes Docker client tools but no local daemon; a compatible remote daemon may satisfy the requirement. Inspect available action metadata and expanded composites, with matrix rows and conditions determining which selections can reach the container. Unknown runner facts and unavailable action bodies do not establish a violation. Docker commands in scripts can use remote daemons and are not classified by this rule.",
-	Help:             "Select a Linux runner with Docker, such as ubuntu-latest, or guard the container action so incompatible matrix rows do not execute it. For ubuntu-slim, verify any remote daemon configuration before suppressing the warning. Self-hosted Linux runners need an accessible Docker daemon. No automatic fix is offered because changing the runner can change job behavior.",
+	Explanation:      "Job containers, service containers and Docker actions need Linux and a Docker daemon.",
+	Help:             "Use a Linux runner with Docker, such as ubuntu-latest, or skip the container step on incompatible matrix rows. On ubuntu-slim, suppress the warning only if a remote Docker daemon is configured.",
 	Examples: []rule.Example{{
-		Description: "Use a Linux runner with Docker for a job container.",
-		Before:      "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: windows-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
-		After:       "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
+		Before: "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: windows-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
+		After:  "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
 	}},
 	SupportsActions: true,
 	Scope:           rule.CompositeConfiguration,
@@ -41,8 +39,6 @@ var ContainerRunnerRule = &define.Rule{
 	},
 }
 
-// ContainerRunnerFindings reports established container limitations. Source
-// acquisition, condition evaluation and invocation state belong to the host.
 func ContainerRunnerFindings(uses []runners.ContainerUse) []reporting.StepFinding {
 	findings := make([]reporting.StepFinding, 0, len(uses))
 	for _, use := range uses {
@@ -89,8 +85,6 @@ type containerAdapter struct {
 	conditions map[sourcetext.Reference]string
 }
 
-// newContainerRunner supplies container facts to the rule and tracks enclosing
-// composite conditions. The composition coordinator acquires action metadata.
 func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runners.Knowledge, actions *localactions.Resolver, remote *remote.ResolvedActions) workflowvisit.Rule {
 	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[sourcetext.Reference]string{}}
 }

@@ -21,8 +21,7 @@ func Command(ctx context.Context, git, root string, args ...string) *exec.Cmd {
 	command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
 	// A descendant can keep stdout or stderr open after Git exits or is killed.
 	command.WaitDelay = 5 * time.Second
-	// Clear repository overrides inherited from Git commands or hooks so the
-	// query uses the workflow's project.
+	// Clear repository overrides inherited from Git commands or hooks.
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
 		if !slices.Contains(repositoryVariables, strings.ToUpper(name)) {
@@ -43,16 +42,12 @@ var repositoryVariables = []string{
 	"GIT_COMMON_DIR",
 }
 
-// Output contains a Git query's separate output streams, including warnings
-// written to stderr when Git exits successfully.
 type Output struct {
 	Stdout []byte
 	Stderr []byte
 }
 
-// Query runs one local Git query with a deadline and bounded pipe draining.
-// A nil environment uses Command's repository environment; a supplied environment
-// replaces it so discovery can preserve its filesystem and pathspec settings.
+// Query replaces Command's repository environment with environment when it is non-nil.
 func Query(ctx context.Context, git, root string, environment []string, args ...string) (Output, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()

@@ -37,7 +37,6 @@ function browserLanguageServer(): import('vite').Plugin {
 	};
 }
 
-// The deployed site is the bundle plus a 404 fallback and the rendered command manual.
 function sitePages(): import('vite').Plugin {
 	return {
 		name: 'actionlint:site-pages',

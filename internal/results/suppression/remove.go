@@ -13,10 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Remove deletes selected rule names from a validated YAML suppression. It
-// preserves the directive's spelling, remaining separators and reason. Removing
-// the last selector removes the comment, never YAML or embedded script content.
-// The caller binds the returned edit to its captured source path and revision.
+// Remove preserves the directive's spelling, remaining separators and reason.
 func Remove(content []byte, position sourcetext.Position, rules, allowed []string, names rule.Names) (results.Edit, bool) {
 	if len(rules) == 0 {
 		return results.Edit{}, false
@@ -86,8 +83,6 @@ func Remove(content []byte, position sourcetext.Position, rules, allowed []strin
 	return edit, err == nil
 }
 
-// removeSelectors keeps separators from the original comment, including tabs
-// and mixed comma/space forms. Tokens were validated by Parse before this call.
 func removeSelectors(text string, removed []string) string {
 	type token struct{ start, end int }
 	var tokens []token

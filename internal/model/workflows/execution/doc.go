@@ -1,4 +1,2 @@
-// Package execution models workflow execution facts: conditions, shell selection,
-// environment uncertainty and runner path syntax. It reads explicit declarations,
-// never repository configuration, and does not launch tools or own traversal.
+// Package execution models workflow execution facts from explicit declarations and never reads repository configuration.
 package execution

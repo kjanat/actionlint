@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// FromRun extracts declared script text and shell with their original source mapping.
 func FromRun(run *definition.ExecRun) Declaration {
 	if run == nil {
 		return Declaration{}
@@ -18,7 +17,6 @@ func FromRun(run *definition.ExecRun) Declaration {
 	return declaration
 }
 
-// FromInput extracts script text supplied as an action input. It declares no shell.
 func FromInput(input *definition.ActionArgument) Declaration {
 	if input == nil {
 		return Declaration{}

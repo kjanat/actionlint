@@ -128,8 +128,6 @@ export async function report(
 	}
 }
 
-// Result files intentionally survive the action so later steps can upload them.
-// Tool-download scratch space has a separate lifetime managed by temporary().
 export async function withReporting(
 	environment: Environment,
 	execute: (environment: Environment) => Promise<number>,

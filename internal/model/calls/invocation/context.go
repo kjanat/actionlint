@@ -13,7 +13,6 @@ var (
 	ErrForeignContext = errors.New("invocation: context is not owned by this graph")
 )
 
-// Facts are resolved once per call, including platform-dependent effects.
 type Facts struct {
 	Step                                                 sourcetext.Position
 	Uses                                                 string
@@ -37,7 +36,7 @@ func (facts Facts) validate() error {
 	return nil
 }
 
-// Context is an immutable owner-issued handle. Its zero value is invalid.
+// Context is invalid when it is the zero value.
 type Context struct{ data *contextData }
 
 type contextData struct {

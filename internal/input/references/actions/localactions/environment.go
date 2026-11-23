@@ -16,7 +16,6 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// ObserveExecution tracks environment-file effects across steps and composite returns.
 func (c *Resolver) ObserveExecution(step workflows.BoundStep) {
 	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return
@@ -89,7 +88,6 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 	return false
 }
 
-// ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
 func (c *Resolver) ObserveOpaqueAction(step workflows.BoundStep, action *definition.ExecAction) {
 	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return

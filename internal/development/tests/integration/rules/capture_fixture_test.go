@@ -29,8 +29,6 @@ func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug
 	return cache, snapshots
 }
 
-// newCapturedSnapshots returns the capture store for caches under test and
-// the fixture that admits documents into the same store.
 func newCapturedSnapshots(tb testing.TB, base string) (*capture.Store, *declarations.CapturedSnapshots) {
 	tb.Helper()
 	_, store, snapshots := declarations.NewCapturedSnapshots(tb, base)

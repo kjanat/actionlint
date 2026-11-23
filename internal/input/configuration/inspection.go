@@ -10,13 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
-// ConfigFileSelection selects an explicit file, repository discovery, or no configuration.
 type ConfigFileSelection struct {
 	Path     string
 	Disabled bool
 }
 
-// SelectedPath finds the selected config without parsing its contents.
+// SelectedPath never parses the config contents.
 func SelectedPath(selection ConfigFileSelection) (string, error) {
 	if selection.Disabled {
 		return "", nil
@@ -43,17 +42,14 @@ func SelectedPath(selection ConfigFileSelection) (string, error) {
 	return "", nil
 }
 
-// Inspect validates settings and optionally records their YAML origins.
 func (ruleSet RuleSet) Inspect(selection ConfigFileSelection, withOrigin bool, registeredRules ...string) (configreport.Inspection, error) {
 	return ruleSet.InspectContext(context.Background(), selection, withOrigin, registeredRules...)
 }
 
-// InspectContext validates settings with cancellable configuration acquisition.
 func (ruleSet RuleSet) InspectContext(ctx context.Context, selection ConfigFileSelection, withOrigin bool, registeredRules ...string) (configreport.Inspection, error) {
 	return ruleSet.inspectContext(ctx, selection, withOrigin, nil, nil, nil, registeredRules...)
 }
 
-// InspectContextWithRegistrations validates settings using the selected rules and tool replacements.
 func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection ConfigFileSelection, withOrigin bool, readFile func(string) ([]byte, error), policy *NetworkPolicy, registrations ...RuleRegistration) (configreport.Inspection, error) {
 	metadata := make([]RuleRegistration, len(registrations))
 	copy(metadata, registrations)

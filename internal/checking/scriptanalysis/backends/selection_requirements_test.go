@@ -57,5 +57,4 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 	}
 }
 
-// hasTransport reports whether a Backend accessor found its transport.
 func hasTransport[T any](_ T, ok bool) bool { return ok }

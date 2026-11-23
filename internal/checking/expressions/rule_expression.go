@@ -22,15 +22,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Rule is the single definition of the expression rule.
 var Rule = &define.Rule{
 	Name:            "expression",
 	Description:     "Validate expression values assigned to workflow fields",
 	Category:        "correctness",
 	Subcategory:     "expressions",
-	MigrationNote:   "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.",
+	MigrationNote:   "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression. See docs/config-migration.md. Workflow comments stay unchanged.",
 	Recommended:     true,
-	Help:            "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.",
+	Help:            "Use the value type and interpolation form that this field requires.",
 	SupportsActions: true,
 	Prepare:         define.PrepareWorkflowMetadata,
 	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
@@ -38,7 +37,6 @@ var Rule = &define.Rule{
 	},
 }
 
-// ruleExpression connects workflow expression checking to host lookups and options.
 type ruleExpression struct {
 	*Visitor
 	reporting.Logger
@@ -83,8 +81,6 @@ func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
 	return nil
 }
 
-// collect moves the findings the current checker reported after mark, a prior
-// r.Checker.FindingCount, into the rule, and passes err through.
 func (r *ruleExpression) collect(mark int, err error) error {
 	r.findings.Report(r.FindingsSince(mark)...)
 	return err
@@ -132,7 +128,6 @@ func (r *ruleExpression) VisitJobPost(view workflows.BoundJob) error {
 	return r.collect(mark, r.Visitor.VisitJobPost(view))
 }
 
-// NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
 func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache localactions.ActionMetadataLookup, workflowCache *reusableworkflows.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Visitor = NewVisitor(Dependencies{
@@ -148,8 +143,8 @@ func (r *ruleExpression) Name() string             { return r.name }
 func (r *ruleExpression) Description() string      { return r.description }
 func (r *ruleExpression) Errs() []*finding.Finding { return r.findings.Errs() }
 
-// FindingCount counts the findings collected by the rule. It shadows the
-// embedded checker's count, which covers only the current invocation.
+// FindingCount shadows the embedded checker's count, which covers only the
+// current invocation.
 func (r *ruleExpression) FindingCount() int { return r.findings.FindingCount() }
 
 func (r *ruleExpression) AnnotateSince(mark int, annotate func(*finding.Finding)) {

@@ -34,7 +34,7 @@ func (rule *Visitor) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 
 	origin := *pos
 	if quoted {
-		origin.Column++ // when the string is quoted like 'foo' or "foo", column should be incremented
+		origin.Column++
 	}
 	offset := 0
 	ts := []typedExpr{}
@@ -45,14 +45,13 @@ func (rule *Visitor) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 			break
 		}
 
-		start := idx + 3 // 3 means removing "${{"
+		start := idx + 3
 		s = s[start:]
 		offset += start
 		rule.expressionOffset = offset
 		base := sourcetext.Position{Line: origin.Line, Column: origin.Column + offset}
 
 		result, offsetAfter, parsed := rule.checkSemantics(s, base, checkUntrusted, workflowKey)
-		// A parsed expression can be followed by another even if semantic checks fail.
 		if !parsed {
 			return nil, false
 		}
@@ -304,9 +303,6 @@ func (rule *Visitor) checkSemantics(src string, base sourcetext.Position, checkU
 	return rule.checkSemanticsOfExprNode(expr, base, checkUntrusted, workflowKey), l.Offset(), true
 }
 
-// documentPosition places at, a one-based position within an expression, in
-// the document where the expression starts at base. Only the first line of
-// the expression starts at base.Column; later lines start at column 1.
 func documentPosition(base, at sourcetext.Position) sourcetext.Position {
 	if at.Line > 1 {
 		return sourcetext.Position{Line: base.Line + at.Line - 1, Column: at.Column}

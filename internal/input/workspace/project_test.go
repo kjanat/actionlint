@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-// Project discovery needs a .git marker. Keep it in a temporary fixture copy so
-// tests also work without a checkout and editors do not discover fake repositories.
+// Project discovery needs a .git marker.
 func testProjectDir(t *testing.T, fixture string) string {
 	t.Helper()
 	d := t.TempDir()
@@ -222,7 +221,6 @@ func TestProjectsFindProjectFromPath(t *testing.T) {
 				t.Fatalf("root directory of project %v should be %q but got %q", p, abs, r)
 			}
 
-			// Result should be cached
 			p2, err := ps.At(tc.path)
 			if err != nil {
 				t.Fatal(err)

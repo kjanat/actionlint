@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
-// DeclaredEntry is one declared mapping entry. A missing Name uses its map key.
+// DeclaredEntry with a missing Name uses its map key.
 type DeclaredEntry struct {
 	Name      value.Value
 	Value     value.Value
@@ -18,9 +18,6 @@ type DeclaredEntry struct {
 	Evaluated bool
 }
 
-// DeclaredMapping is a mapping as written in source: literal entries, an
-// expression whose object value supplies further entries, and inserted
-// mappings. It is consumed at the syntax ownership boundary.
 type DeclaredMapping struct {
 	Values     map[string]DeclaredEntry
 	Expression value.Value
@@ -32,20 +29,17 @@ type mappingEntry struct {
 	value value.Value
 }
 
-// Declaration preserves source-facing key data independently of lookup entries.
-// Name is the resolved key and Source its source text. Evaluated declarations
-// came from object expressions and must not be interpreted again.
 type Declaration struct {
-	// Key is immutable, so owned copies share it.
-	Key       value.Value `clone:"shared"`
-	Name      string
-	State     KeyState
-	Source    string
+	Key    value.Value `clone:"shared"`
+	Name   string
+	State  KeyState
+	Source string
+	// Evaluated declarations came from object expressions and must not be interpreted again.
 	Evaluated bool
 	Origin    value.Origin
 }
 
-// Mapping is an immutable resolved mapping.
+// Mapping is immutable.
 type Mapping struct {
 	entries  []mappingEntry
 	decls    []Declaration
@@ -53,7 +47,6 @@ type Mapping struct {
 	complete bool
 }
 
-// Resolve applies key coercion, expression classification, and insertions once.
 func Resolve(declared *DeclaredMapping) Mapping {
 	result := Mapping{byName: map[string][]int{}, complete: true}
 	if declared == nil {
@@ -109,7 +102,7 @@ func Resolve(declared *DeclaredMapping) Mapping {
 	return result
 }
 
-// Declarations yields source-facing declaration records in source traversal order.
+// Declarations yields records in source traversal order.
 func (m Mapping) Declarations() iter.Seq[Declaration] {
 	decls := slices.Clone(m.decls)
 	return slices.Values(decls)
@@ -150,8 +143,7 @@ func (m Mapping) Entries() iter.Seq2[string, value.Value] {
 	}
 }
 
-// KeyedEntries yields canonical key values with their declaration origins.
-// Like Declarations, the iterator walks a snapshot detached from the receiver.
+// KeyedEntries walks a snapshot detached from the receiver.
 func (m Mapping) KeyedEntries() iter.Seq2[value.Value, value.Value] {
 	entries := slices.Clone(m.entries)
 	return func(yield func(value.Value, value.Value) bool) {
@@ -163,5 +155,4 @@ func (m Mapping) KeyedEntries() iter.Seq2[value.Value, value.Value] {
 	}
 }
 
-// Complete reports whether all declared keys and inserted mappings are known.
 func (m Mapping) Complete() bool { return m.byName == nil || m.complete }

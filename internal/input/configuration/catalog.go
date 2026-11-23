@@ -5,23 +5,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// policySetting projects a rule's resolved setting into the legacy policy
-// field that the rule replaced.
 type policySetting struct {
-	// configure records the setting in the policy field.
 	configure func(*Config, ruleconfig.Setting)
 	// enabled reports whether the policy field enables the rule. Nil leaves
 	// the decision to the rule's level.
-	enabled func(*Config) bool
-	// enabledByDefault marks a policy that applies unless disabled.
+	enabled          func(*Config) bool
 	enabledByDefault bool
 	// disable records an explicit off level after configure has run. Nil
 	// means configure records it.
 	disable func(*Config)
 }
 
-// policySettings binds each legacy policy key to its field in [PolicyConfig]. A rule
-// names the key it replaced in [rulescope.Declaration.Policy].
 var policySettings = map[string]policySetting{
 	"cache-call-unrestricted": defaultPolicy(func(p *PolicyConfig) **bool { return &p.CacheCallUnrestricted }),
 	"cache-operation":         defaultPolicy(func(p *PolicyConfig) **bool { return &p.CacheOperation }),
@@ -43,12 +37,8 @@ var policySettings = map[string]policySetting{
 	},
 }
 
-// suppressionsPolicy is the policy key of the rule that reports forbidden
-// suppressions. That rule cannot itself be suppressed, and its options name
-// other rules.
 const suppressionsPolicy = "disallow-suppressions"
 
-// suppressionsRule returns the rule that replaced the suppressions policy.
 func (ruleSet RuleSet) suppressionsRule() (rule.Declaration, bool) {
 	for _, entry := range ruleSet.entries {
 		if entry.Policy == suppressionsPolicy {
@@ -58,7 +48,6 @@ func (ruleSet RuleSet) suppressionsRule() (rule.Declaration, bool) {
 	return rule.Declaration{}, false
 }
 
-// defaultPolicy projects a boolean policy that applies unless disabled.
 func defaultPolicy(field func(*PolicyConfig) **bool) policySetting {
 	return policySetting{
 		configure: boolRuleOption(field),
@@ -73,8 +62,7 @@ func defaultPolicy(field func(*PolicyConfig) **bool) policySetting {
 	}
 }
 
-// CachePolicyEnabled reports whether the cache policy with this key applies.
-// Cache policies apply unless disabled; other keys report true.
+// CachePolicyEnabled reports true for any key except a disabled cache policy.
 func (cfg *Config) CachePolicyEnabled(name string) bool {
 	setting, found := policySettings[name]
 	return !found || !setting.enabledByDefault || setting.enabled(cfg)

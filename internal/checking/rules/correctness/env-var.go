@@ -14,15 +14,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// EnvVarRule is the single definition of the env-var rule.
 var EnvVarRule = &define.Rule{
 	Name:        "env-var",
 	Description: "Validate environment variable declarations",
 	Category:    "correctness",
 	Subcategory: "environment",
 	Recommended: true,
-	Help:        "Use valid environment variable names and values in the indicated mapping.",
-	Examples: []rule.Example{rule.WorkflowExample("Use environment names without spaces.",
+	Help:        "Use valid variable names and values.",
+	Examples: []rule.Example{rule.WorkflowExample("Remove spaces from the name.",
 		"    env:\n      BAD NAME: value\n", "    env:\n      GOOD_NAME: value\n")},
 	Checks: define.Fixed(define.Checks{Workflow: checkWorkflowEnvironment, Job: checkJobEnvironment, Step: checkStepEnvironment}),
 }
@@ -57,7 +56,6 @@ func checkJobEnvironment(job workflows.BoundJob) []reporting.StepFinding {
 	return out
 }
 
-// environmentNameDiagnostics reports resolved environment names that contain '&', '=' or whitespace.
 func environmentNameDiagnostics(entries []mappings.Declaration) []results.Diagnostic {
 	var findings []results.Diagnostic
 	for _, entry := range entries {

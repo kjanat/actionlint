@@ -136,8 +136,6 @@ permissions: {}
 					}
 					return
 				}
-				// The explicit callee restriction is diagnosed when linting that
-				// file itself; it must not be repeated on its caller.
 				if tc.file == "callee.yaml" {
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
@@ -393,8 +391,6 @@ jobs:
 	}
 }
 
-// Force both ways of filling the shared cache before linting the caller. The
-// metadata itself must be identical, and per-caller policy results stay uncached.
 func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*finding.Finding)) {
 	t.Helper()
 	if caller := sources["caller.yaml"]; !strings.Contains(caller, "permissions:") {

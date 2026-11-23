@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// Regression for #409
 func TestRuleShellcheckDetectShell(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

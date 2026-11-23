@@ -88,9 +88,6 @@ func candidateDigest(t *testing.T, path string) string {
 	return loaded.Config.Plugins[0].CandidateDigest()
 }
 
-// Local installation must create the normal project files and execute the exact
-// imported component after staging disappears. Deleting its cache must then produce
-// a plugin error. The network recorder catches accidental requests throughout.
 func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
@@ -148,9 +145,6 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	}
 }
 
-// An OCI candidate binds the root digest through installation and normal checks.
-// The fixture preloads the real OCI store, then stops the registry: installation,
-// remembered selection and every check must work without acquisition authority.
 func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	root, registry, previousDigest, network := candidateCatalogue(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir()}
@@ -232,9 +226,6 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	}
 }
 
-// Authors rebuild candidates without consuming release versions. An explicit
-// update must select the rebuilt bytes, while ordinary checks keep executing the
-// earlier imported bytes until the author asks for that update.
 func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
@@ -340,8 +331,6 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 	}
 }
 
-// A broken rebuild must leave an installed candidate usable. Repairing its
-// declaration should then allow an explicit update without resetting the project.
 func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
@@ -404,9 +393,6 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	}
 }
 
-// A syntactically relative path can still leave the catalogue through a symlink.
-// The target contains the declared bytes with the correct digest. Only the path
-// escape should cause rejection, before either project file is written.
 func TestCandidateCLIRejectsArtifactSymlinkEscape(t *testing.T) {
 	root, registry, _, network := candidateCatalogue(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
@@ -425,9 +411,6 @@ func TestCandidateCLIRejectsArtifactSymlinkEscape(t *testing.T) {
 	}
 }
 
-// A candidate catalogue is untrusted input, even when explicitly selected.
-// Malformed identities, forged publication fields and escaping paths must fail
-// before installation writes either the project declaration or lockfile.
 func TestCandidateCLIRejectsInvalidInputs(t *testing.T) {
 	for _, tc := range []struct{ name, file, before, after string }{
 		{"tampered bytes", "artifacts/plugin.wasm", "Test plugin", "Fake plugin"},

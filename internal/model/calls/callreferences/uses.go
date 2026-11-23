@@ -54,7 +54,6 @@ func LocalWorkflow(u string) (string, bool) {
 	}
 	path := strings.TrimPrefix(u, workspacePrefix)
 
-	// Cannot contain a ref
 	idx := strings.IndexRune(path, '@')
 	if idx > 0 {
 		return "", false
@@ -64,7 +63,6 @@ func LocalWorkflow(u string) (string, bool) {
 }
 
 func WorkflowRef(u string) (string, bool) {
-	// Repo reference must start with owner
 	if strings.HasPrefix(u, ".") || strings.HasPrefix(u, "$") {
 		return "", false
 	}
@@ -73,19 +71,19 @@ func WorkflowRef(u string) (string, bool) {
 	if idx <= 0 {
 		return "", false
 	}
-	u = u[idx+1:] // Eat owner
+	u = u[idx+1:]
 
 	idx = strings.IndexRune(u, '/')
 	if idx <= 0 {
 		return "", false
 	}
-	u = u[idx+1:] // Eat repo
+	u = u[idx+1:]
 
 	idx = strings.IndexRune(u, '@')
 	if idx <= 0 {
 		return "", false
 	}
-	u = u[idx+1:] // Eat workflow path
+	u = u[idx+1:]
 
 	if len(u) == 0 {
 		return "", false
@@ -113,7 +111,6 @@ func CacheAction(uses string) string {
 	return ""
 }
 
-// SplitRef separates an action name from its ref or Docker digest.
 func SplitRef(spec string) (name, ref string) {
 	name, ref, _ = strings.Cut(spec, "@")
 	return name, ref

@@ -91,7 +91,6 @@ type upstreamObservationReport struct {
 	Observations []upstreamResult     `json:"observations"`
 }
 
-// Bind a review to the pinned source, fixture input, and observed behavior.
 func upstreamFingerprint(source conformance.Source, result upstreamResult) string {
 	result.Fingerprint = ""
 	data, err := json.Marshal(struct {
@@ -209,7 +208,6 @@ func TestUpstreamConformance(t *testing.T) {
 		return
 	}
 	checkBaselineInventory(t, baseline.Cases, seen)
-	// Regression assertions above depend only on observations and the baseline.
 	var assessments []upstreamAssessmentGroup
 	readConformanceJSON(t, "testdata/assessments.json", &assessments)
 	review, err := assessUpstreamResults(results, baseline.Cases, assessments)
@@ -225,7 +223,6 @@ func TestUpstreamConformance(t *testing.T) {
 	}
 }
 
-// collectedConformanceResults preserves fixture order and omits filtered cases.
 func collectedConformanceResults(cases []*upstreamResult) []upstreamResult {
 	results := make([]upstreamResult, 0, len(cases))
 	for _, result := range cases {
@@ -418,7 +415,6 @@ func loadUpstreamWorkflows(t *testing.T, root fs.FS) []upstreamCase {
 			c.ExpectedErrors = append(c.ExpectedErrors, e.Message)
 		}
 		if len(c.ExpectedErrors) == 1 && (metadata.MaxDepth != nil || metadata.MaxFileSize != nil || metadata.MaxJobLimit != nil || metadata.MaxResultSize != nil || metadata.MaxNestedDepth != nil) {
-			// Match the fixture's expected limit error because this adapter uses default limits.
 			c.RejectionDiagnostic = c.ExpectedErrors[0]
 			if index := strings.LastIndex(c.RejectionDiagnostic, ": "); index >= 0 {
 				c.RejectionDiagnostic = c.RejectionDiagnostic[index+2:]
@@ -497,7 +493,6 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		return out
 	case "workflow":
 		// The pinned SchemaStore and runner archives were captured on 2026-09-08.
-		// Keep lifecycle observations stable as the wall clock advances.
 		asOf, err := lifecycle.ParseDate("2026-09-08")
 		if err != nil {
 			t.Fatal(err)
@@ -550,7 +545,6 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				t.Fatal(err)
 			}
 		}
-		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
 		out := upstreamDiagnostics(actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {

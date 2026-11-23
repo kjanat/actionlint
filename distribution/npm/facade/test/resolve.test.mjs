@@ -26,13 +26,9 @@ const targets = JSON.parse(readFileSync(join(npmDir, 'targets.json'), 'utf8'));
 const SCOPE = targets.platformScope;
 const BINARY = targets.binary;
 
-/** Every platform package name the published facade would declare. */
 const allPackages = targets.targets.map((t) => `${SCOPE}/${BINARY}-${t.pkg}`);
 
 /**
- * A resolver context that pretends the named packages are installed, without
- * touching node_modules.
- *
  * @param {object} options
  * @param {string} options.platform
  * @param {string} options.arch
@@ -58,8 +54,6 @@ function context({ platform, arch, packages = allPackages, installed, missingBin
 	};
 }
 
-// The failure paths deliberately print a diagnostic before throwing; keep the
-// test output readable without losing the assertion that they threw.
 /** @type {typeof console.error} */
 let consoleError;
 before(() => {
@@ -108,8 +102,6 @@ describe('resolveBinary', () => {
 		}
 	});
 
-	// A static Go binary runs on musl too, so there is deliberately no separate
-	// Alpine package to pick: linux-x64 is the answer on glibc and musl alike.
 	test('uses one linux package regardless of libc', () => {
 		const path = resolveBinary('actionlint', context({ platform: 'linux', arch: 'x64' }));
 		assert.ok(path.includes(`${sep}actionlint-linux-x64${sep}`));
@@ -130,8 +122,6 @@ describe('resolveBinary', () => {
 		);
 	});
 
-	// A half-unpacked install leaves package.json resolvable but no binary. The
-	// resolver must report that, ahead of any ENOENT from spawnSync.
 	test('throws when the package is present but its binary is not', () => {
 		assert.throws(
 			() =>

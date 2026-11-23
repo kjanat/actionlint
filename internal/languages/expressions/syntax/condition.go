@@ -16,9 +16,9 @@ func ConditionSource(source string) string {
 	return source
 }
 
-// ParseConditionExpression folds only the original template, never text produced
-// by that fold. The offset refers to the original expression when possible.
-// A nil expression and error indicate a template with surrounding text.
+// ParseConditionExpression folds the original template once. The offset refers to
+// the original expression when possible. A nil expression and error indicate a
+// template with surrounding text.
 func ParseConditionExpression(source string) (Node, *SyntaxError, int) {
 	if LiteralExpressionValue(source) != nil || !ContainsExpression(source) {
 		folded := ConditionSource(source) + "}}"
@@ -51,8 +51,6 @@ func ParseConditionExpression(source string) (Node, *SyntaxError, int) {
 	return expr, err, 3
 }
 
-// ContainsExpression checks if the given string contains a ${{ }} placeholder or not. This function
-// is identical to String.ContainsExpression method except for taking a standard string value.
 func ContainsExpression(s string) bool {
 	i := strings.Index(s, "${{")
 	return i >= 0 && i < strings.Index(s, "}}")

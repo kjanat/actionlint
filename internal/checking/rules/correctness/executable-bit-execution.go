@@ -23,8 +23,6 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// ExecutableChecker checks direct script calls against the Git index, independently
-// of host filesystem permissions and of ShellCheck availability.
 type ExecutableChecker struct {
 	executableState
 	context                             ExecutableContext
@@ -44,26 +42,20 @@ type ExecutableChecker struct {
 	callerRepositoryUnknown             bool
 }
 
-// ExecutableContext supplies repository observations and paths to script analysis.
-// Index contains the prepared Git modes; all shell interpretation stays local.
-// Report receives each direct-execution finding; composite forks share it, so
-// the owner collects findings without reading checker state.
 type ExecutableContext struct {
 	Runners                 *runners.Knowledge
 	ProjectRoot, WorkingDir string
 	Index                   *execution.IndexSnapshot
-	Report                  func(*finding.Finding)
+	// Composite forks share Report.
+	Report func(*finding.Finding)
 }
 
-// NewExecutableChecker creates isolated state for one workflow's script execution.
 func NewExecutableChecker(context ExecutableContext) *ExecutableChecker {
 	return &ExecutableChecker{context: context}
 }
 
-// Paths returns the resolved checkout scope for composite invocation adaptation.
 func (rule *ExecutableChecker) Paths() execution.Paths { return rule.paths }
 
-// SetPaths replaces the checkout scope after a composite checkout moved it.
 func (rule *ExecutableChecker) SetPaths(paths execution.Paths) { rule.paths = paths }
 
 func (rule *ExecutableChecker) Errorf(pos *sourcetext.Position, format string, args ...any) {
@@ -109,7 +101,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflows.BoundJob) error
 	rule.unix = platform == runners.MacOrLinux && knowledge.PathsKnown
 	rule.caseInsensitive = knowledge.CaseInsensitive
 	rule.shIsDash = knowledge.ShIsDash
-	// Container mounts can replace the checked-out tree. Treat them as unknown.
+	// Container mounts can replace the checked-out tree.
 	if declaration.Container != nil || execution.ServicesMayChangeWorkspace(declaration.Services) {
 		rule.unix = false
 	}
@@ -181,7 +173,6 @@ func (rule *ExecutableChecker) VisitStep(declaration workflows.BoundStep) error 
 			rule.checkScript(runView)
 		}
 		if !conditionKnown {
-			// Its invocation sees the current state, but its effects may be skipped.
 			rule.pristine = false
 		}
 		if !rule.pristine {
@@ -319,8 +310,6 @@ func (rule *ExecutableChecker) statement(statement *syntax.Stmt, run *definition
 	}
 }
 
-// A single invocation can be checked against incoming modes only when every
-// concurrent sibling is a literal, nonmutating builtin. Afterwards state is unknown.
 func pipelineInvocation(statement *syntax.Stmt) (*syntax.Stmt, bool) {
 	if statement.Background || len(statement.Redirs) != 0 {
 		return nil, false
@@ -377,7 +366,6 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 		case syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.AppClob, syntax.RdrAllClob, syntax.AppAllClob:
 			return false
 		default:
-			// Operators added by later mvdan.cc/sh releases are not modelled.
 			return false
 		}
 		if target == "/dev/null" {
@@ -425,7 +413,6 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 		if bashReadonly && assignment.Name != nil {
 			switch assignment.Name.Value {
 			case "UID", "EUID", "PPID", "BASHOPTS", "SHELLOPTS", "BASH_VERSINFO":
-				// Outside known Ubuntu sh, Bash may provide sh and abort on readonly names.
 				rule.pristine = false
 				return
 			}
@@ -502,7 +489,6 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 			rule.pristine = false
 			return
 		}
-		// Any literal chmod makes the Git-index mode obsolete for its operands.
 		if len(args) < 3 || !knownChmodMode.MatchString(args[1]) || strings.HasPrefix(args[1], "-") {
 			rule.pristine = false
 			return
@@ -523,6 +509,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 				rule.pristine = false
 				return
 			}
+			// Any literal chmod makes the Git-index mode obsolete for its operands.
 			rule.modeChanges(*directory)[location.runner] = true
 			if directory.Kind == execution.DirectoryActionKnown {
 				// Workspace checkout cannot reset modes in the independent action copy.
@@ -534,15 +521,11 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 			rule.pristine = false
 		}
 	case "echo", ":", "true":
-		// Literal arguments and no redirects/substitutions cannot change files.
 	default:
-		// Includes interpreter/source calls: no executable-bit requirement on the
-		// argument, but their execution may change subsequent filesystem state.
 		rule.pristine = false
 	}
 }
 
-// Accept simple parameter reads; substitutions and arithmetic may change files before
 func simpleShellArgument(parts []syntax.WordPart) bool {
 	for _, part := range parts {
 		switch value := part.(type) {
@@ -562,7 +545,6 @@ func simpleShellArgument(parts []syntax.WordPart) bool {
 	return true
 }
 
-// Repository paths identify indexed modes; runner paths distinguish copies.
 type executableLocation struct {
 	repository, runner string
 }
@@ -612,7 +594,6 @@ func (rule *ExecutableChecker) checkInvocation(run *definition.ExecRun, runText 
 		return
 	}
 	pos := run.RunPos
-	// The shell parser counts bytes; scriptSource uses Unicode columns.
 	line, column := int(word.Pos().Line()), int(word.Pos().Col())
 	lines := strings.Split(runText, "\n")
 	if line <= len(lines) && column <= len(lines[line-1])+1 {
@@ -635,5 +616,4 @@ func (rule *ExecutableChecker) index() *execution.IndexSnapshot {
 	return rule.context.Index
 }
 
-// Model common octal and symbolic modes; other syntax leaves execution unknown.
 var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)

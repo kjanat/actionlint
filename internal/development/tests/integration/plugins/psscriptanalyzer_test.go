@@ -70,8 +70,7 @@ func TestRecordedPSScriptAnalyzerOutput(t *testing.T) {
 	}
 }
 
-// Opt in when pwsh 7 and PSScriptAnalyzer >=1.25.0 are installed. This never
-// installs a dependency or downloads an artifact during a test.
+// TestPSScriptAnalyzerWorkflow is opt-in and needs pwsh 7 and PSScriptAnalyzer >=1.25.0.
 func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_PSSCRIPTANALYZER") != "1" {

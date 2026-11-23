@@ -6,9 +6,7 @@ import (
 	"strings"
 )
 
-// RepositoryURL identifies a hosted repository URL written in a uses declaration.
-// A shorthand is available only when removing its prefix preserves the repository,
-// action directory and ref on GitHub.com.
+// RepositoryURL offers a shorthand only when removing its prefix keeps the repository, action directory and ref on GitHub.com.
 type RepositoryURL struct {
 	host, shorthand string
 	prefixLength    int
@@ -19,7 +17,6 @@ func (r RepositoryURL) Shorthand() string { return r.shorthand }
 func (r RepositoryURL) PrefixLength() int { return r.prefixLength }
 
 // ParseRepositoryURL excludes Docker registry references and relative paths.
-// Credentials, ports, URL encoding, queries and fragments prevent a safe fix.
 func ParseRepositoryURL(spec string) (RepositoryURL, bool) {
 	u, err := url.Parse(spec)
 	if err != nil || !u.IsAbs() || u.Host == "" || strings.EqualFold(u.Scheme, "docker") {

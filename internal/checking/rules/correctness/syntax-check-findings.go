@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// SyntaxCheckDiagnostic supplies a parser issue's source excerpt and diagnostic range.
 func SyntaxCheckDiagnostic(issue *parser.SyntaxError, source []byte) results.Diagnostic {
 	snippet, _ := sourcemap.SourceLine(string(source), issue.Position.Line)
 	return results.Diagnostic{
@@ -19,7 +18,6 @@ func SyntaxCheckDiagnostic(issue *parser.SyntaxError, source []byte) results.Dia
 	}
 }
 
-// SyntaxCheckFindings converts parser issues to findings for rule execution.
 func SyntaxCheckFindings(issues []*parser.SyntaxError) []*finding.Finding {
 	findings := make([]*finding.Finding, 0, len(issues))
 	for _, issue := range issues {

@@ -9,14 +9,12 @@ import (
 )
 
 // Revision identifies the exact bytes captured for a canonical document.
-// Its zero value is invalid. Construction does not resolve or read documents;
-// the captured-source owner supplies the canonical identity.
+// Its zero value is invalid.
 type Revision struct {
 	document string
 	digest   string
 }
 
-// NewRevision validates an identity and a lowercase SHA-256 digest.
 func NewRevision(document, digest string) (Revision, error) {
 	if document == "" || strings.ContainsRune(document, 0) {
 		return Revision{}, errors.New("source revision requires a document identity")
@@ -31,7 +29,6 @@ func (r Revision) Document() string { return r.document }
 func (r Revision) Digest() string   { return r.digest }
 func (r Revision) Valid() bool      { return r.document != "" && r.digest != "" }
 
-// Equal compares complete revision values, including equal zero values.
 func (r Revision) Equal(other Revision) bool { return r == other }
 
 type revisionJSON struct {
@@ -39,7 +36,6 @@ type revisionJSON struct {
 	Digest   string `json:"digest"`
 }
 
-// MarshalJSON encodes a validated value identity; zero revisions are invalid.
 func (r Revision) MarshalJSON() ([]byte, error) {
 	validated, err := NewRevision(r.document, r.digest)
 	if err != nil {
@@ -48,7 +44,6 @@ func (r Revision) MarshalJSON() ([]byte, error) {
 	return json.Marshal(revisionJSON{validated.document, validated.digest})
 }
 
-// UnmarshalJSON validates before replacing the receiver.
 func (r *Revision) UnmarshalJSON(data []byte) error {
 	var value revisionJSON
 	if err := json.Unmarshal(data, &value); err != nil {

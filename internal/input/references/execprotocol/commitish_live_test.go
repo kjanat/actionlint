@@ -9,8 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 )
 
-// This optional comparison exercises the independently built Rust adapter and
-// real GitHub requests. Ordinary Go tests do not need the adapter or credentials.
+// This optional comparison needs the independently built Rust adapter and real GitHub requests.
 func TestCommitishReportsActualRESTAttempts(t *testing.T) {
 	t.Parallel()
 	executable := os.Getenv("ACTIONLINT_TEST_COMMITISH_RESOLVER")

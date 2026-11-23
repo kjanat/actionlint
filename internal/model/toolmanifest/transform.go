@@ -6,8 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
-// ResolveTransform returns a transform's text, verifying a digest-named program
-// against its digest.
 func ResolveTransform(transform *Transform, programs func(string) ([]byte, bool)) (string, error) {
 	if transform.Language != LanguageJQ {
 		return "", fmt.Errorf("unsupported transform language %q", transform.Language)
@@ -28,7 +26,6 @@ func ResolveTransform(transform *Transform, programs func(string) ([]byte, bool)
 	return string(source), nil
 }
 
-// Transforms lists the transforms a manifest references.
 func (m Manifest) Transforms() []*Transform {
 	var found []*Transform
 	candidates := []*Transform{m.ConfigurationTransform, m.PreparationTransform}

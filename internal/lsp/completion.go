@@ -7,7 +7,7 @@ import (
 )
 
 // Complete returns property edits in document byte offsets for the cursor
-// offset. completionItemFor converts those offsets to UTF-16 positions.
+// offset.
 type Complete func(context.Context, Document, int) []completion.Item
 
 type completionItem struct {

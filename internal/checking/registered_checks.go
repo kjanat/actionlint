@@ -11,25 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// registeredChecks holds the document analyzers and script tools one check
-// adds to the native rules, and the rule set they extend the configuration
-// rules into. A check builds it once with registerChecks; configuration
-// loading, input selection and analysis all read the same value.
 type registeredChecks struct {
-	analyzers []results.AnalyzerRegistration
-	tools     []contract.Registration
-	// registrations declares the analyzers' and tools' rules to configuration.
+	analyzers     []results.AnalyzerRegistration
+	tools         []contract.Registration
 	registrations []configuration.RuleRegistration
-	// rules is the configuration rule set extended with registrations.
-	rules configuration.RuleSet
-	// names lists the rule names of the analyzers followed by the tools.
-	names []string
+	rules         configuration.RuleSet
+	names         []string
 }
 
-// registerChecks validates the analyzers and tools of one check and builds
-// the rule set they extend. Analyzers must not be nil, tool names must be
-// unique and must not name a native rule, and no added rule may reuse the
-// name of another rule.
 func registerChecks(analyzers []results.AnalyzerRegistration, tools []contract.Registration) (*registeredChecks, error) {
 	catalog, err := LoadConfigurationRules()
 	if err != nil {
@@ -71,8 +60,6 @@ func registerChecks(analyzers []results.AnalyzerRegistration, tools []contract.R
 	return &registeredChecks{analyzers: analyzers, tools: tools, registrations: registrations, rules: rules, names: names}, nil
 }
 
-// registeredNames lists the rule names that configuration may name in
-// addition to the configuration rules.
 func (c *registeredChecks) registeredNames() []string {
 	names := make([]string, 0, len(c.registrations))
 	for _, registration := range c.registrations {
@@ -81,9 +68,6 @@ func (c *registeredChecks) registeredNames() []string {
 	return names
 }
 
-// toolNames lists the rule names of the registered tool providers. Unlike
-// names, it holds no document analyzer, so tools.<name> entries bind to tool
-// providers only.
 func (c *registeredChecks) toolNames() []string {
 	names := make([]string, 0, len(c.tools))
 	for _, tool := range c.tools {

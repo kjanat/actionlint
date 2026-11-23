@@ -14,13 +14,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
-// Provider obtains a reusable workflow at a resolved repository commit.
-// Missing or inaccessible files return unavailable data; cancellation returns an error.
+// Provider returns unavailable data for missing or inaccessible files and an
+// error on cancellation.
 type Provider interface {
 	LookupWorkflow(context.Context, string) (RemoteFile, error)
 }
 
-// RemoteFile stores the requested reference, resolved commit and immutable YAML.
 type RemoteFile struct {
 	spec, commit, content string
 	missing               availability.Unavailability
@@ -62,14 +61,12 @@ func (f RemoteFile) Commit() string              { return f.commit }
 func (f RemoteFile) Content() string             { return f.content }
 func (f RemoteFile) Reason() availability.Reason { return f.missing.Reason() }
 
-// Remote shares fetched and parsed workflow metadata across repository caches
-// in one analysis. Lookup never starts a network request.
+// Remote lookups never start a network request.
 type Remote struct {
 	provider Provider
 	store    *remotecontent.Store[string, reusableWorkflowMetadataResult, parsedWorkflow]
 }
 
-// parsedWorkflow is the outcome of parsing one immutable workflow file.
 type parsedWorkflow struct {
 	metadata *calls.Metadata
 	err      error
@@ -80,7 +77,6 @@ func parseWorkflow(content []byte) parsedWorkflow {
 	return parsedWorkflow{metadata: metadata, err: err}
 }
 
-// resultFor names a parse failure with the requested reference.
 func (p parsedWorkflow) resultFor(spec string) reusableWorkflowMetadataResult {
 	if p.err != nil {
 		return reusableWorkflowMetadataResult{failure: parseFailure(spec, p.err)}

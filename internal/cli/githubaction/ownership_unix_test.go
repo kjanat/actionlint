@@ -42,7 +42,7 @@ func TestWriteResultFileKeepsCreatedOwnership(t *testing.T) {
 func TestWriteResultFileWithDifferentWorkspaceOwner(t *testing.T) {
 	t.Parallel()
 	// Shared temporary directories let an ordinary user create files without
-	// owning the workspace. No elevated privileges or ownership changes are needed.
+	// owning the workspace.
 	workspace := resolved(t, os.TempDir())
 	directory, err := os.MkdirTemp(workspace, "actionlint-output-owner-")
 	if err != nil {

@@ -1,10 +1,8 @@
 # actionlint-extension-api
 
-Rust bindings and native packaging for actionlint components.
-Implement `actionlint_extension_api::Guest`, then export the implementation with
-`actionlint_extension_api::export_plugin!(Plugin)` on `wasm32`.
+This crate provides Rust bindings and native packaging for actionlint components. Implement `actionlint_extension_api::Guest`, export it with `actionlint_extension_api::export_plugin!(Plugin)` on `wasm32`, and build for `wasm32-wasip2`.
 
-A minimal analyzer that reports no findings:
+A minimal analyzer:
 
 ```rust
 use actionlint_extension_api::{Descriptor, Guest, Input, Outcome};
@@ -43,53 +41,16 @@ impl Guest for Plugin {
 actionlint_extension_api::export_plugin!(Plugin);
 ```
 
-See [`pipe-to-shell.rs`](https://github.com/kjanat/actionlint/blob/master/plugins/examples/pipe-to-shell/src/lib.rs)
-for an analyzer that reports findings.
+[`pipe-to-shell.rs`](https://github.com/kjanat/actionlint/blob/master/plugins/examples/pipe-to-shell/src/lib.rs) is an analyzer that reports findings.
 
-Enable `reference-resolver` to implement the `reference-resolver-plugin` world.
-The `reference_resolver` module contains its generated `Guest`, `Request` and
-`Resolution` types, plus imports for reading repository references and objects.
-Actionlint performs the requested lookups and handles credentials and network
-accounting. The [Commitish component](https://github.com/kjanat/commitish/tree/master/crates/actionlint-plugin-commitish)
-uses this interface with the shared Commitish selection library.
+## Features
 
-Build extensions for `wasm32-wasip2`. The default analyzer API imports host logging.
-Enable `source-annotations` to import source comments through the optional
-`kjanat:actionlint/source-annotations@0.2.0` interface.
-This requires a host implementing that additional interface.
-
-Enable `shell-script-inputs` when a standalone analyzer checks shell scripts.
-Call `kjanat::actionlint_script::shell_script_inputs::for_script` with an occurrence
-from the current analysis to receive masked text, interpreter startup commands and
-a line map. This feature does not replace a registered tool. Combine it with
-`script-environments` for declared variable names or `source-annotations` for
-separate access to attached YAML comments.
-
-Enable `tool-integration` to implement the `managed-plugin` world. Its optional
-`tool-integration@0.2.0` export advertises a tool identity and versioned
-configuration profile, then accepts or rejects the host configuration. The
-analyzer descriptor name must equal that tool identity. Distribution names,
-repository names and engine names do not select which tool is replaced.
-Negotiation receives host configuration and caller-supplied plugin options
-separately. The guest combines them and validates the resulting options. The
-host passes accepted options to the plugin without interpreting them.
-Filesystem access requires separate typed resource requests. The plugin supplies
-its configuration schema in `tool-integration.describe().configuration-schema`.
-
-That world imports `source-files@0.2.0` for explicit source/WASI mount mappings
-and `kjanat:actionlint-script/shell-script-inputs@0.3.0` for host-prepared shell text, masking, source lines
-and interpreter startup commands. Preparation is restricted to script references
-supplied in the current analysis. Unknown references fail; invalid interpreter
-invocations return `none`. The plugin reads its tool directives and selects the
-supported languages and diagnostic exclusions. Use the returned line map for
-locations and source-file mappings for filesystem access.
-
-Enable `script-environments` to query scoped environment names without their
-values. Call `kjanat::actionlint_script::environments::for_script` with an
-occurrence supplied in the current analysis. Each OS alternative has its own
-runner merge comparison, shell lookup comparison and names. An unresolved name
-is not proof that a variable is missing. Snippet-engine components can import
-the same interface and call `current` during their check.
+- `reference-resolver` implements the `reference-resolver-plugin` world in the `reference_resolver` module.
+- `source-annotations` imports source comments through `kjanat:actionlint/source-annotations@0.2.0`.
+- `shell-script-inputs` adds `kjanat::actionlint_script::shell_script_inputs::for_script`. It returns masked text, startup commands and a line map for an occurrence in the current analysis.
+- `script-environments` adds `kjanat::actionlint_script::environments::for_script`, which returns scoped environment names without values. An unresolved name may still exist at runtime.
+- `tool-integration` implements the `managed-plugin` world.
+- `package` adds the `package` module described under [Packaging](#packaging).
 
 ```rust
 #[cfg(feature = "script-environments")]
@@ -107,9 +68,15 @@ fn environments_for(
 }
 ```
 
-Script engines can implement the generated guest traits in `script_engine::v0_2`
-or `script_engine::v0_3`. After implementing both the script-engine and
-template-effects guest traits, export the implementation with its binding module:
+## Tool integration
+
+The `tool-integration@0.2.0` export advertises a tool identity and configuration profile. The analyzer descriptor name must equal that tool identity. The guest receives host configuration and plugin options separately, combines them and validates the result.
+
+Use the shell-script-inputs line map for locations. `shell_script_inputs::for_script` fails on an unknown script ID and returns `None` for an invalid interpreter invocation.
+
+## Script engines
+
+Implement the script-engine and template-effects guest traits from `script_engine::v0_2` or `script_engine::v0_3`, then export them:
 
 ```rust
 #[cfg(target_arch = "wasm32")]
@@ -118,16 +85,9 @@ actionlint_extension_api::script_engine::v0_2::export_template_script_engine_v0_
 );
 ```
 
-For 0.3.0, use `v0_3::export_template_script_engine_v0_3!` and
-`with_types_in actionlint_extension_api::script_engine::v0_3`.
-The `with_types_in` argument is required because these types are defined in the
-SDK module. Without it, the generated macro looks for bindings in the guest's
-current module. See the [small consumer](https://github.com/kjanat/actionlint/blob/master/plugins/sdk/rust/tests/script-engine-consumer/src/lib.rs)
-for complete implementations of both interfaces.
+For 0.3.0, use `v0_3::export_template_script_engine_v0_3!` and `with_types_in actionlint_extension_api::script_engine::v0_3`. The `with_types_in` argument is required. The [small consumer](https://github.com/kjanat/actionlint/blob/master/plugins/sdk/rust/tests/script-engine-consumer/src/lib.rs) implements both versions.
 
-To customize a guest's world or imports, generate either the `script-engine-plugin` or
-`template-script-engine-plugin` world for 0.2.0 or 0.3.0 without vendoring WIT.
-Add the SDK as a direct dependency and use its Cargo metadata in your `build.rs`:
+To generate the `script-engine-plugin` or `template-script-engine-plugin` world yourself, add the SDK as a direct dependency and read its WIT path in `build.rs`:
 
 ```rust,no_run
 use std::{env, fs, path::PathBuf};
@@ -146,48 +106,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Include the generated invocation with `include!(concat!(env!("OUT_DIR"),
-"/bindings.rs"));` and depend on `wit-bindgen` in the guest. For 0.3.0, append
-`deps/actionlint-0.3.0` to `wit` before writing the invocation. The SDK exports
-WIT sources and LF-normalized SHA-256 values for each script-engine and
-template-effects version. Use `package::ScriptPackage` with the matching
-`script_engine::v0_2` or `script_engine::v0_3` descriptor type to write
-discovery metadata and distribution files. Set `ScriptWorld` to match the
-world exported by the guest. The package identity and descriptor must match
-the guest descriptor. Bindings generated in the guest are separate Rust types
-from the SDK descriptor types, so construct the package descriptor from the same
-values used by the guest. Guests using the SDK bindings directly can use their
-descriptor for both exports and packaging.
+Include the result with `include!(concat!(env!("OUT_DIR"), "/bindings.rs"));` and depend on `wit-bindgen` in the guest. For 0.3.0, append `deps/actionlint-0.3.0` to `wit` first. Package the engine with `package::ScriptPackage`, the matching `script_engine::v0_2` or `script_engine::v0_3` descriptor type and a `ScriptWorld` that matches the exported world. Build the package descriptor from the same values as the guest descriptor.
 
-Enable `package` for a native packaging binary. Construct `package::Package`
-from the extension's own descriptor, Cargo identity, engine, languages,
-capabilities and license text, then call `write(input, output)`. It writes
-`plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
-Packaging replaces only the outer discovery section and preserves nested
-components and modules.
+## Packaging
 
-For a runner-provider component, use `package::RunnerPackage` and set
-`interface_version` to `package::RunnerVersion::V02` or `V03`. Generate guest
-bindings with world `runner-plugin` from `wit/runner.wit` for 0.2.0, or from
-`wit/deps/actionlint-0.3.0` for 0.3.0. The analyzer `Guest` trait does not implement
-that role. Supply the provider name, version and
-targets from the runner's `describe()` result. Package identity, display name and
-release version are separate from those provider fields. The
-[Buildkite example](https://github.com/kjanat/actionlint/tree/master/plugins/examples/buildkite-runners)
-contains native tests, a packaging entry point, snapshot data and a workflow command.
+Construct `package::Package` from the descriptor, Cargo identity, engine, languages, capabilities and license text. `write(input, output)` writes `plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
 
-Runner-provider 0.3.0 receives an execution service and a fixed assessment date.
-It returns candidate hosting and an optional support catalogue with dated policies.
-Keep support evidence separate from inventory evidence, and return no catalogue
-when support is unknown. Existing 0.2.0 components remain supported; their results
-leave hosting and dated support unknown.
+`package::Identity.id` is the registry and lockfile identity. Keep it unchanged across releases. It may differ from the rule and display names.
 
-Set `package::Identity.id` to the stable published package identifier. This is
-the registry and lockfile identity; it can differ from the analyzer's rule name
-and the package's display name. Keep it unchanged across releases. Tool
-integration identifies its tool through the analyzer's rule name.
+## Runner providers
 
-The protocol source is [`plugins/protocol/wit/`](https://github.com/kjanat/actionlint/tree/master/plugins/protocol/wit). Host generation, examples and
-fixtures read these same files. Cargo includes them in the published package.
+Use `package::RunnerPackage` with `interface_version` set to `package::RunnerVersion::V02` or `V03`. Generate bindings for world `runner-plugin` from `wit/runner.wit` for 0.2.0 or from `wit/deps/actionlint-0.3.0` for 0.3.0. Take the provider name, version and targets from the runner's `describe()` result. See the [Buildkite example](https://github.com/kjanat/actionlint/tree/master/plugins/examples/buildkite-runners).
 
 For local SDK development, see [CONTRIBUTING.md](https://github.com/kjanat/actionlint/blob/master/plugins/sdk/rust/CONTRIBUTING.md).

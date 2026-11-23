@@ -43,10 +43,9 @@ func TestValidateGlobOK(t *testing.T) {
 		"*.*.*-**",
 		"!a",
 		"a!",
-		"a!+", // this is ok because ! has no special meaning
+		"a!+", // ! has no special meaning here
 		"a!?",
 		"!*",
-		// examples in official documents
 		"feature/*",
 		"feature/**",
 		"main",
@@ -84,7 +83,6 @@ func TestValidateGlobPathOnlyOK(t *testing.T) {
 		"~/foo",
 		"foo:bar",
 		"foo^bar",
-		// examples in official document
 		"*.jsx?",
 		"*.js",
 		"**.js",

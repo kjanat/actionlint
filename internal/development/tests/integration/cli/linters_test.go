@@ -95,8 +95,6 @@ func TestLinterCommandSpellings(t *testing.T) {
 	}
 }
 
-// TestToolFlagValuesLeaveWorkflowArguments checks that --tool and the
-// deprecated --shellcheck flag take only their own value as an argument.
 func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
 	t.Parallel()
 	input := filepath.Join(t.TempDir(), "input.yml")
@@ -116,8 +114,6 @@ func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
 	}
 }
 
-// onlyDeprecationWarnings reports whether stderr holds nothing but warnings
-// about deprecated flags, as plain lines or JSON log records.
 func onlyDeprecationWarnings(stderr string) bool {
 	for line := range strings.SplitSeq(strings.TrimSpace(stderr), "\n") {
 		if line != "" && !strings.Contains(line, "is deprecated; use --") {
@@ -145,9 +141,6 @@ func TestUnknownToolIDs(t *testing.T) {
 	}
 }
 
-// TestToolEnvironment checks that ACTIONLINT_TOOL_RUFF_BIN selects the Ruff
-// command and that ACTIONLINT_RUFF_BIN, a name from unreleased v2 builds,
-// is not read.
 func TestToolEnvironment(t *testing.T) {
 	t.Setenv("PATH", "")
 	for _, tc := range []struct {

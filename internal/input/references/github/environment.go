@@ -4,9 +4,7 @@ import (
 	"path/filepath"
 )
 
-// EnvironmentOptions uses actionlint's cache directory and the user's GitHub
-// credentials for metadata lookups. An empty cacheDirectory disables the
-// metadata cache.
+// EnvironmentOptions disables the metadata cache when cacheDirectory is empty.
 func EnvironmentOptions(mode Mode, env func(string) string, cacheDirectory string) Options {
 	if mode == "" {
 		mode = Online

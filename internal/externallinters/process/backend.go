@@ -24,16 +24,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// canceledDecodeLimit bounds decoding the output of a process that completed
-// after its check was canceled.
 const canceledDecodeLimit = 5 * time.Second
 
-// Options configure a Backend beyond its manifest.
 type Options struct {
-	// Programs resolves transform digests to program text. Inline programs
-	// need none.
 	Programs func(digest string) ([]byte, bool)
-	// Required makes a failed version probe an error. Without it a provider
+	// Required makes a failed version probe an error. Without Required, a provider
 	// whose version cannot be established is skipped with one warning.
 	Required bool
 	// Probe holds the version probe result shared with other backends of
@@ -41,40 +36,27 @@ type Options struct {
 	Probe *VersionProbe
 	Warn  func(error)
 	Debug func(string, ...any)
-	// Skipped records each check omitted after an optional version probe failed.
-	// Unlike Warn, it runs for every consumer of a cached failed probe.
+	// Unlike Warn, Skipped runs for every consumer of a cached failed probe.
 	Skipped func()
 }
 
-// Backend runs one native process per check as a process manifest describes:
-// it substitutes argument placeholders, renders configuration, runs the
-// command with a scrubbed environment and decodes stdout into snippet
-// diagnostics in contract coordinates. It implements scriptengine.Backend,
-// scriptengine.ConfigValidator and scriptengine.TemplateValidator.
 type Backend struct {
-	name          string
-	spec          toolmanifest.ProcessSpec
-	capabilities  toolmanifest.Capabilities
-	command       *hostprocess.Command
-	options       Options
-	decoder       Decoder
-	configProgram *processConfigProgram
-	schemas       []*toolsettings.Schema
-	version       *regexp.Regexp
-	env           []string
-	// launcher holds the command's launcher arguments and the launcher
-	// options that start the tool; user holds the tool's own user arguments.
+	name           string
+	spec           toolmanifest.ProcessSpec
+	capabilities   toolmanifest.Capabilities
+	command        *hostprocess.Command
+	options        Options
+	decoder        Decoder
+	configProgram  *processConfigProgram
+	schemas        []*toolsettings.Schema
+	version        *regexp.Regexp
+	env            []string
 	launcher, user []string
-	// commandProblem rejects every check of a command the manifest cannot
-	// run; each check reports it as its own error.
 	commandProblem string
 	probe          *VersionProbe
 	templates      sync.Once
 }
 
-// NewBackend binds a process manifest to a resolved command. The command's
-// arguments are user arguments: launcher options first, when the
-// executable is a launcher the manifest names.
 func NewBackend(manifest toolmanifest.Manifest, command *hostprocess.Command, options Options) (*Backend, error) {
 	if manifest.Process == nil {
 		return nil, fmt.Errorf("tool provider %s has no process transport", manifest.Rule.Name)
@@ -141,8 +123,7 @@ func NewBackend(manifest toolmanifest.Manifest, command *hostprocess.Command, op
 	case len(user) > 0 && !slices.Contains(spec.Args, "{user-args}"):
 		b.commandProblem = fmt.Sprintf("tools.%s: %v", b.name, errNoUserArgs)
 	default:
-		// Reject forbidden user arguments before the version probe runs
-		// anything. Each check repeats the test in its own directory.
+		// Reject forbidden user arguments before the version probe runs anything.
 		if err := checkUserArgs(b.name, spec.UserArgs, user, command.Dir); err != nil {
 			b.commandProblem = err.Error()
 		}
@@ -160,7 +141,6 @@ func NewBackend(manifest toolmanifest.Manifest, command *hostprocess.Command, op
 	return b, nil
 }
 
-// newDecoder selects the decoder of an output format.
 func newDecoder(output toolmanifest.Output, programs func(string) ([]byte, bool)) (Decoder, error) {
 	switch output.Format {
 	case toolmanifest.FormatEnvelope:
@@ -185,20 +165,15 @@ func newDecoder(output toolmanifest.Output, programs func(string) ([]byte, bool)
 	}
 }
 
-// Concurrent reports whether checks may run at once, each holding one slot
-// of the shared process pool.
 func (b *Backend) Concurrent() bool {
 	return b.spec.Concurrency != toolmanifest.ConcurrencySerial
 }
 
-// Check implements scriptengine.Backend.
 func (b *Backend) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	result, err := b.Run(ctx, request, nil)
 	return result.Diagnostics, err
 }
 
-// ValidateConfig implements scriptengine.ConfigValidator with the
-// provider's configuration schema and the process transport's own.
 func (b *Backend) ValidateConfig(_ context.Context, config json.RawMessage) error {
 	if len(config) == 0 {
 		return nil
@@ -211,9 +186,6 @@ func (b *Backend) ValidateConfig(_ context.Context, config json.RawMessage) erro
 	return nil
 }
 
-// ValidateTemplates implements scriptengine.TemplateValidator. Template
-// effects are trusted only from the exact engine version the manifest's
-// table was reviewed against.
 func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 	if available, err := b.available(ctx); err != nil || !available {
 		return false, owned(ctx, err)
@@ -221,7 +193,6 @@ func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 	if b.spec.Version == nil || b.spec.Version.TemplateEffects == "" {
 		return true, nil
 	}
-	// The probe completed in available; run returns its shared result.
 	version, err := b.probe.run(ctx, func() (string, error) { return b.identify(ctx) }, nil)
 	if err != nil {
 		return false, owned(ctx, err)
@@ -237,8 +208,6 @@ func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-// available probes the engine version once. A failed probe is an error for
-// a required provider and a skipped check, after one warning, otherwise.
 func (b *Backend) available(ctx context.Context) (bool, error) {
 	settings := network.Settings(ctx)
 	if settings.WarmCache {
@@ -271,8 +240,6 @@ func (b *Backend) available(ctx context.Context) (bool, error) {
 	}
 }
 
-// ProbeVersion runs the manifest's version probe now and checks the
-// minimum version. A manifest without a probe reports "".
 func (b *Backend) ProbeVersion(ctx context.Context) (string, error) {
 	if b.version == nil {
 		return "", nil
@@ -284,7 +251,6 @@ func (b *Backend) ProbeVersion(ctx context.Context) (string, error) {
 	return version, owned(ctx, err)
 }
 
-// identify runs the version probe.
 func (b *Backend) identify(ctx context.Context) (string, error) {
 	execution := b.execution(slices.Clone(b.spec.Version.Args), "", b.command.Dir)
 	execution.ExitCodes = []int{0}
@@ -307,8 +273,6 @@ func (b *Backend) debug(format string, args ...any) {
 	}
 }
 
-// execution describes one run. It shares no storage with the backend, so
-// nothing a run returns can alias the backend's configuration.
 func (b *Backend) execution(args []string, stdin, directory string) hostprocess.Execution {
 	exitCodes := slices.Clone(b.spec.ExitCodes)
 	if len(exitCodes) == 0 {
@@ -321,18 +285,11 @@ func (b *Backend) execution(args []string, stdin, directory string) hostprocess.
 	}
 }
 
-// Run checks one request and returns the decoded result, including the
-// files the engine read. Vars are preparation variables for argument
-// placeholders and transforms; "filename", "filename_abs" and "exit_code"
-// are the host's own. An optional provider whose version cannot be
-// established returns no result and no error.
 func (b *Backend) Run(ctx context.Context, request scriptengine.Request, vars map[string]string) (DecodedCheck, error) {
 	result, err := b.run(ctx, request, vars, nil)
 	return result, owned(ctx, err)
 }
 
-// owned reports err without retaining backend or engine state: a
-// cancellation as ctx's error and any other failure by its message.
 func owned(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
@@ -449,8 +406,6 @@ func (b *Backend) run(ctx context.Context, request scriptengine.Request, vars ma
 	values["exit_code"] = strconv.Itoa(code)
 	decoding := ctx
 	if ctx.Err() != nil {
-		// The process completed before the check was canceled; keep its
-		// findings, bounding the transform instead.
 		var cancel context.CancelFunc
 		decoding, cancel = context.WithTimeout(context.WithoutCancel(ctx), canceledDecodeLimit)
 		defer cancel()
@@ -473,7 +428,6 @@ func (b *Backend) run(ctx context.Context, request scriptengine.Request, vars ma
 	return detached(result), failures
 }
 
-// detached copies a decoded result into storage no decoder retains.
 func detached(result DecodedCheck) DecodedCheck {
 	diagnostics := make([]scriptengine.Diagnostic, len(result.Diagnostics))
 	for i, d := range result.Diagnostics {
@@ -490,15 +444,12 @@ func detached(result DecodedCheck) DecodedCheck {
 	return DecodedCheck{Diagnostics: diagnostics, Sources: slices.Clone(result.Sources), Errors: slices.Clone(result.Errors), Directory: result.Directory}
 }
 
-// directory returns the absolute working directory of a check.
 func (b *Backend) directory(requested string) (string, error) {
 	directory := requested
 	if directory == "" {
 		directory = b.command.Dir
 	}
 	if b.command.Runner != nil {
-		// An embedded runner may have no filesystem to check the directory
-		// in, such as in a browser.
 		if directory == "" {
 			directory = "/"
 		}
@@ -519,12 +470,9 @@ func (b *Backend) directory(requested string) (string, error) {
 		return "", fmt.Errorf("tools.%s: working directory is not a directory: %q", b.name, directory)
 	}
 	// Tools can report paths through getcwd, which resolves directory symlinks.
-	// Bind output filenames to the same physical directory before execution.
 	return filepath.EvalSymlinks(directory)
 }
 
-// stdin is the snippet, or the JSON request carrying rendered configuration
-// when the configuration travels on stdin.
 func (b *Backend) stdin(request scriptengine.Request, config any) (string, error) {
 	if b.spec.Stdin != toolmanifest.StdinRequest {
 		return request.Source, nil
@@ -542,7 +490,6 @@ func (b *Backend) stdin(request scriptengine.Request, config any) (string, error
 	return string(encoded), err
 }
 
-// pairsOption is the option of the {config:toml-pairs:OPTION} placeholder.
 func pairsOption(args []string) string {
 	for _, arg := range args {
 		if option, ok := strings.CutPrefix(arg, "{config:toml-pairs:"); ok {
@@ -552,11 +499,6 @@ func pairsOption(args []string) string {
 	return ""
 }
 
-// review admits decoded diagnostics. A snippet diagnostic must name the
-// request's snippet, a reported one must come from a provider that declares
-// reported sources; enginediagnostics validates every range and converts
-// snippet positions to contract coordinates, and template effects come from
-// the reviewed table.
 func (b *Backend) review(result *DecodedCheck, request scriptengine.Request) error {
 	convention := enginediagnostics.ContractCoordinates
 	if b.spec.Output.Coordinates != nil {

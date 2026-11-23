@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// ToolsConfig configures tool providers, keyed by the rule name each provider
-// implements. Bundled providers and providers registered by plugins share it.
+// ToolsConfig configures tool providers. Each key is the rule name of a
+// provider. Bundled providers and plugin-registered providers share it.
 type ToolsConfig map[string]ToolConfig
 
 func (toolsConfig ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
@@ -59,8 +59,6 @@ type (
 func (toolSettingsPath) toolSettingsValue()   {}
 func (toolSettingsInline) toolSettingsValue() {}
 
-// inlineSettings encodes a settings mapping. Values must be representable in
-// JSON, as configuration documents produce them.
 func inlineSettings(values map[string]any) (toolSettingsInline, error) {
 	if values == nil {
 		values = map[string]any{}
@@ -79,8 +77,6 @@ func (inline toolSettingsInline) values() map[string]any {
 	return cloneObject(map[string]any(inline))
 }
 
-// ToolConfigPath selects a configuration file or directory without reading
-// it. It rejects empty paths and paths containing newlines or NUL bytes.
 func ToolConfigPath(path string) (*ToolSettings, error) {
 	if path == "" || strings.ContainsAny(path, "\x00\r\n") {
 		return nil, errors.New("expected a nonempty single-line path")
@@ -88,16 +84,10 @@ func ToolConfigPath(path string) (*ToolSettings, error) {
 	return &ToolSettings{value: toolSettingsPath(path)}, nil
 }
 
-// ToolConfigInline selects inline settings for the tool provider named tool
-// and owns a copy of them. Values must be representable in JSON, as
-// configuration documents produce them. A bundled provider's configuration
-// schema validates them, as it validates tools.<tool>.config.
 func ToolConfigInline(tool string, values map[string]any) (*ToolSettings, error) {
 	return validatedToolSettings(tool, toolProviders()[tool], values)
 }
 
-// validatedToolSettings validates inline settings against the provider's
-// configuration schema, when it declares one, and selects them.
 func validatedToolSettings(name string, known toolProvider, values map[string]any) (*ToolSettings, error) {
 	if values == nil {
 		values = map[string]any{}
@@ -118,8 +108,6 @@ func validatedToolSettings(name string, known toolProvider, values map[string]an
 	return &ToolSettings{value: inline}, nil
 }
 
-// Path returns the selected configuration file or directory, or "" for
-// inline settings.
 func (s *ToolSettings) Path() string {
 	if s != nil {
 		if path, ok := s.value.(toolSettingsPath); ok {
@@ -129,7 +117,6 @@ func (s *ToolSettings) Path() string {
 	return ""
 }
 
-// Inline returns a copy of the inline settings, or nil when a path is selected.
 func (s *ToolSettings) Inline() map[string]any {
 	if s != nil {
 		if inline, ok := s.value.(toolSettingsInline); ok {
@@ -139,12 +126,10 @@ func (s *ToolSettings) Inline() map[string]any {
 	return nil
 }
 
-// FromInput reports whether an overlay input supplied the selection.
 func (s *ToolSettings) FromInput() bool {
 	return s != nil && s.fromInput
 }
 
-// CopyConfig detaches inline values and retains configuration provenance.
 func (s *ToolSettings) CopyConfig() (any, error) {
 	next := *s
 	switch value := s.value.(type) {
@@ -166,7 +151,6 @@ func (s *ToolSettings) CopyConfig() (any, error) {
 	return next, nil
 }
 
-// EncodeConfig preserves the selected path or inline mapping in resolved output.
 func (s *ToolSettings) EncodeConfig() (any, error) {
 	if s == nil {
 		return nil, nil
@@ -181,7 +165,7 @@ func (s *ToolSettings) EncodeConfig() (any, error) {
 	}
 }
 
-// DecodeConfig reads tool settings after RuleSet has expanded shorthands and validated provider settings.
+// DecodeConfig runs after RuleSet has expanded shorthands and validated provider settings.
 func (toolsConfig *ToolsConfig) DecodeConfig(value any) error {
 	if value == nil {
 		*toolsConfig = nil
@@ -242,8 +226,6 @@ func decodeToolConfig(name string, value any, known toolProvider, registered boo
 	return tool, nil
 }
 
-// decodeToolSettings validates inline settings against the provider schema.
-// Registered providers accept paths only when they read configuration files.
 func decodeToolSettings(name string, value any, known toolProvider, registered bool) (*ToolSettings, error) {
 	switch selected := value.(type) {
 	case nil:
@@ -262,7 +244,6 @@ func decodeToolSettings(name string, value any, known toolProvider, registered b
 	}
 }
 
-// foldToolShorthands applies each provider's declared property paths and precedence.
 func foldToolShorthands(name string, value any, shorthands map[string]toolsettings.Shorthand) (any, error) {
 	if !isMapping(value) {
 		return value, nil
@@ -389,8 +370,7 @@ func (ruleSet RuleSet) validateToolSettings(value any) error {
 	return nil
 }
 
-// Plugin discovery reads enabled, backend and config before provider schemas are
-// available. The original document supplies shorthand keys when plugins load.
+// Plugin discovery reads enabled, backend and config before provider schemas are available.
 func toolFieldsBeforePlugins(value any) any {
 	if !isMapping(value) {
 		return value

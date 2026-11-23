@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// retain makes the only visibility and duplicate decision across evaluated batches.
 func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (diagnostics []results.PublishedDiagnostic) {
 	type location struct {
 		project, path, rule string
@@ -179,19 +178,16 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 	return diagnostics
 }
 
-// sourceCopies copies each foreign source once per publication. Findings in
-// the same action.yml or sourced script share one Source array, so their
-// diagnostics share one copy instead of each holding the whole file.
+// sourceCopies copies each foreign source once per publication, and diagnostics
+// from the same file share that copy.
 type sourceCopies map[sourceKey][]byte
 
-// sourceKey identifies a Source slice by its first byte and length.
 type sourceKey struct {
 	first *byte
 	size  int
 }
 
-// of returns the copy of src, making it on first use. The copy shares no
-// storage with any finding.
+// of returns a copy that shares no storage with any finding.
 func (c sourceCopies) of(src []byte) []byte {
 	if len(src) == 0 {
 		return []byte{}

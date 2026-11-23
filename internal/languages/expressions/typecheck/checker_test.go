@@ -356,7 +356,6 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 				},
 			},
 		},
-		// TODO: Add strictprops
 		{
 			what:     "array element dereference with any type",
 			input:    "github.event.labels.*.name",
@@ -1157,7 +1156,6 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			if tc.funcs != nil {
 				c.funcs = tc.funcs
 			}
-			// A zero ObjectType in the table means the context is not replaced.
 			if tc.matrix != (exprtypes.ObjectType{}) {
 				c.SetContextType("matrix", tc.matrix.Type())
 			}
@@ -1724,7 +1722,6 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			if tc.funcs != nil {
 				c.funcs = tc.funcs // Set functions for testing
 			}
-			// A zero ObjectType in the table means the context is not replaced.
 			if tc.matrix != (exprtypes.ObjectType{}) {
 				c.SetContextType("matrix", tc.matrix.Type())
 			}
@@ -1765,8 +1762,6 @@ func TestExprSemanticsCheckError(t *testing.T) {
 	}
 }
 
-// Actions defines comparison results for all operand types, including NaN
-// conversion and collection identity. Warnings are selected independently.
 func TestExprCompareOperandsCheck(t *testing.T) {
 	t.Parallel()
 	types := map[string]exprtypes.Type{"number": exprtypes.NumberType(), "text": exprtypes.StringType(), "boolean": exprtypes.BoolType(), "nothing": exprtypes.NullType(), "object": exprtypes.NewEmptyObjectType().Type(), "array": exprtypes.NewArrayType(exprtypes.NumberType()).Type(), "unknown": exprtypes.AnyType()}
@@ -1877,15 +1872,12 @@ func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
 		}
 	}
 
-	// Check global value is not polluted
 	o = objectPath(t, contexts.BuiltinGlobalVariableTypes["github"], "event")
 	if _, ok := o.Property("inputs"); ok {
 		t.Error("Global github.event.inputs exists", o)
 	}
 }
 
-// objectPath follows object properties from ty and fails the test when a step
-// is not an object.
 func objectPath(t *testing.T, ty exprtypes.Type, keys ...string) exprtypes.ObjectType {
 	t.Helper()
 	object, ok := ty.Object()

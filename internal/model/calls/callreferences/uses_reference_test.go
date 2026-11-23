@@ -75,8 +75,6 @@ func TestWorkflowCallReference(t *testing.T) {
 	}
 }
 
-// TestFormOfMatchesPrefixChecks proves FormOf agrees with the prefix tests it
-// replaced at each caller, for spellings with and without a valid remainder.
 func TestFormOfMatchesPrefixChecks(t *testing.T) {
 	t.Parallel()
 	for _, spec := range []string{

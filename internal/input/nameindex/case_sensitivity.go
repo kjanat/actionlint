@@ -12,7 +12,6 @@ func caseInsensitivePathconf(path string, query func(string, int) (int, error)) 
 	return err == nil && value == 0
 }
 
-// Use existing entries as read-only evidence on filesystems without pathconf.
 func caseInsensitiveDirectoryEntries(path string, stat func(string) (os.FileInfo, error), readDir func(string) ([]os.DirEntry, error)) bool {
 	entries, err := readDir(path)
 	if err != nil {

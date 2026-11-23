@@ -4,7 +4,6 @@ import (
 	"errors"
 )
 
-// AdmissionError prevents semantic construction while preserving the load cause.
 type AdmissionError struct{ cause error }
 
 func (err *AdmissionError) Error() string {
@@ -21,11 +20,8 @@ func (err *AdmissionError) Unwrap() error {
 	return err.cause
 }
 
-// RequiresAdmission follows the session's alias-only resource policy. Without
-// accepted crossings its alias counter stays zero and cannot reject a document.
 func RequiresAdmission(acceptedAliases int) bool { return acceptedAliases != 0 }
 
-// NewAdmissionError preserves a rejected admission's cause; nil means no rejection.
 func NewAdmissionError(cause error) error {
 	if cause == nil {
 		return nil
@@ -33,9 +29,6 @@ func NewAdmissionError(cause error) error {
 	return &AdmissionError{cause: cause}
 }
 
-// Admit checks expansion cost without constructing values or changing the graph.
-// follow selects alias slots according to the caller's dialect. Rejected slots
-// are neither followed nor counted; accepted expansions share the session limit.
 func Admit(root *Node, follow func(parent *Node, index int) bool) error {
 	if follow == nil {
 		return NewAdmissionError(errors.New("YAML admission requires an alias selection policy"))

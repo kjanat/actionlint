@@ -5,8 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// EvaluationResults supplies a syntax tree and its precomputed value results.
-// Neither operation may evaluate expressions. Result returns caller-owned values;
+// EvaluationResults must not evaluate expressions. Result returns caller-owned values;
 // a missing result differs from a recorded unknown result.
 type EvaluationResults interface {
 	Expression() syntax.Node

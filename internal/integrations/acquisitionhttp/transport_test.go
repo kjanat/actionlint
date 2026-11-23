@@ -187,8 +187,6 @@ func TestExplicitGrantNeverAuthorizesOtherInitialOrRedirectAuthority(t *testing.
 	}
 }
 
-// A scripted connection exercises HTTP/CONNECT/TLS serialization without a
-// listener, server, DNS lookup, certificate generation or external connection.
 type scriptedConnection struct {
 	mu     sync.Mutex
 	input  *bytes.Reader
@@ -492,7 +490,7 @@ func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
 	native := &http.Transport{ForceAttemptHTTP2: true}
 	// Clone initializes Go's native HTTP/2 callbacks on the source transport.
 	// Its snapshot omits those callbacks when the caller originally left the
-	// map nil, so a previously used native transport remains supported.
+	// map nil.
 	_ = native.Clone()
 	if len(native.TLSNextProto) == 0 {
 		t.Fatal("native HTTP/2 initialization did not install its callbacks")

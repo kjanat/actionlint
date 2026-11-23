@@ -8,13 +8,10 @@ import (
 )
 
 // MaxInlineProgramBytes bounds embedded source before a process is selected.
-// The complete JSON manifest remains subject to maxManifestBytes.
 const MaxInlineProgramBytes = 512 << 10
 
 var programFilename = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
-// ValidateProgram checks the program and its sole argument substitution. Version
-// probes invoke the entry itself; their literal arguments never run this file.
 func (p ProcessSpec) ValidateProgram() error {
 	uses := 0
 	for _, arg := range p.Args {

@@ -58,7 +58,7 @@ jobs:
 				t.Fatal("fixture job is missing")
 			}
 			steps := slices.Collect(job.Steps())
-			// Invoke steps before any workflow or job callback, mixing platforms.
+			// Invoke steps before any workflow or job callback and mix platforms.
 			for _, index := range []int{1, 0} {
 				findings := check.Step(steps[index])
 				if index == 1 {

@@ -12,9 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
-// IndexScalarSources binds physical node identity and context before projection.
-// Standalone ScriptSource calls without indexing use an independently parsed graph.
-// Decode lazily: most workflow scalars never need source-level diagnostics.
 func (p *Parser) IndexScalarSources(root *codec.Node) {
 	p.scalarContexts = make(map[sourcetext.Position]sourcemap.Context)
 	p.scalarSources = make(map[sourcetext.Position]*definition.ScriptSource)
@@ -41,7 +38,6 @@ func (p *Parser) IndexScalarSources(root *codec.Node) {
 }
 
 // Collection positions can point at properties preceding their first entry.
-// Recover the structural indentation once for all scalar consumers.
 func scalarCollectionIndent(node *codec.Node, lines []string) int {
 	indent := node.Column - 1
 	if len(node.Content) == 0 {
@@ -75,7 +71,7 @@ func scalarCollectionIndent(node *codec.Node, lines []string) int {
 	return indent
 }
 
-// ScriptSource returns an owned mapping; callers cannot mutate the parser's cache.
+// ScriptSource returns an owned mapping.
 func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 	if n == nil || n.Kind != 0 && n.Kind != codec.ScalarNode {
 		return nil
@@ -100,8 +96,6 @@ func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 	return &owned
 }
 
-// scalarSource retains the decoder result inside the parser. Public source
-// mappings are copied; parse-boundary metadata only reads its value fields.
 func (p *Parser) scalarSource(key sourcetext.Position, value string) *definition.ScriptSource {
 	if scriptSource, exists := p.scalarSources[key]; exists {
 		if scriptSource != nil && scriptSource.Value != value {
@@ -128,9 +122,7 @@ func (p *Parser) scalarSource(key sourcetext.Position, value string) *definition
 	return scriptSource
 }
 
-// cloneScriptSource returns source with its slices detached. Copying the whole
-// value keeps fields added later; a new reference field still shares storage
-// until it is detached here.
+// A new reference field in ScriptSource shares storage until cloneScriptSource detaches it.
 func cloneScriptSource(scriptSource definition.ScriptSource) definition.ScriptSource {
 	scriptSource.Lines = slices.Clone(scriptSource.Lines)
 	scriptSource.Spans = slices.Clone(scriptSource.Spans)

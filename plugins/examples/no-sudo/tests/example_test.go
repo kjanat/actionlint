@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-// These tests run the published actionlint CLI and check its JSON report.
 func TestComponentThroughCLI(t *testing.T) {
 	t.Parallel()
 	binary := os.Getenv("ACTIONLINT_TEST_BINARY")

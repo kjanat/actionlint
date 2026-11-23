@@ -1,13 +1,8 @@
 # PyPI wheels
 
-This package builds the wheels published to PyPI as
-[`actionlint-kjanat`](https://pypi.org/project/actionlint-kjanat/). Each wheel
-contains the release binary for one platform and installs the `actionlint`
-console script. Installation does not compile source code.
+This package builds the wheels of [`actionlint-kjanat`](https://pypi.org/project/actionlint-kjanat/).
 
-Edit [`PACKAGE_README.md`](PACKAGE_README.md) to change the description shown on
-PyPI. The wheel builder replaces `{{version}}` in its links with the release
-version. Funding also appears in the package's project links.
+Edit [`PACKAGE_README.md`](PACKAGE_README.md) to change the PyPI description. The builder replaces `{{version}}` with the release version.
 
 ```text
 distribution/pypi/
@@ -20,26 +15,6 @@ distribution/pypi/
 
 ## Build
 
-```sh
-node distribution/pypi/src/cli.ts build --version "${version}" --assets release --out distribution/pypi/dist
-```
-
-Set `--assets` to a directory containing the release archives and GoReleaser's
-`actionlint_<version>_checksums.txt` file. The builder checks each archive's
-SHA-256 against that file, then extracts `actionlint` or `actionlint.exe` and
-`LICENSE.txt`. It writes one wheel per platform tag to `--out`, creating that
-directory if needed, and refuses to overwrite an existing wheel.
-
-Set `--version` to the stable `MAJOR.MINOR.PATCH` release version. This also
-becomes the wheel version. The builder requires Node 24 or later. Run
-`bun install --frozen-lockfile` from the repository root before building. Use
-`node distribution/pypi/src/cli.ts build --help` to list the flags.
-
-Use `--build 1` when correcting the packaging of an already published version.
-This adds the wheel build number to the filename and `WHEEL` metadata. It does
-not change the release version or the bundled executable. To publish those wheels,
-pass `-f wheel-build=1` when dispatching `pypi-release.yml`.
-
 To build the wheels of a published release by hand:
 
 ```sh
@@ -47,6 +22,10 @@ version=1.2.3
 gh release download "v${version}" --repo kjanat/actionlint --dir release --pattern "actionlint_${version}_*"
 node distribution/pypi/src/cli.ts build --version "${version}" --assets release --out distribution/pypi/dist
 ```
+
+`--assets` names a directory with the release archives and `actionlint_<version>_checksums.txt`. The builder checks the SHA-256 of each archive, writes one wheel per platform tag to `--out`, and refuses to overwrite a wheel. `--version` takes a stable `MAJOR.MINOR.PATCH` version. The builder needs Node 24 or later and `bun install --frozen-lockfile` from the repository root.
+
+Use `--build 1` to correct the packaging of a published version. To publish those wheels, pass `-f wheel-build=1` to `pypi-release.yml`.
 
 ## Wheels
 
@@ -62,40 +41,30 @@ node distribution/pypi/src/cli.ts build --version "${version}" --assets release 
 | `windows_amd64` | `win_amd64`                                       |
 | `windows_arm64` | `win_arm64`                                       |
 
-Every wheel is tagged `py3-none-<platform>`. For each Darwin binary, the builder
-reads the minimum macOS version from its `LC_BUILD_VERSION` load command for
-platform 1 (macOS). If that command is absent, it uses `LC_VERSION_MIN_MACOSX`.
-The version becomes the macOS wheel tag. The builder skips `LC_BUILD_VERSION`
-commands for other platforms and rejects a binary with no macOS version command.
-pip matches macOS 11 and later only through `macosx_<major>_0` tags, so the
-builder rejects a minimum such as 13.3.
+Every wheel is tagged `py3-none-<platform>`. The builder reads the minimum macOS version of each Darwin binary from `LC_BUILD_VERSION` or `LC_VERSION_MIN_MACOSX` and rejects a binary without either. It also rejects a minimum such as 13.3. pip matches macOS 11 and later only through `macosx_<major>_0` tags.
 
-The Linux binaries are static, so the glibc and musl wheels for an architecture
-contain the same files. PyPI accepts no FreeBSD wheels; download those archives
-from GitHub releases. Releases publish wheels without a source
-distribution. On a platform without a matching wheel, pip reports that no
-matching distribution exists.
+The glibc and musl wheels hold the same static binary. Releases publish no source distribution.
 
-A wheel holds the `actionlint_kjanat` package with the launcher and `bin/actionlint` (`bin/actionlint.exe` on Windows), and a `.dist-info` directory with `METADATA`, `WHEEL`, `entry_points.txt`, `licenses/LICENSE.txt` and `RECORD`. Both console scripts, `actionlint` and `actionlint-kjanat`, call `actionlint_kjanat:main`. On POSIX systems `main` replaces the Python process with the binary through `os.execv`. On Windows it runs the binary as a child process and exits with its exit code.
+Both console scripts call `actionlint_kjanat:main`. On POSIX systems, `main` replaces the Python process with the binary through `os.execv`. On Windows, it runs the binary as a child process.
 
 ## Release automation
 
-Every release prepared by `.github/workflows/release-prepare.yml` carries its wheels as release assets. The `prepare` job runs the `.github/actions/pypi-wheels` composite action twice. Before the Go tests it builds wheels from stub archives into a scratch directory. After GoReleaser it builds the real wheels into the release assets directory beside the archives. Both runs install the `manylinux_2_17_x86_64` wheel into a virtual environment and check the version that `actionlint -version` reports. The `draft` job records every wheel with its size and SHA-256 in `release-candidate.json` and uploads it with the draft. The Windows row of the `action` job installs the prepared `win_amd64` wheel and runs the same check.
+`.github/workflows/release-prepare.yml` attaches wheels to every prepared release.
 
-`.github/workflows/pypi-release.yml` publishes the wheels. The `pypi` job of `.github/workflows/release.yml` calls it after the `verify` job, and the `action-tags` job proceeds when the `pypi` job succeeds or is skipped. Its `build` job has one step that detects whether the release carries `.whl` assets, and that step selects the source of the wheels:
+`.github/workflows/pypi-release.yml` publishes the wheels. The `pypi` job of `release.yml` calls it after the `verify` job. Its `build` job takes one of two paths:
 
-- **Released wheels.** The job downloads every release asset, checks that `release-candidate.json` names the tag and its commit, and runs `tools/release/release-candidate.mjs verify` on the directory. That script checks the size and SHA-256 of every asset, the wheels included, against the manifest. The `verify` job of `release.yml` attests the wheels at publication, and a manual run verifies that build provenance for every wheel with `gh attestation verify`, so a wheel replaced on the release after publication fails even when the manifest was rewritten with it. The job then installs the `manylinux_2_17_x86_64` wheel and publishes the released bytes. Nothing is rebuilt.
-- **Wheels built from the archives.** A release without wheels, v1.17.0 and earlier, takes this path. The job downloads the archives with `gh release download`, checks them with `sha256sum` against the release's checksums file, builds the wheels with the composite action from the workflow's own commit, and installs the `manylinux_2_17_x86_64` wheel. A manual run also verifies the build provenance of every archive with `gh attestation verify`, and runs `tools/release/release-candidate.mjs verify` from the tag checkout when the release carries `release-candidate.json`. Otherwise it logs a notice that the tag predates the candidate pipeline.
+- **Released wheels.** The job downloads the release assets and checks them against `release-candidate.json` with `tools/release/release-candidate.mjs verify`. The job publishes the released bytes without a rebuild.
+- **Wheels built from the archives.** The job checks the archives against the release checksums and builds the wheels with the composite action of the workflow commit.
 
-The `build` job uploads the wheels as the `pypi-wheels` artifact. The `publish` job uploads them with `pypa/gh-action-pypi-publish` through PyPI trusted publishing from the `pypi` environment and skips files PyPI already has. PyPI must list `kjanat/actionlint`, the `pypi-release.yml` workflow and the `pypi` environment as the trusted publisher of `actionlint-kjanat`.
+The `publish` job uploads the wheels through PyPI trusted publishing from the `pypi` environment and skips files already on PyPI. PyPI must list `kjanat/actionlint`, the `pypi-release.yml` workflow and the `pypi` environment as the trusted publisher of `actionlint-kjanat`.
 
-To publish the wheels of a published release by hand, or to rerun a failed upload, dispatch the workflow with the tag:
+To publish the wheels of a release by hand, or to rerun a failed upload:
 
 ```sh
 gh workflow run pypi-release.yml --repo kjanat/actionlint --ref master -f tag=v1.2.3
 ```
 
-A manual run checks out the tag beside the workflow's own commit before choosing a path. It requires a published GitHub release for the tag that is not a draft, and an annotated tag with a PGP signature that GitHub reports as verified, pointing at the checked-out commit. `-f dry-run=true` skips those checks and the provenance check, collects and smoke-tests the wheels, and publishes nothing.
+A manual run requires a published release and an annotated tag with a verified PGP signature that points at the checked-out commit.
 
 ## Tests
 
@@ -103,4 +72,4 @@ A manual run checks out the tag beside the workflow's own commit before choosing
 npm test --workspace @kjanat/actionlint-pypi
 ```
 
-The tests build wheels from stub archives, check their names, `METADATA`, `WHEEL`, `entry_points.txt` and `RECORD`, and install one into a virtual environment with `python3 -m venv` and pip. They run the console script and check that the stub binary replaced the launcher process and that its exit code reaches the caller. A second run patches `os.name` to `nt` and checks the Windows branch. The tests need `python3`, `tar` and `zip` on `PATH`.
+The tests need `python3`, `tar` and `zip` on `PATH`.

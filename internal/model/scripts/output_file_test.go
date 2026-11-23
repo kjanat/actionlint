@@ -108,8 +108,6 @@ func TestOutputFileOriginalTeeWithBash(t *testing.T) {
 	if err != nil {
 		t.Skip("Bash is not installed")
 	}
-	// Run the output-writing step from PR comment 6710252262 in Bash to check
-	// the file contents. The pinned runner source above establishes its rejection.
 	const script = "tee <<EOF2 >\"${GITHUB_OUTPUT}\"\n{\n  \"available\": true\n}\nEOF2\n"
 	directory := t.TempDir()
 	command := exec.CommandContext(t.Context(), bash, "--noprofile", "--norc", "-c", script)

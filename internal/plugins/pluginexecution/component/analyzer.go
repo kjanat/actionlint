@@ -27,7 +27,6 @@ func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 	return nil
 }
 
-// Descriptor returns the identity the plugin declared when it was loaded.
 func (p *Plugin) Descriptor() checkinputs.Descriptor {
 	if p.analyzerDescriptor == nil {
 		return checkinputs.Descriptor{}
@@ -35,8 +34,8 @@ func (p *Plugin) Descriptor() checkinputs.Descriptor {
 	return p.analyzerDescriptor.Detached()
 }
 
-// AnalyzeDocument runs the plugin on one document in a fresh instance. A trap, an
-// exit, an exceeded limit or a refused call is returned as an error.
+// AnalyzeDocument runs the plugin in a fresh instance and returns traps, exits,
+// exceeded limits and refused calls as errors.
 func (p *Plugin) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if !p.HasAnalyzer() {
 		return nil, errors.New("component does not implement the analyzer role")

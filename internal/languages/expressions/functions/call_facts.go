@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 )
 
-// ArgumentDemand distinguishes certain evaluation from possible or skipped evaluation.
 type ArgumentDemand uint8
 
 const (
@@ -16,7 +15,6 @@ const (
 	DemandSkipped
 )
 
-// ArgumentConversion identifies the conversion applied by a parameter.
 type ArgumentConversion uint8
 
 const (
@@ -25,8 +23,6 @@ const (
 	ConversionUnavailable
 )
 
-// FunctionArgumentFacts separates the accepted parameter contract from the
-// argument's source type, conversion and demand when its call is evaluated.
 type FunctionArgumentFacts struct {
 	Source      exprtypes.Type
 	SourceValue exprvalues.EvaluationResult
@@ -38,7 +34,6 @@ type FunctionArgumentFacts struct {
 	Value       exprvalues.EvaluationResult
 }
 
-// ReturnDomainState reports whether a known result fits a declared return.
 type ReturnDomainState uint8
 
 const (
@@ -47,12 +42,8 @@ const (
 	ReturnDomainExcludesValue
 )
 
-// FunctionCallFacts preserves declared returns alongside argument facts and
-// value-dependent refinements.
 type FunctionCallFacts struct {
-	// SignatureMatched distinguishes a selected signature from declared returns of a rejected call.
-	SignatureMatched bool
-	// Demand describes whether this call is required, conditional or skipped in its enclosing expression.
+	SignatureMatched    bool
 	Demand              ArgumentDemand
 	ReturnDomain        ReturnDomainState
 	DeclaredReturns     []exprtypes.Type
@@ -60,7 +51,6 @@ type FunctionCallFacts struct {
 	Arguments           []FunctionArgumentFacts
 }
 
-// Clone detaches the call's slices and runtime argument values.
 func (facts FunctionCallFacts) Clone() FunctionCallFacts {
 	facts.DeclaredReturns = slices.Clone(facts.DeclaredReturns)
 	facts.RefinedAlternatives = slices.Clone(facts.RefinedAlternatives)

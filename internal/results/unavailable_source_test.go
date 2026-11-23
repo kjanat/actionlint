@@ -14,8 +14,6 @@ import (
 func TestUnavailableSourceProducerGate(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..")
-	// The process runner and the managed document route each produce the
-	// marker once.
 	producers := []string{
 		filepath.Join(root, "internal", "checking", "scriptanalysis", "managed", "sources.go"),
 		filepath.Join(root, "internal", "checking", "scriptanalysis", "backends", "sources.go"),

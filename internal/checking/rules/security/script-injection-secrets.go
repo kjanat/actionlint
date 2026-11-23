@@ -15,9 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// checkSecretInterpolations reports secret values used to generate script text.
-// Quotes in the script are not a boundary: interpolation precedes shell parsing.
-// Conditions and predicates are safe because they do not emit the secret value.
+// Interpolation happens before shell parsing, so quotes in the script do not bound the value.
 func checkSecretInterpolations(expr syntax.Node, semanticErrors []*typecheck.Error) []*typecheck.Error {
 	var findings []*typecheck.Error
 	var visit func(syntax.Node)

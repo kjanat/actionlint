@@ -16,7 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/output"
 )
 
-// invocation holds parser state until it is converted to an operation-specific request.
 type invocation struct {
 	Operation      operation
 	Check          checkInvocation
@@ -34,7 +33,6 @@ type invocation struct {
 	Shell          string
 }
 
-// checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
 	RunnerTarget          string
 	RunnerProvider        string
@@ -60,21 +58,14 @@ type checkInvocation struct {
 	// ToolFlags lists the --tool values, ID or ID=COMMAND, in command-line
 	// order. --no-tool ID and the deprecated command flags, such as
 	// --shellcheck=COMMAND, add their values here too.
-	ToolFlags []string
-	NoTools   bool
-	// DeprecatedToolFlags lists uses of deprecated flags whose value is
-	// ignored, such as --pyflakes.
+	ToolFlags           []string
+	NoTools             bool
 	DeprecatedToolFlags []deprecatedToolFlag
-	// Tools selects every bundled tool. applyEnvironment sets it, and the
-	// two lists below, from the flags above and the environment.
-	Tools registry.ToolSelections
-	// DisabledTools lists the tool ids the flags disabled.
-	DisabledTools []string
-	// NamedTools lists the tool ids --tool and --no-tool named.
-	NamedTools []string
-	// Deprecations holds a warning for each deprecated flag used.
-	Deprecations []string
-	Plugins      []string
+	Tools               registry.ToolSelections
+	DisabledTools       []string
+	NamedTools          []string
+	Deprecations        []string
+	Plugins             []string
 
 	Verbose              bool
 	Debug                bool
@@ -84,12 +75,9 @@ type checkInvocation struct {
 	PreCommit            bool
 	NoIgnore             bool
 	AllowConfigProcesses bool
-	// ConfigSources holds the configuration files parsed for the configured
-	// output settings. The check reuses them, so each file is parsed once per run.
-	ConfigSources *document.Files
+	ConfigSources        *document.Files
 }
 
-// renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
@@ -114,7 +102,6 @@ func defaultInvocation() invocation {
 	}
 }
 
-// operation is selected by a parser; execution rejects values outside this set.
 type operation string
 
 const (
@@ -288,7 +275,6 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationCheck:
 		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationCompletion:
-		// Completion output is not a command request.
 		fallthrough
 	default:
 		return nil, exitcode.UsageError{Cause: fmt.Errorf("unknown operation %q", inv.Operation)}

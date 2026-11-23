@@ -45,10 +45,7 @@ func (t *transport) publicAddresses(ctx context.Context, host string) ([]netip.A
 	return addresses, nil
 }
 
-// Special-purpose/transition ranges are not ordinary public targets. This
-// conservative policy excludes protocol-assignment ranges, including globally
-// reachable exceptions, and IPv6 outside global 2000::/3.
-// Sources: IANA IPv4 and IPv6 Special-Purpose Address Space registries.
+// specialRanges lists the IANA IPv4 and IPv6 special-purpose ranges, including globally reachable ones, and IPv6 outside 2000::/3.
 var specialRanges = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"),

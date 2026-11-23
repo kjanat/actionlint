@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// Merge combines completed or partial analyses in order. It rejects conflicting
-// captures and rule metadata.
+// Merge rejects conflicting captures and rule metadata.
 func Merge(parts ...Analysis) (Analysis, error) {
 	var combined Analysis
 	for _, part := range parts {

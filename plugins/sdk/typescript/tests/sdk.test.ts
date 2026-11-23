@@ -34,13 +34,18 @@ test('passes scoped environment names without normalizing their spelling', async
 
 test('rejects malformed environment facts before calling a plugin', async () => {
 	for (
-		const environment of [null, {}, [{ operating_system: 'windows' }], [{
-			operating_system: 'windows',
-			merge_comparison: 'insensitive',
-			lookup_comparison: 'sensitive',
-			names: [{ name: 42, scope: 'step', case_known: true }],
-			unknown_names: false,
-		}]]
+		const environment of [
+			null,
+			{},
+			[{ operating_system: 'windows' }],
+			[{
+				operating_system: 'windows',
+				merge_comparison: 'insensitive',
+				lookup_comparison: 'sensitive',
+				names: [{ name: 42, scope: 'step', case_known: true }],
+				unknown_names: false,
+			}],
+		]
 	) {
 		let called = false;
 		const result = await executeScriptCheck(() => {

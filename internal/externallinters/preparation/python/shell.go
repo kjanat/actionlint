@@ -9,8 +9,6 @@ import (
 	"github.com/mattn/go-shellwords"
 )
 
-// IsShell reports whether a step shell runs its script with Python, directly
-// or through the documented actions-shell Python adapters.
 func IsShell(shell string) bool {
 	command, args := pythonShellCommand(shell)
 	if command == "" {
@@ -63,8 +61,6 @@ func pythonAdapterArguments(arguments, command string) []string {
 	return args
 }
 
-// IsCommand reports whether an executable path names a Python 3 interpreter
-// or the py launcher.
 func IsCommand(command string) bool {
 	command = command[strings.LastIndexAny(command, `/\`)+1:]
 	command = strings.TrimSuffix(strings.ToLower(command), ".exe")
@@ -83,9 +79,8 @@ func IsCommand(command string) bool {
 	return true
 }
 
-// ShellTarget is the Python target version, such as py312, a versioned
-// interpreter or py launcher selector in shell names; empty when the shell
-// leaves the version open.
+// ShellTarget returns a target such as py312, or empty when the shell leaves
+// the version open.
 func ShellTarget(shell string) string {
 	executable, arguments := pythonShellCommand(shell)
 	if executable == "" {

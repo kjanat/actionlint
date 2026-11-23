@@ -12,14 +12,12 @@ func ProjectMayEnable(name string, config, projectConfig *configuration.Config) 
 	return projectMayMatch(config, projectConfig, func(config *configuration.Config) (bool, error) { return mayEnable(name, config) })
 }
 
-// ProjectMayNeedProcess checks possible composite overrides without parsing workflow inputs.
 func ProjectMayNeedProcess(name string, config, projectConfig *configuration.Config, command string, explicit *hostprocess.CommandOptions) (bool, error) {
 	return ProjectMayNeedProcessFor(name, config, projectConfig, func(candidate *configuration.Config) bool {
 		return hostprocess.CommandEnabled(command, explicit) && Module(name, command, explicit, candidate) == nil
 	})
 }
 
-// ProjectMayNeedProcessFor resolves a host's process choice for each enabled candidate.
 func ProjectMayNeedProcessFor(name string, config, projectConfig *configuration.Config, needsProcess func(*configuration.Config) bool) (bool, error) {
 	return projectMayMatch(config, projectConfig, func(config *configuration.Config) (bool, error) {
 		candidates, err := configuration.ConfigCandidates(name, config)
@@ -43,15 +41,11 @@ func projectMayMatch(config, projectConfig *configuration.Config, match func(*co
 	if possible || err != nil || projectConfig == nil || len(projectConfig.Overrides) == 0 {
 		return possible, err
 	}
-	// A workflow-only override does not apply to a referenced action.yml. Keep
-	// the baseline available without inventing a second composite graph here.
+	// A workflow-only override does not apply to a referenced action.yml.
 	return match(projectConfig)
 }
 
-// mayEnable reports whether any applicable configuration could enable the tool.
 // A composite's path can match different overrides than its calling workflow.
-// Tool planning intentionally avoids reading workflows, so preserve a checker
-// when an override could enable it. Disabling-only overrides do not turn it on.
 func mayEnable(name string, config *configuration.Config) (bool, error) {
 	candidates, err := configuration.ConfigCandidates(name, config)
 	if err != nil {

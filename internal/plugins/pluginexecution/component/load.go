@@ -19,7 +19,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// LoadComponentPlugin reads and validates a component and asks it to describe itself.
 func LoadComponentPlugin(ctx context.Context, path string, options Options) (*Plugin, error) {
 	limits, err := options.limits()
 	if err != nil {
@@ -32,7 +31,6 @@ func LoadComponentPlugin(ctx context.Context, path string, options Options) (*Pl
 	return loadArtifact(ctx, artifact, limits, options)
 }
 
-// LoadArtifact loads a resolved snapshot without reading its source again.
 func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Options) (*Plugin, error) {
 	limits, err := options.limits()
 	if err != nil {

@@ -23,8 +23,6 @@ type (
 	location struct{ host, name string }
 )
 
-// Service separates mutable-reference lookups from immutable manifest parsing.
-// It is owned by one analysis request and contains no process-global data.
 type Service struct {
 	provider actions.Provider
 	store    *remotecontent.Store[actions.Reference, ActionInspection, actionmeta.DefinitionInspection]
@@ -38,7 +36,6 @@ func New(provider actions.Provider) *Service {
 	return &Service{provider: provider, store: remotecontent.New[actions.Reference, ActionInspection](actionmeta.InspectDefinition), names: make(map[repositoryKey]string), identities: make(map[location]repository.ID)}
 }
 
-// ActionInspection keeps validated call-site facts beside their complete availability.
 type ActionInspection struct {
 	manifest     actions.Manifest
 	definition   actionmeta.Definition
@@ -49,22 +46,19 @@ func (r ActionInspection) Definition() actionmeta.Definition          { return r
 func (r ActionInspection) Availability() actions.MetadataAvailability { return r.availability }
 func (r ActionInspection) Manifest() (actions.Manifest, bool)         { return r.manifest.Value() }
 
-// Lookup validates references even when metadata fetching is disabled. An absent
-// definition leaves only metadata-dependent checks unavailable.
+// Lookup validates references even when metadata fetching is disabled.
 func (s *Service) Lookup(ctx context.Context, spec string) (actionmeta.Definition, error) {
 	result, err := s.Inspect(ctx, spec)
 	return result.definition, err
 }
 
-// Inspect retains unavailable reasons and invalid manifest diagnostics.
 func (s *Service) Inspect(ctx context.Context, spec string) (ActionInspection, error) {
 	if err := ctx.Err(); err != nil {
 		return ActionInspection{}, err
 	}
 	reference, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		// Syntax rules own malformed references; no metadata lookup is needed.
-		// Cancellation still belongs to this analysis, even on that path.
+		// Syntax rules own malformed references.
 		return ActionInspection{}, ctx.Err()
 	}
 	if s == nil {
@@ -87,8 +81,7 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Actio
 		if errors.Is(err, context.DeadlineExceeded) {
 			return ActionInspection{}, context.DeadlineExceeded
 		}
-		// Provider failures are metadata unavailability. Cancellation of the
-		// analysis remains fatal, including cancellation during that lookup.
+		// Provider failures mean unavailable metadata, and cancellation stays fatal.
 		return ActionInspection{availability: actions.MissingMetadata(availability.Failed())}, ctx.Err()
 	}
 	if err := ctx.Err(); err != nil {
@@ -119,7 +112,6 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Actio
 	return inspected(manifest, inspection), nil
 }
 
-// admitRepository rejects a repository whose name or known ID changed during analysis.
 func (s *Service) admitRepository(identity actions.Identity) error {
 	id, known := identity.RepositoryID().Value()
 	if !known {

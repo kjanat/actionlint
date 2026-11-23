@@ -22,10 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// RunContext describes the inputs and settings that determined one check's
-// findings. Compare two runs' contexts to explain different results. Paths
-// inside WorkingDir are relative to it; remote configuration addresses omit
-// their query.
+// RunContext paths inside WorkingDir are relative to it, and remote configuration addresses omit their query.
 type RunContext struct {
 	WorkingDir     string
 	Repositories   []RepositoryState
@@ -35,29 +32,19 @@ type RunContext struct {
 	Providers      []report.ProviderStatus
 	Network        NetworkState
 	Flags          ResultFlags
-	// RulesRun counts the distinct rules that ran.
-	RulesRun int
-	// Rules lists the rules that collected or reported findings, by name.
-	Rules []RuleOutcome
+	RulesRun       int
+	Rules          []RuleOutcome
 }
 
-// RepositoryKind tells whether linted files belong to a Git repository and
-// whether its state could be read.
 type RepositoryKind int
 
 const (
-	// NoRepository groups linted files outside any Git repository.
 	NoRepository RepositoryKind = iota
-	// ReadRepository is a repository whose HEAD and status were read.
 	ReadRepository
-	// UnreadableRepository is a repository Git could not read; ReadError says why.
 	UnreadableRepository
 )
 
-// RepositoryState is the Git state of the repository that contains some of the
-// linted files. Root is empty for NoRepository. Worktree is set for
-// ReadRepository. ChangedFiles lists the linted files with uncommitted
-// changes, relative to Root.
+// RepositoryState sets Worktree only for ReadRepository, and ChangedFiles are relative to Root.
 type RepositoryState struct {
 	Kind         RepositoryKind
 	Root         string
@@ -66,10 +53,7 @@ type RepositoryState struct {
 	ChangedFiles []string
 }
 
-// ConfigurationState is the configuration one project used. File is empty when
-// defaults apply. Files lists every local configuration file that supplied a
-// setting, with its digest. Settings lists the settings that differ from the
-// defaults, except output settings, which do not change findings.
+// ConfigurationState leaves File empty when defaults apply and omits output settings from Settings.
 type ConfigurationState struct {
 	Project   string
 	File      string
@@ -78,16 +62,13 @@ type ConfigurationState struct {
 	Settings  []ChangedSetting
 }
 
-// ChangedSetting is one configuration value that differs from its default.
-// Pointer is its JSON pointer, Value its JSON text and Origin the file and line
-// that set it, or the input that supplied it.
+// ChangedSetting stores Pointer as a JSON pointer and Value as JSON text.
 type ChangedSetting struct {
 	Pointer string
 	Value   string
 	Origin  string
 }
 
-// IgnoreSource names where an ignore entry came from.
 type IgnoreSource string
 
 const (
@@ -97,18 +78,14 @@ const (
 	IgnoreInline       IgnoreSource = "inline"
 )
 
-// IgnoreEntry is one selector, pattern or directive that can remove findings.
-// Location is the file and line that declared it; it is empty for flags.
+// IgnoreEntry has an empty Location for a flag.
 type IgnoreEntry struct {
 	Source   IgnoreSource
 	Value    string
 	Location string
 }
 
-// NetworkState describes network access and the reuse of cached remote data.
-// GitHubToken names the environment variable that supplied a token, never the
-// token itself, and is empty when none was used. Requests, Failures and the
-// cache counts come from the invocation's request accounting.
+// NetworkState stores the name of the token's environment variable in GitHubToken.
 type NetworkState struct {
 	Offline             bool
 	GitHubToken         string
@@ -118,35 +95,29 @@ type NetworkState struct {
 	MetadataCacheMisses uint64
 	ResolverCacheHits   uint64
 	MetadataAvailable   int
-	// MetadataUnavailable counts unavailable remote metadata by reason.
 	MetadataUnavailable []ReasonCount
 }
 
-// ReasonCount counts the outcomes that share one reason.
 type ReasonCount struct {
 	Reason string
 	Count  int
 }
 
-// ResultFlags are the invocation presets that change findings. Experimental
-// is nil when neither a flag nor the environment selected it.
+// ResultFlags leaves Experimental nil when neither a flag nor the environment selected it.
 type ResultFlags struct {
 	Strict       bool
 	Experimental *bool
 	NoIgnore     bool
 }
 
-// RuleOutcome counts one rule's findings before publication policy and the
-// diagnostics reported after inline suppressions, levels and ignore settings.
+// RuleOutcome counts Collected findings before publication policy and Reported diagnostics after suppressions, levels and ignores.
 type RuleOutcome struct {
 	Rule      string
 	Collected int
 	Reported  int
 }
 
-// RunContextInputs are the values NewRunContext describes. Options are the
-// checking options the check ran with. IgnoreSelectors are the --ignore values
-// as given. Getenv reads GH_TOKEN and GITHUB_TOKEN.
+// RunContextInputs uses Getenv to read GH_TOKEN and GITHUB_TOKEN.
 type RunContextInputs struct {
 	Options         checking.Options
 	IgnoreSelectors []string
@@ -154,8 +125,7 @@ type RunContextInputs struct {
 	Result          *report.Analysis
 }
 
-// NewRunContext describes a completed check. It reads each repository's Git
-// state and the configuration files the check used, and nothing else.
+// NewRunContext reads only each repository's Git state and the check's configuration files.
 func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	options, result := inputs.Options, inputs.Result
 	if result == nil {
@@ -168,7 +138,7 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 		run.Configurations = append(run.Configurations, configurationState(options.WorkingDir, configuration))
 	}
 	run.Ignores = ignoreEntries(options.WorkingDir, inputs.IgnoreSelectors, options.IgnorePatterns, result)
-	// Each repository batch reports its own providers; list each status once.
+	// Each repository batch reports its own providers.
 	run.Providers = slices.Clone(result.Providers)
 	slices.SortStableFunc(run.Providers, func(a, b report.ProviderStatus) int {
 		return cmp.Or(strings.Compare(string(a.Kind), string(b.Kind)), strings.Compare(a.Name, b.Name), strings.Compare(a.Inactive, b.Inactive))
@@ -186,8 +156,6 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	return run
 }
 
-// relativePath returns path for display: relative to workingDir when inside
-// it, and without the query when it is a remote configuration address.
 func relativePath(workingDir, path string) string {
 	if configsource.IsRemoteAddress(path) {
 		return configsource.DisplayAddress(path)
@@ -201,7 +169,6 @@ func relativePath(workingDir, path string) string {
 	return path
 }
 
-// lintedFiles returns one entry per linted path, sorted by path.
 func lintedFiles(workingDir string, files []report.LintedFile) []report.LintedFile {
 	byPath := map[string]string{}
 	for _, file := range files {
@@ -214,8 +181,6 @@ func lintedFiles(workingDir string, files []report.LintedFile) []report.LintedFi
 	return listed
 }
 
-// repositoryStates groups linted files by the Git repository that contains
-// them and reads each repository's HEAD and status once.
 func repositoryStates(ctx context.Context, workingDir string, files []report.LintedFile) []RepositoryState {
 	byRoot := map[string][]string{}
 	for _, file := range files {
@@ -289,8 +254,6 @@ func configurationState(workingDir string, configuration configreport.Report) Co
 	return state
 }
 
-// hasChildSetting reports whether origins records a setting below pointer.
-// Such a pointer selects a container of settings.
 func hasChildSetting(origins map[string]configreport.Origin, pointer string) bool {
 	for other := range origins {
 		if strings.HasPrefix(other, pointer+"/") {
@@ -321,13 +284,10 @@ func jsonText(value any) string {
 	return string(text)
 }
 
-// pointerToken escapes one JSON pointer reference token.
 func pointerToken(name string) string {
 	return strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
 }
 
-// settingValue reads the value a JSON pointer selects in an effective
-// configuration, whose objects are maps and whose arrays are slices.
 func settingValue(config map[string]any, pointer string) (any, bool) {
 	var current any = config
 	if pointer == "" {
@@ -355,8 +315,6 @@ func settingValue(config map[string]any, pointer string) (any, bool) {
 	return current, true
 }
 
-// ignoreEntries lists the ignore flags, the configured ignores and message
-// ignores, and the inline directives in analyzed sources.
 func ignoreEntries(workingDir string, selectors, patterns []string, result *report.Analysis) []IgnoreEntry {
 	var entries []IgnoreEntry
 	for _, selector := range selectors {
@@ -413,9 +371,6 @@ func ignoreEntries(workingDir string, selectors, patterns []string, result *repo
 	return entries
 }
 
-// settingOrigin returns the non-default origin of the setting at pointer. When
-// only its members record origins, it returns the first of those; when only
-// an enclosing setting does, such as a whole list, it returns that one.
 func settingOrigin(origins map[string]configreport.Origin, pointer string) (configreport.Origin, bool) {
 	if origin, found := origins[pointer]; found && origin.Source != "default" {
 		return origin, true
@@ -442,7 +397,6 @@ func settingOrigin(origins map[string]configreport.Origin, pointer string) (conf
 	return configreport.Origin{}, false
 }
 
-// ignoreSelectorText renders an ignores entry's selector fields in a stable order.
 func ignoreSelectorText(item any) string {
 	fields, ok := item.(map[string]any)
 	if !ok {

@@ -6,7 +6,6 @@ import (
 	"reflect"
 )
 
-// DetachValue returns a deep copy without changing a dynamic value's type.
 func DetachValue(value any) (any, error) {
 	if value == nil {
 		return nil, nil
@@ -23,8 +22,6 @@ type dynamicVisit struct {
 	pointer uintptr
 }
 
-// detachDynamic preserves concrete values reachable through an interface.
-// Cyclic and opaque values return an error.
 func detachDynamic(value reflect.Value, active map[dynamicVisit]bool, hooks bool) (reflect.Value, error) {
 	if !value.IsValid() {
 		return value, nil
@@ -153,7 +150,7 @@ func isScalar(kind reflect.Kind) bool {
 	}
 }
 
-// DetachSnapshot copies a typed configuration without parsing or validating it.
+// DetachSnapshot neither parses nor validates the configuration.
 func DetachSnapshot[T any](value T) (T, error) {
 	var zero T
 	v := reflect.ValueOf(value)
@@ -171,7 +168,7 @@ func DetachSnapshot[T any](value T) (T, error) {
 	return copied, nil
 }
 
-// DetachPublicFields is for owners that restore their private state separately.
+// DetachPublicFields leaves private state for the owner to restore.
 func DetachPublicFields[T any](value T) (T, error) {
 	var zero T
 	v := reflect.ValueOf(value)

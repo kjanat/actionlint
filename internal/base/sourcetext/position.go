@@ -9,7 +9,6 @@ type Position struct {
 	Column int `json:"column"`
 }
 
-// IsBefore reports whether p precedes other. Equal positions return false.
 func (p Position) IsBefore(other Position) bool {
 	if p.Line != other.Line {
 		return p.Line < other.Line
@@ -17,7 +16,6 @@ func (p Position) IsBefore(other Position) bool {
 	return p.Column < other.Column
 }
 
-// String formats p as line:L,col:C for diagnostics.
 func (p Position) String() string {
 	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Column)
 }
@@ -30,7 +28,6 @@ func ZeroIfNil(p *Position) Position {
 	return *p
 }
 
-// NilUnlessPresent returns a pointer to p, or nil when present is false.
 func NilUnlessPresent(p Position, present bool) *Position {
 	if !present {
 		return nil

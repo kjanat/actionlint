@@ -9,8 +9,8 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// ValidateOptions checks provider options independently of transport. Schemas must bundle their refs;
-// loading a plugin must never grant implicit filesystem or network reads.
+// ValidateOptions requires schemas to bundle their refs; loading a plugin must
+// never grant implicit filesystem or network reads.
 func ValidateOptions(schemaJSON, optionsJSON json.RawMessage) error {
 	if len(schemaJSON) == 0 {
 		if len(optionsJSON) != 0 && !json.Valid(optionsJSON) {

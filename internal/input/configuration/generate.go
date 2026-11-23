@@ -19,9 +19,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Generate creates the repository configuration without producing terminal output.
-// skipConfig avoids parsing an existing configuration before checking for a collision.
-// Reading the existing configuration stops when ctx is canceled.
 func (ruleSet RuleSet) Generate(ctx context.Context, root string, skipConfig bool, version string) (string, error) {
 	if root == "" {
 		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
@@ -62,7 +59,6 @@ func (ruleSet RuleSet) WriteDefaultFile(path, version string) error {
 	return nil
 }
 
-// DefaultDocument generates rule examples from this catalogue without writing a file.
 func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byte, error) {
 	if format == "" {
 		format = FormatYAML

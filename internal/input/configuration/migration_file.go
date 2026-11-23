@@ -15,8 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// FileMigration holds a preview and the exact input graph used to prepare it.
-// Only Apply writes. Parse, Read, and virtual filesystem APIs never write files.
+// FileMigration writes files only through Apply.
 type FileMigration struct {
 	ruleSet RuleSet
 	Path    string
@@ -26,20 +25,16 @@ type FileMigration struct {
 	connections acquisitionhttp.Connections
 }
 
-// fileSnapshot is the content of one migration input when the migration was
-// prepared. Apply compares each snapshot with the current input.
 type fileSnapshot interface {
 	bytes() []byte
 	configSnapshot()
 }
 
-// localConfigSnapshot is a local input and the file its path resolved to.
 type localConfigSnapshot struct {
 	content []byte
 	target  string
 }
 
-// remoteConfigSnapshot is an HTTPS input.
 type remoteConfigSnapshot struct{ content []byte }
 
 func (s localConfigSnapshot) bytes() []byte  { return s.content }
@@ -47,9 +42,6 @@ func (s remoteConfigSnapshot) bytes() []byte { return s.content }
 func (localConfigSnapshot) configSnapshot()  {}
 func (remoteConfigSnapshot) configSnapshot() {}
 
-// PrepareMigration reads the selected file and its inherited inputs, validates
-// the converted graph, and returns a write candidate tied to those inputs.
-// Reads stop when ctx is canceled.
 func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connections acquisitionhttp.Connections, registrations ...rule.Descriptor) (*FileMigration, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -99,8 +91,6 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	if err != nil {
 		return nil, err
 	}
-	// Validate in the same graph, including plugin rule settings without loading
-	// any guest. Dependency identity is unchanged by config syntax migration.
 	after, err := LoadSources(absolute, nil, func(path string) ([]byte, error) {
 		if path == absolute {
 			return migration.Content, nil
@@ -115,8 +105,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		return nil, err
 	}
 	effective := func(node any) (map[string]any, error) {
-		// Compare the merged graphs in the same vocabulary. Comparing raw
-		// category mappings would reject every intentional category migration.
+		// Comparing raw category mappings would reject every intentional category migration.
 		canonical, _, err := ruleSet.migrateRuleCategories(node, registrations)
 		if err != nil {
 			return nil, err
@@ -141,9 +130,6 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	return &FileMigration{Path: absolute, Migration: migration, snapshots: snapshots, mode: info.Mode().Perm(), ruleSet: ruleSet, connections: connections}, nil
 }
 
-// resolveMigrationSource validates one source of a migration graph and
-// returns its settings in current syntax, located where they were parsed.
-// Plugin rule names stay unbound because no plugin is loaded.
 func (ruleSet RuleSet) resolveMigrationSource(origin string, source *document.Node) (*document.Node, error) {
 	value := source.Value()
 	if err := ValidateSourcePaths(origin, value); err != nil {
@@ -156,8 +142,6 @@ func (ruleSet RuleSet) resolveMigrationSource(origin string, source *document.No
 	return document.Capture(resolved.Value, source.Origins()), nil
 }
 
-// SetContent validates an enriched candidate, such as default plugin insertion,
-// against the original dependency graph without executing plugins.
 func (m *FileMigration) SetContent(content []byte) error {
 	ruleSet := m.ruleSet
 
@@ -178,8 +162,6 @@ func (m *FileMigration) SetContent(content []byte) error {
 	return nil
 }
 
-// CheckSources compares another previously captured source graph with this
-// preview's exact inputs. It performs no acquisition and exposes no snapshots.
 func (m *FileMigration) CheckSources(sources map[string][]byte) error {
 	if len(sources) != len(m.snapshots) {
 		return errors.New("config source graph changed during migration preparation; prepare the migration again")
@@ -195,8 +177,8 @@ func (m *FileMigration) CheckSources(sources map[string][]byte) error {
 }
 
 // Apply atomically replaces the selected file after checking the complete
-// snapshot. A sibling exclusive lock serializes cooperating migrations;
-// external edits detected since preparation are never overwritten.
+// snapshot. A sibling exclusive lock serializes cooperating migrations.
+// Apply never overwrites external edits made since preparation.
 func (m *FileMigration) Apply(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -234,8 +216,6 @@ func (m *FileMigration) Apply(ctx context.Context) error {
 	return os.Rename(temp.Name(), m.Path)
 }
 
-// CheckUnchanged verifies that the selected file and inherited inputs still
-// match this preview. Orchestrators use it when preparing a multi-file update.
 func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err

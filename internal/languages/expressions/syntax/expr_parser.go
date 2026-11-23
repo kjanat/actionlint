@@ -17,7 +17,6 @@ type Parser struct {
 	last  *Token
 }
 
-// NewParser creates a parser.
 func NewParser() *Parser {
 	return &Parser{}
 }
@@ -62,7 +61,6 @@ type parsedExprNode interface {
 	location() *Location
 }
 
-// node sets n's range from start through the last consumed token.
 func (p *Parser) node(n parsedExprNode, start *Token) parsedExprNode {
 	n.location().Range = Span{start.Offset, p.last.Offset + len(p.last.Value), start.Position}
 	return n
@@ -75,12 +73,9 @@ func (p *Parser) peek() *Token {
 func (p *Parser) parseIdent() parsedExprNode {
 	ident := p.next() // eat ident
 	if p.peek().Kind == TokenKindLeftParen {
-		// Parse a function call as a primary expression. Only an identifier can
-		// name the function to call.
-		p.next() // eat '('
+		p.next()
 		args := []Node{}
 		if p.peek().Kind == TokenKindRightParen {
-			// no arguments
 			p.next() // eat ')'
 		} else {
 		LoopArgs:
@@ -101,12 +96,11 @@ func (p *Parser) parseIdent() parsedExprNode {
 					return nil
 				}
 				p.next() // eat ','
-				// continue to next argument
 			}
 		}
 		return p.node(&FuncCallNode{First: *ident, Callee: ident.Value, Args: args}, ident)
 	}
-	// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
+	// Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
 	switch ident.Value {
 	case "null":
 		return p.node(&NullNode{First: *ident}, ident)
@@ -236,7 +230,6 @@ func (p *Parser) parsePostfixOp() parsedExprNode {
 	}
 }
 
-// parseDeref parses the property or '*' following '.' in 'a.b' or 'a.*'.
 func (p *Parser) parseDeref(receiver Node, start *Token) parsedExprNode {
 	if p.peek().Kind == TokenKindStar {
 		p.next() // eat '*'
@@ -269,7 +262,6 @@ func (p *Parser) parsePrefixOp() parsedExprNode {
 	return p.node(&NotOpNode{First: *t, Operand: o}, t)
 }
 
-// compareOpTokens maps comparison operator tokens to their node kinds.
 var compareOpTokens = map[TokenKind]CompareOpNodeKind{
 	TokenKindLess:      CompareOpNodeKindLess,
 	TokenKindLessEq:    CompareOpNodeKindLessEq,
@@ -334,7 +326,6 @@ func (p *Parser) parseLogicalOr() parsedExprNode {
 	return p.node(&LogicalOpNode{First: l.Token(), Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
 }
 
-// Err returns an error which was caused while previous parsing.
 func (p *Parser) Err() *SyntaxError {
 	if err := p.lexer.Err(); err != nil {
 		return err
@@ -342,9 +333,7 @@ func (p *Parser) Err() *SyntaxError {
 	return p.err.detached()
 }
 
-// ParseExpression parses token sequence lexed by a given lexer into syntax tree.
 func (p *Parser) ParseExpression(l *Lexer) (Node, *SyntaxError) {
-	// Init
 	p.err = nil
 	p.lexer = l
 	p.cur = l.Next()
@@ -355,7 +344,6 @@ func (p *Parser) ParseExpression(l *Lexer) (Node, *SyntaxError) {
 	}
 
 	if t := p.peek(); t.Kind != TokenKindEnd {
-		// It did not reach the end of sequence
 		qb := messages.QuotesBuilder{}
 		qb.Append(t.Kind.String())
 		c := 1
@@ -427,7 +415,6 @@ func expressionExceedingDepth(root Node) Node {
 	return nil
 }
 
-// ParseAssignedExpression accepts one complete expression, excluding interpolation.
 func ParseAssignedExpression(s string) Node {
 	if !strings.HasPrefix(s, "${{") {
 		return nil
@@ -441,15 +428,12 @@ func ParseAssignedExpression(s string) Node {
 }
 
 // IsMappingInsertion recognizes insert only as the complete expression in a mapping key.
-//
-// Mapping insertion syntax reference (Azure Pipelines):
 // https://learn.microsoft.com/en-us/azure/devops/pipelines/process/template-expressions?view=azure-devops&source=recommendations#insertion
 func IsMappingInsertion(s string) bool {
 	node, ok := ParseAssignedExpression(strings.TrimSpace(s)).(*VariableNode)
 	return ok && node.Token().Value == "insert"
 }
 
-// LiteralExpressionValue evaluates a single string literal and requires complete input consumption.
 func LiteralExpressionValue(s string) *string {
 	if !strings.HasPrefix(s, "${{") {
 		return nil

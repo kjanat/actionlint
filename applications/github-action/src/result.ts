@@ -270,7 +270,6 @@ export function parseResult(value: unknown): ActionResult {
 			&& (!Array.isArray(value.incomplete_checks) || !value.incomplete_checks.every(incompleteCheck)))
 	) throw new Error('actionlint returned an invalid or unsupported persisted result');
 	const data: ResultData = {
-		// Forward additive schema fields to reporters.
 		...value,
 		schema_version: 1,
 		file_count: value.file_count,

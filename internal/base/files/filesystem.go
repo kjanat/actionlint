@@ -8,7 +8,6 @@ import (
 	"runtime"
 )
 
-// Filesystem supplies discovery operations without choosing which files to analyze.
 type Filesystem interface {
 	ReadFile(string) ([]byte, error)
 	ReadDir(string) ([]fs.DirEntry, error)
@@ -19,7 +18,6 @@ type Filesystem interface {
 	Platform() string
 }
 
-// DiskFilesystem supplies the native filesystem operations used by discovery.
 type DiskFilesystem struct{}
 
 type rootedFilesystem struct{ root *os.Root }
@@ -47,7 +45,6 @@ func (DiskFilesystem) EvalSymlinks(path string) (string, error)   { return filep
 func (DiskFilesystem) Glob(path string) ([]string, error)         { return filepath.Glob(path) }
 func (DiskFilesystem) Platform() string                           { return runtime.GOOS }
 
-// NewFilesystem records reads and listings from a host-provided filesystem.
 func NewFilesystem(ctx context.Context, filesystem Filesystem, record func(string)) *Reader {
 	reader := New(ctx, filesystem.ReadFile, record)
 	reader.filesystem = filesystem
@@ -55,5 +52,4 @@ func NewFilesystem(ctx context.Context, filesystem Filesystem, record func(strin
 	return reader
 }
 
-// Filesystem returns the discovery backend, retaining a rooted reader's boundary.
 func (r *Reader) Filesystem() Filesystem { return r.filesystem }

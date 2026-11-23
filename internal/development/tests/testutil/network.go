@@ -16,5 +16,4 @@ func (t localHTTPTransport) RoundTrip(request *http.Request) (*http.Response, er
 	return nil, errors.New("external HTTP is disabled in unit tests; provide a fixture transport")
 }
 
-// BlockExternalHTTP allows local test servers and rejects external requests.
 func BlockExternalHTTP() { http.DefaultTransport = localHTTPTransport{base: http.DefaultTransport} }

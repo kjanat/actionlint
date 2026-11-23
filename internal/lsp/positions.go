@@ -12,22 +12,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/byteoffset"
 )
 
-// editorPosition is a Language Server Protocol position: a zero-based line and
-// a zero-based column counted in UTF-16 code units, after any byte order mark.
-// It differs from sourcetext.Position, which counts one-based lines and Unicode
-// scalars, so the two convert only through a byte offset into the buffer.
+// editorPosition is a Language Server Protocol position. It holds a zero-based
+// line and a zero-based column counted in UTF-16 code units, after any byte
+// order mark. editorPosition differs from sourcetext.Position, which counts
+// one-based lines and Unicode scalars, and the two convert only through a byte
+// offset into the buffer.
 type editorPosition struct {
 	Line      int `json:"line"`
 	Character int `json:"character"`
 }
 
-// editorRange is a Language Server Protocol range between two editor positions.
 type editorRange struct {
 	Start editorPosition `json:"start"`
 	End   editorPosition `json:"end"`
 }
 
-// editorPositionAt converts a source position in a YAML buffer to an editor position.
 func editorPositionAt(content []byte, p sourcetext.Position) (editorPosition, error) {
 	offset, err := byteoffset.Offset(content, sourcetext.YAML, p)
 	if err != nil {
@@ -36,7 +35,6 @@ func editorPositionAt(content []byte, p sourcetext.Position) (editorPosition, er
 	return editorPositionAtByteOffset(content, offset), nil
 }
 
-// editorPositionAtByteOffset returns the editor position of a byte offset in content.
 func editorPositionAtByteOffset(content []byte, offset int) editorPosition {
 	line, units := 0, 0
 	start := 0
@@ -59,8 +57,7 @@ func editorPositionAtByteOffset(content []byte, offset int) editorPosition {
 	return editorPosition{line, units}
 }
 
-// editorByteOffset returns the byte offset of an editor position in text. It
-// rejects positions inside a surrogate pair or outside the buffer.
+// editorByteOffset rejects positions inside a surrogate pair or outside the buffer.
 func editorByteOffset(text string, p editorPosition) (int, error) {
 	if p.Line < 0 || p.Character < 0 {
 		return 0, errors.New("negative editor position")

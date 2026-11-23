@@ -20,10 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// metadataSource records where a manifest was read, its captured bytes and the
-// provenance of its parse. The decoded Metadata is kept in the cached
-// MetadataResult; admitting the source to the snapshot registry needs only the
-// provenance.
 type metadataSource struct {
 	path       string
 	address    string
@@ -32,20 +28,16 @@ type metadataSource struct {
 	files      actionmeta.ReferencedFiles
 }
 
-// ParseError reports an action manifest that was read but could not be parsed.
-// It is immutable once created: the cache stores it and reports the same value
-// to every lookup of the manifest.
+// ParseError reports an unparsable action manifest and is immutable once created.
 type ParseError struct {
 	path  string
 	cause error
 }
 
-// NewParseError records that the manifest at path failed to parse with cause.
 func NewParseError(path string, cause error) *ParseError {
 	return &ParseError{path: path, cause: cause}
 }
 
-// Path is the manifest file that failed to parse.
 func (e *ParseError) Path() string { return e.path }
 
 func (e *ParseError) Error() string {
@@ -56,8 +48,7 @@ func (e *ParseError) Error() string {
 }
 func (e *ParseError) Unwrap() error { return e.cause }
 
-// ManifestCache shares parsed manifests and raw source snapshots for one repository.
-// Configure it before concurrent analysis; callers use separate Resolver instances.
+// ManifestCache must be configured before concurrent analysis starts.
 type ManifestCache struct {
 	captures          *capture.Store
 	ctx               context.Context
@@ -75,9 +66,7 @@ type ManifestCache struct {
 	dbg               io.Writer
 }
 
-// Options provides source snapshots, a recording reader and a document observer.
-// The observer receives syntax values and errors without a reporting-model dependency.
-// Published manifests are observed once; different documents may notify concurrently.
+// Options publishes each manifest once; different documents may notify concurrently.
 type Options struct {
 	Reader            *files.Reader
 	CustomReader      bool
@@ -116,7 +105,6 @@ func (c *ManifestCache) Configure(options Options) {
 }
 
 // NewManifestCache creates a repository metadata cache bound to ctx. An empty root disables lookups.
-// Configure may later replace the context together with the shared reader.
 func NewManifestCache(ctx context.Context, root string, dbg io.Writer) *ManifestCache {
 	return &ManifestCache{
 		ctx:     ctx,
@@ -129,7 +117,6 @@ func NewManifestCache(ctx context.Context, root string, dbg io.Writer) *Manifest
 }
 
 func newNullManifestCache(dbg io.Writer) *ManifestCache {
-	// Null cache. Cache never hits. It is used when project is not found
 	return &ManifestCache{dbg: dbg}
 }
 
@@ -166,21 +153,17 @@ func (c *ManifestCache) writeCache(key string, result MetadataResult, source met
 	return result, false
 }
 
-// FindMetadata reports missing manifests at each reference and other cached failures once.
 func (c *ManifestCache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 	metadata, cached, _, err := c.FindMetadataDocument(spec)
 	return metadata, cached, err
 }
 
-// FindMetadataDocument returns metadata and its provenance from the same lookup,
-// including the captured source of a failed parse. It performs no second read.
 func (c *ManifestCache) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
 	result, cached := c.LookupMetadata(spec)
 	document, _ := c.SourceDocument(result)
 	return result.Metadata(), cached, document, c.reportMetadataError(result)
 }
 
-// SourceDocument projects the captured parse record associated with a lookup.
 func (c *ManifestCache) SourceDocument(result MetadataResult) (SourceDocument, bool) {
 	if c == nil || result.cacheSpec == "" {
 		return SourceDocument{}, false
@@ -194,7 +177,6 @@ func (c *ManifestCache) SourceDocument(result MetadataResult) (SourceDocument, b
 	return SourceDocument(source), true
 }
 
-// LookupMetadata preserves failure causes without consuming their diagnostics.
 func (c *ManifestCache) LookupMetadata(spec string) (MetadataResult, bool) {
 	if local, ok := callreferences.SelfRepositoryLocal(spec); ok {
 		spec = local
@@ -318,14 +300,12 @@ func (c *ManifestCache) hasExplicitAction(spec string) (bool, error) {
 	return false, nil
 }
 
-// Factory shares repository metadata caches across one analysis invocation.
 type Factory struct {
 	caches map[string]*ManifestCache
 	dbg    io.Writer
 }
 
-// GetCache returns the shared cache for a repository root, or a disabled cache for an empty root.
-// Create caches serially before starting concurrent metadata lookups.
+// GetCache must run serially before concurrent metadata lookups start.
 func (f *Factory) GetCache(ctx context.Context, root string) *ManifestCache {
 	if root == "" {
 		return newNullManifestCache(f.dbg)
@@ -339,7 +319,6 @@ func (f *Factory) GetCache(ctx context.Context, root string) *ManifestCache {
 	return c
 }
 
-// NewFactory creates a cache factory for one analysis invocation.
 func NewFactory(dbg io.Writer) *Factory {
 	return &Factory{map[string]*ManifestCache{}, dbg}
 }

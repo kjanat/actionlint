@@ -63,13 +63,11 @@ type SupportProblem struct {
 	Evidence  *lifecycle.Evidence
 }
 
-// Support reports policy effects established for every candidate of a selector.
 func (k *Knowledge) Support(job workflows.BoundJob, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, false)
 }
 
 // UpcomingSupport reports future events that one policy establishes for every candidate.
-// These observations do not establish a current support problem.
 func (k *Knowledge) UpcomingSupport(job workflows.BoundJob, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, true)
 }
@@ -155,9 +153,8 @@ func (k *Knowledge) supportProblems(job workflows.BoundJob, capability runnerapi
 	return out
 }
 
-// Each candidate needs an established policy; overlapping policies are alternatives
-// for that candidate. Keeping their dates separate lets notification policy require
-// every candidate to reach a stage without inventing an aggregate deadline.
+// Each candidate needs an established policy. Overlapping policies are
+// alternatives for that candidate.
 func currentSupportProof(problems []SupportProblem, candidates []runnerapi.Candidate, service services.Service, asOf lifecycle.Date) []lifecycle.Evidence {
 	proof := make([]lifecycle.Evidence, 0, len(candidates))
 	for _, candidate := range candidates {

@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 )
 
-// Keys returns the supported top-level configuration keys in declaration order.
-// Overlay documents use these names and YAML types.
 func Keys() []string {
 	t := reflect.TypeFor[Config]()
 	keys := make([]string, 0, t.NumField())
@@ -25,12 +23,7 @@ func Keys() []string {
 	return keys
 }
 
-// Overlay is a validated, immutable configuration override. Construct it
-// with ParseOverlay; the original YAML nodes preserve null, false and [].
-// node holds the settings normalized by the rule set that parsed the overlay.
-// lint holds the lint settings before rule locations are normalized: a parse
-// before plugins load cannot place plugin rules, so Overlaid normalizes them
-// with the rule set that resolves the run's configuration.
+// Overlay is a validated, immutable configuration override built by ParseOverlay.
 type Overlay struct {
 	name   string
 	node   any
@@ -44,9 +37,7 @@ func (ruleSet RuleSet) ParseOverlay(input string, content []byte, additional ...
 	return ruleSet.parseOverlay(input, content, true, additional...)
 }
 
-// ParseOverlayBeforePlugins validates input structure and settings before plugin
-// rule names are available. Overlaid resolves its rule settings with the
-// final rule set after the selected plugins have loaded.
+// ParseOverlayBeforePlugins leaves rule settings for Overlaid to resolve after plugins load.
 func (ruleSet RuleSet) ParseOverlayBeforePlugins(input string, content []byte) (Overlay, error) {
 	return ruleSet.parseOverlay(input, content, false)
 }
@@ -114,8 +105,6 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 	return Overlay{name: input, node: ruleSet.normalizeToolSwitch(node), lint: lint, inputs: inputs}, nil
 }
 
-// ResolveBeforePlugins merges already parsed overlays for dependency selection.
-// Rule-name binding is deferred to Overlaid, which the analysis session runs once.
 func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (ResolvedConfig, error) {
 	inputs := make(map[string]document.Location)
 	names := make([]string, 0, len(overlays))
@@ -131,24 +120,19 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	return resolved, err
 }
 
-// LoadedFile is a ResolvedConfig together with the configuration file it came from.
 type LoadedFile struct {
 	ResolvedConfig
 	Filename string
 }
 
-// Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
 
-// BindPaths returns a copy whose relative tool paths resolve from directory.
 func (o Overlay) BindPaths(directory string) (Overlay, error) {
 	node := cloneValue(o.node)
 	tools.NormalizePaths(node, directory)
 	return Overlay{name: o.name, node: node, lint: cloneValue(o.lint), inputs: maps.Clone(o.inputs)}, nil
 }
 
-// settingsFor returns the overlay's settings with its lint settings
-// normalized by ruleSet.
 func (o Overlay) settingsFor(ruleSet RuleSet) (any, error) {
 	if o.lint == nil {
 		return o.node, nil
@@ -162,11 +146,8 @@ func (o Overlay) settingsFor(ruleSet RuleSet) (any, error) {
 	return node, nil
 }
 
-// Overlaid merges parsed overlays over a loaded source and resolves the
-// result once with ruleSet, which must be the rule set of the analysis that
-// reads it, so the result needs no further binding. A configuration supplied
-// without its source contributes its lint settings to the merge. Without
-// overlays it returns the supplied configuration and the source's document.
+// Overlaid merges overlays over a loaded source. ruleSet must be the rule set
+// of the analysis that reads the result.
 func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Overlay, additional ...string) (*Config, ResolvedConfig, error) {
 	var node any
 	var resolved ResolvedConfig

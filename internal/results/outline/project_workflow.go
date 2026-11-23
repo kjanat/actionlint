@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// FromWorkflow projects decoded workflow declarations into a report outline.
 func FromWorkflow(path string, workflow *definition.Workflow, parseErrors bool) WorkflowOutline {
 	outline := WorkflowOutline{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []JobOutline{}}
 	if workflow == nil {

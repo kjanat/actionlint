@@ -88,7 +88,6 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 	}
 }
 
-// actionMetadataFixture serves the Git reference listing and raw files of example/action.
 func actionMetadataFixture(t *testing.T, sha, token string, requests *[]string) actionMetadataTransport {
 	t.Helper()
 	return func(r *http.Request) (*http.Response, error) {

@@ -108,7 +108,6 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	return engine, nil
 }
 
-// beginAnalysis allows a later analysis to retry an expired failure.
 func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time) error {
 	select {
 	case b.gate <- struct{}{}:

@@ -84,7 +84,6 @@ expect_output problem-count 0
 expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' true false . '' false
 problem_count="$(output problem-count)"
 [[ "${problem_count}" -gt 0 ]]
-# The shellcheck and pyflakes positions are ignored; disable-tools turns tools off.
 tool_environment=(-e INPUT_DISABLE-TOOLS=shellcheck)
 expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' false false . '' true
 expect_output problem-count 0

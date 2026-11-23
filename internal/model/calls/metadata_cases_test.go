@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// metadataSummary renders the declarations of m so cases compare exactly,
-// including the difference between an absent section and an empty one.
 func metadataSummary(m *Metadata) string {
 	section := func(entries []string, present bool) string {
 		if !present {
@@ -43,10 +41,6 @@ func metadataSummary(m *Metadata) string {
 	return summary
 }
 
-// TestParseMetadataCases pins what ParseMetadata reports for malformed and
-// unusual reusable workflows. A finding inside on.workflow_call fails, because
-// GitHub refuses to call the workflow. wantErr is a substring of the error; an
-// empty wantErr means metadata is returned.
 func TestParseMetadataCases(t *testing.T) {
 	t.Parallel()
 	const none = "in=- out=- sec=-"
@@ -59,7 +53,6 @@ func TestParseMetadataCases(t *testing.T) {
 		want    string
 		wantErr string
 	}{
-		// required, default and type
 		{name: "required without default", src: input("{type: string, required: true}"), want: "in=[a:a/string/req] out=- sec=-"},
 		{name: "required with default", src: input("{type: string, required: true, default: x}"), want: "in=[a:a/string] out=- sec=-"},
 		{name: "required with null default", src: input("{type: string, required: true, default: null}"), want: "in=[a:a/string/req] out=- sec=-"},
@@ -83,7 +76,6 @@ func TestParseMetadataCases(t *testing.T) {
 		{name: "unknown input key", src: input("{type: string, bogus: 1, description: d}"), wantErr: `unexpected key "bogus" for inputs at workflow_call event`},
 		{name: "expression in description", src: input("{type: string, description: '${{ x }}'}"), want: "in=[a:a/string] out=- sec=-"},
 
-		// input, secret and output shapes
 		{name: "null input", src: input(""), wantErr: `"type" is missing at "a" input of workflow_call event`},
 		{name: "scalar input", src: input("foo"), wantErr: "line:4, column:10: input of workflow_call event is scalar node but mapping node is expected"},
 		{name: "sequence input", src: input("[x]"), wantErr: "input of workflow_call event is sequence node but mapping node is expected"},
@@ -98,7 +90,6 @@ func TestParseMetadataCases(t *testing.T) {
 		{name: "sequence output", src: call("    outputs:\n      O: [x]\n"), wantErr: "output of workflow_call event is sequence node but mapping node is expected"},
 		{name: "mixed case output", src: call("    outputs:\n      MyOut: {value: x}\n"), want: "in=- out=[myout:MyOut] sec=-"},
 
-		// sections: missing, null, empty and malformed
 		{name: "null inputs", src: call("    inputs:\n"), want: "in=[] out=- sec=-"},
 		{name: "empty inputs", src: call("    inputs: {}\n"), want: "in=[] out=- sec=-"},
 		{name: "empty secrets", src: call("    secrets: {}\n"), want: "in=- out=- sec=[]"},
@@ -116,7 +107,6 @@ func TestParseMetadataCases(t *testing.T) {
 		{name: "merge key in input", src: call("    inputs:\n      a:\n        <<: {type: string, required: true}\n"), wantErr: `line:5, column:9: GitHub Actions does not support YAML merge key "<<"`},
 		{name: "tagged input name", src: call("    inputs:\n      !!str a: {type: string}\n"), want: "in=[a:a/string] out=- sec=-"},
 
-		// locating the event
 		{name: "scalar trigger", src: "on: workflow_call\n", want: none},
 		{name: "upper case scalar trigger", src: "on: WORKFLOW_CALL\n", wantErr: `"workflow_call" event trigger is not found in "on:" at line:1, column:1`},
 		{name: "sequence trigger", src: "on: [push, workflow_call]\n", want: none},
@@ -133,7 +123,6 @@ func TestParseMetadataCases(t *testing.T) {
 		{name: "flow keys without values", src: "on:\n  workflow_call: {inputs, outputs}\n", want: "in=[] out=[] sec=-"},
 		{name: "aliased call body", src: "x: &c\n  inputs:\n    a: {type: string}\non:\n  workflow_call: *c\n", want: "in=[a:a/string] out=- sec=-"},
 
-		// documents
 		{name: "sequence document", src: "- a\n", wantErr: `"on:" is not found`},
 		{name: "scalar document", src: "foo\n", wantErr: `"on:" is not found`},
 		{name: "null document", src: "~\n", wantErr: `"on:" is not found`},
@@ -141,7 +130,6 @@ func TestParseMetadataCases(t *testing.T) {
 		{name: "byte order mark", src: "\xef\xbb\xbf" + input("{type: string}"), want: "in=[a:a/string] out=- sec=-"},
 		{name: "second document", src: input("{type: string}") + "---\nfoo: bar\n", want: "in=[a:a/string] out=- sec=-"},
 
-		// findings outside workflow_call do not fail
 		{name: "jobs missing", src: "on: workflow_call\n", want: none},
 		{name: "unknown top level key", src: "on: workflow_call\nbogus: 1\n", want: none},
 		{name: "invalid jobs", src: "on: workflow_call\njobs: foo\n", want: none},

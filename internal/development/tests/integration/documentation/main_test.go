@@ -41,7 +41,6 @@ func decodePlaygroundLinks(t *testing.T, doc []byte) []byte {
 	})
 }
 
-// Do not mess up the test output. Temporarily commenting out this function may be helpful when debugging some test cases.
 func init() {
 	log.SetOutput(io.Discard)
 	stderr = io.Discard

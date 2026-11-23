@@ -1,5 +1,3 @@
-//! Checks dependency facts supplied by actionlint. actionlint parses the source
-//! and supplies declaration provenance, so this plugin does not read source text.
 use actionlint_extension_api::{Descriptor, Diagnostic, Guest, Input, InputKind, Outcome};
 
 pub struct Plugin;
@@ -18,7 +16,7 @@ impl Guest for Plugin {
             explanation: String::new(),
             help: String::new(),
             documentation_url: String::new(),
-            fix_availability: String::new(), // Legacy ABI field; actionlint ignores it.
+            fix_availability: String::new(), // actionlint ignores this ABI field.
             options_schema: "{}".into(),
             examples: Vec::new(),
         }
@@ -35,7 +33,6 @@ impl Guest for Plugin {
             if dependency.uses.starts_with("./") || dependency.uses.starts_with("docker://") {
                 continue;
             }
-            // Malformed references belong to syntax validation.
             let Some((_, reference)) = dependency.uses.rsplit_once('@') else {
                 continue;
             };

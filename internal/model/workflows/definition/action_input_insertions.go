@@ -28,9 +28,7 @@ func SemanticValue(node *String) value.Value {
 	return value.YAMLScalar(node.Value, YamlTagStr, origin)
 }
 
-// MappingScalar converts a source scalar for env and action-input mappings.
-// SourceScalar is a pointer-free parse-boundary snapshot, so this conversion
-// preserves YAML null, boolean, and numeric values after AST normalization.
+// MappingScalar preserves YAML null, boolean and numeric values after AST normalization.
 func MappingScalar(text string, source SourceScalar, origin value.Origin) value.Value {
 	if source.Evaluated {
 		origin.FromExpression = true

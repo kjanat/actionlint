@@ -1,6 +1,4 @@
-// Package checkinputs defines shared check inputs, independently of AST
-// traversal, executable tools, configuration discovery, and diagnostic
-// rendering. The analyzers that consume them are results.Analyzer values.
+// Package checkinputs defines shared check inputs.
 package checkinputs
 
 import (
@@ -16,19 +14,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
 	rule.Declaration
 	InvocationDefinitions []commands.Definition
 }
 
-// AnalyzerInput is one document and its shared analysis facts. Each analyzer receives
-// its own slices; Content and script text are immutable strings. Scripts are
-// declared by the document itself. Invoked scripts belong to composite actions
-// the document calls and name their own Path.
+// AnalyzerInput is one document and its shared analysis facts. Each analyzer
+// receives its own slices.
 type AnalyzerInput struct {
-	// Revision and Coordinates bind this request's own Path to captured bytes.
-	// They are independent of the invocation graph's entry Reference.
 	Revision    sourcetext.Revision
 	Coordinates sourcetext.Coordinates
 	Reference   sourcetext.Reference
@@ -49,36 +42,25 @@ type AnalyzerInput struct {
 	SelectedScripts []invocation.ID
 	Mappings        []facts.Mapping
 	Dependencies    []facts.Dependency
-	// ResolvedDependencies contains successful, validated resolver observations.
 	// Absence does not establish that an unresolved dependency is unavailable.
 	ResolvedDependencies []facts.ResolvedDependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
-	// Mount paths are absolute guest paths; filesystem directories must implement
-	// descriptor-relative read operations when used by a component host.
 	Files                 []FileSystem
 	SourceRoots           []SourceRoot
 	BuildShellScriptInput ShellScriptInputBuilder `clone:"shared"`
 }
 
-// FileSystem mounts a read-only filesystem at a guest path for one Analyze call.
-// The caller must keep FS open until Analyze returns.
 type FileSystem struct {
 	Path string
 	FS   fs.FS `clone:"shared"`
 }
 
-// ActionInput supplies mapped source from an action input.
-// Site declares its language and action input. Script supplies source identity,
-// spans and optional occurrence identity; its Shell stays empty and Runtime stays nil.
 type ActionInput struct {
 	Script
 	Site ScriptInput
 }
 
-// Script supplies a declaration and its invocation context to a check.
-// An empty declaration Path means AnalyzerInput.Path. With the Invocations input,
-// Occurrence identifies the execution in AnalyzerInput.CallGraph. Runtime is supplied
-// with the Execution input.
+// Script has an empty declaration Path when it belongs to AnalyzerInput.Path.
 type Script struct {
 	scripts.Declaration
 	Occurrence   invocation.Script

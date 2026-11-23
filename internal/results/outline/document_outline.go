@@ -6,16 +6,12 @@ import (
 	"fmt"
 )
 
-// Outline is a lossy report projection of observed workflow or action
-// declarations. Its concrete type determines the JSON kind. Diagnostics carry
-// validity findings; outlines describe only selected declarations.
 type Outline interface {
 	documentOutline()
 	DocumentPath() string
 	WithPath(string) Outline
 }
 
-// Outlines restores each document's concrete type when decoding JSON.
 type Outlines []Outline
 
 // MarshalJSON emits an empty array when no documents were collected.
@@ -29,16 +25,13 @@ func (d Outlines) MarshalJSON() ([]byte, error) {
 
 func (WorkflowOutline) documentOutline() {}
 
-// DocumentPath returns the source path.
 func (w WorkflowOutline) DocumentPath() string { return w.Path }
 
-// WithPath returns the workflow with a different source path.
 func (w WorkflowOutline) WithPath(path string) Outline {
 	w.Path = path
 	return w
 }
 
-// MarshalJSON derives the document kind from the concrete type.
 func (w WorkflowOutline) MarshalJSON() ([]byte, error) {
 	type plain WorkflowOutline
 	return json.Marshal(struct {
@@ -47,7 +40,6 @@ func (w WorkflowOutline) MarshalJSON() ([]byte, error) {
 	}{"workflow", plain(w)})
 }
 
-// UnmarshalJSON dispatches document variants using their kind.
 func (d *Outlines) UnmarshalJSON(data []byte) error {
 	var records []json.RawMessage
 	if err := json.Unmarshal(data, &records); err != nil {
@@ -83,17 +75,14 @@ func (d *Outlines) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ActionRuns identifies one declared action execution runtime.
 type ActionRuns interface {
 	actionRuns()
 }
 
-// CompositeRuns contains the action's declared steps.
 type CompositeRuns struct {
 	Steps []StepOutline `json:"steps"`
 }
 
-// JavaScriptRuns identifies a Node runtime and its entrypoints.
 type JavaScriptRuns struct {
 	Using  string `json:"using"`
 	Main   string `json:"main,omitempty"`
@@ -103,7 +92,6 @@ type JavaScriptRuns struct {
 	PostIf string `json:"post_if,omitempty"`
 }
 
-// DockerRuns identifies a container image and its entrypoints.
 type DockerRuns struct {
 	Image          string   `json:"image,omitempty"`
 	Entrypoint     string   `json:"entrypoint,omitempty"`
@@ -112,12 +100,10 @@ type DockerRuns struct {
 	Args           []string `json:"args"`
 }
 
-// PluginRuns identifies a runner-internal plugin entrypoint.
 type PluginRuns struct {
 	Plugin string `json:"plugin"`
 }
 
-// UnknownRuns represents an absent or unrecognized runs.using value.
 type UnknownRuns struct {
 	Using string `json:"using,omitempty"`
 }
@@ -128,7 +114,6 @@ func (DockerRuns) actionRuns()     {}
 func (PluginRuns) actionRuns()     {}
 func (UnknownRuns) actionRuns()    {}
 
-// MarshalJSON derives the runtime kind from the concrete type.
 func (r CompositeRuns) MarshalJSON() ([]byte, error) {
 	type plain CompositeRuns
 	return json.Marshal(struct {
@@ -137,7 +122,6 @@ func (r CompositeRuns) MarshalJSON() ([]byte, error) {
 	}{"composite", plain(r)})
 }
 
-// MarshalJSON derives the runtime kind from the concrete type.
 func (r JavaScriptRuns) MarshalJSON() ([]byte, error) {
 	type plain JavaScriptRuns
 	return json.Marshal(struct {
@@ -146,7 +130,6 @@ func (r JavaScriptRuns) MarshalJSON() ([]byte, error) {
 	}{"javascript", plain(r)})
 }
 
-// MarshalJSON derives the runtime kind from the concrete type.
 func (r DockerRuns) MarshalJSON() ([]byte, error) {
 	type plain DockerRuns
 	return json.Marshal(struct {
@@ -155,7 +138,6 @@ func (r DockerRuns) MarshalJSON() ([]byte, error) {
 	}{"docker", plain(r)})
 }
 
-// MarshalJSON derives the runtime kind from the concrete type.
 func (r PluginRuns) MarshalJSON() ([]byte, error) {
 	type plain PluginRuns
 	return json.Marshal(struct {
@@ -164,7 +146,6 @@ func (r PluginRuns) MarshalJSON() ([]byte, error) {
 	}{"plugin", plain(r)})
 }
 
-// MarshalJSON derives the runtime kind from the concrete type.
 func (r UnknownRuns) MarshalJSON() ([]byte, error) {
 	type plain UnknownRuns
 	return json.Marshal(struct {

@@ -12,8 +12,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// An engine advertising checks 1 and 3 negotiates check 3, declares its
-// capabilities and returns fixes and reported sources.
 func TestCheck3Negotiation(t *testing.T) {
 	t.Parallel()
 	engine := loadEngine(t, filepath.Join("testdata", "wat", "check-v3.wasm"), module.Options{})
@@ -46,8 +44,6 @@ func TestCheck3Negotiation(t *testing.T) {
 	}
 }
 
-// An engine advertising only check 1 keeps working unchanged: check 3
-// capabilities do not apply to it.
 func TestCheck1EngineDeclaresNoCheck3Capabilities(t *testing.T) {
 	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), module.Options{})

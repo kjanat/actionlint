@@ -1,5 +1,4 @@
-// Package github downloads action and reusable-workflow metadata using the
-// configured network mode, credentials and cache directory.
+// Package github downloads action and reusable-workflow metadata.
 package github
 
 import (
@@ -36,8 +35,7 @@ const (
 	Online  Mode = "online"
 )
 
-// Options selects acquisition explicitly. Tokens are never cached or included
-// in returned failures. A supplied resolver must retain action selection routes.
+// Options never lets a token reach the cache or a returned failure.
 type Options struct {
 	Mode      Mode
 	CacheDir  string
@@ -100,8 +98,7 @@ func fullSHA256(value string) bool {
 	return err == nil
 }
 
-// Lookup natively acquires only full SHA-1 commit requests. Named refs require
-// an injected action-profile resolver; the commits API never selects their ref.
+// Lookup natively acquires only full SHA-1 commit requests, and named refs require an injected resolver.
 func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Manifest, error) {
 	file, err := g.lookupFile(ctx, ref, "action", []string{"action.yml", "action.yaml"})
 	if err != nil {
@@ -349,8 +346,7 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	// Recheck the repository guard after name-addressed acquisition. This is an
-	// observation, not a proof of uninterrupted ownership or runner execution.
+	// The repository recheck is an observation and does not prove uninterrupted ownership.
 	afterID, afterName, missing, err := g.repository(ctx, ref)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
@@ -533,7 +529,6 @@ func (g *GitHub) bucket(ref actions.Reference, commit string) string {
 	return filepath.Join(g.cacheDir, sha256hex.Digest([]byte(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory())))
 }
 
-// cached reads a valid cache record and counts the lookup as a cache hit or miss.
 func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repository.ID, object string, filenames []string) (cacheRecord, bool, error) {
 	if g.cacheDir == "" {
 		return cacheRecord{}, false, nil

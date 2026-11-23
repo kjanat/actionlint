@@ -27,7 +27,6 @@ func NewDocument(source string) *Document {
 }
 
 // SourceLine returns a physical YAML line using the decoder's line model.
-// It stops scanning after the requested one-based line.
 func SourceLine(source string, line int) (string, bool) {
 	if line < 1 {
 		return "", false
@@ -98,10 +97,8 @@ func (d *Document) LineCount() int { return len(d.lines) }
 // line has no break. Like slice indexing, row must be within LineCount.
 func (d *Document) Line(row int) (text, ending string) { return d.lines[row], d.breaks[row] }
 
-// Lines returns a copy of the physical lines without their breaks.
 func (d *Document) Lines() []string { return slices.Clone(d.lines) }
 
-// ByteOffset resolves a one-based column without rescanning a long flow line.
 func (d *Document) ByteOffset(row, column int) (int, bool) {
 	if row < 0 || row >= len(d.lines) || column < 1 {
 		return 0, false

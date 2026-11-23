@@ -13,31 +13,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// InvalidOutputFileRule is the single definition of the invalid-output-file rule.
 var InvalidOutputFileRule = &define.Rule{
-	Name:         "invalid-output-file",
-	Description:  "Check literal writes to GITHUB_OUTPUT",
-	Category:     "correctness",
-	Subcategory:  "scripts",
-	Recommended:  true,
-	DefaultLevel: "error",
-	Explanation: "GITHUB_OUTPUT requires NAME=value records or multiline records enclosed by NAME<<delimiter and a matching delimiter. " +
-		"This check combines literal writes from Bash and sh scripts, then validates the complete file. " +
-		"It handles literal echo and printf commands, command groups, and cat or tee with literal text from a here-document or pipe. " +
-		"It skips the script if it contains dynamic values, unsupported commands, variable assignments or control flow. " +
-		"Commands that could redefine these utilities also cause the script to be skipped.",
-	Help: "Write NAME=value for a single-line output. " +
-		"For a multiline output, write NAME<<delimiter, the value, and the matching delimiter.",
+	Name:            "invalid-output-file",
+	Description:     "Check literal writes to GITHUB_OUTPUT",
+	Category:        "correctness",
+	Subcategory:     "scripts",
+	Recommended:     true,
+	DefaultLevel:    "error",
+	Explanation:     "Report literal writes from Bash and sh scripts that make GITHUB_OUTPUT invalid.",
+	Help:            "Write NAME=value. For a multiline value, write NAME<<delimiter, the value, and the same delimiter.",
 	SupportsActions: true,
 	Scope:           rule.SourceConfiguration,
 	RequiredInputs:  []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution},
-	Examples: []rule.Example{rule.WorkflowExample("Write the value as a named output.",
+	Examples: []rule.Example{rule.WorkflowExample("Name the output.",
 		"    steps:\n      - shell: bash\n        run: echo '{\"available\":true}' >> \"$GITHUB_OUTPUT\"\n",
 		"    steps:\n      - shell: bash\n        run: echo 'available=true' >> \"$GITHUB_OUTPUT\"\n")},
 	Script: checkInvalidOutputFile,
 }
 
-// checkInvalidOutputFile checks output files whose contents can be determined from the script.
 func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {

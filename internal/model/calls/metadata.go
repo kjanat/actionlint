@@ -1,6 +1,4 @@
-// Package calls models the declared interface of a callable (the inputs,
-// outputs and secrets of actions and reusable workflows), reusable-workflow
-// metadata and argument bindings.
+// Package calls models callable interfaces, reusable-workflow metadata and argument bindings.
 package calls
 
 import (
@@ -13,12 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-// ParseMetadata reads a reusable workflow's on.workflow_call declarations and
-// recovered job facts. The workflow parser is the only reader of the
-// declarations. ParseMetadata fails when the source is not YAML GitHub admits,
-// when no workflow_call event triggers the workflow, or when the parser reports
-// a finding inside on.workflow_call: GitHub refuses to call such a workflow.
-// Findings elsewhere in the workflow belong to the callee's own diagnostics.
+// ParseMetadata fails when the parser reports a finding inside on.workflow_call, and GitHub refuses to call such a workflow.
 func ParseMetadata(src []byte) (*Metadata, error) {
 	doc, err := codec.ParseYAML(src)
 	if err != nil {
@@ -53,8 +46,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	return MetadataFromWorkflowCallEvent(event, workflow), nil
 }
 
-// hasDefault reports whether input supplies a default value. A YAML null
-// default supplies none, so a required input stays required.
+// A YAML null default supplies none, so a required input stays required.
 func hasDefault(input *definition.WorkflowCallEventInput) bool {
 	return input.Default != nil && input.Default.SourceScalar.Tag != definition.YamlTagNull
 }
@@ -73,9 +65,7 @@ func checkMetadataAliases(doc *codec.Node) error {
 	return aliasErr
 }
 
-// MetadataFromWorkflowCallEvent converts parsed workflow_call declarations and
-// the job facts of workflow. An omitted section stays nil; an empty one is an
-// empty map. A nil workflow records no job facts.
+// MetadataFromWorkflowCallEvent leaves an omitted section nil and makes an empty one an empty map.
 func MetadataFromWorkflowCallEvent(event *definition.WorkflowCallEvent, workflow *definition.Workflow) *Metadata {
 	metadata := &Metadata{}
 	if event.Inputs != nil {
@@ -104,28 +94,21 @@ func MetadataFromWorkflowCallEvent(event *definition.WorkflowCallEvent, workflow
 	return metadata
 }
 
-// Metadata describes reusable-workflow inputs, outputs, secrets and job access.
-// Clone detaches its maps and slices when a consumer needs its own copy.
 type Metadata struct {
 	Inputs  Inputs
 	Outputs Outputs
 	Secrets Secrets
-	// JobPermissions maps a job ID of the reusable workflow to the permission scopes that job requires.
-	// A job which declares no "permissions:" of its own and inherits none from the workflow has no entry,
-	// and neither has a job whose declaration requires nothing.
+	// JobPermissions has no entry for a job that declares and inherits no permissions or requires nothing.
 	JobPermissions map[string]PermissionScopeLevels
-	// JobCacheAccess records effective declarations and local workflow calls by job ID.
 	JobCacheAccess map[string]CacheAccess
 }
 
-// CacheModeDeclaration is a job's effective cache-mode declaration. The zero
-// value declares none: the job inherits the calling workflow's access limit.
+// CacheModeDeclaration at its zero value inherits the calling workflow's access limit.
 type CacheModeDeclaration struct {
 	kind     definition.CacheModeKind
 	declared bool
 }
 
-// DeclaredCacheMode records an explicit, possibly invalid, cache-mode declaration.
 func DeclaredCacheMode(kind definition.CacheModeKind) CacheModeDeclaration {
 	return CacheModeDeclaration{kind: kind, declared: true}
 }
@@ -137,26 +120,17 @@ func cacheModeDeclaration(mode *definition.CacheMode) CacheModeDeclaration {
 	return DeclaredCacheMode(mode.Kind)
 }
 
-// Kind returns the declared mode. It reports false when the job declares none.
 func (d CacheModeDeclaration) Kind() (definition.CacheModeKind, bool) { return d.kind, d.declared }
 
-// Equal reports whether both declarations are the same.
 func (d CacheModeDeclaration) Equal(other CacheModeDeclaration) bool { return d == other }
 
-// CacheAccess describes a job's declared cache access and any local callee.
 type CacheAccess struct {
-	// Mode is the job's effective declaration, if any.
-	Mode CacheModeDeclaration
-	// Uses is the normalized local workflow reference, or empty for other jobs.
-	Uses string
-	// SourceUses preserves the local reference's source spelling for diagnostics.
+	Mode       CacheModeDeclaration
+	Uses       string
 	SourceUses string
-	// Operations lists official cache action names used by this job's steps.
 	Operations []string
 }
 
-// jobCacheAccess describes one job, or reports false when the job declares no
-// cache mode, calls no local workflow and uses no cache action.
 func jobCacheAccess(mode *definition.CacheMode, uses string, steps []*definition.Step) (CacheAccess, bool) {
 	local, ok := callreferences.LocalWorkflow(uses)
 	if !ok {
@@ -177,8 +151,7 @@ func jobCacheAccess(mode *definition.CacheMode, uses string, steps []*definition
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
 }
 
-// JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.
-// Jobs without either have no entry. A map without entries is nil.
+// JobPermissionsAndCacheAccess returns nil for a map without entries.
 func JobPermissionsAndCacheAccess(workflow *definition.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
 	if workflow == nil {
 		return nil, nil

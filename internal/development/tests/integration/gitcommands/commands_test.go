@@ -13,8 +13,8 @@ import (
 
 const root = "../../../../.."
 
-// gitcommand.Command clears the repository variables Git sets for hooks.
-// Started without it, `git init` in a temporary directory under a worktree
+// Git exports repository variables to hooks, and gitcommand.Command clears them.
+// Without that clearing, `git init` in a temporary directory under a worktree
 // hook reinitializes the hook's repository and makes it bare.
 const allowed = "internal/integrations/gitcommand/command.go"
 
@@ -56,8 +56,6 @@ func TestGitStartsThroughGitcommand(t *testing.T) {
 	}
 }
 
-// gitCommands are the exec.Command and exec.CommandContext calls in file
-// whose program is "git" or a variable assigned from exec.LookPath("git").
 func gitCommands(file *ast.File) []token.Pos {
 	git := map[string]bool{}
 	ast.Inspect(file, func(node ast.Node) bool {

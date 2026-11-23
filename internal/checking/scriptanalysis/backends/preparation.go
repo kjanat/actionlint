@@ -21,34 +21,19 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// route is the transport a preparation feeds.
 type route uint8
 
 const (
-	// routeProcess feeds a native process: settings travel as argument
-	// variables and configuration files.
 	routeProcess route = iota
-	// routeEmbedded feeds a process function without a filesystem: no
-	// configuration file is read and no source is followed.
 	routeEmbedded
-	// routeEngine feeds a snippet engine, which receives its settings as
-	// configuration and reads no files.
 	routeEngine
 )
 
-// inputPreparer binds a manifest's preparation profile to configuration. It
-// reads tools.<name> by the provider's rule name and hands the profile typed
-// values; the profile itself never reads configuration.
 type inputPreparer interface {
-	// batch prepares the run blocks of one batch. Errors in a scope's
-	// settings are reported once, here; its scripts are then skipped.
 	batch(context.Context, scriptanalysis.Batch) (func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error), error)
-	// input prepares an action input for a snippet engine.
 	input(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
 }
 
-// knownPreparation reports whether the host implements a preparation
-// profile. An empty name selects the expression mask.
 func knownPreparation(id string) bool {
 	switch id {
 	case "", mask.ID, shell.ID, python.ID:
@@ -58,9 +43,6 @@ func knownPreparation(id string) bool {
 	}
 }
 
-// newPreparation binds the profile a manifest names; RegisterProvider
-// rejects profiles the host does not implement. The expression mask passes
-// inline settings through.
 func newPreparation(m toolmanifest.Manifest, via route, programs toolmanifest.Programs) inputPreparer {
 	name := m.Rule.Name
 	switch m.Preparation {
@@ -83,8 +65,6 @@ func newPreparation(m toolmanifest.Manifest, via route, programs toolmanifest.Pr
 	}
 }
 
-// inlineSettings is tools.<name>.config as JSON, or nil when it holds no
-// inline settings.
 func inlineSettings(cfg *configuration.Config, name string) (json.RawMessage, error) {
 	if cfg == nil {
 		return nil, nil
@@ -100,12 +80,8 @@ func inlineSettings(cfg *configuration.Config, name string) (json.RawMessage, er
 	return data, nil
 }
 
-// errEngineConfigFile rejects a configuration file for a snippet engine,
-// which reads no files.
 var errEngineConfigFile = errors.New("a snippet engine needs inline configuration; a configuration file requires a process backend")
 
-// toolEnabled reports whether configuration leaves a tool on: its rule is
-// not off and tools.<name>.enabled is not false.
 func toolEnabled(cfg *configuration.Config, name string) bool {
 	if cfg == nil {
 		return true
@@ -114,8 +90,6 @@ func toolEnabled(cfg *configuration.Config, name string) bool {
 	return cfg.RuleSet().DiagnosticLevel(cfg, name) != "off" && (enabled == nil || *enabled)
 }
 
-// configuredInput masks expressions and passes inline tools.<name>.config
-// settings to the engine.
 func configuredInput(name string, script scriptanalysis.Unit) (preparation.Prepared, error) {
 	prepared := preparation.Prepared{Source: mask.Expressions(script.Text())}
 	if script.Config() == nil {
@@ -129,12 +103,8 @@ func configuredInput(name string, script scriptanalysis.Unit) (preparation.Prepa
 	return prepared, err
 }
 
-// errConfigFilePath rejects a configuration file for a provider whose
-// preparation reads none, which receives only inline settings.
 var errConfigFilePath = errors.New("a tool provider without a preparation profile takes inline settings, not a configuration file path")
 
-// genericPreparation masks expressions and passes inline settings to the
-// engine.
 type genericPreparation struct {
 	sourcePlanner    *preparation.SourcePlanner
 	route            route
@@ -177,7 +147,6 @@ func (p genericPreparation) input(ctx context.Context, script scriptanalysis.Uni
 	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, p.route)
 }
 
-// pythonPreparation binds the Python profile.
 type pythonPreparation struct {
 	sourcePlanner    *preparation.SourcePlanner
 	name             string
@@ -246,9 +215,6 @@ func (p pythonPreparation) input(ctx context.Context, script scriptanalysis.Unit
 	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.ResolvedSettings{Options: prepared.Config}, routeEngine)
 }
 
-// shellPreparation binds the shell profile: inline settings become
-// directives, a configuration path selects the native configuration file,
-// and path interpolations resolve against each script's scope.
 type shellPreparation struct {
 	sourcePlanner    *preparation.SourcePlanner
 	settingsResolver *integrationconfig.SettingsResolver
@@ -258,12 +224,10 @@ type shellPreparation struct {
 	route            route
 }
 
-// scopeSettings are a scope's resolved shell settings.
 type scopeSettings struct {
 	settings   *integrationconfig.ResolvedSettings
 	configFile string
-	// failed marks a scope whose settings were reported as an error.
-	failed bool
+	failed     bool
 }
 
 func (p shellPreparation) batch(ctx context.Context, batch scriptanalysis.Batch) (func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error), error) {
@@ -278,8 +242,6 @@ func (p shellPreparation) batch(ctx context.Context, batch scriptanalysis.Batch)
 		resolved, err := p.scope(ctx, scope)
 		if err != nil {
 			settings[scope] = scopeSettings{failed: true}
-			// A workflow scope cannot interpolate the action path; report
-			// it only when no composite scope could and a script needs it.
 			if !scope.Composite && errors.Is(err, configuration.ErrActionPathUnavailable) {
 				deferred, deferredScope = err, scope
 				continue
@@ -323,7 +285,6 @@ func (p shellPreparation) batch(ctx context.Context, batch scriptanalysis.Batch)
 	}, failure
 }
 
-// scope resolves the directives and configuration file of a scope.
 func (p shellPreparation) scope(ctx context.Context, scope *scriptanalysis.Scope) (scopeSettings, error) {
 	paths := scopePaths(scope)
 	var cfg *configuration.Config
@@ -411,15 +372,11 @@ func (p shellPreparation) input(ctx context.Context, script scriptanalysis.Unit)
 	return prepared, nil
 }
 
-// runPaths are the directories a scope's path interpolations resolve
-// against.
 type runPaths struct {
 	analysis, workspace, actionPath string
 	configPath                      string
 }
 
-// scopePaths defaults the analysis directory to the working directory and
-// the workspace to the analysis directory.
 func scopePaths(scope *scriptanalysis.Scope) runPaths {
 	var paths runPaths
 	if scope != nil {
@@ -436,12 +393,10 @@ func scopePaths(scope *scriptanalysis.Scope) runPaths {
 	return paths
 }
 
-// PathContext uses the scope's configuration source, workspace and runner action path.
 func PathContext(scope *scriptanalysis.Scope) configuration.PathContext {
 	return scopePaths(scope).context()
 }
 
-// context is the path interpolation context of a scope's configuration.
 func (paths runPaths) context() configuration.PathContext {
 	configDir := paths.workspace
 	if paths.configPath != "" && !configsource.IsRemoteAddress(paths.configPath) {

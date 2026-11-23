@@ -13,9 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// plugin install resolves an oci:// tag once, declares the digest and caches
-// the blobs needed by this host; inspect reads the package without running it;
-// sync restores it offline from the store.
 func TestPluginInstallAndInspectOCI(t *testing.T) {
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
@@ -57,8 +54,6 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	}
 }
 
-// ociProviderManifest returns a process tool provider manifest whose
-// executable for this host is the blob executable.
 func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 	t.Helper()
 	manifest, err := json.Marshal(map[string]any{
@@ -76,8 +71,6 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 	return manifest
 }
 
-// config schema adds tools.<rule.name> for a provider the --plugin flag
-// installs, without downloading its executable.
 func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
@@ -115,8 +108,6 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 	}
 }
 
-// plugin install refuses an OCI package whose provider manifest layer is not
-// a valid tool provider manifest, and declares nothing.
 func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()

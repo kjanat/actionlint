@@ -181,7 +181,6 @@ func (p Pin) validateCandidate() error {
 	return nil
 }
 
-// Installation and sync import candidate bytes into the execution cache.
 func (p Pin) importCandidate(ctx context.Context, options artifacts.Options) error {
 	if a, err := artifacts.Resolve(ctx, p.Source(), options); err == nil {
 		return p.Verify(a.Info)

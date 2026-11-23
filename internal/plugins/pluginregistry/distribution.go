@@ -10,8 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// distribution is the closed source union of a v2 publication. The source
-// digest identifies distributed bytes, independently of their execution format.
 type distribution struct {
 	typeName  string
 	name      string

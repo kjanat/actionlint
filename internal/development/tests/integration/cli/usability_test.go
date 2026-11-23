@@ -187,7 +187,7 @@ func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 			if modern {
 				args = append([]string{"check"}, args...)
 			}
-			// The destination error must win over a missing input: no analysis yet.
+			// The destination error must win over a missing input. No analysis has run yet.
 			got := testRunCommand("", append(args, "missing.yml")...)
 			data, err := os.ReadFile("report.json")
 			if got.Status != 3 || !strings.Contains(got.Stderr, "--yes") || err != nil || string(data) != "previous report" {

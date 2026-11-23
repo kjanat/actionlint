@@ -1,7 +1,5 @@
 package commands
 
-// NewWithShells registers the built-in shell grammars, Bash, sh, dash and ksh,
-// followed by additional definitions such as those that plugins declare.
 func NewWithShells(additional []Definition) (*Registry, error) {
 	definitions := make([]Definition, 0, 4+len(additional))
 	definitions = append(definitions, BashDefinition())
@@ -29,5 +27,4 @@ var builtinShells = func() *Registry {
 	return registry
 }()
 
-// BuiltinShells returns the registry of the built-in shell grammars only.
 func BuiltinShells() *Registry { return builtinShells }

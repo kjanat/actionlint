@@ -47,103 +47,62 @@ url_api = "https://api.github.com/repos/biomejs/biome/releases/assets/717269713"
 provenance = "github-attestations"
 
 [[tools.bun]]
-version = "1.4.4"
+version = "1.4.5"
 backend = "core:bun"
-specifiers = ["1.4.4"]
+specifiers = ["1.4.5"]
 
 [tools.bun."platforms.linux-arm64"]
-checksum = "sha256:baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-aarch64.zip"
+checksum = "sha256:18656a3bf0ea5641f5796ae4213b75255579a70a0fded2f337933785568cdf84"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-aarch64.zip"
 
 [tools.bun."platforms.linux-arm64-musl"]
-checksum = "sha256:57f01b02ac7113c61c935f28f38c2eab849e3c970dab21f8b640a87b1ef65009"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-aarch64-musl.zip"
+checksum = "sha256:d655765d3a0c0fdf707e27c7aa1a4f2c84f1bbc1f759db7e6e3d3c5be414396c"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-aarch64-musl.zip"
 
 [tools.bun."platforms.linux-x64"]
-checksum = "sha256:bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64.zip"
+checksum = "sha256:94559b3b528995a49452f9f2404cec74f2efd7d06e0a000a8cd214b02c3666eb"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-x64.zip"
 
 [tools.bun."platforms.linux-x64-baseline"]
-checksum = "sha256:e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64-baseline.zip"
+checksum = "sha256:dcb23a18a1c2fff12d57bcef696dbbb42eb67fde29f43816ecb595459a24c463"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-x64-baseline.zip"
 
 [tools.bun."platforms.linux-x64-musl"]
-checksum = "sha256:a5a8ccc5e74dcb883fe974f125a7bdb3b41e5195ed1b870e73f17effd3eb2b2d"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64-musl.zip"
+checksum = "sha256:9b6bdba1fa0914b6adfe48e4438212e2c106d9199b77ba642a9b8a3968a49a59"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-x64-musl.zip"
 
 [tools.bun."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:6e9c37098b293920aed28bfb51ab240e26d23bfdd9bbfecb3ad428ac166549bc"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64-musl-baseline.zip"
+checksum = "sha256:96fb94108eed872ff623ed39007d6b5699a83a5d0086fcfba84921c18145e3e6"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-linux-x64-musl-baseline.zip"
 
 [tools.bun."platforms.macos-arm64"]
-checksum = "sha256:c240d7f0ccb90c263a849fcdb09b7ee62630d921348ed6aafda86b9d577bc510"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-aarch64.zip"
+checksum = "sha256:b5d6bc2e13caf14e57c89661e89efd073ff16165b41bfe43882616410609cd10"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-darwin-aarch64.zip"
 
 [tools.bun."platforms.macos-x64"]
-checksum = "sha256:50a3491f73abc2fe81673171a85762d3bc2cc1680ccecadd983de99adf77977e"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-x64.zip"
+checksum = "sha256:a4972e778cce4b6a194d7d289f326aa61576d71d80b7a53e9da2f3739566e5fd"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-darwin-x64.zip"
 
 [tools.bun."platforms.macos-x64-baseline"]
-checksum = "sha256:d4a155adfbfd09155eb3ba05c9e3a544f39297d7a68616d3c7759f67ab5c47dc"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-x64-baseline.zip"
+checksum = "sha256:fb0121739a7e80e7511b6bfe4d2116422b48ba18a013acadef0c425348e95891"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-darwin-x64-baseline.zip"
 
 [tools.bun."platforms.windows-arm64"]
-checksum = "sha256:2d57a0eec0cb44d95c918c3f9734f60455a1306ae5085d76fc68f44e3ee30d09"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-windows-aarch64.zip"
+checksum = "sha256:41f57d49c3c6811888d9633c569e40b4eb1f7e92b5e5336e3abd3af03187d77a"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-windows-aarch64.zip"
 
 [tools.bun."platforms.windows-x64"]
-checksum = "sha256:cd2c0fccc78f3ede1f50ca827a15f063eda13d4d150a3d0674f4f6e323d864a5"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-windows-x64.zip"
+checksum = "sha256:815ab45ec7f549abf87e6869584b506eab088e24225683957b7e150b47d6de30"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-windows-x64.zip"
 
 [tools.bun."platforms.windows-x64-baseline"]
-checksum = "sha256:0f20ce6674d4f2dbcc8c5d59fdf99f7ba45f8c3b367e0f5781cbfa30a1c78d99"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-windows-x64-baseline.zip"
-
-[[tools."github:kjanat/actionlint"]]
-version = "1.17.0"
-backend = "github:kjanat/actionlint"
-specifiers = ["latest"]
-
-[tools."github:kjanat/actionlint"."platforms.linux-arm64"]
-checksum = "sha256:9be067d6b6e2f455fd0144850520b4b1114a0a792ca6e003302c939792589345"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506359"
-provenance = "github-attestations"
-
-[tools."github:kjanat/actionlint"."platforms.linux-x64"]
-checksum = "sha256:620abd485a12b6ab1125b844a876414e1d5bd2af8a3125b27f82b01d0d9d6e5a"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506357"
-provenance = "github-attestations"
-
-[tools."github:kjanat/actionlint"."platforms.macos-arm64"]
-checksum = "sha256:f123b7ad57a0fe376dcc85e81b7e04e85eb39219184803fc25f989b255f569b4"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506341"
-provenance = "github-attestations"
-
-[tools."github:kjanat/actionlint"."platforms.macos-x64"]
-checksum = "sha256:e5fa505c0236666f2b1f36a2852db5fad6e186e9125babee017538a4049e3afb"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_darwin_amd64.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506337"
-provenance = "github-attestations"
-
-[tools."github:kjanat/actionlint"."platforms.windows-arm64"]
-checksum = "sha256:56ce996209d274833a718c940d065361620c3a9f152143e84f3357670911102d"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_windows_arm64.zip"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506377"
-provenance = "github-attestations"
-
-[tools."github:kjanat/actionlint"."platforms.windows-x64"]
-checksum = "sha256:503a7649a97c5afb07aa51703b94066c9f63b5eabc25c55a6860eabd5298d559"
-url = "https://github.com/kjanat/actionlint/releases/download/v1.17.0/actionlint_1.17.0_windows_amd64.zip"
-url_api = "https://api.github.com/repos/kjanat/actionlint/releases/assets/561506379"
-provenance = "github-attestations"
+checksum = "sha256:3c081c73865e7a3453a9d514cc2ba3d699880621bcf67bb17241ff5194cb1d4b"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-windows-x64-baseline.zip"
 
 [[tools."github:rhysd/actionlint"]]
 version = "1.7.12"
 backend = "github:rhysd/actionlint"
-specifiers = ["latest"]
+specifiers = ["1.7.12"]
 
 [tools."github:rhysd/actionlint"."platforms.linux-arm64"]
 checksum = "sha256:325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
@@ -184,7 +143,10 @@ provenance = "github-attestations"
 [[tools.go]]
 version = "1.27.4"
 backend = "core:go"
-specifiers = ["1.27.4"]
+specifiers = [
+    "1.27.4",
+    "latest",
+]
 
 [tools.go."platforms.linux-arm64"]
 checksum = "sha256:3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92"
@@ -214,6 +176,47 @@ url = "https://dl.google.com/go/go1.27.4.windows-amd64.zip"
 version = "2.15.0"
 backend = "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
 specifiers = ["2.15.0"]
+
+[[tools.goreleaser]]
+version = "2.20.0"
+backend = "aqua:goreleaser/goreleaser"
+specifiers = ["2.20.0"]
+
+[tools.goreleaser."platforms.linux-arm64"]
+checksum = "sha256:2dada0a6bbcd10f3a05228d98e77d25fb362efb9e5bab6362cf37e64c8a26cb9"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709489088"
+provenance = "github-attestations"
+
+[tools.goreleaser."platforms.linux-x64"]
+checksum = "sha256:d2483159e6007f814132cb56635ad30a70013dbeb813d6033a7e01adf6ae108c"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709489217"
+provenance = "github-attestations"
+
+[tools.goreleaser."platforms.macos-arm64"]
+checksum = "sha256:b4f0702bcb2aad05bd13af5ac69ec94d84270dce59b917e7a8c446c974e29372"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Darwin_all.tar.gz"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709489229"
+provenance = "github-attestations"
+
+[tools.goreleaser."platforms.macos-x64"]
+checksum = "sha256:b4f0702bcb2aad05bd13af5ac69ec94d84270dce59b917e7a8c446c974e29372"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Darwin_all.tar.gz"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709489229"
+provenance = "github-attestations"
+
+[tools.goreleaser."platforms.windows-arm64"]
+checksum = "sha256:b7ae30d558db74d67bd03e39d3309aabf47e1a18649ef4ac4429f329c357f496"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Windows_arm64.zip"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709489085"
+provenance = "github-attestations"
+
+[tools.goreleaser."platforms.windows-x64"]
+checksum = "sha256:3c6a58f6941224a25ec28de733554743e9b2517c40c76991eef5474f8c1c2c1a"
+url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/goreleaser_Windows_x86_64.zip"
+url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709488870"
+provenance = "github-attestations"
 
 [[tools.grype]]
 version = "0.121.1"
@@ -464,49 +467,9 @@ url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/679545200"
 provenance = "github-attestations"
 
 [[tools.rshellcheck]]
-version = "1.1.0"
-backend = "github:kjanat/shellcheck-rs"
-specifiers = ["1.1.0"]
-
-[tools.rshellcheck.options]
-matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
-version_prefix = "rshellcheck-v"
-
-[tools.rshellcheck."platforms.linux-arm64"]
-checksum = "sha256:36222dc511111aaa940125956c8f0709b009d931f33bfc83a5a4d8afc64463cc"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417696"
-provenance = "github-attestations"
-
-[tools.rshellcheck."platforms.linux-x64"]
-checksum = "sha256:85ad9ed980019ecb04dca048f9c1c9cf30536f0c49d53acfd60e12c7304f2c80"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417879"
-provenance = "github-attestations"
-
-[tools.rshellcheck."platforms.macos-arm64"]
-checksum = "sha256:5d2ac2b632da3fbadb1c9dbf45493f08eb1a039fd48d59bffe05b7a99c246154"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417668"
-provenance = "github-attestations"
-
-[tools.rshellcheck."platforms.macos-x64"]
-checksum = "sha256:a225646c275bf4274648fc6f8c19a75b678e733836695ee4255978596e41f16a"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417856"
-provenance = "github-attestations"
-
-[tools.rshellcheck."platforms.windows-arm64"]
-checksum = "sha256:e4ecdc2ae27dff47c774d2828e94f03e06c0af97bb55a109a9353076f2306fd9"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417695"
-provenance = "github-attestations"
-
-[tools.rshellcheck."platforms.windows-x64"]
-checksum = "sha256:696f5c67b0e805929711c54e625857209855304f9241f1c22ef20780da8fd45b"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417866"
-provenance = "github-attestations"
+version = "1.2.0"
+backend = "cargo:rshellcheck"
+specifiers = ["1.2.0"]
 
 [[tools.ruff]]
 version = "0.17.0"
@@ -550,7 +513,7 @@ url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999369
 provenance = "github-attestations"
 
 [[tools.rust]]
-version = "1.99.1"
+version = "1.100.0"
 backend = "core:rust"
 specifiers = ["latest"]
 

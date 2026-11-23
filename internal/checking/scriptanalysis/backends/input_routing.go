@@ -14,10 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// WithScriptInputs routes run steps through the registration and action inputs
-// through the supplied engine.
 func WithScriptInputs(registration contract.Registration, descriptor scriptengine.Descriptor, backend scriptengine.Backend) (contract.Registration, error) {
-	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil
 	descriptor.Rule = registration.Descriptor
 	shells, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
@@ -120,8 +117,6 @@ func Configure(registration contract.Registration) contract.Registration {
 	return WithConfiguredEngine(registration, load)
 }
 
-// WithConfiguredEngine discovers routes through the same invocation-owned loader
-// used by the native adapter, including each composite's effective configuration.
 func WithConfiguredEngine(registration contract.Registration, load func(contract.Context) (scriptengine.Backend, error)) contract.Registration {
 	original := registration
 	registration.InputSelectors = func(c contract.Context) ([]checkinputs.ScriptInput, error) {

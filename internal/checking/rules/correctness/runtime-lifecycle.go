@@ -14,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// RuntimeLifecycleRule is the single definition of the runtime-lifecycle rule.
 var RuntimeLifecycleRule = &define.Rule{
 	Name:            "runtime-lifecycle",
 	Description:     "Report language runtimes outside their supported lifetime",
@@ -24,8 +23,8 @@ var RuntimeLifecycleRule = &define.Rule{
 	DefaultLevel:    "warn",
 	SupportsActions: true,
 	Scope:           rule.SourceConfiguration,
-	Explanation:     "Check Node.js release schedules for static node-version inputs to actions/setup-node. Support dates come from the Node.js Release schedule. Named lifecycle policies can notify before a known support deadline. Dynamic values, broad version ranges, release aliases, prereleases and node-version-file inputs are not resolved by this check. Node.js release support does not determine which JavaScript runtimes GitHub Actions accepts in action metadata.",
-	Help:            "Select a supported Node.js release. Configure lint.lifecycle.policies to choose when support deadlines should produce notifications.",
+	Explanation:     "Check static node-version inputs to actions/setup-node against the Node.js release schedule.",
+	Help:            "Select a supported Node.js release. Set lint.lifecycle.policies to choose when deadlines produce notifications.",
 	Checks:          func(c define.RuleInputs) define.Checks { return RuntimeLifecycleChecks(c.Lifecycle) },
 }
 

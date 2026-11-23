@@ -15,11 +15,6 @@ type LiteralOutput struct {
 	Text string
 }
 
-// LiteralStdoutPaths extracts supported prefixes along possible stdout paths.
-// The caller evaluates workflow-command state separately for each path.
-// Unsupported commands stop that path because unknown output may disable
-// runner command processing.
-// Strings that are never emitted do not become output.
 func LiteralStdoutPaths(text string, invocation commands.Invocation, registry *commands.Registry) [][]LiteralOutput {
 	if invocation.Status != commands.Valid || invocation.Input != "file" || strings.Contains(text, "${{") {
 		return nil
@@ -104,8 +99,6 @@ func (a stdoutAnalyzer) statements(stmts []*syntax.Stmt, paths []stdoutPath, ign
 		}
 		paths = next
 		if len(paths) > 32 {
-			// Bound path growth. Return completed lines from the analyzed
-			// prefixes; stop before later statements.
 			for i := range paths {
 				paths[i].state = stdoutUnknown
 			}
@@ -195,7 +188,7 @@ func (a stdoutAnalyzer) command(stmt *syntax.Stmt, path stdoutPath, ignored bool
 				branches = append(branches, condition)
 				continue
 			}
-			// Detach branch storage: appending one path must not overwrite
+			// Detach branch storage. Appending one path must not overwrite
 			// the output of its sibling.
 			yes, no := condition, condition
 			yes.output = append([]LiteralOutput(nil), condition.output...)
@@ -336,8 +329,7 @@ func (a stdoutAnalyzer) substitutionStatus(substitution *syntax.CmdSubst) (statu
 	}
 	defer func() { a.substitutions[substitution] = status }()
 	// Bash normally clears errexit in command substitutions, while POSIX mode
-	// and inherit_errexit preserve it. A failure is known here only when both
-	// policies agree; outputs and option changes stay inside the substitution.
+	// and inherit_errexit preserve it.
 	for _, errexit := range []bool{false, true} {
 		for _, path := range a.statements(substitution.Stmts, []stdoutPath{{errexit: errexit, status: stdoutSuccess}}, false) {
 			if path.state == stdoutUnknown || path.status == stdoutStatusUnknown {
@@ -353,9 +345,6 @@ func (a stdoutAnalyzer) substitutionStatus(substitution *syntax.CmdSubst) (statu
 	return status
 }
 
-// literalOutputLines follows the runner's line-oriented stdout stream. A partial
-// final line is observable at known EOF, but not before unknown output that might
-// finish the line. The first contributing source span identifies a joined line.
 func literalOutputLines(fragments []LiteralOutput, eof bool) []LiteralOutput {
 	var lines []LiteralOutput
 	var pending strings.Builder
@@ -392,10 +381,6 @@ func literalOutputLines(fragments []LiteralOutput, eof bool) []LiteralOutput {
 	return lines
 }
 
-// Python and PowerShell are deliberately limited to flat literal print calls.
-// A multiline string, expansion, indentation or unrecognized statement makes
-// the script unknown. These interpreters parse the whole script before executing
-// it, so an unsupported trailing statement might prevent earlier output too.
 func literalLineOutput(text, language string) []LiteralOutput {
 	if strings.Contains(text, `"""`) || strings.Contains(text, "'''") || strings.Contains(text, "@'") || strings.Contains(text, "@\"") {
 		return nil

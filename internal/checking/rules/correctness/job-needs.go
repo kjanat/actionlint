@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// JobNeedsRule is the single definition of the job-needs rule.
 var JobNeedsRule = &define.Rule{
 	Name:        "job-needs",
 	Description: "Report undefined job dependencies and dependency cycles",
@@ -19,7 +18,7 @@ var JobNeedsRule = &define.Rule{
 	Subcategory: "jobs",
 	Recommended: true,
 	Help:        "Reference an existing job ID and remove dependency cycles.",
-	Examples: []rule.Example{rule.WorkflowExample("Remove a dependency on a job that does not exist.",
+	Examples: []rule.Example{rule.WorkflowExample("Remove the missing dependency.",
 		"    needs: missing\n", "")},
 	Checks: define.Fixed(define.Checks{Workflow: checkJobDependencies}),
 }

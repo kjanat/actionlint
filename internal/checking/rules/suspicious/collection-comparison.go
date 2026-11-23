@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CollectionComparisonRule is the single definition of the collection-comparison rule.
 var CollectionComparisonRule = &define.Rule{
 	Name:            "collection-comparison",
 	Description:     "Detect equality checks between object or array instances",
@@ -21,19 +20,15 @@ var CollectionComparisonRule = &define.Rule{
 	DefaultLevel:    "error",
 	SupportsActions: true,
 	Scope:           rule.CompositeConfiguration,
-	Explanation: "Objects and arrays compare equal only when they are the same instance. " +
-		"Equal contents do not make separately created objects or arrays equal. " +
-		"A condition that grants access or gates a write can therefore evaluate differently from a comparison of contents. " +
-		"This check reports == and != between two known objects or two known arrays. " +
-		"It accepts null checks and repeated access to the same context property, and skips unknown types and expressions that cannot execute.",
-	Help: "Compare the fields or array elements that determine equality. Disable this rule for a deliberate instance-identity comparison.",
-	Examples: []rule.Example{rule.WorkflowExample("Compare the object properties that matter to the condition.",
+	Explanation: "Report == and != between two known objects or two known arrays. " +
+		"Objects and arrays are equal only when they are the same instance, even if their contents match.",
+	Help: "Compare the fields or elements that decide equality.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		`    if: ${{ fromJSON('{"ready":true}') == fromJSON('{"ready":true}') }}`+"\n",
 		`    if: ${{ fromJSON('{"ready":true}').ready == fromJSON('{"ready":true}').ready }}`+"\n")},
 	DeclaredBy: "expression",
 }
 
-// CollectionComparison reports equality comparisons between object or array instances.
 func CollectionComparison(root syntax.Node, types typecheck.InferredTypes, evaluation typecheck.EvaluationResults) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {

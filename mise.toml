@@ -19,48 +19,43 @@ command = "go"
 args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
 
 [tools]
-jq                         = "1.8.2"
-bun                        = "1.4.4"
-npm                        = { version = "12.2.0", depends = ["bun"] }
-go                         = "1.27.4"
-node                       = "26"
-shellcheck                 = "0.11.0"
-rshellcheck                = {
-  version_prefix = "rshellcheck-v",
-  version        = "1.1.0",
-  matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
-}
-grype                      = "0.121.1"
-ruff                       = "0.17.0"
-syft                       = "1.56.0"
-tinygo                     = "0.43.0"
-wasm-tools                 = "1.263.0"
-wit-bindgen                = "0.63.0"
-uv                         = "0.13.7"
-yamllint                   = { version = "1.38.0", depends = ["uv"] }
-zizmor                     = "1.31.1"
-tombi                      = "1.11.1"
-markscribe                 = "0.8.1"
-pandoc                     = {
+jq                        = "1.8.2"
+bun                       = "1.4.5"
+npm                       = { version = "12.2.0", depends = ["bun"] }
+go                        = "latest"                                                             # set using idiomatic_version_file_enable_tools and go.mod's toolchain
+node                      = "26"
+shellcheck                = "0.11.0"
+rshellcheck               = "1.2.0"
+grype                     = "0.121.1"
+ruff                      = "0.17.0"
+syft                      = "1.56.0"
+tinygo                    = "0.43.0"
+wasm-tools                = "1.263.0"
+wit-bindgen               = "0.63.0"
+uv                        = "0.13.7"
+yamllint                  = { version = "1.38.0", depends = ["uv"] }
+zizmor                    = "1.31.1"
+tombi                     = "1.11.1"
+markscribe                = "0.8.1"
+pandoc                    = {
   version                               = "3.13",
   platforms.windows-arm64.asset_pattern = "pandoc-{{ version }}-windows-x86_64.zip",
 }
-kprint                     = { version = "0.64.1", depends = ["bun"] }
-"npm:runner-run"           = { version = "0.28.0", depends = ["bun"] }
-typescript                 = "7.0.2"
-biome                      = {
+kprint                    = { version = "0.64.1", depends = ["bun"] }
+runner-run                = { version = "0.28.0", depends = ["bun"] }
+typescript                = "7.0.2"
+biome                     = {
   version        = "2.6.6",
   version_prefix = "@biomejs/biome@",
 }
-rust                       = {
+rust                      = {
   version    = "latest",
   components = ["clippy", "rustfmt"],
   targets    = ["wasm32-unknown-unknown", "wasm32-wasip2"]
 }
-"golangci-lint"            = { version = "2.15.0", depends = ["go"] }
-"github:kjanat/actionlint" = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
-"github:rhysd/actionlint"  = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
-wasi-sdk                   = {
+golangci-lint             = { version = "2.15.0", depends = ["go"] }
+"github:rhysd/actionlint" = { version = "1.7.12", depends = ["cargo:rshellcheck"] }
+wasi-sdk                  = {
   version        = "34",
   version_prefix = "wasi-sdk-",
   filter_bins    = ["wasm32-wasip2-clang", "wasm32-wasip2-clang++"],
@@ -69,6 +64,7 @@ wasi-sdk                   = {
     windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
   }
 }
+goreleaser                = "2.20.0"
 
 [tool_alias]
 golangci-lint = "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
@@ -80,7 +76,8 @@ typescript    = "github:microsoft/TypeScript"
 biome         = "github:biomejs/biome"
 markscribe    = "github:charmbracelet/markscribe"
 shellcheck    = "github:koalaman/shellcheck"
-rshellcheck   = "github:kjanat/shellcheck-rs"                                # cargo:rshellcheck
+rshellcheck   = "cargo:rshellcheck"
+runner-run    = "npm:runner-run"
 
 [settings]
 lockfile_platforms                  = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64", "windows-arm64"]
@@ -212,48 +209,27 @@ config_roots = [
   "tools/generate/*",
 ]
 
-[monorepo.projects."go:actionlint.kjanat.dev/v2"]
-root        = "."
-depends_add = ["custom:plugin-protocol", "custom:configuration-schemas", "go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
-
-[monorepo.projects."go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
-root        = "plugins/sdk/go"
-depends_add = ["custom:plugin-protocol"]
-
-[monorepo.projects."go:example.com/actionlint-plugin-insecure-download"]
-root        = "plugins/examples/insecure-download"
-depends_add = ["go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
-
-[monorepo.projects."custom:runner-host"]
-root = "internal/development/tests/conformance/wasm/runner-host"
-
-[monorepo.projects."custom:plugin-protocol"]
-root = "plugins/protocol"
-
-[monorepo.projects."custom:configuration-schemas"]
-root = "schemas"
-
-[monorepo.projects."custom:documentation"]
-root = "docs"
-
-[monorepo.projects."custom:maintenance"]
-root = "tools"
-
-[monorepo.projects."custom:distribution"]
-root        = "distribution"
-depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
-
-[monorepo.projects."node:actionlint-playground"]
-depends_add = ["go:actionlint.kjanat.dev/v2"]
-
-[monorepo.projects."node:actionlint-action"]
-depends_add = ["go:actionlint.kjanat.dev/v2"]
-
-[monorepo.projects."node:@kjanat/actionlint-npm"]
-depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
-
-[monorepo.projects."node:@kjanat-actionlint/plugin-sdk"]
-depends_add = ["custom:plugin-protocol"]
-
-[monorepo.projects."cargo:actionlint-extension-api"]
-depends_add = ["custom:plugin-protocol"]
+[monorepo.projects]
+"go:actionlint.kjanat.dev/v2"                        = {
+  root        = ".",
+  depends_add = ["custom:plugin-protocol", "custom:configuration-schemas", "go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+}
+"go:actionlint.kjanat.dev/v2/plugins/sdk/go"         = { root = "plugins/sdk/go", depends_add = ["custom:plugin-protocol"] }
+"go:example.com/actionlint-plugin-insecure-download" = {
+  root        = "plugins/examples/insecure-download",
+  depends_add = ["go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+}
+"custom:runner-host"                                 = { root = "internal/development/tests/conformance/wasm/runner-host" }
+"custom:plugin-protocol"                             = { root = "plugins/protocol" }
+"custom:configuration-schemas"                       = { root = "schemas" }
+"custom:documentation"                               = { root = "docs" }
+"custom:maintenance"                                 = { root = "tools" }
+"custom:distribution"                                = {
+  root        = "distribution",
+  depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
+}
+"node:actionlint-playground"                         = { depends_add = ["go:actionlint.kjanat.dev/v2"] }
+"node:actionlint-action"                             = { depends_add = ["go:actionlint.kjanat.dev/v2"] }
+"node:@kjanat/actionlint-npm"                        = { depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"] }
+"node:@kjanat-actionlint/plugin-sdk"                 = { depends_add = ["custom:plugin-protocol"] }
+"cargo:actionlint-extension-api"                     = { depends_add = ["custom:plugin-protocol"] }

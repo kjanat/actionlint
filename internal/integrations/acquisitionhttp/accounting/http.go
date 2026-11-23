@@ -18,9 +18,7 @@ type (
 	transport  struct{ base http.RoundTripper }
 )
 
-// TrackHTTPRequests wraps an HTTP transport. Place it below retry and authentication
-// adapters to observe their individual attempts. Redirects made by http.Client
-// invoke it separately. Nested wrappers count the same attempt only once.
+// TrackHTTPRequests must sit below retry and authentication adapters to observe each attempt.
 func TrackHTTPRequests(base http.RoundTripper) http.RoundTripper {
 	if base == nil {
 		base = http.DefaultTransport
@@ -45,8 +43,7 @@ func validRequest(request *http.Request) error {
 	return request.Context().Err()
 }
 
-// TrackHTTPAttempt accounts for one transport attempt against its original authority,
-// before a security transport rewrites the connection address to a pinned IP.
+// TrackHTTPAttempt must run before a security transport rewrites the address to a pinned IP.
 func TrackHTTPAttempt(request *http.Request, send func(*http.Request) (*http.Response, error)) (*http.Response, error) {
 	if err := validRequest(request); err != nil {
 		return nil, err
@@ -94,8 +91,7 @@ func quotaResource(text string) bool {
 	return true
 }
 
-// observe runs under the session lock. Decreasing observations in one reset
-// window cannot be undone by a response that arrives out of order.
+// observe runs under the session lock.
 func (s *RequestTracker) observe(key quotaKey, response *http.Response) {
 	now := s.now()
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusForbidden && response.Header.Get("Retry-After") != "" {

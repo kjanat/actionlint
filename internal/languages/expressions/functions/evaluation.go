@@ -2,24 +2,20 @@ package functions
 
 import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
-// EvaluationContext supplies argument values to a function implementation.
-// Argument evaluates a source argument at most once. Repeated requests return the
-// same observation. Implementations request only the arguments their operation needs.
+// EvaluationContext evaluates each source argument at most once and returns the
+// same observation for repeated requests.
 type EvaluationContext interface {
 	ArgumentCount() int
 	Argument(int) exprvalues.EvaluationResult
 }
 
-// Function stores overload contracts and one implementation for their operation.
-// A nil implementation means this constant evaluator cannot produce its result.
+// Function with a nil implementation cannot produce a constant result.
 type Function struct {
 	Signatures     []*FuncSignature
 	implementation func(EvaluationContext) exprvalues.EvaluationResult
 	inspect        func([]ParameterMatch, *CallInspection)
 }
 
-// Evaluate validates argument count before requesting values from the context.
-// Unimplemented operations produce an unknown result without requesting arguments.
 func (function Function) Evaluate(context EvaluationContext) exprvalues.EvaluationResult {
 	accepted := false
 	for _, signature := range function.Signatures {

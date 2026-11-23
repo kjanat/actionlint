@@ -21,8 +21,6 @@ type commandArgument struct {
 	positional, terminated bool
 }
 
-// All CLI paths use the registered pflag definitions to distinguish option
-// values, optional values, shorthand groups and positional arguments.
 type argumentScanner struct {
 	args  []string
 	index int
@@ -101,8 +99,7 @@ func commandFlags(command *cobra.Command) *pflag.FlagSet {
 	return flags
 }
 
-// Completion leaves the word being completed untouched; all preceding words use
-// the same scanner and command definitions as normal invocations.
+// normalizeCommandArgs leaves the word being completed untouched.
 func normalizeCommandArgs(root *cobra.Command, args []string) []string {
 	if len(args) > 1 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		ret := append([]string{args[0]}, normalizeCommandArgs(root, args[1:len(args)-1])...)

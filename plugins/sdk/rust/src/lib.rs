@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-/// Reference selection with repository objects fetched by actionlint.
 #[cfg(feature = "reference-resolver")]
 pub mod reference_resolver {
     wit_bindgen::generate!({
@@ -16,7 +15,6 @@ pub mod reference_resolver {
     pub use self::kjanat::actionlint_resolver::repository_objects;
 }
 
-/// Generated types, guest traits and host imports from the WIT interface definitions.
 pub mod bindings {
     #[cfg(not(any(
         feature = "source-annotations",
@@ -152,12 +150,9 @@ pub mod bindings {
     });
 }
 
-/// Generated script-engine guest types, export macros and packaging descriptors.
-/// Export SDK bindings with `with_types_in` followed by their versioned module path.
+/// Pass `with_types_in` the versioned module path to export SDK bindings.
 pub mod script_engine {
-    // Public export macros defer export metadata until a guest invokes them.
     // Distinct world names prevent collisions between wit-bindgen crate-level macros.
-    /// Types from the 0.2.0 template-aware script engine world.
     pub mod v0_2 {
         wit_bindgen::generate!({
             path: "wit",
@@ -168,7 +163,6 @@ pub mod script_engine {
             export_macro_name: "export_template_script_engine_v0_2",
         });
     }
-    /// Types from the 0.3.0 template-aware script engine world.
     pub mod v0_3 {
         wit_bindgen::generate!({
             path: "wit/deps/actionlint-0.3.0",
@@ -188,7 +182,7 @@ pub mod exports {
     }
 }
 
-/// Host imports selected by the SDK features, independent of generated version suffixes.
+/// The SDK features select the host imports.
 pub mod kjanat {
     #[cfg(any(
         feature = "tool-integration",
@@ -203,45 +197,31 @@ pub mod kjanat {
 
 pub use exports::kjanat::actionlint::analyzer::*;
 
-/// Canonical analyzer interface implemented by this SDK.
 pub const ANALYZER_INTERFACE: &str = "kjanat:actionlint/analyzer@0.2.0";
-/// Analyzer WIT source, independent of optional host imports.
+/// ANALYZER_WIT omits optional host imports.
 pub const ANALYZER_WIT: &str = include_str!("../wit/analyzer.wit");
-/// SHA-256 of the analyzer WIT source with LF line endings.
+/// Each `*_WIT_SHA256` constant hashes its WIT source with LF line endings.
 pub const ANALYZER_WIT_SHA256: &str = env!("ACTIONLINT_ANALYZER_WIT_SHA256");
 
-/// Runner-provider interface used by snapshot-based runner extensions.
 pub const RUNNER_PROVIDER_INTERFACE: &str = "kjanat:actionlint/runner-provider@0.2.0";
-/// Runner-provider WIT source for guest binding generation.
 pub const RUNNER_PROVIDER_WIT: &str = include_str!("../wit/runner.wit");
-/// SHA-256 of the runner-provider WIT source with LF line endings.
 pub const RUNNER_PROVIDER_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_WIT_SHA256");
 
-/// Runner-provider interface with service context and dated support policies.
 pub const RUNNER_PROVIDER_03_INTERFACE: &str = "kjanat:actionlint/runner-provider@0.3.0";
 pub const RUNNER_PROVIDER_03_WIT: &str = include_str!("../wit/deps/actionlint-0.3.0/runner.wit");
 pub const RUNNER_PROVIDER_03_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_03_WIT_SHA256");
 
-/// script-engine 0.2.0 WIT source.
 pub const SCRIPT_ENGINE_02_WIT: &str = include_str!("../wit/script-engine.wit");
-/// SHA-256 of the script-engine 0.2.0 WIT source with LF line endings.
 pub const SCRIPT_ENGINE_02_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_02_WIT_SHA256");
-/// template-effects 0.2.0 WIT source.
 pub const TEMPLATE_EFFECTS_02_WIT: &str = include_str!("../wit/template-effects.wit");
-/// SHA-256 of the template-effects 0.2.0 WIT source with LF line endings.
 pub const TEMPLATE_EFFECTS_02_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_02_WIT_SHA256");
-/// script-engine 0.3.0 WIT source.
 pub const SCRIPT_ENGINE_03_WIT: &str =
     include_str!("../wit/deps/actionlint-0.3.0/script-engine.wit");
-/// SHA-256 of the script-engine 0.3.0 WIT source with LF line endings.
 pub const SCRIPT_ENGINE_03_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_03_WIT_SHA256");
-/// template-effects 0.3.0 WIT source.
 pub const TEMPLATE_EFFECTS_03_WIT: &str =
     include_str!("../wit/deps/actionlint-0.3.0/template-effects.wit");
-/// SHA-256 of the template-effects 0.3.0 WIT source with LF line endings.
 pub const TEMPLATE_EFFECTS_03_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_03_WIT_SHA256");
 
-/// Export the component using this crate's generated bindings.
 #[macro_export]
 macro_rules! export_plugin {
     ($plugin:ident) => {

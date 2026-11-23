@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// Script binds one declaration to the entry or expanded call executing it.
 type Script struct {
 	ID          ID
 	Owner       ID
@@ -72,7 +71,6 @@ func (b *Builder) AddScript(context Context, declaration sourcetext.Reference, k
 // Scripts returns registered occurrences in traversal order.
 func (g Graph) Scripts() []Script { return slices.Clone(g.scripts) }
 
-// ScriptCount returns the number of registered occurrences.
 func (g Graph) ScriptCount() int { return len(g.scripts) }
 
 // ScriptRange returns scripts[start:end] in traversal order; callers check bounds.

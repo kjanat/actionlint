@@ -16,11 +16,6 @@ import (
 	"github.com/invopop/jsonschema"
 )
 
-// toolsSchema describes tools.<name> for every bundled tool provider from its
-// manifest: the host-owned keys, the provider's configuration schema and the
-// shorthands folded into it. Bundled manifests are build inputs, so a defect
-// panics. Providers installed by plugins are not known when generating, so
-// any other name gets the host-owned shape only.
 func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {
@@ -68,8 +63,6 @@ func toolSchema(manifest toolmanifest.Manifest, reflectMapping func(any) *jsonsc
 	return mapping, nil
 }
 
-// propertySchema returns the schema of the property at path in a
-// configuration schema document, one property name per nesting level.
 func propertySchema(document map[string]any, path []string) (map[string]any, error) {
 	schema := document
 	for i, name := range path {
@@ -83,9 +76,6 @@ func propertySchema(document map[string]any, path []string) (map[string]any, err
 	return schema, nil
 }
 
-// unknownToolSchema describes tools.<name> for a tool provider a plugin
-// registers: only the host-owned shape is known when generating, and the
-// provider validates its own settings when it loads.
 func unknownToolSchema() *jsonschema.Schema {
 	properties := jsonschema.NewProperties()
 	properties.Set("enabled", &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, {Type: "null"}}, Description: "Enable this tool. Omission or null keeps it enabled."})
@@ -101,11 +91,7 @@ func unknownToolSchema() *jsonschema.Schema {
 	}
 }
 
-// settingsSchema returns the schema of inline tools.<name>.config settings
-// from the provider's configuration schema document. A schema published under
-// schemas/<name>/ is referenced, so editors resolve it beside the root
-// schema; any other is embedded. Without a configuration schema any mapping
-// is accepted.
+// Editors resolve a referenced schemas/<name>/ schema beside the root schema.
 func settingsSchema(name string, document map[string]any) (*jsonschema.Schema, error) {
 	if document == nil {
 		return &jsonschema.Schema{Type: "object", AdditionalProperties: jsonschema.TrueSchema}, nil
@@ -124,8 +110,6 @@ func settingsSchema(name string, document map[string]any) (*jsonschema.Schema, e
 	return &jsonschema.Schema{Extras: document}, nil
 }
 
-// publishedSchema returns the slash-separated path of the versioned snapshot
-// under schemas/<name>/ equal to document, or "" when none matches.
 func publishedSchema(name string, document map[string]any) (string, error) {
 	matches, err := filepath.Glob(filepath.Join("schemas", name, "*.schema.json"))
 	if err != nil {
@@ -147,8 +131,6 @@ func publishedSchema(name string, document map[string]any) (string, error) {
 	return "", nil
 }
 
-// configSchema describes tools.<name>.config: inline settings, and a path
-// when the provider reads configuration files.
 func configSchema(manifest toolmanifest.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
 	markdown := "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
 	alternatives := []*jsonschema.Schema{

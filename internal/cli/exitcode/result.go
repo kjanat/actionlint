@@ -41,7 +41,7 @@ func AnalysisResult(analysis report.Analysis, strict bool) report.CheckResult {
 	return r
 }
 
-// NewCheckResult initializes a result with a consistent status and non-null lists.
+// NewCheckResult initializes non-null lists.
 func NewCheckResult(code int) report.CheckResult {
 	r := report.CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []results.Diagnostic{}, Configs: []report.ResultConfig{}, Hints: []string{}, ActionMetadata: []actions.MetadataReport{}}
 	switch code {

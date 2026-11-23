@@ -15,7 +15,6 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 		input    string
 		expected Node
 	}{
-		// simple expressions
 		{
 			what:     "null literal",
 			input:    "null",
@@ -417,7 +416,6 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 				},
 			},
 		},
-		// compound expressions
 		{
 			what:  "logical expressions",
 			input: "0 == 0.1 && a < b || x >= !y && true != false",
@@ -643,7 +641,6 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 		},
 	}
 
-	// Source positions are covered by the token and span tests.
 	opts := []cmp.Option{
 		cmpopts.IgnoreTypes(Location{}),
 		cmpopts.IgnoreFields(ObjectDerefNode{}, "PropertyToken"),
@@ -855,9 +852,7 @@ func TestParseExpressionNumberLiteralsError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			// This is really hacky depending on internal structure of parser. It is necessary
-			// because parsing int/float token never fails. To check the error handling, we need to
-			// inject an invalid token.
+			// Parsing an int or float token never fails, so the test injects an invalid token.
 			p := NewParser()
 			p.cur = tc.tok
 			tc.parse(p)
@@ -959,7 +954,6 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			// Add 2 spaces so start position of token must be offset 2
 			p := NewParser()
 			e, err := p.ParseExpression(NewLexer("  " + tc.input + "}}"))
 			if err != nil {
@@ -969,15 +963,12 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 			offset := tc.offset + len("  ")
 
 			got := e.Token()
-			// Offset is 0-based
 			if got.Offset != offset {
 				t.Error("Offset of token of parsed node was not 2:", got)
 			}
-			// Line is 1-based
 			if got.Position.Line != 1 {
 				t.Error("Line of token of parsed node was not 0:", got)
 			}
-			// Column is 1-based
 			if got.Position.Column != offset+1 {
 				t.Error("Column of token of parsed node was not 2:", got)
 			}

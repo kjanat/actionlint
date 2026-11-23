@@ -23,8 +23,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-// Registry installation must preserve the process boundary: install without
-// executing, refuse repository execution without consent, then work offline.
 func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	t.Parallel()
 	network := fixtureregistry.NewPluginRegistry(t)

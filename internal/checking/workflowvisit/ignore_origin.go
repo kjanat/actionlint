@@ -7,7 +7,6 @@ import (
 )
 
 // VisitWithOrigin annotates findings produced by a synchronous pass visit.
-// Asynchronous producers snapshot their own origins before scheduling work.
 func VisitWithOrigin(pass Pass, origin *workflows.IgnoreOrigin, hasIgnores bool, visit func() error) error {
 	rule, ok := pass.(Rule)
 	if !ok {
@@ -46,10 +45,8 @@ func VisitWithOrigin(pass Pass, origin *workflows.IgnoreOrigin, hasIgnores bool,
 	return err
 }
 
-// originParticipant snapshots context for asynchronous diagnostic producers.
 type originParticipant interface {
 	SetIgnoreOrigin(*workflows.IgnoreOrigin)
 }
 
-// HasConfiguredIgnores reports whether cfg configures ignore patterns.
 func HasConfiguredIgnores(cfg *configuration.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

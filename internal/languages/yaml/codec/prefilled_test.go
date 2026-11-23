@@ -286,7 +286,6 @@ func TestContainingPlainStructsPreservePrefilledContainerState(t *testing.T) {
 	}
 }
 
-// The inline pointer keeps the caller's actual prefilled containers in the Select target.
 func decodePrefilledSource[T any](t *testing.T, data []byte, target *T, selected bool) error {
 	t.Helper()
 	if !selected {

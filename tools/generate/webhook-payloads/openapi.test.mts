@@ -41,14 +41,17 @@ test('required, optional and nullable properties remain distinct', () => {
 });
 
 test('references, intersections, alternatives and recursion survive conversion', () => {
-	const { nodes, events } = catalogue({ $ref: '#/components/schemas/root' }, {
-		root: {
-			allOf: [
-				{ type: 'object', properties: { child: { $ref: '#/components/schemas/root' } } },
-				{ oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'boolean' } }] },
-			],
+	const { nodes, events } = catalogue(
+		{ $ref: '#/components/schemas/root' },
+		{
+			root: {
+				allOf: [
+					{ type: 'object', properties: { child: { $ref: '#/components/schemas/root' } } },
+					{ oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'boolean' } }] },
+				],
+			},
 		},
-	});
+	);
 	const reference = shape(nodes, events.sample?.created);
 	const rootId = reference.alternatives?.[0];
 	const root = shape(nodes, rootId);

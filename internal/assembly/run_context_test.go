@@ -155,7 +155,7 @@ func TestNewRunContextAccountsRulesAndIgnores(t *testing.T) {
 	if len(run.Configurations) != 1 {
 		t.Fatalf("Configurations = %+v", run.Configurations)
 	}
-	// Output settings and defaults are left out; containers such as /lint are not values.
+	// The list omits output settings, defaults and containers such as /lint.
 	wantSettings := []ChangedSetting{
 		{Pointer: "/ignores", Value: `[{"file":"ci.yml","rule":"shellcheck"}]`, Origin: "actionlint.yaml:3"},
 		{Pointer: "/lint/rules/security/unpinned-reference/level", Value: `"off"`, Origin: "actionlint.yaml:5"},

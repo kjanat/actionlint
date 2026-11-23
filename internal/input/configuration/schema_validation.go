@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// schemaBindingError preserves detached schema paths for source attribution.
 func schemaBindingError(err error) error {
 	if err == nil {
 		return nil

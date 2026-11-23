@@ -7,9 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Canonical promises that its result shares no storage with the finding, so
-// writing through every reference type in the result must leave the finding
-// as it was.
 func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 	t.Parallel()
 	f := &Finding{

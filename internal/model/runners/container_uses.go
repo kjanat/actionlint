@@ -17,8 +17,6 @@ const (
 	DockerAction
 )
 
-// ContainerUse pairs a declared container operation with a runner alternative
-// on which its conditions have not been proved false.
 type ContainerUse struct {
 	Target   ContainerTarget
 	Kind     ContainerUseKind
@@ -27,7 +25,6 @@ type ContainerUse struct {
 }
 
 // MayRun excludes an alternative only when a condition is provably false.
-// Invalid conditions and unknown runtime values cannot establish exclusion.
 func (target ContainerTarget) MayRun(conditionList ...string) bool {
 	for _, condition := range conditionList {
 		if condition == "" {
@@ -49,8 +46,6 @@ func containerUse(target ContainerTarget, kind ContainerUseKind, name string, po
 	return use
 }
 
-// JobContainerUses evaluates job containers and services using established
-// runner and matrix facts. It does not read action metadata or acquire sources.
 func (k *Knowledge) JobContainerUses(job workflows.BoundJob) []ContainerUse {
 	targets := k.ContainerLimitations(job)
 	var uses []ContainerUse
@@ -96,8 +91,7 @@ func (k *Knowledge) JobContainerUses(job workflows.BoundJob) []ContainerUse {
 	return uses
 }
 
-// DockerActionUses supplies execution alternatives after the caller has
-// established that the action uses Docker. Guards belong to its enclosing calls.
+// DockerActionUses callers must first establish that the action uses Docker.
 func DockerActionUses(step workflows.BoundStep, targets []ContainerTarget, guards []string) []ContainerUse {
 	action, present := step.Action()
 	if !present {

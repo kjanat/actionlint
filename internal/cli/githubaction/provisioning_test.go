@@ -29,8 +29,8 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 		{name: "discovered includes", files: map[string]string{".github/actionlint.yaml": "files: {includes: ['.github/workflows/*.yml']}"}, shellcheck: true},
 		{name: "discovered excludes", files: map[string]string{".github/actionlint.yaml": "files: {excludes: ['.github/workflows/*.yml']}"}},
 		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**'], lint: {rules: {external: {shellcheck: off}}}}]"}},
-		// A composite action the workflow calls may not match the override,
-		// so the tool may still run there.
+		// A composite action called by the workflow may not match the override.
+		// The tool may still run there.
 		{name: "discovered partial override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}, shellcheck: true},
 		{name: "yaml", files: map[string]string{".github/actionlint.yaml": `tools:
   shellcheck: false

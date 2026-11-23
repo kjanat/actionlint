@@ -20,7 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
-// InputFile associates the displayed path with the file read for analysis.
 type InputFile struct {
 	Path             string
 	Content          []byte
@@ -28,36 +27,26 @@ type InputFile struct {
 	ConfigProvenance configuration.Provenance
 	Project          *Project
 	InputPath        string
-	// ExplicitFile marks a literally named file.
-	ExplicitFile bool
+	ExplicitFile     bool
 }
 
-// PreparedBatch holds the input files read for one analysis batch, with the
-// reports of the configuration loaded for them. Inputs includes configuration and
-// excluded discovery candidates.
 type PreparedBatch struct {
 	Sources        []InputFile
 	Inputs         []string
 	Configurations []configreport.Report
 }
 
-// Options controls only input preparation, not analysis or rendering.
 type Options struct {
-	// Rules is the analysis's final rule set: built-in rules plus the rules
-	// of its analyzers, tools and plugins. Each configuration and its
-	// overlays are resolved with it once; checking reads the result.
 	Rules                                 configuration.RuleSet
 	WorkingDir, StdinFileName, ConfigFile string
-	// Config, when set, is used for every input instead of the repository's
-	// configuration file. It cannot be combined with ConfigFile.
+	// When set, Config replaces the repository's configuration file for every
+	// input. It cannot be combined with ConfigFile.
 	Config            *configuration.Config
 	ConfigConnections acquisitionhttp.Connections
 	ConfigProvenance  configuration.Provenance
 	ConfigOverlays    []configuration.Overlay
-	// ConfigSources holds configuration files already parsed in this run,
-	// such as for the command's output settings or by plugin selection.
-	// Configuration loads use them without reading them again and keep the
-	// files they read. Nil disables sharing.
+	// ConfigSources holds configuration files already parsed in this run. Nil
+	// disables sharing.
 	ConfigSources     *document.Files
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool
@@ -69,13 +58,10 @@ type Options struct {
 	LogWriter         io.Writer
 }
 
-// InputPreparer shares repository and configuration lookups across input selections.
 type InputPreparer struct {
-	networkPolicy *configuration.NetworkPolicy
-	rules         configuration.RuleSet
-	projects      *Projects
-	// defaultConfig comes from Options.Config or Options.ConfigFile and
-	// replaces every project's configuration.
+	networkPolicy           *configuration.NetworkPolicy
+	rules                   configuration.RuleSet
+	projects                *Projects
 	defaultConfig           *configuration.Config
 	defaultConfigProvenance configuration.Provenance
 	defaultConfigPath       string
@@ -90,7 +76,6 @@ type InputPreparer struct {
 	noIgnore                bool
 }
 
-// New prepares a session whose file reads and config loads stop when ctx is canceled.
 func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
@@ -157,7 +142,6 @@ func (a *InputPreparer) selectionLog(args ...any) {
 	a.log(args...)
 }
 
-// Repository analyzes the nearest repository's workflows and actions. An empty dir uses WorkingDir.
 func (a *InputPreparer) Repository(dir string) (*PreparedBatch, error) {
 	if dir == "" {
 		dir = a.cwd
@@ -212,7 +196,6 @@ func (a *InputPreparer) discoveredFiles(paths, metadata []string, project *Proje
 	a.filesSelected(paths)
 	result, err := a.readFiles(paths, project, nil)
 	if result != nil {
-		// Protect excluded discovery candidates from report replacement too.
 		inputs := &InputFiles{}
 		for _, path := range result.Inputs {
 			inputs.Add(path)
@@ -234,9 +217,8 @@ func (a *InputPreparer) filesSelected(paths []string) {
 	}
 }
 
-// Files expands directory inputs and analyzes paths in order, discovering each
-// file's project when project is nil. Overlapping inputs are deduplicated.
-// Relative paths retain the caller's spelling and resolve from the process directory.
+// Files discovers each file's project when project is nil. Relative paths
+// resolve from the process directory.
 func (a *InputPreparer) Files(paths []string, project *Project) (*PreparedBatch, error) {
 	selection, err := FindFiles(a.ctx, paths, a.noIgnore)
 	if err != nil {
@@ -245,8 +227,6 @@ func (a *InputPreparer) Files(paths []string, project *Project) (*PreparedBatch,
 	return a.SelectedFiles(selection, project)
 }
 
-// SelectedFiles reads a discovery result without reinterpreting discovered paths
-// as literal file arguments. Hosts can partition it by repository before loading plugins.
 func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project) (*PreparedBatch, error) {
 	paths := make([]string, 0, len(selection.Files))
 	explicit := make(map[string]bool)
@@ -265,8 +245,6 @@ func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project)
 	return result, err
 }
 
-// Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
-// or from its project, as an input with its report.
 func (a *InputPreparer) Empty() (*PreparedBatch, error) {
 	project, err := a.projects.At(a.cwd)
 	if err != nil {
@@ -337,8 +315,6 @@ func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map
 	return a.prepare(sources, configProjects...)
 }
 
-// ReadStdin analyzes a reader using StdinFileName. normalizePath displays its diagnostic
-// path from WorkingDir, as displaypath.FromDirectory chooses; false preserves the caller's spelling.
 func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*PreparedBatch, error) {
 	a.selectionLog("Reading the input from stdin")
 	content, err := io.ReadAll(stdin)
@@ -387,7 +363,6 @@ func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project)
 		sources[i].Config = cfg
 		sources[i].ConfigProvenance = a.ConfigProvenanceForProject(sources[i].Project)
 	}
-	// Report only projects used by this input selection.
 	projects := make([]*Project, 0, len(sources)+len(configProjects))
 	projects = append(projects, configProjects...)
 	for _, source := range sources {
@@ -406,8 +381,6 @@ func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project)
 	for _, path := range a.networkPolicy.Files() {
 		inputs.Add(path)
 	}
-	// Keep provenance on the analysis itself, including cached selections when
-	// a library caller reuses this session. Preserve input order across projects.
 	a.configState.Lock()
 	seen := make(map[*Project]bool)
 	for _, project := range projects {

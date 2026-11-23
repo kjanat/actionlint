@@ -244,8 +244,6 @@ func TestDirectURLCanonicalAuthority(t *testing.T) {
 	}
 }
 
-// Equivalent directory spellings must produce one manifest and lock identity,
-// including paths whose names contain URL delimiters.
 func TestLocalRegistryNormalization(t *testing.T) {
 	t.Parallel()
 	directory := filepath.Join(t.TempDir(), "space # percent%", "catalogue")
@@ -273,7 +271,6 @@ func TestLocalRegistryNormalization(t *testing.T) {
 	}
 }
 
-// Only local absolute directory URIs may opt into candidate installation.
 func TestLocalRegistryRejectsAuthorityAndAmbiguousPaths(t *testing.T) {
 	t.Parallel()
 	for _, value := range []string{

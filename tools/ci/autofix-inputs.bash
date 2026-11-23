@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Use NUL-delimited paths and disable rename detection so moves cover both names.
+# Use NUL-delimited paths and disable rename detection. A move then lists both names.
 git diff --name-only --no-renames -z "$1" "$2" -- | {
 	tables=false
 	readme=false
@@ -26,7 +26,7 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 			internal/model/actionmeta/* | internal/input/references/actions/* | internal/model/contexts/* | internal/development/generators/* | tools/generate/webhook-payloads/* | package.json | bun.lock | internal/checking/executor/expressions/check.go | internal/checking/rule_index.go | internal/checking/rule_registry.go | internal/checking/rules/* | internal/model/rule/* | docs/rules.md)
 				tables=true
 				;;
-			.mise.toml | mise.lock | README.md | tools/docs/*)
+			mise.toml | mise.lock | README.md | tools/docs/*)
 				readme=true
 				;;
 			*) ;;

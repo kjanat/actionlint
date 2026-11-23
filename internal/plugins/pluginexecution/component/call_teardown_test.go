@@ -81,7 +81,6 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 		return instance
 	}
 	guest := instantiate("guest", guestErr)
-	// This instance stays live until engine shutdown.
 	instantiate("runtime", runtimeErr)
 
 	cancelled, cancel := context.WithCancel(ctx)
@@ -113,7 +112,6 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	if _, err := compiled.Instantiate(t.Context()); err == nil {
 		t.Fatal("failed guest cleanup left the runtime usable")
 	}
-	// A later cleanup must tolerate the retired runtime and preserve the error.
 	before := result.Error()
 	teardown.finish(cancelled, &result)
 	if result.Error() != before {
@@ -150,7 +148,6 @@ func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	}
 }
 
-// A budget panic must retain errors collected while unwinding the invocation.
 func TestCallScopeMemoryPanicPreservesCleanupFailure(t *testing.T) {
 	t.Parallel()
 	p, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})

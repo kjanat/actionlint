@@ -16,20 +16,18 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// EventsRule is the single definition of the events rule.
 var EventsRule = &define.Rule{
 	Name:        "events",
 	Description: "Validate workflow triggers and their options",
 	Category:    "correctness",
 	Subcategory: "triggers",
 	Recommended: true,
-	Help:        "Check the trigger name, activity type and filters at the reported location.",
+	Help:        "Fix the trigger name, activity type or filter.",
 	Checks:      define.Fixed(define.Checks{Workflow: Events}),
 }
 
 type eventsCheck struct{ reporting.Collector }
 
-// Events validates event declarations.
 func Events(n workflows.BoundWorkflow) []reporting.StepFinding {
 	rule := &eventsCheck{}
 
@@ -147,12 +145,6 @@ func (rule *eventsCheck) checkWebhookEvent(event *definition.WebhookEvent) {
 		}
 	}
 
-	// Some filters are available with specific events and exclusive
-	// - on.merge_group.<branches|branches-ignore>
-	// - on.<push|pull_request|pull_request_target>.<paths|paths-ignore>
-	// - on.push.<branches|tags|branches-ignore|tags-ignore>
-	// - on.<pull_request|pull_request_target>.<branches|branches-ignore>
-	// - on.workflow_run.<branches|branches-ignore>
 	rule.checkExclusiveFilters(
 		event.Paths,
 		event.PathsIgnore,
@@ -199,7 +191,6 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *definition.WorkflowCallEv
 		if i.Default == nil {
 			continue
 		}
-		// ${{ }} is available in the default value
 		if !i.Default.ContainsExpression() {
 			switch i.Type {
 			case definition.WorkflowCallEventInputTypeNumber:
@@ -266,8 +257,6 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *definition.WorkflowDi
 				rule.Errorf(sourcetext.NilUnlessPresent(i.Name.Position()), "\"options\" can not be set to %q input because its input type is not \"choice\"", n)
 			}
 			if i.Default != nil {
-				// TODO: Can some check be done for WorkflowDispatchEventInputTypeEnvironment?
-				// What is suitable for default value of the type? (Or is a default value never suitable?)
 				switch i.Type {
 				case definition.WorkflowDispatchEventInputTypeNumber:
 					if _, err := strconv.ParseFloat(i.Default.Text(), 64); err != nil {
@@ -291,7 +280,6 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *definition.WorkflowDi
 			}
 		}
 	}
-	// Maximum number of inputs is 25
 	// https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#providing-inputs
 	// https://github.blog/changelog/2025-12-04-actions-workflow-dispatch-workflows-now-support-25-inputs
 	if len(event.Inputs) > 25 {

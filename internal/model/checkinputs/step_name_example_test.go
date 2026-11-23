@@ -15,7 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// stepNameAnalyzer checks a document without depending on the traversal host.
 type stepNameAnalyzer struct{}
 
 func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {

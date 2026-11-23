@@ -18,23 +18,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// reportedFile is the display copy of a file an engine reported a finding
-// in, read once per check.
 type reportedFile struct {
 	content    []byte
 	readFailed bool
 }
 
-// checkGranted runs one check on a backend that is not a native process.
-// When the engine requested the directory resource, the runner opens the
-// working directory read-only inside the workspace for the call and reads
-// the display copies of reported sources through the same grant. The engine
-// and the finding then see the same bytes, the scope records every file
-// read, and no reported name reaches a file outside the workspace. A
-// directory that does not exist gets no grant and is not sent.
-//
-// Reported sources of such a backend are never reread by path: without a
-// grant they have no display copy.
 func (r runner) checkGranted(ctx context.Context, c check) outcome {
 	request := c.request
 	result := outcome{copies: map[string]reportedFile{}}
@@ -74,10 +62,6 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 	return result
 }
 
-// directoryGrant opens directory read-only through the workspace root of
-// scope, so neither the path nor a symlink below it leaves the workspace.
-// Reads through the grant are recorded with the scope's reader. A missing
-// directory gets no grant; one outside the workspace fails the check.
 func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory string) (*files.BoundedFS, error) {
 	if scope == nil || scope.Paths.Workspace == "" && scope.Paths.Analysis == "" {
 		return nil, errors.New("directory access requires a workspace root")
@@ -120,7 +104,6 @@ func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory 
 	return grant, nil
 }
 
-// reader is the script scope's recording reader, or nil.
 func reader(script scriptanalysis.Unit) *files.Reader {
 	if script.Scope == nil {
 		return nil
@@ -128,8 +111,6 @@ func reader(script scriptanalysis.Unit) *files.Reader {
 	return script.Scope.Reader
 }
 
-// recordSources records the files an engine read so watchers re-run the
-// check when they change.
 func (r runner) recordSources(script scriptanalysis.Unit, paths []string, directory string) error {
 	if err := RecordSources(reader(script), paths, directory); err != nil {
 		return fmt.Errorf("tool %s %w", r.descriptor.Name, err)
@@ -137,8 +118,8 @@ func (r runner) recordSources(script scriptanalysis.Unit, paths []string, direct
 	return nil
 }
 
-// RecordSources records files a tool read, relative to directory, with
-// files, including symlinks along their paths. A nil reader records nothing.
+// RecordSources records files a tool read, relative to directory, including
+// symlinks along their paths.
 func RecordSources(sourceReader *files.Reader, paths []string, directory string) error {
 	for _, path := range paths {
 		if path == "" || path == "-" || strings.ContainsRune(path, 0) {
@@ -168,12 +149,6 @@ func RecordSources(sourceReader *files.Reader, paths []string, directory string)
 	return nil
 }
 
-// reportedFinding is a finding in a file the engine read besides the
-// snippet. Its positions are that file's own and its snippet is a display
-// copy, never evidence of the revision the engine analyzed. Suppression
-// comments of the script still apply. A check with copies takes the display
-// copy from them; otherwise the copy is reread by path, as a native process
-// read the file by path itself.
 func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scriptengine.Diagnostic, result outcome, reportedFiles map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
@@ -197,8 +172,6 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scripte
 		reportedFiles[path] = file
 	}
 	if scope := reader(script); scope != nil && (result.copies == nil || directory != "") {
-		// A cached or failed display reread does not erase the reported alias.
-		// Without a directory the name anchors nowhere and records nothing.
 		scope.Record(reported)
 	}
 	finding := contract.ToolFinding{
@@ -227,7 +200,7 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scripte
 }
 
 // sourceName joins a relative reported path to the engine's directory
-// without cleaning it, as the engine spelled the file it read.
+// without cleaning it.
 func sourceName(name, directory string) string {
 	if !filepath.IsAbs(name) {
 		name = directory + string(os.PathSeparator) + name
@@ -235,7 +208,6 @@ func sourceName(name, directory string) string {
 	return name
 }
 
-// sourcePath is the reported file's absolute path with symlinks resolved.
 func sourcePath(name, directory string) string {
 	name = sourceName(name, directory)
 	// Resolve symlinks before cleaning parent components.
@@ -251,9 +223,6 @@ func sourcePath(name, directory string) string {
 func sourceInventoryPath(name, directory string) string {
 	for component := range strings.SplitSeq(filepath.ToSlash(name), "/") {
 		if component == ".." {
-			// Windows host APIs clean parents before following symlinks. Preserve
-			// the resolved host-read spelling for these paths so watchers track the
-			// file the engine read, rather than the lexically cleaned wrong file.
 			return sourcePath(name, directory)
 		}
 	}

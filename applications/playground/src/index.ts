@@ -53,9 +53,7 @@ function themeFor(isDark: boolean): Extension {
 		function getUrlToFetch(u: string): string {
 			const url = new URL(u);
 
-			// Convert repository URL to raw source URL
 			if (url.host === 'github.com') {
-				// Convert /owner/repo/blob/branch/path/to to /owner/repo/branch/path/to
 				const s = url.pathname.split('/blob/');
 				if (s.length === 2) {
 					url.pathname = s.join('/');
@@ -64,7 +62,6 @@ function themeFor(isDark: boolean): Extension {
 				}
 			}
 
-			// Convert Gist URL to raw source URL
 			if (url.host === 'gist.github.com' && /\/[0-9a-f]+$/.test(url.pathname)) {
 				url.host = 'gist.githubusercontent.com';
 				url.pathname += '/raw';

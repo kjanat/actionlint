@@ -29,8 +29,7 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 			for path, document := range documents {
 				finding := results.Diagnostic{Path: path, Rule: "captured", Message: "captured finding", Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}}
 				if document.Version == 2 {
-					// A conflicted capture has no publishable source, even though
-					// the editor still owns text and version metadata for it.
+					// A conflicted capture has no publishable source.
 					return Analysis{Diagnostics: []results.Diagnostic{finding}}, errors.New("source-revision-conflict: conflicting overlays")
 				}
 				if document.Version == 3 {

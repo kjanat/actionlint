@@ -33,40 +33,23 @@ import (
 	gocmp "github.com/google/go-cmp/cmp"
 )
 
-// The parity gate compares the bundled manifests, run by the generic process
-// transport, with snapshots captured from the bespoke ShellCheck and Ruff
-// adapters at commit 6be5c7ab, the last commit that has them, with
-// ShellCheck 0.11.0 and Ruff 0.17.0. The snapshots hold the adapters' raw
-// output: ShellCheck's severities such as "style" are mapped through the
-// manifest's severities table when compared, since the adapters left that
-// mapping to renderers. Message bodies reflect the current plain-text
-// presentation; codes, severity and source coordinates are separate fields.
+// The snapshots hold raw output of the ShellCheck 0.11.0 and Ruff 0.17.0
+// adapters at commit 6be5c7ab, the last commit that has them.
 
-// parityDiagnostics are a route's tool findings and its error, in a stable,
-// machine-independent form.
 type parityDiagnostics struct {
-	Findings []results.Diagnostic `json:"findings"`
-	// Sources are the result's source evidence for Findings, in the same
-	// order.
-	Sources []paritySource `json:"sources,omitempty"`
-	// Reported are the findings the tool runners returned to the host,
-	// before suppression and policy.
-	Reported []parityReport `json:"reported,omitempty"`
-	// Captured are the result's captured sources keyed by alias.
+	Findings []results.Diagnostic     `json:"findings"`
+	Sources  []paritySource           `json:"sources,omitempty"`
+	Reported []parityReport           `json:"reported,omitempty"`
 	Captured map[string]parityCapture `json:"captured,omitempty"`
 	Error    string                   `json:"error,omitempty"`
 }
 
-// paritySource is a results.DiagnosticSource with its content hashed.
 type paritySource struct {
 	Content     string `json:"content,omitempty"`
 	RawScript   bool   `json:"raw_script,omitempty"`
 	Unavailable bool   `json:"unavailable,omitempty"`
 }
 
-// parityReport is the provenance of one runner finding: where the tool
-// reported it, the file content it carries, the unavailable-source marker and
-// the location whose actionlint:ignore comments suppress it.
 type parityReport struct {
 	Rule        string              `json:"rule"`
 	Code        string              `json:"code,omitempty"`
@@ -78,27 +61,22 @@ type parityReport struct {
 	Suppression *paritySuppression  `json:"suppression,omitempty"`
 }
 
-// parityUnavailable is a present finding.Source.Unavailable.
 type parityUnavailable struct {
 	Reason  string `json:"reason"`
 	Address string `json:"address"`
 }
 
-// paritySuppression is a contract.Suppression.
 type paritySuppression struct {
 	Path        string `json:"path"`
 	First, Last int
 }
 
-// parityCapture is a report.CapturedSource without its content, which the
-// revision identifies.
 type parityCapture struct {
 	Revision             sourcetext.Revision    `json:"revision"`
 	Coordinates          sourcetext.Coordinates `json:"coordinates"`
 	CoordinatesAvailable bool                   `json:"coordinates_available,omitempty"`
 }
 
-// contentHash identifies content in a snapshot; empty content has none.
 func contentHash(content []byte) string {
 	if content == nil {
 		return ""
@@ -107,13 +85,11 @@ func contentHash(content []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// parityRecorder collects the findings the tool runners return to the host.
 type parityRecorder struct {
 	mu       sync.Mutex
 	findings []contract.ToolFinding
 }
 
-// wrap returns registrations whose runners record their findings in r.
 func (r *parityRecorder) wrap(registrations []contract.Registration) []contract.Registration {
 	out := slices.Clone(registrations)
 	for i := range out {
@@ -129,7 +105,6 @@ func (r *parityRecorder) wrap(registrations []contract.Registration) []contract.
 	return out
 }
 
-// recordingRunner passes a batch to runner and records the findings.
 type recordingRunner struct {
 	runner   contract.Runner
 	recorder *parityRecorder
@@ -143,7 +118,6 @@ func (r recordingRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch
 	return findings, err
 }
 
-// loadParitySnapshots reads testdata/provider-parity/<name>.json.
 func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("internal", "development", "tests", "integration", "tools", "testdata", "provider-parity", name+".json"))
@@ -157,16 +131,10 @@ func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
 	return snapshots
 }
 
-// paritySnapshots are captured parity results keyed by case.
 type paritySnapshots map[string]parityDiagnostics
 
-// parityRun analyzes a case with registrations and returns its tool
-// findings, recording the runners' findings in recorder.
 type parityRun func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics
 
-// assertParity runs the bundled providers with ShellCheck and Ruff from PATH
-// and compares their findings with the snapshot of key. arguments are added
-// to ShellCheck's command line.
 func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, shellcheck, ruff string, arguments ...string) {
 	t.Helper()
 	want, ok := s[key]
@@ -183,8 +151,6 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 	t.Logf("%d identical findings, %d runner findings, error %q", len(got.Findings), len(got.Reported), got.Error)
 }
 
-// hostSeverities maps the snapshot's tool severities through each bundled
-// manifest's severities table, as the manifest route does.
 func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics {
 	t.Helper()
 	manifests, err := toolmanifest.Bundled()
@@ -202,7 +168,6 @@ func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics 
 	return snapshot
 }
 
-// compareParity fails t when got differs from want.
 func compareParity(t *testing.T, want, got parityDiagnostics) {
 	t.Helper()
 	want, got = normalizeParity(want), normalizeParity(got)
@@ -213,9 +178,6 @@ func compareParity(t *testing.T, want, got parityDiagnostics) {
 	}
 }
 
-// toolFindings selects a result's tool findings, their source evidence, the
-// runners' findings and the captured sources in a stable order and replaces
-// the machine's directories, named by roots, with placeholders.
 func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *parityRecorder, roots map[string]string) parityDiagnostics {
 	t.Helper()
 	var out parityDiagnostics
@@ -270,9 +232,6 @@ func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *pa
 	return normalizeParity(normalized)
 }
 
-// normalizeParity writes paths with forward slashes, drops node identities,
-// which derive from the machine's paths, and sorts findings and runner
-// findings.
 func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
 	type pair struct {
 		finding results.Diagnostic
@@ -365,8 +324,6 @@ func TestParityRevisionPathsPortable(t *testing.T) {
 	}
 }
 
-// TestProviderParityFixtures runs every workflow fixture through the
-// manifest route.
 func TestProviderParityFixtures(t *testing.T) {
 	t.Parallel()
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
@@ -403,10 +360,6 @@ func TestProviderParityFixtures(t *testing.T) {
 	}
 }
 
-// TestProviderParityCases runs repositories that exercise configuration,
-// composite actions, sourced files, fixes and suppression through the
-// manifest route. Every case runs again with only Ruff selected and is
-// compared with the snapshot of the Ruff adapter run alone.
 func TestProviderParityCases(t *testing.T) {
 	t.Parallel()
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
@@ -496,7 +449,6 @@ func TestProviderParityCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			run := func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics {
-				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				root = files.PhysicalPath(root)
 				config := "tools: {shellcheck: true, ruff: true}\n"
@@ -515,9 +467,6 @@ func TestProviderParityCases(t *testing.T) {
 				return toolFindings(t, result, err, recorder, map[string]string{root: "<root>"})
 			}
 			snapshots.assertParity(t, tc.name, run, shellcheck, ruff, tc.arguments...)
-			// The Ruff adapter alone ran without execution facts; the
-			// manifest route resolves them for Ruff's selectors.shells
-			// (decision b4).
 			alone, ok := snapshots[tc.name+" (ruff alone)"]
 			if !ok {
 				t.Fatalf("no Ruff-alone parity snapshot for %q", tc.name)

@@ -362,7 +362,6 @@ func sourceName(name, directory string) string {
 	return name
 }
 
-// sourcePath is a path's absolute form with symlinks resolved.
 func sourcePath(name, directory string) string {
 	name = sourceName(name, directory)
 	// Resolve symlinks before cleaning parent components.

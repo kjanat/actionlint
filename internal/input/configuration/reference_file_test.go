@@ -52,7 +52,6 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if strings.Count(string(b), "\n---\n") != 1 || strings.Count(string(b), "# yaml-language-server: $schema=") != 1 {
 		t.Fatal("generated config duplicates the schema header or document separator")
 	}
-	// Every public top-level setting must be discoverable in the reference.
 	typ := reflect.TypeFor[configuration.Config]()
 	for field := range typ.Fields() {
 		if !field.IsExported() {

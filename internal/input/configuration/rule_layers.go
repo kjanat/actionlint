@@ -6,9 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
-// normalizeRuleLocations gives named settings one merge key across accepted
-// category spellings. Group defaults stay in their declared groups because
-// their membership can depend on plugin declarations loaded later.
+// Group membership can depend on plugin declarations that load later.
 func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 	rules := field(lint, "rules")
 	if !isMapping(rules) {
@@ -52,8 +50,7 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 		if setting == nil {
 			continue
 		}
-		// Options come from the last named setting. A default level defers
-		// to earlier explicit levels, as SettingFor does within one layer.
+		// Options come from the last named setting, and a default level defers to earlier explicit levels.
 		ownLevel, err := settingLevelNode(setting)
 		if err != nil {
 			return nil, err
@@ -118,8 +115,6 @@ func settingLevelNode(setting any) (ruleconfig.Level, error) {
 	return level, err
 }
 
-// normalizeRuleLint gives the lint settings in value one merge key per rule.
-// Other fields, including extends, are kept.
 func (ruleSet RuleSet) normalizeRuleLint(value any) (any, error) {
 	if !isMapping(value) {
 		return value, nil

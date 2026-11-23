@@ -19,8 +19,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// AuthoringResult is the host's evaluation of one fixture stdout. It never
-// invokes the manifest entry.
 type AuthoringResult struct {
 	Source      string                  `json:"source"`
 	Preparation *preparation.SourcePlan `json:"preparation,omitempty"`
@@ -29,7 +27,6 @@ type AuthoringResult struct {
 	Result      *DecodedCheck           `json:"result,omitempty"`
 }
 
-// AuthoringTester compiles a process pipeline once and evaluates each fixture independently.
 type AuthoringTester struct {
 	manifest      toolmanifest.Manifest
 	backend       *Backend
@@ -44,7 +41,6 @@ func ValidateManifest(manifest toolmanifest.Manifest, programs toolmanifest.Prog
 	return err
 }
 
-// NewAuthoringTester compiles a manifest once for fixture evaluation.
 func NewAuthoringTester(manifest toolmanifest.Manifest, programs toolmanifest.Programs) (*AuthoringTester, error) {
 	backend, err := authoringBackend(manifest, programs)
 	if err != nil {
@@ -61,8 +57,7 @@ func NewAuthoringTester(manifest toolmanifest.Manifest, programs toolmanifest.Pr
 	return &AuthoringTester{manifest: manifest, backend: backend, configuration: settingsResolver, preparation: sourcePlanner}, nil
 }
 
-// EvaluateFixture applies the exact config and stdout pipeline used by a
-// process backend. The timeout bounds jq evaluation; no child process runs.
+// EvaluateFixture runs no child process; the timeout bounds jq evaluation.
 func EvaluateFixture(ctx context.Context, manifest toolmanifest.Manifest, programs toolmanifest.Programs, request scriptengine.Request, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
 	tester, err := NewAuthoringTester(manifest, programs)
 	if err != nil {
@@ -71,8 +66,7 @@ func EvaluateFixture(ctx context.Context, manifest toolmanifest.Manifest, progra
 	return tester.Evaluate(ctx, request, stdout, variables, exitCode, nil)
 }
 
-// Evaluate applies the compiled pipeline to one fixture. The per-case
-// context bounds jq evaluation; no child process runs.
+// Evaluate runs no child process; ctx bounds jq evaluation.
 func (t *AuthoringTester) Evaluate(ctx context.Context, request scriptengine.Request, stdout *string, variables map[string]string, exitCode *int, facts *preparation.SourcePlanInput) (AuthoringResult, error) {
 	if err := ctx.Err(); err != nil {
 		return AuthoringResult{}, err
@@ -190,14 +184,11 @@ func authoringBackend(manifest toolmanifest.Manifest, programs toolmanifest.Prog
 	if manifest.Transport != toolmanifest.TransportProcess || manifest.Process == nil {
 		return nil, fmt.Errorf("tool provider %s must use the process transport", manifest.ID)
 	}
-	// NewBackend compiles the manifest and checks argument structure, but its
-	// normal setup also snapshots environment passthrough values. Authoring has
-	// no child environment, so omit those values and keep construction inert.
+	// Authoring has no child environment, so omit environment passthrough values.
 	spec := *manifest.Process
 	spec.EnvPassthrough = nil
 	manifest.Process = &spec
 	return NewBackend(manifest, &hostprocess.Command{Exe: spec.Entry}, Options{Programs: programs})
 }
 
-// AuthoringTimeout is the per-case jq evaluation limit.
 const AuthoringTimeout = time.Second

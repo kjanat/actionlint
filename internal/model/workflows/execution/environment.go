@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// CheckoutEnvironmentUnknown reports settings that can make checkout differ from the local index.
 func CheckoutEnvironmentUnknown(env mappings.Mapping, platform runners.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, value string, known bool) bool {
 		if LoaderEnvironmentUnknown(name, value, known) {
@@ -33,7 +32,6 @@ func CheckoutEnvironmentUnknown(env mappings.Mapping, platform runners.Platform)
 	})
 }
 
-// EnvironmentContains evaluates mapping expressions once and tests their literal names and values.
 func EnvironmentContains(env mappings.Mapping, platform runners.Platform, matches func(string, string, bool) bool) bool {
 	check := func(name, value string, known bool) bool {
 		if platform != runners.MacOrLinux {
@@ -66,7 +64,6 @@ func UbuntuRunner(selection value.Value) bool {
 	return true
 }
 
-// LoaderEnvironmentUnknown reports settings that can run code or substitute libraries before a tool starts.
 func LoaderEnvironmentUnknown(name, value string, known bool) bool {
 	switch name {
 	case "LD_PRELOAD", "LD_AUDIT", "DYLD_INSERT_LIBRARIES", "DYLD_IMAGE_SUFFIX", "DYLD_ROOT_PATH":
@@ -79,13 +76,10 @@ func LoaderEnvironmentUnknown(name, value string, known bool) bool {
 	}
 }
 
-// EnvironmentLiteral returns the value of an environment entry, preserving expression results as data.
 func EnvironmentLiteral(semantic value.Value) (string, bool) {
 	return semantic.ScalarString()
 }
 
-// ServicesMayChangeWorkspace reports service mounts or options that can expose
-// the workspace even when the job itself does not run in a container.
 func ServicesMayChangeWorkspace(services *definition.Services) bool {
 	if services == nil {
 		return false

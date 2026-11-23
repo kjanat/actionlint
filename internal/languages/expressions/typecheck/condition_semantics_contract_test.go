@@ -139,8 +139,7 @@ func TestConditionConstantSerialization(t *testing.T) {
 
 func TestConditionSerializationRemainsUnknown(t *testing.T) {
 	t.Parallel()
-	// The engines disagree on signed-zero serialization; strict JSON rejects
-	// non-finite round trips. Do not invent a single folded outcome.
+	// The engines disagree on signed-zero serialization, and strict JSON rejects non-finite round trips.
 	for _, expression := range []string{
 		"toJSON(-0)", "format('{0}', -0)", "fromJSON(toJSON(fromJSON('1e309')))",
 		"toJSON(1)", "toJSON(fromJSON('{}'))", "toJSON(fromJSON('[]'))",

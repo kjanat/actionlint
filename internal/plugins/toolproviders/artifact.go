@@ -15,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// ReadProviderArtifact parses a distributed process-provider manifest. A standalone
-// JSON file uses a PATH command and inline transforms; OCI supplies blob layers.
 func ReadProviderArtifact(artifact *artifacts.Artifact) (toolmanifest.Manifest, error) {
 	manifest, err := toolmanifest.ParsePluginManifest(artifact.Bytes)
 	if err != nil {
@@ -38,9 +36,7 @@ func ReadProviderArtifact(artifact *artifacts.Artifact) (toolmanifest.Manifest, 
 	return manifest, nil
 }
 
-// ValidateProviderArtifact compiles a distributed provider's schemas and jq
-// programs. OCI transforms are fetched by digest, but the process entry is
-// never resolved, probed, or invoked.
+// ValidateProviderArtifact never resolves, probes or invokes the process entry.
 func ValidateProviderArtifact(ctx context.Context, artifact *artifacts.Artifact, options artifacts.Options) error {
 	manifest, err := ReadProviderArtifact(artifact)
 	if err != nil {
@@ -74,9 +70,8 @@ func ValidateLocalProvider(ctx context.Context, path string) error {
 	return nil
 }
 
-// InspectArtifact resolves source and returns its provenance. A process
-// provider manifest, local or distributed, is validated first; its process
-// entry is never resolved, probed or invoked.
+// InspectArtifact validates a process provider manifest first and never
+// resolves, probes or invokes its process entry.
 func InspectArtifact(ctx context.Context, source string, options artifacts.Options) (artifacts.ArtifactProvenance, error) {
 	if toolmanifest.IsLocalManifest(source) {
 		if err := ValidateLocalProvider(ctx, source); err != nil {

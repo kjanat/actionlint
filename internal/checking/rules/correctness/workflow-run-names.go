@@ -13,21 +13,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// WorkflowRunNamesRule is the single definition of the workflow-run-names rule.
 var WorkflowRunNamesRule = &define.Rule{
 	Name:        "workflow-run-names",
 	Description: "Report workflow_run references to unknown repository workflows",
 	Category:    "correctness",
 	Subcategory: "workflows",
 	Recommended: true,
-	Help:        "Use the exact name of an existing workflow in workflows; names are matched independently of filenames.",
+	Help:        "Use the name of an existing workflow, or a pattern that matches one. Filenames do not match.",
 	Prepare:     prepareWorkflowRunNames,
 	Checks:      func(c define.RuleInputs) define.Checks { return WorkflowRunNamesChecks(c.WorkflowNameInventory) },
 	Enabled:     define.RuleInputs.InProjectWorkflows,
 }
 
-// WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
-// It does not read files or depend on prior callbacks.
 func WorkflowRunNamesChecks(inventory names.Inventory) define.Checks {
 	return define.Checks{
 		Workflow: func(workflow workflows.BoundWorkflow) []reporting.StepFinding {
@@ -36,7 +33,6 @@ func WorkflowRunNamesChecks(inventory names.Inventory) define.Checks {
 	}
 }
 
-// WorkflowRunFilters returns declared producer-name filters without loading an inventory.
 func WorkflowRunFilters(w workflows.BoundWorkflow) []*definition.String {
 	if !w.Present() {
 		return nil
@@ -50,7 +46,6 @@ func WorkflowRunFilters(w workflows.BoundWorkflow) []*definition.String {
 	return references
 }
 
-// workflowRunNameDiagnostics verifies name filters against a complete repository inventory.
 // Unknown expressions and incomplete inventories cannot establish missing producers.
 func workflowRunNameDiagnostics(n names.Inventory, references []*definition.String) []results.Diagnostic {
 	var findings []results.Diagnostic

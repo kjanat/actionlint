@@ -7,16 +7,13 @@ import (
 )
 
 // ResolvedActions reads acquired metadata without starting provider requests.
-// Source preparation can add results; readers cannot change or fetch them.
 type ResolvedActions struct {
 	service *Service
 }
 
-// Resolved returns a read-only view of metadata acquired for this request.
 func (s *Service) Resolved() *ResolvedActions { return &ResolvedActions{service: s} }
 
-// Inspect returns not-fetched when source preparation has not acquired a reference.
-// A nil reader means remote metadata lookup is disabled.
+// Inspect treats a nil reader as disabled remote metadata lookup.
 func (r *ResolvedActions) Inspect(spec string) ActionInspection {
 	if r == nil || r.service == nil {
 		return ActionInspection{availability: actions.MissingMetadata(availability.LookupDisabled())}
@@ -29,8 +26,6 @@ func (r *ResolvedActions) Inspect(spec string) ActionInspection {
 	return inspection
 }
 
-// Lookup returns an absent definition when metadata is unavailable or invalid.
-// Inspect also reports the reason and any manifest problems.
 func (r *ResolvedActions) Lookup(spec string) actionmeta.Definition {
 	return r.Inspect(spec).Definition()
 }

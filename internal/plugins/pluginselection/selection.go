@@ -29,42 +29,27 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-// PluginSelection chooses plugins from explicit arguments or repository configuration.
-// Explicit sources replace automatic selection. Explicit configs are
-// invocation-wide; automatic declarations belong to their nearest repository.
 type PluginSelection struct {
 	RuleSet configuration.RuleSet
 	Paths   []string
 
 	ConfigFile string
-	// ConfigSources keeps the configuration files selection parses, so the
-	// analysis session of the same run merges them without reading them
-	// again. Nil reads every file for selection alone.
-	ConfigSources *document.Files
-	Disabled      bool
-	Overlays      []configuration.Overlay
-	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
-	DefaultTools []string
-	lazyDefaults bool
-	DisableTools bool
-	// WithTools copies DisabledTools and NamedTools.
+	// ConfigSources keeps the parsed configuration files of selection.
+	ConfigSources             *document.Files
+	Disabled                  bool
+	Overlays                  []configuration.Overlay
+	DefaultTools              []string
+	lazyDefaults              bool
+	DisableTools              bool
 	DisabledTools, NamedTools []string
 	Acquisition               dependencycache.Acquisition
 }
 
-// WithTools returns a copy of selection that stores the tool ids
-// disabled by --no-tool or the GitHub Action's disable-tools input, and the
-// tool ids named by --tool, --no-tool or that input. A selected plugin whose
-// name or alias is a disabled id is never downloaded. Any other plugin is
-// skipped before it runs when its metadata names a disabled id as its engine
-// or one of its rules. After plugins load, each named id must name a bundled
-// tool, a loaded plugin or a skipped plugin.
 func WithTools(selection PluginSelection, disabled, named []string) PluginSelection {
 	selection.DisabledTools, selection.NamedTools = slices.Clone(disabled), slices.Clone(named)
 	return selection
 }
 
-// Sources records selected plugin references, release data and acquisition authority.
 type Sources struct {
 	Paths       []string
 	LazySources map[string]pluginregistry.Pin
@@ -74,17 +59,14 @@ type Sources struct {
 	Releases         *pluginregistry.ResolvedPlugins
 	Configurations   []*configuration.Config
 	Artifacts        map[string]*artifacts.Artifact
-	// NetworkGrants come only from explicit source arguments, never project files.
-	NetworkGrants map[string]acquisitionhttp.Grant
-	Overlays      []configuration.Overlay
-	// DisabledTools and NamedTools carry the invocation selections to loading.
+	// NetworkGrants come only from explicit source arguments and take nothing from project files.
+	NetworkGrants             map[string]acquisitionhttp.Grant
+	Overlays                  []configuration.Overlay
 	DisabledTools, NamedTools []string
-	// SkippedTools lists disabled tool ids that matched a selected plugin.
-	SkippedTools []string
-	DisableTools bool
-	// Configured identifies configuration-selected providers that require process opt-in.
-	Configured  bool
-	Acquisition dependencycache.Acquisition
+	SkippedTools              []string
+	DisableTools              bool
+	Configured                bool
+	Acquisition               dependencycache.Acquisition
 }
 
 func (s PluginSelection) Resolve(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
@@ -99,8 +81,6 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ch
 	return selected, nil
 }
 
-// ResolveForRules selects declared plugins without validating unrelated lint
-// settings.
 func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) (Sources, error) {
 	selected, err := s.selectSources(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository}, plugins.PluginDeclarationsOnly)
 	if err != nil {
@@ -113,13 +93,11 @@ func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) 
 }
 
 // Select resolves exact registry metadata without downloading artifacts or
-// running plugin code. Hosts can restore artifacts before Hydrate verifies them.
+// running plugin code.
 func (s PluginSelection) Select(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
 	return s.selectSources(ctx, directory, input, plugins.CompleteConfiguration)
 }
 
-// SelectForCache selects the same declared releases as analysis without fetching
-// artifacts or implicitly migrating project files.
 func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {
 	return s.Select(ctx, directory, input)
 }
@@ -183,7 +161,6 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			starts = append(starts, RepositorySearchStart(path))
 		}
 	case input.Kind == checkrequest.Stdin:
-		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
 		if input.Name == "" || input.Name == "<stdin>" {
 			return Sources{}, nil
 		}
@@ -256,9 +233,6 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 	return s.sourcesFromProject(ctx, selectedProject, selected.RepositoryRoot)
 }
 
-// RepositorySearchStart returns the directory from which an input path
-// discovers its repository. A directory argument belongs to its own
-// repository, not its parent's.
 func RepositorySearchStart(path string) string {
 	if info, err := os.Stat(path); err == nil && info.IsDir() {
 		return path
@@ -284,8 +258,6 @@ func (s PluginSelection) prepareProject(project *installation.Project) (*configu
 		project.DefaultPlugins = true
 	}
 	if len(project.Manifest.References) != 0 && !project.DefaultPlugins {
-		// Check the complete source graph only after overlays determine whether
-		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {
 			if configsource.IsRemoteAddress(path) {
 				continue
@@ -331,8 +303,6 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *instal
 	return selected, nil
 }
 
-// selectedPlugins filters named declarations before registry lookup. When all
-// tools are disabled, cached components may still provide non-tool roles.
 func (s PluginSelection) selectedPlugins(ctx context.Context, project *installation.Project) (pluginregistry.ResolvedPlugins, []string, error) {
 	selected := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}
 	var skipped []string
@@ -373,8 +343,6 @@ func sourcesFromPins(releases pluginregistry.ResolvedPlugins, root string) (Sour
 	return selected, nil
 }
 
-// dropDisabledPins removes selected plugins whose name or alias is a disabled
-// tool id, before Hydrate or loading could fetch them.
 func (s *Sources) dropDisabledPins() {
 	if s.Releases == nil || len(s.DisabledTools) == 0 && !s.DisableTools {
 		return
@@ -396,8 +364,6 @@ func (s *Sources) dropDisabledPins() {
 	s.Releases = &releases
 }
 
-// disabledPinTool returns the disabled tool id a pin's name or alias
-// equals, or "".
 func disabledPinTool(pin pluginregistry.Pin, disabled []string) string {
 	for _, name := range []string{pin.Alias, pin.Name} {
 		if name != "" && slices.Contains(disabled, name) {
@@ -407,7 +373,6 @@ func disabledPinTool(pin pluginregistry.Pin, disabled []string) string {
 	return ""
 }
 
-// Hydrate verifies pinned cached artifacts and downloads missing bytes.
 func (s *Sources) Hydrate(ctx context.Context) error {
 	if s.DisableTools {
 		options := network.Settings(ctx)
@@ -442,8 +407,6 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 	return nil
 }
 
-// ValidateScope prevents a session's automatic project plugins from being
-// applied to documents opened from another (including nested) repository.
 func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet, paths []string) error {
 	if !s.RepositoryScoped {
 		return nil

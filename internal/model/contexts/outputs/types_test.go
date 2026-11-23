@@ -29,8 +29,6 @@ func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtyp
 	return value
 }
 
-// Diagnostics name an output as declared: a near miss for MixedOutput
-// suggests "MixedOutput". Lookup stays case insensitive.
 func TestOutputTypesKeepDeclaredSpelling(t *testing.T) {
 	t.Parallel()
 	action := outputs.ActionType(actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {MixedOutput: {description: result}}\nruns: {using: node24, main: index.js}\n")))

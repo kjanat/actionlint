@@ -11,18 +11,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
-// Runtime describes a JavaScript runtime accepted by the runner's action metadata parser.
 type Runtime struct {
 	Removed    bool
 	Deprecated bool
-	// ExecutionRuntime names the runtime selected by HandlerFactory.
-	// An empty value means that the runner uses runs.using.
+	// An empty ExecutionRuntime means the runner uses runs.using.
 	ExecutionRuntime string
 	DeprecationURL   string
 	RemovalDate      string
 }
 
-// ValidRuntimes lists accepted manifest runtime names for diagnostic messages.
 func ValidRuntimes() string {
 	names := append([]string{"composite", "docker"}, slices.Sorted(maps.Keys(Runtimes))...)
 	for i, name := range names {
@@ -31,7 +28,6 @@ func ValidRuntimes() string {
 	return strings.Join(names, ", ")
 }
 
-// LifecycleContext identifies the execution service and the captured assessment date.
 type LifecycleContext struct {
 	Service services.Service
 	AsOf    lifecycle.Date
@@ -43,8 +39,7 @@ type RuntimeFinding struct {
 	Evidence *lifecycle.Evidence
 }
 
-// RuntimeProblem separates declared runtime support from executable remapping.
-// Future evidence is retained for notification policy even when Current is false.
+// RuntimeProblem retains future evidence for notification policy even when Current is false.
 func RuntimeProblem(using string, context LifecycleContext) RuntimeFinding {
 	if strings.EqualFold(using, "node20") && (context.Service.Kind() == services.GitHubCom || context.Service.Kind() == services.GitHubDataResidency) && !context.AsOf.IsZero() {
 		effective, _ := lifecycle.ParseDate("2026-09-23")

@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// CacheWriteUntrustedRule is the single definition of the cache-write-untrusted rule.
 var CacheWriteUntrustedRule = &define.Rule{
 	Name:        "cache-write-untrusted",
 	Description: "Report cache write access granted on low-trust triggers",
@@ -15,8 +14,8 @@ var CacheWriteUntrustedRule = &define.Rule{
 	Subcategory: "cache",
 	Policy:      "cache-write-untrusted",
 	Recommended: true,
-	Explanation: "Report cache write access reachable from low-trust triggers. Untrusted code or input can poison caches consumed by privileged workflows.",
-	Help:        "Set cache-mode to read or none, restrict the job with an event guard, or document a reviewed exception with an inline suppression.",
+	Explanation: "Report cache write access on low-trust triggers. Untrusted code can poison caches that privileged workflows read.",
+	Help:        "Set cache-mode to read or none, guard the job by event, or add an inline suppression for a reviewed exception.",
 	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
 		return CacheWriteUntrustedChecks(workflow)
@@ -24,8 +23,6 @@ var CacheWriteUntrustedRule = &define.Rule{
 	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") },
 }
 
-// CacheWriteUntrustedChecks reports write-capable cache declarations reachable
-// from low-trust events. It prepares declaration ownership before callbacks run.
 func CacheWriteUntrustedChecks(workflow workflows.BoundWorkflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{

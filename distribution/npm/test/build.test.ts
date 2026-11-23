@@ -62,10 +62,11 @@ async function fixture(t: TestContext, version = '3.2.1') {
 		const binary = targets.binary + (target.os === 'win32' ? '.exe' : '');
 		const bytes = await archive(
 			target.format,
-			new Map([[binary, Buffer.from(`binary for ${target.pkg}`)], ['man/actionlint.1', Buffer.from('manual')], [
-				'README.md',
-				Buffer.from('release readme'),
-			]]),
+			new Map([
+				[binary, Buffer.from(`binary for ${target.pkg}`)],
+				['man/actionlint.1', Buffer.from('manual')],
+				['README.md', Buffer.from('release readme')],
+			]),
 		);
 		const name = assetName(options.version, target);
 		assets.set(name, bytes);
@@ -290,10 +291,10 @@ test('missing local assets can be downloaded with the GitHub token and still req
 		assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer fixture-token');
 		return new Response(new Uint8Array(bytes));
 	};
-	await buildPackages({ ...f.options, only: target.pkg, repository: 'kjanat/actionlint', token: 'fixture-token' }, {
-		fetch: request,
-		report: () => {},
-	});
+	await buildPackages(
+		{ ...f.options, only: target.pkg, repository: 'kjanat/actionlint', token: 'fixture-token' },
+		{ fetch: request, report: () => {} },
+	);
 	assert.deepEqual(calls, [`https://github.com/kjanat/actionlint/releases/download/v3.2.1/${name}`]);
 	assert.equal(
 		await readFile(join(f.options.outDir, target.pkg, 'bin/actionlint'), 'utf8'),

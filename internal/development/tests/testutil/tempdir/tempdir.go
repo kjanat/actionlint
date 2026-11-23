@@ -10,9 +10,7 @@ import (
 
 // Physical returns t.TempDir with symlinked and short-name ancestors resolved.
 // macOS places temporary directories under the /var -> /private/var symlink and
-// Windows runners can report 8.3 names such as RUNNER~1. Source capture keys
-// documents by physical path, so fixtures that compare read paths against the
-// root must start from the same spelling.
+// Windows runners can report 8.3 names such as RUNNER~1.
 func Physical(tb testing.TB) string {
 	tb.Helper()
 	return files.PhysicalPath(tb.TempDir())

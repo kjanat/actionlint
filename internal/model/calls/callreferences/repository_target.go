@@ -2,11 +2,9 @@ package callreferences
 
 import "strings"
 
-// RepositoryTarget is the repository, optional subpath and revision in uses.
-// It does not identify a host or establish that the target exists.
+// RepositoryTarget identifies no host and does not prove the target exists.
 type RepositoryTarget struct{ Owner, Repo, Subpath, Ref string }
 
-// Location returns owner/repo[/subpath], without the ref.
 func (t RepositoryTarget) Location() string {
 	if t.Subpath == "" {
 		return t.Owner + "/" + t.Repo
@@ -15,8 +13,6 @@ func (t RepositoryTarget) Location() string {
 }
 
 // ParseRepositoryUses accepts the default-host owner/repo[/path]@ref form.
-// Workspace, self-repository, container, builtin, self-host and URL references
-// use other forms.
 func ParseRepositoryUses(raw string) (RepositoryTarget, bool) {
 	reference, ok := Classify(raw).(RepositoryReference)
 	if !ok || reference.HostSource != HostSourceDefault {

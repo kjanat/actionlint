@@ -38,10 +38,14 @@ test('persisted incomplete checks identify calls and reject incomplete invocatio
 	const value = { ...base, incomplete_checks: [record, { ...record, invocation: { entry, id: 'b'.repeat(64) } }] };
 	assert.deepEqual(parseResult(value), value);
 	for (
-		const invocation of [null, {}, { entry }, { id: 'a'.repeat(64) }, { entry, id: 'invalid' }, {
-			entry: { ...entry, revision: '' },
-			id: 'a'.repeat(64),
-		}]
+		const invocation of [
+			null,
+			{},
+			{ entry },
+			{ id: 'a'.repeat(64) },
+			{ entry, id: 'invalid' },
+			{ entry: { ...entry, revision: '' }, id: 'a'.repeat(64) },
+		]
 	) {
 		assert.throws(() => parseResult({ ...base, incomplete_checks: [{ ...record, invocation }] }));
 	}

@@ -19,8 +19,6 @@ func (sema *Checker) reportCallProblems(call *syntax.FuncCallNode, problems []fu
 	}
 }
 
-// callProblemFinding attaches diagnostic identity and source ranges without
-// changing checking state or evaluating the reported operation.
 func callProblemFinding(call *syntax.FuncCallNode, problem functions.CallProblem) (*Error, FailurePhase) {
 	switch problem := problem.(type) {
 	case functions.MissingFormatArgument:

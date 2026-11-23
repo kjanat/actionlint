@@ -14,7 +14,7 @@ lint:
   rules:
     preset: recommended
     # Each group accepts a level or individual rules. Named levels: {{RULE_LEVELS}}.
-    # Warnings and info findings also cause exit status 1.
+    # Errors cause exit status 1. With --strict, warnings do too.
     # List rules and their defaults with: actionlint rules
     # Rule defaults in this build:
     # {{RULE_EXAMPLES}}
@@ -30,7 +30,7 @@ lint:
 #     enabled: true
 #     # config also accepts an rc path, auto for discovery, or false to skip rc files.
 #     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
-#       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
+#       extended-analysis: true, external-sources: true, source-path: ["${{ github.workspace }}"]}
 
 # Set CLI reporting defaults. Command-line flags and environment variables take precedence.
 # output:

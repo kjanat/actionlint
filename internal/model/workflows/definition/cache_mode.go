@@ -2,23 +2,16 @@ package definition
 
 import "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 
-// CacheModeKind identifies the cache access granted to a workflow or job.
 type CacheModeKind uint8
 
 const (
-	// CacheModeInvalid represents an invalid declaration, distinct from an omitted one.
 	CacheModeInvalid CacheModeKind = iota
-	// CacheModeNone prevents restores and saves.
 	CacheModeNone
-	// CacheModeRead allows restores only.
 	CacheModeRead
-	// CacheModeWrite allows restores and saves.
 	CacheModeWrite
-	// CacheModeWriteOnly allows saves only.
 	CacheModeWriteOnly
 )
 
-// String returns the workflow spelling of the cache mode.
 func (k CacheModeKind) String() string {
 	switch k {
 	case CacheModeNone:
@@ -34,7 +27,7 @@ func (k CacheModeKind) String() string {
 	return "invalid"
 }
 
-// CacheMode is an explicit cache-mode declaration. An omitted declaration is a nil pointer.
+// CacheMode is nil when the declaration is omitted.
 type CacheMode struct {
 	Kind CacheModeKind
 	Pos  *sourcetext.Position
@@ -47,7 +40,6 @@ func (m *CacheMode) Capabilities() (uint8, bool) {
 	return m.Kind.Capabilities()
 }
 
-// Capabilities returns the restore and save access granted by a declared mode.
 func (k CacheModeKind) Capabilities() (uint8, bool) {
 	switch k {
 	case CacheModeNone:

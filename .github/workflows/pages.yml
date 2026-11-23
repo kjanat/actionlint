@@ -7,9 +7,8 @@ on:
     paths:
       - "*.go"
       - ".github/workflows/pages.yml"
-      - ".mise.toml"
+      - "mise.toml"
       - ".node-version"
-      - ".tool-versions"
       - "tasks.toml"
       - "analysis/**"
       - "analyzer/**"

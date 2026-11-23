@@ -10,8 +10,7 @@ type callResource interface {
 	Close(context.Context) error
 }
 
-// finish detaches resources and closes dependents before providers.
-// Defers keep later cleanup running after a panic.
+// finish closes dependents before providers, and its defers keep later cleanup running after a panic.
 func (c *callScope) finish(ctx context.Context, result *error) {
 	guest, annotations, input, output := c.guest, c.annotations, c.stdin, c.output
 	c.guest, c.annotations, c.stdin, c.output = nil, nil, nil, nil

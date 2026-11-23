@@ -17,25 +17,23 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// MetadataCache shares captured reusable-workflow metadata within one repository.
 type MetadataCache struct {
 	remote     *Remote
 	captures   *capture.Store
 	ctx        context.Context
 	sourceRoot string
 	mu         sync.RWMutex
-	root       string // empty when no repository is available
+	root       string
 	cache      map[string]reusableWorkflowMetadataResult
 	dbg        io.Writer
 }
 
 type reusableWorkflowMetadataResult struct {
 	metadata *calls.Metadata
-	failure  metadataError // zero when metadata was read and parsed, or deliberately ignored
+	failure  metadataError
 	captured capture.CapturedDocument
 }
 
-// outcome returns the metadata or the recorded failure.
 func (r reusableWorkflowMetadataResult) outcome() (*calls.Metadata, error) {
 	if r.failure.failed() {
 		return nil, r.failure
@@ -43,7 +41,6 @@ func (r reusableWorkflowMetadataResult) outcome() (*calls.Metadata, error) {
 	return r.metadata, nil
 }
 
-// failureKind says which step of loading a reusable workflow failed.
 type failureKind uint8
 
 const (
@@ -51,9 +48,6 @@ const (
 	failureParse
 )
 
-// metadataError stores a failure's display text and cause. Renaming the call-site
-// reference copies this record and preserves the original error chain.
-// The zero value records no failure.
 type metadataError struct {
 	kind    failureKind
 	spec    string
@@ -62,7 +56,6 @@ type metadataError struct {
 }
 
 func readFailure(spec string, err error) metadataError {
-	// A capture failure is shown by its cause, which already names the file.
 	shown := err
 	if captured, ok := errors.AsType[*capture.CaptureError](err); ok && errors.Unwrap(captured) != nil {
 		shown = errors.Unwrap(captured)
@@ -76,7 +69,6 @@ func parseFailure(spec string, err error) metadataError {
 
 func (f metadataError) failed() bool { return f.kind != 0 }
 
-// at names the workflow as the call site spelled it.
 func (f metadataError) at(spec string) metadataError {
 	f.spec = spec
 	return f
@@ -99,8 +91,6 @@ func (c *MetadataCache) debug(format string, args ...any) {
 	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
-// Lookup returns a memoized dependency result without reading the filesystem.
-// The metadata is a detached copy owned by the caller.
 func (c *MetadataCache) Lookup(key string) (*calls.Metadata, error, bool) {
 	c.mu.RLock()
 	result, ok := c.cache[key]
@@ -117,8 +107,6 @@ func (c *MetadataCache) Lookup(key string) (*calls.Metadata, error, bool) {
 	return metadata, err, true
 }
 
-// Store records a copy of parsed metadata for a repository-relative
-// specification. A nil val records that the specification has no metadata.
 func (c *MetadataCache) Store(key string, val *calls.Metadata) {
 	c.store(key, reusableWorkflowMetadataResult{metadata: val})
 }
@@ -132,8 +120,6 @@ func (c *MetadataCache) store(key string, result reusableWorkflowMetadataResult)
 	c.mu.Unlock()
 }
 
-// Seed indexes reusable metadata only from this result's admitted workflow.
-// Mutable visitor ASTs never supply independent source bytes or declarations.
 func (c *MetadataCache) Seed(snapshot parsing.SourceSnapshot) error {
 	if c == nil || c.root == "" {
 		return nil
@@ -170,15 +156,9 @@ func (c *MetadataCache) Seed(snapshot parsing.SourceSnapshot) error {
 		c.cache[spec] = result
 	}
 	c.mu.Unlock()
-	// Metadata failures belong to caller diagnostics. A callee entry still
-	// traverses its recovered workflow and every other rule.
 	return nil
 }
 
-// LoadWorkflowMetadata reads and parses a repository-local workflow unless it is already cached.
-// Non-local references and a disabled repository scope return no metadata.
-// ctx cancels this caller's wait; the capture store owns backing IO.
-// Concurrent callers receive detached metadata or the cached failure.
 func (c *MetadataCache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -220,9 +200,6 @@ func (c *MetadataCache) LoadWorkflowMetadata(ctx context.Context, spec string) (
 	return m, err
 }
 
-// LoadForCall loads local metadata using a normalized ./ cache key and reports
-// failures with the caller's reference spelling. Syntax checks handle non-local
-// or invalid references; this loader returns no metadata for them.
 func (c *MetadataCache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Metadata, error) {
 	localSpec, ok := callreferences.LocalWorkflow(sourceSpec)
 	if !ok {
@@ -247,8 +224,6 @@ func workflowPathToSpec(root, path string) (string, bool) {
 	return p, true
 }
 
-// NewMetadataCache indexes reusable workflows under root. An empty root disables local
-// file reads. SetSources configures local captures; SetRemote supplies remote metadata.
 func NewMetadataCache(root string, dbg io.Writer) *MetadataCache {
 	return &MetadataCache{
 		root:  root,

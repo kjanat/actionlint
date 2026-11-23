@@ -47,8 +47,6 @@ func runAction(t *testing.T, workspace string, result *lintResult, argv ...strin
 	return runActionWithInputs(t, workspace, result, nil, argv...)
 }
 
-// runActionWithInputs runs the action with the positional inputs argv and
-// the extra input environment variables inputs.
 func runActionWithInputs(t *testing.T, workspace string, result *lintResult, inputs map[string]string, argv ...string) (*actionRun, *recordedLint) {
 	t.Helper()
 	recorder := &recordedLint{result: result}

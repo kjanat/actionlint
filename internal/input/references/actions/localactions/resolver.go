@@ -24,20 +24,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// ActionMetadataLookup supplies metadata to checks without exposing cache or resolver state.
 type ActionMetadataLookup interface {
 	FindMetadata(string) (*actionmeta.Metadata, bool, error)
 }
 
-// ActionMetadataDocumentLookup supplies metadata and its captured parse provenance
-// together, including the source of a failed parse.
 type ActionMetadataDocumentLookup interface {
 	FindMetadataDocument(string) (*actionmeta.Metadata, bool, SourceDocument, error)
 }
 
-// Resolver interprets local action references in one workflow's execution scope.
-// Metadata and consulted sources are shared with composite children. Checkout
-// and environment traversal state belongs to each resolver frame.
+// Resolver shares metadata and consulted sources with composite children and keeps checkout state per frame.
 type Resolver struct {
 	repositorySource     func(string) (RepositoryDocument, error)
 	runners              *runners.Knowledge
@@ -58,15 +53,12 @@ type Resolver struct {
 	checkoutShell        scripts.Shell
 }
 
-// resolverDocuments owns the consulted-source map and its synchronization.
-// Forks share this pointer, never a copied mutex protecting the same map.
+// Forks share one resolverDocuments and its mutex.
 type resolverDocuments struct {
 	mu   sync.RWMutex
 	used map[string]SourceDocument
 }
 
-// SourceDocument carries immutable source bytes and the parse provenance that
-// owns their canonical references, independently of metadata lookup success.
 type SourceDocument struct {
 	path       string
 	address    string
@@ -77,8 +69,6 @@ type SourceDocument struct {
 
 func (d SourceDocument) Path() string { return d.path }
 
-// Address is the absolute alias passed to the capture owner, separate from the
-// caller's metadata display spelling.
 func (d SourceDocument) Address() string { return d.address }
 
 func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
@@ -87,18 +77,14 @@ func (d SourceDocument) ReferencedFiles() actionmeta.ReferencedFiles { return d.
 
 func (d SourceDocument) Capture() capture.CapturedDocument { return d.captured }
 
-// Provenance is the parse record to pass to parsing.SourceSnapshots.Document
-// when admitting this source. It is zero when the manifest was never parsed.
+// Provenance is zero when the manifest was never parsed.
 func (d SourceDocument) Provenance() parsing.Provenance { return d.provenance }
 
-// NewResolver starts a document scope over shared repository metadata and takes
-// its own immutable copy of the source mappings.
 func NewResolver(cache *ManifestCache, checkoutMappings map[string]string) *Resolver {
 	return &Resolver{base: cache, sourceMappings: maps.Clone(checkoutMappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
 }
 
-// SetRunners installs the workflow's runner knowledge before the resolver is
-// used; composite children inherit it.
+// SetRunners must run before the resolver is used, and composite children inherit it.
 func (c *Resolver) SetRunners(runners *runners.Knowledge) { c.runners = runners }
 
 func (c *Resolver) documentOwner() *resolverDocuments {
@@ -110,14 +96,11 @@ func (c *Resolver) documentOwner() *resolverDocuments {
 	return c.documents
 }
 
-// FindMetadata translates a reference using this invocation's checkout and source mappings.
 func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 	metadata, cached, _, err := c.FindMetadataDocument(spec)
 	return metadata, cached, err
 }
 
-// FindMetadataDocument retains the capture belonging to this invocation's
-// translated lookup without resolving or reading the metadata a second time.
 func (c *Resolver) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
 	result, cached := c.LookupMetadata(spec)
 	document, _ := c.SourceDocument(result)
@@ -157,7 +140,6 @@ func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 	return c.findRepositoryMetadata(local, certain)
 }
 
-// Sources returns raw metadata consulted by this document, including parse failures.
 func (c *Resolver) Sources() map[string][]byte {
 	owner := c.documentOwner()
 	owner.mu.RLock()
@@ -169,8 +151,6 @@ func (c *Resolver) Sources() map[string][]byte {
 	return cloned
 }
 
-// SourceDocuments returns provenance for every consulted local metadata file,
-// including manifests whose semantic metadata lookup failed.
 func (c *Resolver) SourceDocuments() map[string]SourceDocument {
 	owner := c.documentOwner()
 	owner.mu.RLock()
@@ -178,7 +158,6 @@ func (c *Resolver) SourceDocuments() map[string]SourceDocument {
 	return maps.Clone(owner.used)
 }
 
-// SourceDocument returns the cached parse record associated with a lookup.
 func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) {
 	if result.document.captured.Valid() {
 		return result.document, true
@@ -189,8 +168,7 @@ func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) 
 	return c.base.SourceDocument(result)
 }
 
-// SetRepositorySource selects the repository used by $/ references in this invocation.
-// Workspace-relative ./ references continue to use the caller's checkout.
+// SetRepositorySource selects the repository for $/ references, and ./ references keep the caller's checkout.
 func (c *Resolver) SetRepositorySource(load func(string) (RepositoryDocument, error)) {
 	c.repositorySource = load
 }
@@ -223,7 +201,6 @@ func (c *Resolver) lookupRepositorySource(spec string) MetadataResult {
 	return MetadataResult{status: status, metadata: parsed.Metadata, cause: parsed.ParseError, document: document}
 }
 
-// ApplyCheckout adapts shared script paths to this invocation's checkout placement.
 func (c *Resolver) ApplyCheckout(paths execution.Paths) execution.Paths {
 	checkout := c.currentCheckout()
 	paths.Checkout, paths.CheckoutUnknown = checkout.Path, checkout.Kind == execution.DirectoryUnknown
@@ -232,21 +209,17 @@ func (c *Resolver) ApplyCheckout(paths execution.Paths) execution.Paths {
 	return paths
 }
 
-// Platform returns the runner platform inferred for this workflow job.
 func (c *Resolver) Platform() runners.Platform { return c.platform }
 
-// InvalidateCheckout discards assumptions after opaque or concurrent execution.
+// InvalidateCheckout discards checkout assumptions after opaque or concurrent execution.
 func (c *Resolver) InvalidateCheckout() {
 	c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 }
 
-// UnresolvedError identifies a missing or ambiguous local action reference.
 type UnresolvedError string
 
 func (e UnresolvedError) Error() string { return string(e) }
 
-// MappingError reports a source mapping that cannot be applied to a local
-// action reference. Only this package creates it.
 type MappingError struct{ cause error }
 
 func (e MappingError) Error() string { return e.cause.Error() }
@@ -337,13 +310,10 @@ func missingMappedLocalAction(alias, source string) error {
 	return UnresolvedError(fmt.Sprintf("source mapping for local action %q: %s", alias, missingLocalActionMetadata(source)))
 }
 
-// The workflow-scoped view translates runner workspace paths before consulting
-// the shared repository cache. Its placement never leaks between jobs or files.
 func (c *Resolver) currentCheckout() execution.Directory {
 	return c.CheckoutState().Details().Directory
 }
 
-// CheckoutState returns an immutable placement value for this invocation.
 func (c *Resolver) CheckoutState() execution.CheckoutPlacement {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -393,7 +363,6 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 	return "", false
 }
 
-// ObserveCheckout updates action resolution after a checkout step.
 func (c *Resolver) ObserveCheckout(step workflows.BoundStep) {
 	enabled, known := conditions.Condition(step.Condition())
 	if known && !enabled {
@@ -412,8 +381,7 @@ func (c *Resolver) ObserveCheckout(step workflows.BoundStep) {
 		return
 	}
 	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(workflows.Environment(step.Env), c.platform) {
-		// Git may write outside the requested path or execute a wrapper. Literal
-		// metadata fallback is not evidence of the resulting repository contents.
+		// Git may write outside the requested path or execute a wrapper.
 		c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true}, execution.CheckoutPlacement{}))
 		return
 	}
@@ -443,15 +411,13 @@ func (c *Resolver) ObserveCheckout(step workflows.BoundStep) {
 			self = false
 		}
 		if certain && (key == "repository" || key == "github-server-url" || key == "ref") && inputKnown && item != "" {
-			// A specified revision need not contain the analyzed working-tree
-			// metadata. No revision identity is available to prove equivalence.
+			// A specified revision need not contain the analyzed working-tree metadata.
 			foreign = true
 		}
 	}
 	previous := c.CheckoutState()
 	if self && !known && !conditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !conditions.BoolMayBeTrue(workflows.Bool(step.Background)) && !conditions.CanRunAfterFailure(step.Condition()) {
-		// Skipping or successfully refreshing the same self checkout both
-		// preserve its placement. A failed refresh cannot reach ordinary steps.
+		// Skipping or refreshing the same self checkout preserves its placement.
 		if previous.SameSelfCheckout(checkout.Path) {
 			checkout.Kind = execution.DirectoryKnown
 		}

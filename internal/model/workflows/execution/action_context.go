@@ -11,10 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// ErrInvalidActionCall reports a call step that cannot enter an action.
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
-// CallFacts projects caller effects from the owned syntax view.
 func CallFacts(view workflows.BoundStep, platform runners.Platform) (invocation.Facts, error) {
 	if !view.Present() {
 		return invocation.Facts{}, ErrInvalidActionCall

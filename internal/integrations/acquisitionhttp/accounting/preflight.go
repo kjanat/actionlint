@@ -11,11 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
-// LoadGitHubRateLimits obtains quota information once per credential scope before a
-// batch. It does not discover credentials or grant permission to use the network.
-// The caller must already have selected online access and supplied its client.
-// An unavailable quota endpoint leaves the quota unknown; it does not invent a
-// zero allowance. Response headers on subsequent requests refine the estimate.
+// LoadGitHubRateLimits leaves the quota unknown when the quota endpoint is
+// unavailable, and callers must already have selected online access.
 func (s *RequestTracker) LoadGitHubRateLimits(ctx context.Context, client *http.Client, request *http.Request) error {
 	if err := validRequest(request); err != nil {
 		return err
@@ -96,8 +93,7 @@ func (s *RequestTracker) LoadGitHubRateLimits(ctx context.Context, client *http.
 	return ctx.Err()
 }
 
-// CheckBatchQuota tests a batch's planned cost without spending quota. Individual
-// requests still pass admission, because another operation can spend it first.
+// CheckBatchQuota spends no quota, and another operation can spend it first.
 func (s *RequestTracker) CheckBatchQuota(request *http.Request, cost uint64) error {
 	if err := validRequest(request); err != nil {
 		return err

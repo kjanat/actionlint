@@ -68,7 +68,6 @@ func TestOCICanonicalHost(t *testing.T) {
 	}
 }
 
-// A cache locator cannot carry another location or a second digest.
 func TestCandidateCacheRejectsInvalidURI(t *testing.T) {
 	t.Parallel()
 	digest := strings.Repeat("ab", 32)

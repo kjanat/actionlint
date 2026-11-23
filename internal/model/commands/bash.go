@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-// BashDefinition describes Bash's command-line grammar. Other interpreters supply
-// their own definitions; sharing the argument parser does not share this grammar.
 func BashDefinition() Definition {
 	definition := Definition{
 		ID: "bash", Executables: []string{"bash", "bash.exe"}, IgnoreExecutableCase: true,
@@ -37,8 +35,8 @@ func BashDefinition() Definition {
 	return definition
 }
 
-// BashSetup describes the script's initial options rather than every earlier flag.
-// Changes with side effects preserve their order: POSIX mode changes shopt
+// BashSetup describes the script's initial options and omits earlier flags.
+// Changes with side effects preserve their order. POSIX mode changes shopt
 // settings, and selecting an editing mode disables the other editing mode.
 func BashSetup(settings []OptionSetting) string {
 	settings = initialSettings(settings)
@@ -99,8 +97,8 @@ func initialSettings(settings []OptionSetting) []OptionSetting {
 		}
 	}
 	// These options start disabled in a noninteractive Bash invocation. Trace
-	// inheritance is excluded because extdebug changes it. POSIX and editing
-	// modes have separate transitions rather than independent Boolean flags.
+	// inheritance is excluded. extdebug changes trace inheritance. POSIX and editing
+	// modes have separate transitions and no independent Boolean flags.
 	disabledByDefault := strings.Fields("allexport errexit history ignoreeof keyword monitor noclobber noexec noglob nolog notify nounset onecmd physical pipefail verbose xtrace")
 	for i, setting := range settings {
 		if independent(setting) {
@@ -114,7 +112,7 @@ func initialSettings(settings []OptionSetting) []OptionSetting {
 	for i, setting := range settings {
 		if setting.Group == "set" && (setting.Name == "emacs" || setting.Name == "vi") {
 			// Bash's invocation parser stores one editing mode. +o emacs and +o vi
-			// both select no editing, unlike their runtime set-builtin behavior.
+			// both select no editing here. The runtime set-builtin behavior of +o emacs and +o vi differs.
 			if i == editing && setting.Enabled {
 				result = append(result, setting)
 			}

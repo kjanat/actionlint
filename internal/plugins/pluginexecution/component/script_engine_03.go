@@ -13,11 +13,8 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-// scriptDirectoryMount is the guest path of a granted working directory.
 const scriptDirectoryMount = "/directory"
 
-// liftScriptCapabilities reads the capabilities of a script-engine 0.3.0
-// descriptor into d.
 func liftScriptCapabilities(value wacogo.Val, d *scriptengine.Descriptor) error {
 	r, err := liftRecord(value, "script capabilities")
 	if err != nil {
@@ -47,16 +44,13 @@ func liftScriptCapabilities(value wacogo.Val, d *scriptengine.Descriptor) error 
 	return nil
 }
 
-// scriptGrant is the filesystem access the host grants for one check.
 type scriptGrant struct {
 	files     []checkinputs.FileSystem
 	directory string
 }
 
 // grantScriptResources mounts the host's directory grant read-only when the
-// engine requested the directory resource. The component never opens a
-// path itself: the caller confines the grant to the workspace and records
-// the reads. Without a grant the engine sees no files.
+// engine requested the directory resource.
 func grantScriptResources(request scriptengine.Request, d *scriptengine.Descriptor) scriptGrant {
 	if request.DirectoryFS == nil || !slices.Contains(d.Resources, checkinputs.ToolDirectory) {
 		return scriptGrant{}
@@ -64,8 +58,6 @@ func grantScriptResources(request scriptengine.Request, d *scriptengine.Descript
 	return scriptGrant{files: []checkinputs.FileSystem{{Path: scriptDirectoryMount, FS: request.DirectoryFS}}, directory: scriptDirectoryMount}
 }
 
-// staticScriptCapabilities are the capabilities static script metadata
-// declares.
 type staticScriptCapabilities struct {
 	Shells          []string                       `json:"script_shells"`
 	Fixes           bool                           `json:"fixes"`
@@ -73,8 +65,6 @@ type staticScriptCapabilities struct {
 	Resources       []checkinputs.ToolResourceKind `json:"resources"`
 }
 
-// readStaticScriptCapabilities03 takes the script-engine 0.3.0
-// capabilities of static metadata into d.
 func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *scriptengine.Descriptor) error {
 	d.Fixes, d.ReportedSources = declared.Fixes, declared.ReportedSources
 	for _, resource := range declared.Resources {
@@ -86,7 +76,6 @@ func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *script
 	return nil
 }
 
-// lowerScriptRequest03 builds a script-engine 0.3.0 request.
 func lowerScriptRequest03(request scriptengine.Request, options string, grant scriptGrant) *wacogo.ValRecord {
 	excluded := make([]wacogo.Val, len(request.Excluded))
 	for i, code := range request.Excluded {
@@ -101,7 +90,6 @@ func lowerScriptRequest03(request scriptengine.Request, options string, grant sc
 		field("excluded", wacogo.NewValListOf(excluded...)), field("directory", directory))
 }
 
-// validExcluded rejects excluded codes the request cannot carry.
 func validExcluded(codes []string) bool {
 	for _, code := range codes {
 		if code == "" || strings.ContainsRune(code, 0) || !utf8.ValidString(code) {
@@ -111,8 +99,6 @@ func validExcluded(codes []string) bool {
 	return true
 }
 
-// liftScriptDiagnostic03 lifts a script-engine 0.3.0 diagnostic, including
-// its reported source and fixes.
 func liftScriptDiagnostic03(value wacogo.Val) (scriptengine.Diagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
@@ -187,9 +173,7 @@ func liftScriptFix(value wacogo.Val) (scriptengine.Fix, error) {
 	return fix, nil
 }
 
-// checkScriptDiagnostic03 validates the 0.3.0 parts of a diagnostic against
-// the engine's capabilities and this check's grant. Positions and fix ranges
-// are validated by enginediagnostics, as every transport's are.
+// checkScriptDiagnostic03 leaves positions and fix ranges to enginediagnostics.
 func checkScriptDiagnostic03(d *scriptengine.Diagnostic, descriptor *scriptengine.Descriptor, grant scriptGrant) error {
 	if d.Severity == "" {
 		return errors.New("script engine returned a diagnostic without a severity")
@@ -213,8 +197,6 @@ func checkScriptDiagnostic03(d *scriptengine.Diagnostic, descriptor *scriptengin
 	return nil
 }
 
-// scriptDiagnosticBytes counts the text a diagnostic carries towards the
-// result limit.
 func scriptDiagnosticBytes(d scriptengine.Diagnostic) uint64 {
 	total := uint64(0)
 	for _, text := range []string{d.Filename, d.Code, d.Name, d.Message, d.Severity, d.URL, d.Source} {

@@ -48,7 +48,7 @@ fn reports_only_unpinned_repository_dependencies() {
         let result = Plugin::analyze(Input {
             reference: reference.clone(),
             path: "workflow.yml".into(),
-            // The check must use supplied facts rather than parse source text.
+            // The check must read only the supplied facts.
             content: "not YAML: [".into(),
             kind: "workflow".into(),
             parse_status: "parsed".into(),

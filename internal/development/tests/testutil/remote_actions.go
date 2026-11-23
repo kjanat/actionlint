@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
-// WithFixtureKnowledge supplies the corpus's explicit host evidence. Configured
-// repository labels still override the known-empty additional-label inventory.
 func WithFixtureKnowledge(t *testing.T, options checking.Options) checking.Options {
 	t.Helper()
 	if options.RemoteActions == nil {
@@ -80,7 +78,6 @@ func fixtureRepositoryID(fields map[string]string) (repository.ID, error) {
 	return repository.KnownID(value)
 }
 
-// FixtureActions reads local manifests with their provenance in comment headers.
 func FixtureActions(t *testing.T) actions.Provider {
 	t.Helper()
 	const directory = "testdata/remote-actions"

@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Repository checks a repository action reference against available metadata.
 func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*finding.Finding {
 	if exec == nil || exec.Uses == nil {
 		return nil
@@ -23,7 +22,6 @@ func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, con
 	return rule.errs
 }
 
-// Docker checks the URI and optional tag of a Docker action reference.
 func Docker(exec *definition.ExecAction) []*finding.Finding {
 	if exec == nil || exec.Uses == nil || callreferences.FormOf(exec.Uses.Value) != callreferences.FormContainer {
 		return nil
@@ -31,12 +29,10 @@ func Docker(exec *definition.ExecAction) []*finding.Finding {
 	return DockerReference(exec.Uses.Value, exec.Uses.Pos)
 }
 
-// DockerReference validates a Docker reference from its canonical source value.
 func DockerReference(spec string, pos *sourcetext.Position) []*finding.Finding {
 	return DockerReferenceValue(spec, sourcetext.ZeroIfNil(pos), pos != nil)
 }
 
-// DockerReferenceValue validates a Docker reference from an owned scalar value and position.
 func DockerReferenceValue(spec string, pos sourcetext.Position, hasPosition bool) []*finding.Finding {
 	if callreferences.FormOf(spec) != callreferences.FormContainer {
 		return nil
@@ -46,19 +42,16 @@ func DockerReferenceValue(spec string, pos sourcetext.Position, hasPosition bool
 	return rule.errs
 }
 
-// RepositoryReference validates repository reference syntax without consulting metadata.
 func RepositoryReference(spec string, pos *sourcetext.Position) []*finding.Finding {
 	return RepositoryReferenceValue(spec, sourcetext.ZeroIfNil(pos), pos != nil)
 }
 
-// RepositoryReferenceValue validates reference syntax from an owned scalar value and position.
 func RepositoryReferenceValue(spec string, pos sourcetext.Position, hasPosition bool) []*finding.Finding {
 	rule := validator{}
 	rule.checkRepositoryReference(spec, sourcetext.NilUnlessPresent(pos, hasPosition))
 	return rule.errs
 }
 
-// InvalidActionReference uses the same syntax checks as Repository and Docker validation.
 func InvalidActionReference(spec string, pos sourcetext.Position, hasPosition bool) bool {
 	switch callreferences.FormOf(spec) {
 	case callreferences.FormWorkspace:
@@ -73,7 +66,6 @@ func InvalidActionReference(spec string, pos sourcetext.Position, hasPosition bo
 	return len(RepositoryReferenceValue(spec, pos, hasPosition)) != 0
 }
 
-// InvalidReference reports an invalid action reference at its original declaration.
 func InvalidReference(pos *sourcetext.Position, spec, why string) *finding.Finding {
 	rule := validator{}
 	rule.invalidActionFormat(pos, spec, why)
@@ -116,7 +108,6 @@ func (rule *validator) invalidActionFormat(pos *sourcetext.Position, spec, why s
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
-// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *validator) checkDockerAction(uri string, pos *sourcetext.Position) {
 	tag := ""
 	tagExists := false

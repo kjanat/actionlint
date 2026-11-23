@@ -7,7 +7,6 @@ import (
 
 func (g *GitHub) ResolverEnabled() bool { return g.mode == Online }
 
-// WithResolver uses the analysis session's resolver for action and workflow lookups.
 func (g *GitHub) WithResolver(resolver references.Resolver) actions.Provider {
 	configured := *g
 	configured.resolver = func() references.Resolver { return resolver }

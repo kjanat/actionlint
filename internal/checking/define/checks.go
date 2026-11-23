@@ -22,7 +22,6 @@ type Checks struct {
 	Step              func(workflows.BoundStep) []reporting.StepFinding
 }
 
-// checksVisitor is the traversal adapter for stateless checks.
 type checksVisitor struct {
 	workflowvisit.Base
 	name   string
@@ -30,8 +29,7 @@ type checksVisitor struct {
 	rules  configuration.RuleSet
 }
 
-// invocationChecksVisitor applies a source-local check to composite bodies.
-// Workflow entry steps use the ordinary visitor and are not checked twice.
+// Workflow entry steps use the ordinary visitor instead of invocationChecksVisitor.
 type invocationChecksVisitor struct {
 	*checksVisitor
 	contexts []invocation.Context

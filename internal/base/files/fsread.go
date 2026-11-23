@@ -71,9 +71,7 @@ func NewRooted(ctx context.Context, root *os.Root, record func(string)) *Reader 
 	return reader
 }
 
-// PathExists checks the configured provider and records both present and missing
-// paths. Disk readers inspect metadata; content providers can establish existence
-// by reading, including an empty file. Other failures do not establish absence.
+// PathExists records present and missing paths, and other failures do not establish absence.
 func (r *Reader) PathExists(path string) (bool, error) {
 	if err := r.ctx.Err(); err != nil {
 		return false, err
@@ -90,7 +88,7 @@ func (r *Reader) Record(path string) {
 	r.record(path)
 }
 
-// ReadFile returns bytes the caller owns, whatever the provider retains.
+// ReadFile returns bytes that belong to the caller, whatever the provider retains.
 func (r *Reader) ReadFile(path string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err

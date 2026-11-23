@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// IdRule is the single definition of the id rule.
 var IdRule = &define.Rule{
 	SupportsActions: true,
 	Name:            "id",

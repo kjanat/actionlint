@@ -45,7 +45,6 @@ func (c *Resolver) state() resolverState {
 	}
 }
 
-// BeginJob resets checkout and persistent environment assumptions for a new job.
 func (c *Resolver) BeginJob(workflowEnv mappings.Mapping, workflowShell value.Value, job workflows.BoundJob) {
 	c.setCheckout(execution.Directory{})
 	knowledge := c.runners.Job(job)

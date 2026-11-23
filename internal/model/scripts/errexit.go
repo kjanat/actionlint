@@ -11,10 +11,7 @@ import (
 type ScriptRange struct{ Start, End int }
 
 // ErrexitStatusReads finds status reads after simple commands that would exit
-// on failure. It does not claim the read is unreachable after a successful command.
-// Function bodies and command substitutions require call-site or inheritance
-// analysis and are deliberately excluded. Bash is selected by its registered
-// invocation, never by a substring in the executable name.
+// on failure. Function bodies and command substitutions are deliberately excluded.
 func ErrexitStatusReads(text string, invocation commands.Invocation, registry *commands.Registry) []ScriptRange {
 	if registry == nil || invocation.Status != commands.Valid || invocation.Language != "bash" || invocation.Input != "file" || strings.Contains(text, "${{") {
 		return nil

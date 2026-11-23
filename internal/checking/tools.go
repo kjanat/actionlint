@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-// RequiredTools resolves configuration without parsing sources or loading runtimes.
+// RequiredTools neither parses sources nor loads runtimes.
 func RequiredTools(ctx context.Context, options Options, paths []string) (workspace.ExternalToolRequirements, error) {
 	options, err := ConfigureToolIntegrations(options)
 	if err != nil {

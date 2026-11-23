@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
-// preparePublicationBatch binds the configuration of each source before sealing.
 func preparePublicationBatch(t *testing.T, batch policy.Batch, caller *configuration.Config, sourceConfigs map[string]*configuration.Config) policy.Batch {
 	t.Helper()
 	return preparePublicationBatchAt(t, batch, caller, sourceConfigs, t.TempDir())

@@ -254,7 +254,6 @@ func templateIsAssignmentTarget(prefix, suffix string, depth int) bool {
 	return false
 }
 
-// pythonStringState tracks one quoted string and its formatted replacement fields.
 type pythonStringState struct {
 	quote         byte
 	triple        bool
@@ -325,8 +324,6 @@ func (s *pythonStringState) consumeField(c byte) {
 	}
 }
 
-// pythonLexicalState distinguishes comment and string template placement while
-// leaving Python syntax validation to Ruff.
 type pythonLexicalState struct {
 	pythonStringState
 	stringParents   []pythonStringState
@@ -351,8 +348,6 @@ type pythonLexicalState struct {
 	valueFromDepths []int
 }
 
-// consumeCode tracks name-only positions without interpreting Python values.
-// Names in strings and comments never reach this method.
 func (s *pythonLexicalState) consumeCode(c byte) {
 	if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c >= '0' && c <= '9' || c >= utf8.RuneSelf {
 		if len(s.word) < 9 {

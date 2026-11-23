@@ -5,14 +5,11 @@ import (
 	"strings"
 )
 
-// ValidPattern checks the workflow-name grammar, including exclusion filters.
 func ValidPattern(pattern string) bool {
 	_, ok := compilePattern(strings.TrimPrefix(pattern, "!"))
 	return ok
 }
 
-// Missing reports positive workflow filters that match no known producer.
-// Invalid patterns and exclusion filters cannot establish a missing producer.
 func (n Inventory) Missing(pattern string) bool {
 	if !n.complete || strings.HasPrefix(pattern, "!") {
 		return false
@@ -29,8 +26,6 @@ func (n Inventory) Missing(pattern string) bool {
 	return true
 }
 
-// ExcludesAll reports when an ordered filter list removes all its positive matches.
-// Incomplete inventories and invalid patterns leave the result uncertain.
 func (n Inventory) ExcludesAll(patterns []string) bool {
 	if !n.complete {
 		return false

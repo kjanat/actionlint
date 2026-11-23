@@ -222,8 +222,6 @@ func TestPluginRuleSelectors(t *testing.T) {
 	}
 }
 
-// ruffShorthand returns the generated schema of a key written directly under
-// tools.ruff, as a JSON value.
 func ruffShorthand(t *testing.T, key string) map[string]any {
 	t.Helper()
 	tools := mapYAMLType(reflect.TypeFor[configuration.ToolsConfig](), nil)
@@ -460,8 +458,7 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The schema formatter owns whitespace and object key ordering. Compare
-	// JSON values here so unit tests do not need dprint installed.
+	// The schema formatter owns whitespace and object key ordering.
 	var gotDocument, wantDocument any
 	if err := json.Unmarshal(got, &gotDocument); err != nil {
 		t.Fatal(err)
@@ -1047,7 +1044,6 @@ func TestSchemaDescriptions(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Hover must work on the property itself, even when the value is null.
-	// Finding a description somewhere inside a non-null branch is not enough.
 	var check func(any, string)
 	check = func(value any, path string) {
 		switch value := value.(type) {

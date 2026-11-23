@@ -87,8 +87,6 @@ func (c *callScope) invoke(ctx context.Context, iface, name string, args ...waco
 	return value, nil
 }
 
-// execute returns guest errors unchanged. invoke adds plugin context before
-// teardown joins independent cleanup failures into the same result.
 func (c *callScope) execute(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
 	if err := c.prepareGuest(ctx); err != nil {
 		return nil, err
@@ -175,8 +173,6 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		imports = append(imports, wacogo.WithInstanceImport(InvocationContextInterface, instance.Core()))
 	}
 	if p.annotationsFactory != nil {
-		// Source annotations use the types of this call's invocation instance.
-		// Load creates the invocation factory when annotations are required.
 		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &sourceannotations.Deps{InvocationContext: c.invocations.Core()})
 		if err != nil {
 			return err

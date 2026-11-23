@@ -16,8 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// LanguageServer shares application selection, configuration and plugin loading
-// with ordinary checks. Unsaved open buffers overlay dependency reads.
+// LanguageServer overlays unsaved open buffers on dependency reads.
 func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options checking.Options, plugins pluginselection.Sources) (err error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
@@ -33,8 +32,7 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ch
 }
 
 func (s *editorPluginHost) analyze(ctx context.Context, documents map[string]Document) (Analysis, error) {
-	// A registry refresh in another process can revoke an already compiled
-	// plugin. Recheck local status before every analysis without network access.
+	// A registry refresh in another process can revoke an already compiled plugin.
 	if err := assembly.CheckPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {
 		return Analysis{}, err
 	}
@@ -57,9 +55,7 @@ func analyzeDocuments(ctx context.Context, options checking.Options, documents m
 	})
 }
 
-// AnalyzeEditorDocuments checks supplied editor buffers without filesystem
-// discovery. ReadFile supplies closed dependencies; open buffers override it.
-// Diagnostics and fixes use the same captured-source admission as the native LSP.
+// AnalyzeEditorDocuments does no filesystem discovery, and open buffers override ReadFile.
 func AnalyzeEditorDocuments(ctx context.Context, options checking.Options, documents map[string]Document) (Analysis, error) {
 	return analyzeEditorDocuments(ctx, options, documents, checking.Analyze)
 }

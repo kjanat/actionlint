@@ -58,7 +58,6 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 }
 
 func (c checkInvocation) pluginSelection(acquisition dependencycache.Acquisition) pluginselection.PluginSelection {
-	// A tool disabled by --no-tool is not run by plugins either.
 	return pluginselection.WithTools(pluginselection.PluginSelection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
@@ -68,8 +67,6 @@ func (c checkInvocation) pluginSelection(acquisition dependencycache.Acquisition
 	}, c.DisabledTools, c.NamedTools)
 }
 
-// defaultPlugins lets every bundled tool that runs its default command
-// receive a default plugin declaration.
 func (c checkInvocation) defaultPlugins(warning func(string)) installation.DefaultPluginOptions {
 	options := installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Warning: warning}
 	for _, id := range slices.Sorted(maps.Keys(c.Tools)) {
@@ -80,8 +77,8 @@ func (c checkInvocation) defaultPlugins(warning func(string)) installation.Defau
 	return options
 }
 
-// Optional discovery is a default, not an explicit choice of a native checker.
-// Arguments, including those a retired flag adds, still opt into native use.
+// Optional discovery is a default and does not select a native checker explicitly.
+// Arguments, including arguments from a retired flag, still opt into native use.
 func implicitProcessOptions(options *hostprocess.CommandOptions) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&

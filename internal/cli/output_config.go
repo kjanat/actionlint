@@ -10,13 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 )
 
-// applyConfiguredOutput uses the invoking directory's configuration for the
-// whole command. Configurations in scanned repositories only affect their checks.
-// The parsed files are kept for the check, so plugin selection and the analysis
-// session do not parse them again. Local files are read with plugin selection's
-// reader, whose size and file-type limits then cover every shared file. HTTPS
-// sources bypass the read cache here: the loader's reader already caches them,
-// and a nested cached read of the same address would wait for itself.
+// HTTPS sources bypass the read cache here. A nested cached read of the same
+// address would wait for itself.
 func (a *commandApp) applyConfiguredOutput() error {
 	if a.inv.Operation != operationCheck {
 		return nil

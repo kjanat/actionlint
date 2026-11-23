@@ -25,8 +25,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// sourceRunner is a document runner for the provider named shellcheck,
-// whose tools.shellcheck.config grants source access.
 var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 
 func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.T) {
@@ -237,8 +235,6 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 	}
 }
 
-// requestedSourceGrants requests the workspace and every directory in
-// tools.shellcheck.config.source-path, as a guest does.
 func requestedSourceGrants(t *testing.T, cfg *configuration.Config) []checkinputs.ToolResourceRequest {
 	t.Helper()
 	resources := []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}}

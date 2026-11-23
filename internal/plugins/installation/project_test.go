@@ -200,7 +200,6 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if len(registry.Requests()) != requests || !project.Releases.Plugins[0].SameRelease(original) {
 		t.Fatal("install upgraded an existing matching pin")
 	}
-	// A failed migration must preserve both the live selection and saved config.
 	artifactURL := "https://" + fixtureregistry.FixturePluginName + "/releases/download/v2.0.0/plugin.component.wasm"
 	good := registry.File(artifactURL)
 	registry.SetFile(artifactURL, []byte("corrupt"))

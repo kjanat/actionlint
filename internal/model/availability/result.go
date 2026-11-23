@@ -1,7 +1,7 @@
 // Package availability describes unavailable facts and optional scalar values.
 package availability
 
-// Reason explains why a fact is unavailable, without credentials or fetched values.
+// Reason never carries credentials or fetched values.
 type Reason string
 
 const (
@@ -21,8 +21,7 @@ const (
 	LimitReason                   Reason = "limit-exceeded"
 )
 
-// Unavailability is a closed set of missing-fact outcomes. Its zero value is
-// not-fetched. An available value cannot be represented as Unavailability.
+// Unavailability has the zero value not-fetched.
 type Unavailability struct{ cause Reason }
 
 func NotFetched() Unavailability      { return Unavailability{} }
@@ -54,8 +53,6 @@ func (u Unavailability) Reason() Reason {
 	return u.cause
 }
 
-// String contains either a known string, including an empty string, or an
-// unavailable reason. It contains no interface or mutable payload.
 type String struct {
 	value   string
 	known   bool

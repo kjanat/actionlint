@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Published Wasm plugins must work as the image's non-root user, including offline.
+# Published Wasm plugins must work offline as the image's non-root user.
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then

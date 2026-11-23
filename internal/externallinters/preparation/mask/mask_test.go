@@ -46,11 +46,9 @@ func TestExpressions(t *testing.T) {
 		{"a}}b${{c}}d", "a}}b______d"},
 		{"before ${{\nfoo\n}} after", "before ___\n___\n__ after"},
 		{"before ${{\né\n}} after", "before ___\n_\n__ after"},
-		// A closing marker inside a string literal does not end the template.
 		{"echo ${{ '}}' }}", "echo ___________"},
 		{"echo ${{ format('{0}}}', x) }} $X", "echo " + strings.Repeat("_", 25) + " $X"},
 		{"echo ${{ '}}' ==\n  'x' }} $VALUE", "echo ___________\n________ $VALUE"},
-		// A template the lexer rejects ends at its first closing marker.
 		{"echo ${{ 'open }} rest", "echo ____________ rest"},
 		{"echo ${{ a + b }} rest", "echo ____________ rest"},
 	}

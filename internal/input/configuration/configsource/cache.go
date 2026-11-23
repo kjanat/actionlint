@@ -19,8 +19,7 @@ type readCache struct {
 	entries map[string]*cachedRead
 }
 
-// WithReadCache shares successful config reads across the phases of one command.
-// ReadConfig uses this snapshot; ReadFile reads current contents.
+// WithReadCache affects ReadConfig, and ReadFile still reads current contents.
 func WithReadCache(ctx context.Context) context.Context {
 	if _, ok := ctx.Value(readCacheKey{}).(*readCache); ok {
 		return ctx

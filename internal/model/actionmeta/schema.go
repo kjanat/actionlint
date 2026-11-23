@@ -44,9 +44,6 @@ func Node(n *codec.Node) *codec.Node {
 	return n
 }
 
-// Scalar mirrors TemplateReader.Validate: null, booleans and
-// numbers are converted to strings when a string definition is expected.
-// Scalar returns the runner-compatible scalar value, including literal expressions.
 func Scalar(n *codec.Node) *string {
 	v := actionSchemaLiteralScalar(n)
 	if v != nil {
@@ -78,7 +75,6 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	var checkSyntax func(*codec.Node)
 	checkSyntax = func(n *codec.Node) {
 		if n.Anchor != "" {
-			// Property diagnostics use the node start, including any preceding tag.
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAnchor, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
 		}
 		if n.Kind == codec.AliasNode {
@@ -106,7 +102,6 @@ func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *codec.No
 	rule.checkActionSchemaMappingValue(meta, node, definitionName, location, depth, evaluated, nil)
 }
 
-// Insertions share their enclosing mapping namespace; child values start a new one.
 func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *codec.Node, definitionName string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := Node(node)
@@ -122,8 +117,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 	}
 	rule.active[visit] = true
 	defer delete(rule.active, visit)
-	// Match the runner's TemplateMemory maximum depth; insertion mappings may
-	// otherwise revisit the same YAML anchor indefinitely.
 	if depth > 100 {
 		rule.actionSchemaError(meta, n, location, CodeNestingDepth, "action metadata exceeds maximum nesting depth of 100")
 		return
@@ -165,7 +158,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 		return
 	}
 
-	// Input/composite checks provide specific hints; other fields use the shared availability table.
 	if value := yamlExprString(n); !evaluated && value != nil && strings.Contains(value.Value, "${{") {
 		if _, allowed := actionMetadataAvailability[path]; allowed {
 			if !strings.HasPrefix(path, "runs.steps.*.") && path != "inputs.*.default" {
@@ -193,13 +185,10 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 				return // The runner validates the evaluated value's type at runtime.
 			}
 		} else if !actionLiteralExpression(value.Value) {
-			// A literal string expression is an escape, accepted even when expressions
-			// are forbidden. It becomes a literal token before schema validation.
 			rule.actionSchemaError(meta, n, location, CodeExpressionForbidden, "expressions are not allowed")
 		}
 	}
 
-	// Evaluated strings and keys are data, including any expression delimiters.
 	scalar := Scalar
 	if evaluated {
 		scalar = actionSchemaLiteralScalar
@@ -220,7 +209,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 		}
 	case actionSchemaSequence:
 		if n.Kind != codec.SequenceNode {
-			// Missing or null composite steps already have a specific runtime finding.
 			if path != "runs.steps" {
 				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a sequence")
 			}
@@ -276,8 +264,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 			if !known {
 				child, childPath = d.loose, location.LooseKey(*name)
 				if child == "" {
-					// Existing step diagnostics also explain the allowed keys. Runs
-					// fields with values are already checked against the runtime.
 					if path != "runs.steps.*" && (path != "runs" || meta.Runs.Using == "" || !actionRunsPropertyChecked(meta, lower)) {
 						rule.actionSchemaError(meta, key, location, CodeUnexpectedField, fmt.Sprintf("unexpected key %q", *name))
 					}
@@ -292,7 +278,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 			}
 		}
 	case actionSchemaUnion:
-		// Unions dispatch to a concrete variant before value checks run.
 	}
 }
 
@@ -339,26 +324,21 @@ func actionLiteralExpression(s string) bool {
 	return syntax.LiteralExpressionValue(s) != nil
 }
 
-// ExpressionField records a scalar expression found during manifest validation.
-// Value contains the decoded text and its original YAML position.
 type ExpressionField struct {
 	Value ExprString
 	// SchemaPath selects availability rules, for example outputs.*.value.
 	SchemaPath string
 	// FieldPath appears in diagnostics, for example outputs.result.value.
-	FieldPath string
-	// IsKey distinguishes mapping-key expressions from value expressions.
+	FieldPath   string
 	IsKey       bool
 	Expressions []ParsedExpression
 }
 
-// MetadataValidation separates structural problems from expression fields for later checks.
 type MetadataValidation struct {
 	Problems         []MetadataProblem
 	ExpressionFields []ExpressionField
 }
 
-// Validate checks manifest structure and records expression fields without applying lint policy.
 func Validate(meta *Metadata) MetadataValidation {
 	checker := &schemaChecker{}
 	checker.checkActionMetadataSchema(meta)

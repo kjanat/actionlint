@@ -16,17 +16,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-// commandRequest runs a command using the inputs stored in its request type.
 type commandRequest interface {
 	run(context.Context, Command) (int, error)
 }
 
-// streamCommand is a command whose package runs it over command streams.
 type streamCommand interface {
 	Run(context.Context, output.Streams, dependencycache.Acquisition) (int, error)
 }
 
-// streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.
 type streamRequest[C streamCommand] struct{ command C }
 
 func newStreamRequest[C streamCommand](command C) commandRequest { return streamRequest[C]{command} }
@@ -81,16 +78,12 @@ type doctorRequest struct {
 	Plugins           []string
 	ResolverCommand   string
 	ResolverArguments []string
-	// Tools selects every bundled tool, as checks would run it.
-	Tools registry.ToolSelections
-	// NamedTools lists the tool ids --tool and --no-tool named.
-	NamedTools []string
-	// Deprecations holds a warning for each deprecated flag used; doctor
-	// prints them to stderr.
-	Deprecations []string
-	Config       configuration.ConfigFileSelection
-	JSON         bool
-	Hyperlinks   hyperlinkMode
+	Tools             registry.ToolSelections
+	NamedTools        []string
+	Deprecations      []string
+	Config            configuration.ConfigFileSelection
+	JSON              bool
+	Hyperlinks        hyperlinkMode
 }
 
 func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
@@ -118,8 +111,6 @@ func (r configValidateRequest) run(ctx context.Context, streams Command) (int, e
 	return 0, configcommand.WriteValidation(ctx, streams.Stdout, configcommand.ValidateOptions(r), streams.Acquisition)
 }
 
-// configSchemaRequest prints the configuration JSON schema with the tool
-// providers that the --plugin flags or the selected configuration install.
 type configSchemaRequest configcommand.SchemaOptions
 
 func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, error) {

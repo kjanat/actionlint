@@ -15,8 +15,7 @@ progress = true
 groups   = true
 timing   = true
 
-[tasks.build]
-env = { SKIP_GO_GENERATE = "1" }
-
-[tasks.actionlint]
-source = "go"
+[tasks]
+build      = { env = { SKIP_GO_GENERATE = "1" } }
+actionlint = { source = "go" }
+lint       = { source = "mise" }

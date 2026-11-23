@@ -7,14 +7,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 )
 
-// ResolvedWorkflows reads acquired metadata without loading manifests or changing the cache.
 type ResolvedWorkflows struct{ cache *MetadataCache }
 
-// Resolved supplies a lookup-only view. Preparation can add metadata before checks run.
 func (c *MetadataCache) Resolved() *ResolvedWorkflows { return &ResolvedWorkflows{cache: c} }
 
-// LookupForCall returns acquired metadata or an input failure using the caller's
-// reference spelling. A nil result means no definition was acquired for this call.
+// LookupForCall returns nil when no definition was acquired for this call.
 func (r *ResolvedWorkflows) LookupForCall(spec string) (*calls.Metadata, error) {
 	if r == nil || r.cache == nil {
 		return nil, nil

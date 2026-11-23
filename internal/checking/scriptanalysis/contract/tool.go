@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Tool runs a registered Runner as a script analyzer.
 type Tool struct {
 	Name   string
 	Runner Runner

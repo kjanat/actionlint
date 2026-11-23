@@ -105,9 +105,6 @@ verbose: flags: strict=false experimental=default no-ignore=false; rules run: 0
 	}
 }
 
-// TestCheckVerboseExplainsRunContext checks that a verbose check names the
-// rules an ignore flag and an inline directive silenced, the ignore entries
-// and their sources, the linted file's digest and the inactive tools.
 func TestCheckVerboseExplainsRunContext(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -131,7 +128,6 @@ jobs:
 		t.Fatal(err)
 	}
 	var out, stderr bytes.Buffer
-	// The offline lookup reads only this test's empty cache.
 	command := Command{Stdout: &out, Stderr: &stderr, Acquisition: dependencycache.Acquisition{UserCacheDir: t.TempDir()}}
 	args := []string{"actionlint", "check", "--verbose", "--offline", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--ignore", "unpinned-reference", path}
 	if status := command.MainContext(t.Context(), args); status != 0 {

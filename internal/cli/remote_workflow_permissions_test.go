@@ -153,8 +153,6 @@ jobs:
 				}
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(target)), Request: r}, nil
 			})}}
-			// No caller permissions are known. Argument and output checking must
-			// still run without inventing a token-permission mismatch.
 			source := "on: push\njobs:\n  call:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n" + tc.arguments + "  consume:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          RESULT: ${{ needs.call.outputs." + tc.output + " }}\n"
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := os.WriteFile(config, []byte("lint: {rules: {security: {missing-permissions: off}}}\n"), 0o600); err != nil {

@@ -26,8 +26,7 @@ import (
 
 const maxJSONBytes = 4 << 20
 
-// Client reads bounded static JSON. It never executes a plugin or treats a
-// compatibility report for another host revision as proof for this host.
+// Client accepts a compatibility report only for this host revision.
 type Client struct {
 	StatusOptions StatusOptions
 	base          *url.URL
@@ -57,8 +56,7 @@ func registryURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-// New constructs a client for an endpoint explicitly selected by its caller.
-// Repository declarations use NewWithGrant with invocation-owned authority.
+// New accepts only endpoints the caller selected explicitly, and repository declarations use NewWithGrant.
 func New(raw string, acquisition dependencycache.Acquisition) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
@@ -74,9 +72,7 @@ func New(raw string, acquisition dependencycache.Acquisition) (*Client, error) {
 	return newClient(u, grant, StatusOptions{Acquisition: acquisition})
 }
 
-// NewWithGrant constructs a client for the registry that declaration names,
-// without deriving private-network authority from it. A zero options.Network
-// grant permits only public destination addresses.
+// NewWithGrant permits only public destination addresses for a zero options.Network grant.
 func NewWithGrant(declaration pluginreference.Reference, options StatusOptions) (*Client, error) {
 	u, err := registryURL(declaration.Registry())
 	if err != nil {
@@ -143,8 +139,8 @@ func get[T *Catalog | *manifest | *record | *StatusSnapshot](ctx context.Context
 	if len(data) > maxJSONBytes {
 		return errors.New("registry JSON exceeds 4 MiB")
 	}
-	// json/v2 rejects duplicate keys and trailing documents, while permitting
-	// additive registry fields so catalogue evolution need not break clients.
+	// json/v2 rejects duplicate keys and trailing documents and permits
+	// additive registry fields.
 	if err := jsonv2.Unmarshal(data, target); err != nil {
 		return fmt.Errorf("registry %s: %w", u, err)
 	}

@@ -6,9 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// Action is a lossy projection of selected action declarations.
-// ParseStatus describes the metadata decoder's outcome; diagnostics report validity.
-// Runs is nil when no execution runtime was decoded.
+// Action has a nil Runs when no execution runtime was decoded.
 type Action struct {
 	Path        string                `json:"path"`
 	Name        string                `json:"name,omitempty"`
@@ -19,8 +17,7 @@ type Action struct {
 	Runs        ActionRuns            `json:"runs"`
 }
 
-// ActionInputOutline preserves declared required/default values independently.
-// A default does not erase an explicitly declared required: true.
+// ActionInputOutline keeps an explicit required: true alongside a default.
 type ActionInputOutline struct {
 	ID          string               `json:"id"`
 	Description string               `json:"description,omitempty"`
@@ -29,7 +26,6 @@ type ActionInputOutline struct {
 	Start       *sourcetext.Position `json:"start,omitempty"`
 }
 
-// ActionOutputOutline preserves an output declaration and optional expression.
 type ActionOutputOutline struct {
 	ID          string               `json:"id"`
 	Description string               `json:"description,omitempty"`
@@ -39,16 +35,13 @@ type ActionOutputOutline struct {
 
 func (Action) documentOutline() {}
 
-// DocumentPath returns the manifest path.
 func (a Action) DocumentPath() string { return a.Path }
 
-// WithPath returns the action with a different manifest path.
 func (a Action) WithPath(path string) Outline {
 	a.Path = path
 	return a
 }
 
-// MarshalJSON derives the document kind from the concrete type.
 func (a Action) MarshalJSON() ([]byte, error) {
 	type plain Action
 	return json.Marshal(struct {
@@ -57,7 +50,6 @@ func (a Action) MarshalJSON() ([]byte, error) {
 	}{"action", plain(a)})
 }
 
-// UnmarshalJSON restores the concrete execution-runtime variant.
 func (a *Action) UnmarshalJSON(data []byte) error {
 	type plain Action
 	var wire struct {

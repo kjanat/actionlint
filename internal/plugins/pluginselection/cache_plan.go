@@ -17,15 +17,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-// CachePlan describes portable artifact bytes, never compiled native code.
 type CachePlan struct {
 	Directory string   `json:"directory"`
 	Artifacts []string `json:"artifacts"`
 }
 
-// CachePlan may acquire OCI manifests to enumerate this host's verified blobs.
-// It never fetches executable layers or executes plugins. Configuration backends
-// are included so their pinned bytes can be restored before runtime loading.
+// CachePlan never fetches executable layers or executes plugins.
 func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 	cacheDir, err := pluginacquisition.ArtifactCacheDir(s.Acquisition)
 	if err != nil {
@@ -93,7 +90,6 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 	return plan, nil
 }
 
-// ociDigests derives required blobs from the configured digest and OCI manifests.
 func (s *Sources) ociDigests(ctx context.Context, source string) ([]string, error) {
 	if err := artifacts.RequireRemotePin(source); err != nil {
 		return nil, err

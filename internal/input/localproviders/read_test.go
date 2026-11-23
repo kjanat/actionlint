@@ -85,7 +85,6 @@ func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
 	}
 }
 
-// minimal is the smallest valid local process provider manifest.
 const minimal = `{
   "schema_version": 1,
   "id": "example.invalid/providers/lint",

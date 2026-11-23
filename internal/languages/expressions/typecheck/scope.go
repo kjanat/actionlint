@@ -9,16 +9,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// Availability supplies the name restrictions and overloads for an expression.
-// Its provider decides which source location or execution context they describe.
-// ContextNames supplies lowercase names.
+// Availability supplies name restrictions and overloads. ContextNames returns
+// lowercase names.
 type Availability interface {
 	ContextNames() []string
 	FunctionAvailability() map[string]functions.Availability
 	FunctionOverloads() map[string][]*functions.FuncSignature
 }
 
-// Scope supplies the initial variable types as well as name availability.
 type Scope interface {
 	Availability
 	ContextTypes() map[string]exprtypes.Type

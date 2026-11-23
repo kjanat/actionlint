@@ -43,7 +43,7 @@ func (scriptEnvironments) Current(ctx context.Context) (environments.ResultListE
 	return environmentResult(scriptEnvs)
 }
 
-// scriptEnvironmentBytes includes string bytes and record storage, bounding
+// scriptEnvironmentBytes includes string bytes and record storage and bounds
 // responses even when declaration keys are empty strings.
 func scriptEnvironmentBytes(scriptEnvs []scripts.EnvironmentNames) uint64 {
 	var size uint64

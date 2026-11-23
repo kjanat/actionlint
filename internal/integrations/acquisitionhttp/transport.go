@@ -1,5 +1,4 @@
 // Package acquisitionhttp confines automatic HTTP acquisition to public addresses.
-// Invocation-owned grants permit one explicitly selected initial authority.
 package acquisitionhttp
 
 import (
@@ -14,12 +13,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 )
 
-// Grant authorizes private addresses for one explicitly selected authority.
-// Its zero value grants nothing. Grants contain no URLs, credentials or queries.
+// Grant authorizes private addresses for one explicitly selected authority, and its zero value grants nothing.
 type Grant struct{ endpoint endpoint.Authority }
 
-// ExplicitEndpoint records invocation-owned endpoint selection. Repository
-// declarations must not call this function to grant themselves network access.
+// ExplicitEndpoint must not be called from repository declarations.
 func ExplicitEndpoint(endpoint *url.URL) (Grant, error) {
 	selected, err := authorityOf(endpoint)
 	if err != nil {
@@ -28,8 +25,7 @@ func ExplicitEndpoint(endpoint *url.URL) (Grant, error) {
 	return Grant{endpoint: selected}, nil
 }
 
-// Allows reports whether endpoint has exactly the granted scheme, host and port.
-// It does not authorize a different endpoint reached through a redirect.
+// Allows rejects a different endpoint reached through a redirect.
 func (g Grant) Allows(endpoint *url.URL) bool {
 	selected, err := authorityOf(endpoint)
 	return err == nil && selected == g.endpoint
@@ -57,11 +53,7 @@ type Connections struct {
 	Resolver  *net.Resolver
 }
 
-// Transport validates the initial endpoint and captures the base transport and
-// resolver from connections, or the host's current defaults for nil fields.
-// Without an exact initial-endpoint grant, every request,
-// including same-authority redirects, requires public DNS answers and pinned
-// connections. Different redirect authorities always require public addresses.
+// Transport requires public DNS answers and pinned connections for every request without an exact initial-endpoint grant.
 func Transport(initial *url.URL, grant Grant, connections Connections) (http.RoundTripper, error) {
 	base, dns := connections.Transport, connections.Resolver
 	if base == nil {
@@ -113,7 +105,6 @@ func (t *transport) roundTrip(request *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	// A checked request owns its transport; caller connection pools stay open.
 	defer checked.CloseIdleConnections()
 	response, err := checked.RoundTrip(prepared)
 	if response != nil {
@@ -166,7 +157,7 @@ func (t *transport) prepare(request *http.Request, selected endpoint.Authority, 
 		if proxy != nil {
 			return baseDial(ctx, network, address)
 		}
-		// Reuse this lookup's numeric answers; never resolve again at dial.
+		// Reuse this lookup's numeric answers. Do not resolve again at dial.
 		for _, ip := range addresses {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -189,11 +180,8 @@ func (t *transport) prepare(request *http.Request, selected endpoint.Authority, 
 	return cloned, checked, nil
 }
 
-// ownedTransport imports only supported settings into a fresh request executor.
-// Clone is a configuration snapshot, never the executor: its native HTTP/2
-// bookkeeping distinguishes caller-supplied TLSNextProto from automatically
-// installed handlers, while preserving nil versus an explicitly empty map.
-// Deprecated dial hooks and registered protocol handlers are never inherited.
+// net/http HTTP/2 setup treats a nil TLSNextProto differently from an explicitly empty map.
+// ownedTransport never inherits deprecated dial hooks or registered protocol handlers.
 func ownedTransport(original *http.Transport) (*http.Transport, error) {
 	if original == nil || original.DialTLSContext != nil {
 		return nil, ErrUnsupportedTransport

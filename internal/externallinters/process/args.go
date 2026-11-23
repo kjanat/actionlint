@@ -12,9 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// argInputs are the values argument placeholders take for one check.
-// Variables come from preparation and the configuration transform; a list
-// variable holds its items separated by newlines.
+// A list variable holds its items separated by newlines.
 type argInputs struct {
 	vars        map[string]string
 	user        []string
@@ -23,9 +21,8 @@ type argInputs struct {
 	programFile string
 }
 
-// renderArgs substitutes the closed placeholder grammar into argument
-// templates. Placeholders are whole arguments and are never evaluated: a
-// value always becomes exactly the arguments its placeholder names.
+// Placeholders are whole arguments and are never evaluated. A value always
+// becomes exactly the arguments of its placeholder.
 func renderArgs(templates []string, in argInputs) ([]string, error) {
 	var args []string
 	for _, template := range templates {
@@ -93,12 +90,10 @@ func renderArgs(templates []string, in argInputs) ([]string, error) {
 	return args, nil
 }
 
-// truthy reports whether a variable selects a switch's "on" argument.
 func truthy(value string) bool {
 	return value != "" && value != "false"
 }
 
-// launcher is a compiled provider.Launcher.
 type launcher struct {
 	spec                    toolmanifest.Launcher
 	command, selector, tool *regexp.Regexp
@@ -128,14 +123,10 @@ func compileLaunchers(specs []toolmanifest.Launcher) ([]launcher, error) {
 	return compiled, nil
 }
 
-// commandBase is an executable's lowercase base name without ".exe".
 func commandBase(command string) string {
 	return strings.TrimSuffix(strings.ToLower(command[strings.LastIndexAny(command, `/\`)+1:]), ".exe")
 }
 
-// splitLauncher separates the arguments of a launcher executable, which run
-// the tool, from the arguments the tool itself receives. Executables that are
-// no launcher pass every argument to the tool.
 func splitLauncher(launchers []launcher, executable string, args []string) (prefix, rest []string, err error) {
 	base := commandBase(executable)
 	for _, l := range launchers {
@@ -151,8 +142,6 @@ func splitLauncher(launchers []launcher, executable string, args []string) (pref
 	return nil, args, nil
 }
 
-// split walks launcher options until an operand or module option names the
-// tool. It fails on anything else.
 func (l launcher) split(args []string) ([]string, []string, bool) {
 	selected := false
 	for i := 0; i < len(args); i++ {
@@ -229,7 +218,6 @@ func (l launcher) cluster(args []string, i int) (int, bool, bool) {
 			return i, false, false
 		case strings.IndexByte(l.spec.ShortFlags, letter) >= 0:
 		case strings.IndexByte(l.spec.ShortValues, letter) >= 0:
-			// The value is the rest of the cluster or the next, nonempty argument.
 			if j+1 == len(letters) {
 				i++
 				if i == len(args) || args[i] == "" {
@@ -248,8 +236,6 @@ func (l launcher) isTool(arg string) bool {
 	return l.tool != nil && !strings.HasPrefix(arg, "-") && l.tool.MatchString(arg)
 }
 
-// checkUserArgs applies a manifest's user-argument rules. Directory resolves
-// relative values of inline options.
 func checkUserArgs(name string, spec *toolmanifest.UserArgs, args []string, directory string) error {
 	if spec == nil {
 		return nil
@@ -300,8 +286,8 @@ func checkUserArgs(name string, spec *toolmanifest.UserArgs, args []string, dire
 	return nil
 }
 
-// inlineSetting reports whether value is an inline KEY = VALUE setting: it
-// names no existing file and has an unquoted "=" before any comment or line
+// inlineSetting reports whether value is an inline KEY = VALUE setting. Such a
+// value names no existing file and has an unquoted "=" before any comment or line
 // break.
 func inlineSetting(value, directory string) bool {
 	path := value
@@ -337,8 +323,6 @@ func inlineSetting(value, directory string) bool {
 	return false
 }
 
-// overriddenVars lists the preparation variables user options replace. Args
-// are scanned as the tool reads them, skipping option values, until "--".
 func overriddenVars(spec *toolmanifest.UserArgs, args []string) []string {
 	if spec == nil || len(spec.Overrides) == 0 {
 		return nil
@@ -386,10 +370,7 @@ func overriddenVars(spec *toolmanifest.UserArgs, args []string) []string {
 	return dropped
 }
 
-// environmentOptions splits the values of variables a tool reads as extra
-// options on spaces, without quoting, as the tool does. The command's own
-// environment overrides the host's; host values count only when the manifest
-// passes the variable through.
+// The tool splits option variables on spaces and applies no quoting.
 func environmentOptions(spec *toolmanifest.UserArgs, passthrough, env []string) ([]string, map[string]string) {
 	if spec == nil || len(spec.EnvOptions) == 0 {
 		return nil, nil
@@ -414,7 +395,6 @@ func environmentOptions(spec *toolmanifest.UserArgs, passthrough, env []string) 
 	return args, values
 }
 
-// lookupEntry finds the last NAME=VALUE entry for name.
 func lookupEntry(env []string, name string) (string, bool) {
 	var value string
 	found := false
@@ -427,7 +407,6 @@ func lookupEntry(env []string, name string) (string, bool) {
 	return value, found
 }
 
-// sameVariable compares environment variable names as the host does.
 func sameVariable(a, b string) bool {
 	if filepath.Separator == '\\' {
 		return strings.EqualFold(a, b)
@@ -435,5 +414,4 @@ func sameVariable(a, b string) bool {
 	return a == b
 }
 
-// errNoUserArgs reports user arguments a manifest has no place for.
 var errNoUserArgs = errors.New("this tool takes no extra arguments; its manifest has no {user-args} placeholder")

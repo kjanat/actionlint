@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// NameComparison describes name lookup, independently of filesystem behavior.
 type NameComparison string
 
 const (
@@ -19,7 +18,6 @@ const (
 	NameUnknown     NameComparison = "unknown"
 )
 
-// EnvironmentScope identifies the declaration that first introduced a name.
 type EnvironmentScope string
 
 const (
@@ -30,18 +28,16 @@ const (
 	EnvironmentRuntime  EnvironmentScope = "runtime"
 )
 
-// EnvironmentLayer lists known exported names in insertion order.
-// UnknownNames is true when the layer can introduce additional names.
-// Layers are supplied from the outermost scope to the innermost scope.
+// EnvironmentLayer lists known exported names in insertion order. Callers
+// supply layers from the outermost scope to the innermost scope.
 type EnvironmentLayer struct {
 	Scope        EnvironmentScope
 	Names        []string
 	UnknownNames bool
 }
 
-// DeclaredEnvironment reads keys without applying the generic mapping's
-// case-insensitive lookup. Source positions restore YAML declaration order;
-// expression-generated keys with the same origin preserve their supplied order.
+// DeclaredEnvironment reads keys without the generic mapping's
+// case-insensitive lookup and sorts them in YAML declaration order.
 func DeclaredEnvironment(scope EnvironmentScope, declarations mappings.Mapping) EnvironmentLayer {
 	layer := EnvironmentLayer{Scope: scope, UnknownNames: !declarations.Complete()}
 	entries := slices.Collect(declarations.Declarations())
@@ -57,17 +53,16 @@ func DeclaredEnvironment(scope EnvironmentScope, declarations mappings.Mapping) 
 	return layer
 }
 
-// EnvironmentVariableName describes the exported key, not its secret or value.
-// CaseKnown is false when an earlier unresolved Windows declaration could have
-// introduced a different spelling of the same case-insensitive key.
+// EnvironmentVariableName holds no secret or value. CaseKnown is false when an
+// earlier unresolved Windows declaration could have introduced a different
+// spelling of the same case-insensitive key.
 type EnvironmentVariableName struct {
 	Name      string           `json:"name"`
 	Scope     EnvironmentScope `json:"scope"`
 	CaseKnown bool             `json:"case_known"`
 }
 
-// EnvironmentNames records merged names and lookup rules for one operating system.
-// Its private names are immutable after construction and accessors return copies.
+// EnvironmentNames is immutable after construction, and its accessors return copies.
 type EnvironmentNames struct {
 	operatingSystem runnerapi.OS
 	merge, lookup   NameComparison
@@ -81,8 +76,6 @@ func (e EnvironmentNames) LookupComparison() NameComparison { return e.lookup }
 func (e EnvironmentNames) UnknownNames() bool               { return e.unknownNames }
 func (e EnvironmentNames) Names() []EnvironmentVariableName { return slices.Clone(e.names) }
 
-// environmentNamesJSON is the JSON form of EnvironmentNames that script
-// engine requests carry: names and lookup rules, never values.
 type environmentNamesJSON struct {
 	OperatingSystem  runnerapi.OS              `json:"operating_system"`
 	MergeComparison  NameComparison            `json:"merge_comparison"`
@@ -91,7 +84,6 @@ type environmentNamesJSON struct {
 	UnknownNames     bool                      `json:"unknown_names"`
 }
 
-// MarshalJSON writes the names and lookup rules.
 func (e EnvironmentNames) MarshalJSON() ([]byte, error) {
 	names := e.names
 	if names == nil {
@@ -103,8 +95,6 @@ func (e EnvironmentNames) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// EnvironmentNamePresence describes lookup in the supplied layers.
-// Unknown layers prevent a missing name from being classified as undeclared.
 type EnvironmentNamePresence string
 
 const (
@@ -120,7 +110,6 @@ func environmentNameKey(name string, comparison NameComparison) string {
 	return name
 }
 
-// Lookup checks the script's name access against merged declarations.
 func (e EnvironmentNames) Lookup(name string) EnvironmentNamePresence {
 	uncertain := e.unknownNames
 	for _, variable := range e.names {
@@ -145,9 +134,9 @@ func (e EnvironmentNames) Lookup(name string) EnvironmentNamePresence {
 	return EnvironmentUndeclared
 }
 
-// EnvironmentAlternatives preserves OS-dependent outcomes instead of selecting
-// the developer machine's behavior. An unknown OS expands to Linux, macOS and
-// Windows; duplicate alternatives are removed without changing their order.
+// EnvironmentAlternatives returns one outcome per candidate OS and takes no
+// behavior from the developer machine. An unknown OS expands to Linux, macOS
+// and Windows.
 func EnvironmentAlternatives(shell string, operatingSystems []runnerapi.OS, layers ...EnvironmentLayer) []EnvironmentNames {
 	var systems []runnerapi.OS
 	for _, system := range operatingSystems {

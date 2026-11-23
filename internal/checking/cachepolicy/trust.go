@@ -26,10 +26,7 @@ const (
 	cacheEventInherited
 )
 
-// cacheEventClasses records a cache trust decision for every generated webhook.
 // Ref-scoped events use a created ref, release tag, PR merge ref, or merge-group ref.
-//
-// workflow_call inherits its caller's context.
 //
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers
 //
@@ -70,9 +67,6 @@ var cacheEventClasses = map[string]cacheEventClass{
 	"workflow_run":                cacheEventRestricted,
 }
 
-// cacheRestrictedEvents includes unclassified triggers conservatively.
-//
-// Inventory tests require an explicit decision before a new generated event can ship.
 func cacheRestrictedEvents(w workflows.BoundWorkflow) []string {
 	events := make([]string, 0, len(w.On))
 	for _, event := range w.On {
@@ -88,9 +82,7 @@ func cacheRestrictedEvents(w workflows.BoundWorkflow) []string {
 	return slices.Compact(events)
 }
 
-// Trust evaluates cache grants against the workflow's triggering events.
-// Each shared declaration is assigned to its first reachable job in source order.
-// Construction prepares that assignment; checks do not mutate it.
+// Trust assigns each shared declaration to its first reachable job in source order.
 type Trust struct {
 	workflow     *definition.CacheMode
 	events       []string
@@ -112,7 +104,6 @@ func (r *Trust) declaration(mode *definition.CacheMode, job workflows.BoundJob) 
 	return &r.declarations[len(r.declarations)-1]
 }
 
-// NewTrust prepares event reachability and shared cache declarations for one workflow.
 func NewTrust(w workflows.BoundWorkflow) *Trust {
 	r := &Trust{workflow: w.CacheMode, events: cacheRestrictedEvents(w)}
 	var jobs []workflows.BoundJob
@@ -148,7 +139,6 @@ func NewTrust(w workflows.BoundWorkflow) *Trust {
 	return r
 }
 
-// CheckWrites reports effective write grants reachable from low-trust events.
 func (r *Trust) CheckWrites(job workflows.BoundJob) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
@@ -159,7 +149,6 @@ func (r *Trust) CheckWrites(job workflows.BoundJob) []results.Diagnostic {
 	return nil
 }
 
-// CheckCall requires an explicit cache ceiling on low-trust reusable calls.
 func (r *Trust) CheckCall(job workflows.BoundJob) []results.Diagnostic {
 	call := job.WorkflowCall
 	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cachegrant.EffectiveMode(r.workflow, job.CacheMode) != nil {

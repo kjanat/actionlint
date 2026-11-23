@@ -20,8 +20,6 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, ubuntu-lates], arch: [x64, arm64], exclude: "+tc.exclude+", include: "+tc.include+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
-			// This contract covers execution selectors. Declaration lint separately
-			// retains excluded spelling errors in prepared job findings.
 			answers, err := (builtinProvider{custom: KnownLabels(nil)}).ResolveRunners(t.Context(), runnerapi.Request{Target: "github", Scope: "scope", Selectors: Selectors(w.Views["test"])})
 			if err != nil {
 				t.Fatal(err)

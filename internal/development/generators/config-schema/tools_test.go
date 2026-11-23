@@ -11,9 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// The tools schema is generated from the bundled manifests: one entry per
-// provider with its shorthands beside the host keys. Any other name may be a
-// plugin's provider, so it gets the host keys only.
 func TestToolsSchemaFollowsBundledManifests(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()

@@ -30,8 +30,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// shellcheckRegistration is the bundled ShellCheck provider run as selected,
-// which a managed analyzer speaking its integration contract may replace.
 func shellcheckRegistration(selection backends.ToolSelection) contract.Registration {
 	for _, registration := range registry.Registrations(registry.ToolSelections{"shellcheck": selection}) {
 		if registration.Name == "shellcheck" {

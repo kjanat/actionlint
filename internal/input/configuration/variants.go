@@ -8,21 +8,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
-// ConfigCandidates enumerates tool-selection states across configuration overrides.
 func ConfigCandidates(name string, config *Config) ([]*Config, error) {
 	return ConfigVariants(config, func(config *Config) (toolGateState, error) {
 		return toolGateConfig(name, config), nil
 	})
 }
 
-// ConfigVariants applies possible override combinations and keeps one configuration
-// per distinct key. The caller chooses which settings the key includes.
 func ConfigVariants[K comparable](config *Config, key func(*Config) (K, error)) ([]*Config, error) {
 	if config == nil {
 		return []*Config{nil}, nil
 	}
-	// Keep baseline and possible overlay configurations without discovering files.
-	// Apply catch-all overrides to every candidate in order.
 	candidates := []*Config{config}
 	for _, override := range config.Overrides {
 		universal := len(override.Excludes) == 0 && slices.ContainsFunc(override.Includes, func(pattern string) bool {

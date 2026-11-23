@@ -42,7 +42,6 @@ export function parsePluginPlan(value: unknown): PluginPlan {
 		|| !('artifacts' in value) || !Array.isArray(value.artifacts)
 	) throw new Error('actionlint returned an invalid plugin cache plan');
 	const directory = value.directory;
-	// Validate native cache locations; check toolkit glob support separately.
 	if (
 		!isAbsolute(directory) || normalize(directory) !== directory
 		|| basename(directory) !== 'artifacts' || basename(dirname(directory)) !== 'actionlint'
@@ -132,7 +131,7 @@ export async function cachePlugins(
 		} catch (error) {
 			warning('restore', error);
 		}
-		// A restored archive is an optimization, never evidence of integrity.
+		// A restored archive is an optimization and proves nothing about integrity.
 		await verifiedArtifacts(plan);
 	}
 	try {
@@ -153,7 +152,7 @@ export async function cachePlugins(
 		if (canSave && cacheable(current) && current.artifacts.length > 0) {
 			const available = await verifiedArtifacts(current);
 			const currentKey = pluginCacheKey(current);
-			// Separate partial archives so a later run can save the complete set.
+			// Separate partial archives. A later run can then save the complete set.
 			const saveKey = available.artifacts.length === current.artifacts.length
 				? currentKey
 				: `${currentKey}-${pluginCacheKey(available)}`;

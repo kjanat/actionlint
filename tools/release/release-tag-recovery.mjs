@@ -31,7 +31,6 @@ function records(text, key) {
 }
 
 /**
- * Require the release's own prerequisite gate to have admitted the floating-tag push.
  * @param {string} repository @param {string} tag @param {string} commit
  * @param {(args: string[]) => string} request
  */
@@ -72,7 +71,8 @@ export function verifyTagRecovery(repository, tag, commit, request = gh) {
 		const admitted = jobs.filter((job) =>
 			job.name === 'Update moving Action references' && job.run_id === run.id && job.head_sha === commit
 			&& job.status === 'completed' && ['success', 'failure'].includes(String(job.conclusion))
-			&& Array.isArray(job.steps) && job.steps.some((step) =>
+			&& Array.isArray(job.steps)
+			&& job.steps.some((step) =>
 				object(step) && step.name === 'Update eligible floating tags' && step.status === 'completed'
 				&& ['success', 'failure'].includes(String(step.conclusion))
 			)

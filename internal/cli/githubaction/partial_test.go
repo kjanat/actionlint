@@ -41,7 +41,6 @@ func TestPartialResultAnalyzer(t *testing.T) {
 		time.Sleep(time.Minute)
 		os.Exit(2)
 	}
-	// Report "hi" in "echo hi". Diagnostics outside the snippet are rejected.
 	row := 0
 	for line := range strings.SplitSeq(string(script), "\n") {
 		row++
@@ -72,8 +71,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		"INPUT_CONFIG":             "repository: {runners: []}",
 	}
 	var output strings.Builder
-	// Trigger expiration only after the native process has started. Its startup
-	// latency is not part of the partial-result preservation behavior under test.
+	// Trigger expiration only after the native process has started.
 	ctx, expire := context.WithCancel(t.Context())
 	defer expire()
 	a := &action{

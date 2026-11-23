@@ -8,9 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
-// TestToolInputsAreIgnored checks that the action reads neither the
-// shellcheck, ruff and pyflakes inputs nor warns about them: action.yml
-// marks them with deprecationMessage, and GitHub shows that message.
 func TestToolInputsAreIgnored(t *testing.T) {
 	t.Parallel()
 	ignored := map[string]string{"INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false", "INPUT_PYFLAKES": "not a boolean"}

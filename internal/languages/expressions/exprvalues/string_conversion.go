@@ -5,8 +5,7 @@ import (
 	"strconv"
 )
 
-// PredicateString converts a scalar when its spelling is known across runner
-// JSON modes. The boolean is false when numeric formatting is uncertain.
+// PredicateString reports false when numeric formatting is uncertain.
 func PredicateString(value any) (string, bool) {
 	switch value := value.(type) {
 	case string:
@@ -25,8 +24,6 @@ func PredicateString(value any) (string, bool) {
 	return "", false
 }
 
-// FunctionString converts a known scalar or composite to the string consumed by
-// a function parameter. The boolean reports whether the spelling is known.
 func FunctionString(value any) (string, bool) {
 	if s, ok := PredicateString(value); ok {
 		return s, true
@@ -39,8 +36,7 @@ func FunctionString(value any) (string, bool) {
 	}
 }
 
-// JoinString converts values using join's composite spellings. Numeric spellings
-// are unknown because runner serialization modes can differ.
+// JoinString reports numeric spellings as unknown.
 func JoinString(value any) (string, bool) {
 	switch value := value.(type) {
 	case string:

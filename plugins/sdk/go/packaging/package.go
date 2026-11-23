@@ -1,4 +1,4 @@
-// Package packaging builds component distributions from the descriptor exported by a Go plugin.
+// Package packaging builds component distributions from the exported descriptor of a Go plugin.
 package packaging
 
 import (
@@ -19,62 +19,46 @@ import (
 //go:embed analyzer.wit
 var analyzerWIT string
 
-// Identity identifies the distributed plugin independently of its diagnostic rule.
 type Identity struct {
 	// ID is the stable registry identity, such as example/insecure-download.
-	ID string `json:"id"`
-	// Name is the display name shown when inspecting the package.
-	Name string `json:"name"`
-	// Description explains what the plugin checks.
+	ID          string `json:"id"`
+	Name        string `json:"name"`
 	Description string `json:"description"`
 	// License is an SPDX license identifier.
 	License string `json:"license"`
 	// Repository is the HTTPS URL of the plugin's source repository.
 	Repository string `json:"repository"`
-	// Version identifies this plugin release, without referring to the host version.
+	// Version identifies this plugin release and is independent of the host version.
 	Version string `json:"plugin_version"`
 }
 
-// Engine identifies the implementation bundled inside the component.
 type Engine struct {
 	// Name identifies the checker implementation, which can differ from the package ID.
-	Name string `json:"name"`
-	// Version identifies the bundled checker version.
+	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-// Capabilities declares the resources and output features used by the plugin.
 type Capabilities struct {
-	// Filesystem reports whether checking requires access to host files.
 	Filesystem bool `json:"filesystem"`
-	// Network reports whether checking requires network access.
-	Network bool `json:"network"`
-	// Fixes reports whether the plugin can return source edits.
-	Fixes bool `json:"fixes"`
+	Network    bool `json:"network"`
+	Fixes      bool `json:"fixes"`
 	// SourceAnnotations reports whether the plugin reads source-annotation imports.
 	SourceAnnotations bool `json:"source_annotations"`
 	// SourceFiles reports whether the plugin reads the source-files interface.
 	SourceFiles bool `json:"source_files"`
 }
 
-// Package supplies release metadata and the same descriptor returned by describe.
-// Use this from a native packaging entry point excluded from the Wasm build.
 type Package struct {
-	// Identity supplies the stable ID and release information written to metadata.json.
-	Identity Identity
-	// Engine identifies the checker bundled in this release.
-	Engine Engine
-	// Languages lists the script languages checked by the component.
+	Identity  Identity
+	Engine    Engine
 	Languages []string
-	// Capabilities declares requirements; it does not grant host access.
+	// Capabilities declares requirements and grants no host access.
 	Capabilities Capabilities
-	// Descriptor must be the descriptor returned by the component's describe export.
-	Descriptor analyzer.Descriptor
-	// LicenseText is the complete license written to the distribution's LICENSE file.
+	// Descriptor must equal the result of the component's describe export.
+	Descriptor  analyzer.Descriptor
 	LicenseText string
 }
 
-// Metadata serializes the discovery section without executing a component.
 func (p Package) Metadata() ([]byte, error) {
 	if len(p.Identity.ID) == 0 || len(p.Identity.ID) > 128 || strings.ContainsFunc(p.Identity.ID, func(r rune) bool {
 		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("._/-", r))
@@ -127,7 +111,7 @@ func (p Package) Metadata() ([]byte, error) {
 }
 
 // Write creates plugin.wasm, metadata.json, schema.json, LICENSE and SHA256SUMS
-// in outputDirectory. Validate the resulting component with wasm-tools before publishing it.
+// in outputDirectory.
 func (p Package) Write(input, outputDirectory string) error {
 	metadata, err := p.Metadata()
 	if err != nil {
@@ -167,9 +151,8 @@ func (p Package) Write(input, outputDirectory string) error {
 	return os.WriteFile(filepath.Join(outputDirectory, "SHA256SUMS"), []byte(checksums.String()), 0o644)
 }
 
-// WithMetadata replaces the outer actionlint.plugin section. Nested component
-// and module bytes are copied unchanged. This checks section framing, not Wasm
-// instructions or component types; use wasm-tools validate for those checks.
+// WithMetadata replaces the outer actionlint.plugin section and checks section
+// framing only. Use wasm-tools validate to check Wasm instructions and component types.
 func WithMetadata(component, metadata []byte) ([]byte, error) {
 	if len(component) < 8 || !bytes.Equal(component[:8], []byte{0, 'a', 's', 'm', 13, 0, 1, 0}) {
 		return nil, errors.New("input must be a WebAssembly component")

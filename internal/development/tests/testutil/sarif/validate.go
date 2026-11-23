@@ -23,8 +23,7 @@ var compileSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	compiler := jsonschema.NewCompiler()
 	compiler.AssertFormat()
 	compiler.UseLoader(jsonschema.SchemeURLLoader{})
-	// The validator's URI parser accepts unescaped spaces. Retain its format
-	// checks and reject whitespace before passing URI references to it.
+	// The validator's URI parser accepts unescaped spaces.
 	uriCompiler := jsonschema.NewCompiler()
 	const uriLocation = "urn:actionlint:test:uri-reference"
 	if err := uriCompiler.AddResource(uriLocation, map[string]any{"type": "string", "format": "uri-reference"}); err != nil {
@@ -48,7 +47,6 @@ var compileSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compiler.Compile(location)
 })
 
-// Validate checks JSON against the OASIS SARIF 2.1.0 errata 01 schema, including URI formats.
 func Validate(data []byte) error {
 	schema, err := compileSchema()
 	if err != nil {
@@ -61,7 +59,6 @@ func Validate(data []byte) error {
 	return schema.Validate(document)
 }
 
-// RequireValid fails the test with the schema's validation errors.
 func RequireValid(tb testing.TB, data []byte) {
 	tb.Helper()
 	if err := Validate(data); err != nil {

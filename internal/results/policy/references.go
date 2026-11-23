@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// InferReferences enriches completed findings from source indexes supplied by the caller.
 func InferReferences(all []*finding.Finding, path string, references map[string]facts.SourceIndex, entryAliases ...string) {
 	for _, finding := range all {
 		if finding.Source.Unavailable.Present() {

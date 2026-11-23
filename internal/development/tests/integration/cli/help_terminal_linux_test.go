@@ -48,7 +48,6 @@ func TestHelpUsesTerminalWidth(t *testing.T) {
 	}
 }
 
-// commandTestTerminal captures command output through a PTY.
 func commandTestTerminal(t *testing.T) (*os.File, func() string) {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|unix.O_NOCTTY, 0)

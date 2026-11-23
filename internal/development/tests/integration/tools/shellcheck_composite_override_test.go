@@ -11,11 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
-// TestShellcheckCompositeOverrideEnablesCallerDisabledTool checks decision b5
-// in docs/design/tool-providers-decisions.md: when the root configuration
-// disables ShellCheck and an overrides entry enables it for local/**, the
-// composite action under local/ is checked and the calling workflow's own
-// run step is not. The ShellCheck adapter skipped both.
 func TestShellcheckCompositeOverrideEnablesCallerDisabledTool(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")

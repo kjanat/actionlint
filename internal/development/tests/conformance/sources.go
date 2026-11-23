@@ -21,7 +21,6 @@ import (
 //go:embed sources.json
 var manifest []byte
 
-// Source identifies a repository archive and its content digest.
 type Source struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository"`
@@ -29,7 +28,6 @@ type Source struct {
 	SHA256     string `json:"sha256"`
 }
 
-// Sources reads and validates the checked-in source revisions.
 func Sources() ([]Source, error) {
 	var sources []Source
 	if err := json.Unmarshal(manifest, &sources); err != nil {
@@ -48,7 +46,6 @@ func Sources() ([]Source, error) {
 	return sources, nil
 }
 
-// ArchivePath returns the cache filename for a source revision.
 func (s Source) ArchivePath(dir string) string {
 	return filepath.Join(dir, s.Name+"-"+s.Revision+".zip")
 }
@@ -69,7 +66,7 @@ func (s Source) verify(filename string) error {
 	return nil
 }
 
-// Fetch downloads a missing archive. Existing archives must still match their pinned digest.
+// Fetch checks an existing archive against its pinned digest.
 func (s Source) Fetch(ctx context.Context, dir string) error {
 	filename := s.ArchivePath(dir)
 	if _, err := os.Stat(filename); err == nil {
@@ -115,7 +112,6 @@ func (s Source) Fetch(ctx context.Context, dir string) error {
 	return os.Rename(f.Name(), filename)
 }
 
-// Open verifies an archive and exposes its repository root as a read-only filesystem.
 func (s Source) Open(dir string) (fs.FS, func() error, error) {
 	filename := s.ArchivePath(dir)
 	if err := s.verify(filename); err != nil {

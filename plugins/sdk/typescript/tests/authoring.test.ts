@@ -276,11 +276,10 @@ test('authoring distributes wrapper delegation and option warnings', async () =>
 		);
 		expect((await createPluginTester(definition).validate()).valid).toBe(true);
 		expect(await compileProvider(definition)).toMatchObject({
-			invocation_definitions: [{ id: 'example/wrapper', prefix: ['python'], delegate: 'python-plugin/python' }, {
-				id: 'example/custom',
-				language: 'typescript',
-				options: [{ long: 'unsafe', warning: 'Sandbox disabled.' }],
-			}],
+			invocation_definitions: [
+				{ id: 'example/wrapper', prefix: ['python'], delegate: 'python-plugin/python' },
+				{ id: 'example/custom', language: 'typescript', options: [{ long: 'unsafe', warning: 'Sandbox disabled.' }] },
+			],
 		});
 	});
 });

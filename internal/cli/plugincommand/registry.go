@@ -51,7 +51,6 @@ type RegistryRequest struct {
 	JSON   bool
 }
 
-// Run executes the plugin registry operation.
 func (r RegistryRequest) Run(ctx context.Context, streams output.Streams, acquisition dependencycache.Acquisition) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
@@ -198,8 +197,7 @@ func RequestedPlugin(name string, options RegistryOptions, existing []pluginrefe
 	return ref, nil
 }
 
-// RequestedPluginIndex finds the existing declaration for this repository.
-// Aliases stay scoped to the registry that assigns them.
+// RequestedPluginIndex scopes aliases to the registry that assigns them.
 func RequestedPluginIndex(ref pluginreference.Reference, registry string, existing []pluginreference.Reference) (int, error) {
 	index, named, count := -1, -1, 0
 	for i, old := range existing {
@@ -228,7 +226,6 @@ func (r RegistryRequest) install(ctx context.Context, project *installation.Proj
 	refs := slices.Clone(project.Manifest.References)
 	var err error
 	if name != "" {
-		// The declaration records the digest an oci:// tag names now.
 		name, err = installation.PinSource(ctx, name, project.StatusOptions.Acquisition)
 		if err != nil {
 			return err
@@ -322,8 +319,8 @@ func removePlugin(ctx context.Context, project *installation.Project, name, regi
 	return project.Save(ctx, refs)
 }
 
-// DeclaredPlugin resolves command spelling against declarations and recorded
-// pins only. A shorthand from another registry never selects this declaration.
+// DeclaredPlugin consults only declarations and recorded pins, and ignores
+// shorthands from another registry.
 func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
 	requested, err := pluginreference.ParsePluginReference(name)
 	if err != nil {

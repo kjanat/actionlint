@@ -1,4 +1,4 @@
-// Package jobneeds checks a complete dependency graph, independently of traversal.
+// Package jobneeds checks a complete dependency graph.
 package jobneeds
 
 import (
@@ -26,8 +26,7 @@ type node struct {
 	start sourcetext.Position
 }
 
-// Check resolves all declarations before finding cycles. The supplied jobs are
-// source ordered; graph walks use sorted IDs for deterministic cycle selection.
+// Check walks sorted IDs for deterministic cycle selection.
 func Check(jobs []JobDependencies) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(pos sourcetext.Position, message string) {

@@ -132,8 +132,6 @@ func TestInvocationContextValidEmptyGraph(t *testing.T) {
 	}
 }
 
-// invocationContextPagedGraph nests count calls, each expanded into its own
-// body, and registers count scripts in the deepest body.
 func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []invocation.ID, []invocation.ID) {
 	t.Helper()
 	builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: count, MaxCalls: count, MaxScripts: count})

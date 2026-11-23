@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// ResolveDirectory finds an existing local directory for the runner directory.
-// Case-insensitive checkout lookup records directory listings through reader.
 func ResolveDirectory(paths execution.Paths, directory execution.Directory, reader *files.Reader) execution.Directory {
 	unknown := execution.Directory{Kind: execution.DirectoryUnknown, Path: paths.Analysis}
 	if directory.Kind == execution.DirectoryUnknown {
@@ -32,8 +30,6 @@ func ResolveDirectory(paths execution.Paths, directory execution.Directory, read
 	return execution.Directory{Kind: execution.DirectoryKnown, Path: local}
 }
 
-// AnalysisPath resolves available files, including those outside the indexed
-// repository. Case-insensitive checkouts are canonicalized through reader.
 func AnalysisPath(paths execution.Paths, value string, reader *files.Reader) (string, bool) {
 	relativePath, known := execution.LocalDirectoryPath(value, paths.Platform)
 	if !known {

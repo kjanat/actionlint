@@ -1,8 +1,6 @@
 package actioncheck
 
-// brandingColors is a set of colors allowed at branding.color in action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor
-// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 var brandingColors = map[string]struct{}{
 	"white":     {},
 	"black":     {},
@@ -15,32 +13,10 @@ var brandingColors = map[string]struct{}{
 	"gray-dark": {},
 }
 
-// brandingIcons is a set of icon names allowed at branding.icon in action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon
-//
-// Note: The list of icons is based on [Feather Icons](https://feathericons.com/) [v4.28.0](https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/icons.json).
-//
-// Omitted icons:
-// Brand icons, and all the following icons, are omitted.
-//
-// - coffee
-// - columns
-// - divide
-// - divide-circle
-// - divide-square
-// - frown
-// - hexagon
-// - key
-// - meh
-// - mouse-pointer
-// - smile
-// - tool
-// - x-octagon
-//
-// TODO:
-//
-//	generate the list of icons from the Feather Icons JSON file to keep it up-to-date.
-//	and embed the JSON file in the binary to avoid this crap.
+// GitHub allows Feather Icons v4.28.0 except brand icons, coffee, columns,
+// divide, divide-circle, divide-square, frown, hexagon, key, meh,
+// mouse-pointer, smile, tool and x-octagon.
 var brandingIcons = map[string]struct{}{
 	"activity":           {},
 	"airplay":            {},

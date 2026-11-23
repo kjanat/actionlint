@@ -67,7 +67,7 @@ func BenchmarkParseTestData(b *testing.B) {
 		b.Run(bc.name, func(b *testing.B) {
 			for range b.N {
 				for _, in := range bc.inputs {
-					// Note: Some workflows may cause parse error
+					// Some workflows can cause a parse error.
 					parser.ParseWorkflow(in)
 				}
 			}

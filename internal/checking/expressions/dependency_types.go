@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// Get type of `outputs.<output name>`
 func (rule *Visitor) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
 	if spec == nil {
 		return outputs.ActionType(actionmeta.Definition{})

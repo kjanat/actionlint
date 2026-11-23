@@ -2,8 +2,7 @@ package contexts
 
 import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-// TypeBindings reads and replaces expression context types. Implementations
-// store immutable type values; these operations do not evaluate expressions.
+// TypeBindings implementations store immutable type values.
 type TypeBindings interface {
 	ContextType(string) (exprtypes.Type, bool)
 	SetContextType(string, exprtypes.Type)
@@ -25,8 +24,6 @@ func SetSecretTypes(bindings TypeBindings, secrets exprtypes.ObjectType) {
 	bindings.SetContextType("secrets", builder.Build().Type())
 }
 
-// MergeInputTypes merges supplied definitions into the inputs context. Workflows
-// with multiple input-bearing triggers use this to combine their definitions.
 func MergeInputTypes(bindings TypeBindings, inputs exprtypes.ObjectType) {
 	current, _ := bindings.ContextType("inputs")
 	object, ok := current.Object()
@@ -37,7 +34,6 @@ func MergeInputTypes(bindings TypeBindings, inputs exprtypes.ObjectType) {
 	bindings.SetContextType("inputs", object.Type().Merge(inputs.Type()))
 }
 
-// SetEventPayloadType installs the event payload projection beneath github.event.
 func SetEventPayloadType(bindings TypeBindings, event exprtypes.ObjectType) {
 	current, _ := bindings.ContextType("github")
 	if github, ok := current.Object(); ok {

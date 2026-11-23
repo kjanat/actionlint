@@ -13,8 +13,7 @@ import (
 // engine returns, written to stdout by a native engine.
 type Envelope struct{}
 
-// Decode implements Decoder. An engine reporting failure without a message
-// yields one generic error.
+// Decode yields one generic error for an engine that reports failure without a message.
 func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) (DecodedCheck, error) {
 	if err := ctx.Err(); err != nil {
 		return DecodedCheck{}, err

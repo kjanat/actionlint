@@ -42,7 +42,6 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 	}
 }
 
-// Digests describe the content the load read, whatever the files hold later.
 func TestProvenanceDigestsLoadedContent(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

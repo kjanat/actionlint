@@ -12,8 +12,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Split root options from command routing, then parse them with the same pflag
-// definitions and argument scanner used for subcommands and completion.
 func (a *commandApp) parseRoot(args []string) (rest []string, terminated bool, err error) {
 	flags := a.root.Flags()
 	flags.SetOutput(io.Discard)

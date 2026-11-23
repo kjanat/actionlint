@@ -18,15 +18,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// IfCondRule is the single definition of the if-cond rule.
 var IfCondRule = &define.Rule{
 	Name:        "if-cond",
 	Description: "Report conditions that always evaluate to true or false",
 	Category:    "correctness",
 	Subcategory: "expressions",
 	Recommended: true,
-	Help:        "Correct the expression to test the intended runtime value. Remove a condition that is always true if it is unnecessary.",
-	Examples: []rule.Example{rule.WorkflowExample("Remove an unconditional truthy condition.",
+	Help:        "Fix the expression, or remove a condition that is always true.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		"    if: true\n", "")},
 	Checks: define.Fixed(define.Checks{Job: checkJobConditions, Step: checkStepCondition}),
 }
@@ -50,7 +49,6 @@ func checkStepCondition(step workflows.BoundStep) []reporting.StepFinding {
 	return checkCondition(step.If)
 }
 
-// conditionDiagnostics reports explicit if: conditions that are constant or have text around ${{ }}.
 func conditionDiagnostics(value string, start sourcetext.Position) []results.Diagnostic {
 	expr, err, _ := syntax.ParseConditionExpression(value)
 	if err != nil {

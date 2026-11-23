@@ -92,7 +92,6 @@ func (a *InputPreparer) ConfigForProject(project *Project) (*configuration.Confi
 	return cfg, nil
 }
 
-// ConfigProvenanceForProject reads the source owner selected by ConfigForProject.
 func (a *InputPreparer) ConfigProvenanceForProject(project *Project) configuration.Provenance {
 	if a.configState == nil {
 		if a.defaultConfig != nil {

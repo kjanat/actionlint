@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// Traits are the execution guarantees shared by every alternative of a job.
 type Traits struct {
 	PathsKnown                           bool
 	Platform                             Platform
@@ -18,17 +17,14 @@ type Traits struct {
 	CaseInsensitive, ShIsDash, Ephemeral bool
 }
 
-// JobKnowledge is a conservative join of the alternatives for one job. It is
-// computed before visitors run and never invokes a provider during traversal.
-// Each value is owned by its reader.
+// JobKnowledge is computed before visitors run and never invokes a provider during traversal.
 type JobKnowledge struct {
 	Traits
 	Rejections []runnerapi.Rejection
 	Answers    []runnerapi.Answer
 }
 
-// OperatingSystems lists every supported OS alternative. Unknown or incomplete
-// provider answers add UnknownOS rather than guessing from their labels.
+// OperatingSystems adds UnknownOS for unknown or incomplete provider answers and never guesses from labels.
 func (k JobKnowledge) OperatingSystems() []runnerapi.OS {
 	var systems []runnerapi.OS
 	add := func(system runnerapi.OS) {
@@ -61,8 +57,7 @@ func (k JobKnowledge) OperatingSystems() []runnerapi.OS {
 	return systems
 }
 
-// jobRecord stores runner traits, rejections and answers. Each query returns
-// detached slices so readers cannot change the stored knowledge.
+// Each jobRecord query returns detached slices.
 type jobRecord struct {
 	traits     Traits
 	rejections []runnerapi.Rejection
@@ -73,15 +68,12 @@ func (r jobRecord) knowledge() JobKnowledge {
 	return JobKnowledge{Traits: r.traits, Rejections: slices.Clone(r.rejections), Answers: detachAnswers(r.answers)}
 }
 
-// Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
 	jobs   map[workflows.BoundJob]jobRecord
 	report runnerapi.Report
 	target string
 }
 
-// Target identifies the selected execution platform, including documents without
-// runner requests, such as standalone actions and reusable-workflow callers.
 func (k *Knowledge) Target() string {
 	if k == nil {
 		return ""
@@ -96,8 +88,7 @@ func (k *Knowledge) Job(job workflows.BoundJob) JobKnowledge {
 	return k.jobs[job].knowledge()
 }
 
-// Report binds the prepared answers to the selected provider. A zero Identity
-// means no provider was consulted. The result is detached from k.
+// Report returns a zero Identity when no provider was consulted.
 func (k *Knowledge) Report() runnerapi.Report {
 	if k == nil {
 		return runnerapi.Report{}
@@ -114,8 +105,6 @@ func detachDescriptor(descriptor runnerapi.Descriptor) runnerapi.Descriptor {
 	return descriptor
 }
 
-// detachAnswers deep-copies answers. Stored answers hold only the value
-// resolutions normalized by resolutionValue.
 func detachAnswers(answers []runnerapi.Answer) []runnerapi.Answer {
 	if answers == nil {
 		return nil
@@ -141,8 +130,7 @@ func detachResolution(resolution runnerapi.Resolution) runnerapi.Resolution {
 	return nil
 }
 
-// Value-receiver markers permit native providers to return pointers too. Keep
-// downstream validation and report identity independent of that Go spelling.
+// Value-receiver markers permit native providers to return pointers too.
 func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, error) {
 	switch value := resolution.(type) {
 	case runnerapi.Resolved, runnerapi.NoMatch, runnerapi.Unknown, runnerapi.NotApplicable:
@@ -256,8 +244,7 @@ func builtinJob(job workflows.BoundJob) JobKnowledge {
 
 func builtinTraits(selection value.Value, labels []value.Value) Traits {
 	k := Traits{Platform: PlatformOf(selection), Ephemeral: Hosted(selection)}
-	// Preserve GitHub's established default-shell behavior. External unknown
-	// answers never reach these label-based assumptions.
+	// Preserve GitHub's established default-shell behavior.
 	if k.Platform == MacOrLinux {
 		k.Shell = "bash"
 	}

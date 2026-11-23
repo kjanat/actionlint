@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// Bundled provider rules use the semantic categories declared by their manifests.
 func TestProviderRulesComeFromManifests(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()

@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
-// Main runs the GitHub Action adapter using the action's input environment.
 func Main(env func(string) string, stdout io.Writer, acquisition dependencycache.Acquisition) int {
 	a := &action{
 		args:        environmentArgs(env),

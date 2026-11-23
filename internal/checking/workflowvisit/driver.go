@@ -10,20 +10,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// Options configures one traversal. The caller owns every pass, hook and writer;
-// Visit keeps no reference to them after it returns.
 type Options struct {
 	// Passes run in slice order at every node.
 	Passes []Pass
 	Hooks  Hooks
-	// Debug receives per-phase timings when non-nil.
-	Debug io.Writer
+	Debug  io.Writer
 }
 
-// Hooks lets a caller observe document/job entry and own step expansion.
-// JobPass, when set, runs each pass's VisitJobPre and VisitJobPost call through
-// visit so the caller can attribute what the pass reports to the job.
-// ParallelBoundary invalidates caller-owned assumptions between parallel branches.
+// Hooks JobPass runs each pass's VisitJobPre and VisitJobPost call through visit.
+// ParallelBoundary runs before each parallel branch and after the last one.
 type Hooks struct {
 	Workflow         func(workflows.BoundWorkflow) error
 	Job              func(workflows.BoundJob) error
@@ -39,7 +34,6 @@ func Visit(n workflows.BoundWorkflow, options Options) error {
 	return v.visitWorkflow(n)
 }
 
-// visitor is the state of one Visit call.
 type visitor struct {
 	passes []Pass
 	hooks  Hooks
@@ -72,8 +66,7 @@ func (v *visitor) visitWorkflow(n workflows.BoundWorkflow) error {
 		t = time.Now()
 	}
 
-	// Stable source order also makes reusable metadata findings select the first
-	// visible caller consistently, including calls through nested composites.
+	// Reusable metadata findings rely on source order to select the first visible caller.
 	jobs := slices.SortedFunc(func(yield func(workflows.BoundJob) bool) {
 		for _, job := range n.Jobs() {
 			if !yield(job) {
@@ -195,7 +188,7 @@ func (v *visitor) visitStep(n workflows.BoundStep) error {
 		}
 	}
 
-	// Steps grouped in a 'parallel' step are visited as well so that rules are applied to them.
+	// Steps inside a 'parallel' step are visited too, and rules apply to them.
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if steps, ok := n.ParallelSteps(); ok {
 		for s := range steps {

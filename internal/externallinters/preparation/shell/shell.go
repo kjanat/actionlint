@@ -1,6 +1,5 @@
 // Package shell prepares shell source with interpreter settings, declared
-// environment names and source maps. Integrations supply their own settings
-// conversions and preparation programs.
+// environment names and source maps.
 package shell
 
 import (
@@ -9,18 +8,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
-// ID names this profile in tool provider manifests.
 const ID = "kjanat:actionlint/shell-preparation@0.3.0"
 
-// Shell is the shell command a run block executes under, with the
-// interpreter definitions and argument platform that parse it.
 type Shell struct {
 	scripts.Shell
 	Registry *commands.Registry
 	Platform commands.ArgumentPlatform
 }
 
-// Invocation parses and validates the command using the session's interpreter definitions.
 func (s Shell) Invocation() commands.Invocation {
 	registry := s.Registry
 	if registry == nil {
@@ -29,8 +24,7 @@ func (s Shell) Invocation() commands.Invocation {
 	return registry.AnalyzeFor(s.Name, s.Implicit, s.Platform)
 }
 
-// Analysis supplies a dialect and startup settings only for a validated command
-// that reads the run block as a script file.
+// Analysis returns empty settings unless the validated command reads the run block as a script file.
 func (s Shell) Analysis() (dialect, startup string) {
 	invocation := s.Invocation()
 	if invocation.Status != commands.Valid || invocation.Input != "file" {
@@ -44,8 +38,6 @@ func (s Shell) Analysis() (dialect, startup string) {
 	}
 }
 
-// LanguageDialect is the dialect of an action input declared in language;
-// empty when the language is not a supported shell.
 func LanguageDialect(language string) string {
 	switch language {
 	case "bash", "sh", "dash", "ksh", "busybox":

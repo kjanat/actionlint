@@ -9,16 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 )
 
-// VarTargetVersion is the Python target version the step shell selects,
-// such as py312; unset when the shell leaves it open.
+// VarTargetVersion holds the Python target version the step shell selects,
+// such as py312.
 const VarTargetVersion = "target_version"
 
-// engineTargetKey is the configuration key that carries the target version
-// to a snippet engine, which receives no argument variables.
 const engineTargetKey = "target-version"
 
-// Run prepares a run block whose step shell runs Python. Other run blocks,
-// and those whose shell is a template, are skipped.
 func Run(text string, shell *string) (preparation.Prepared, error) {
 	if shell == nil || strings.Contains(*shell, "${{") || !IsShell(*shell) {
 		return preparation.Prepared{Skip: "its step shell does not run Python"}, nil
@@ -33,8 +29,6 @@ func Run(text string, shell *string) (preparation.Prepared, error) {
 	return prepared, nil
 }
 
-// EngineConfig is a snippet engine's configuration object: config with the
-// target version a run block's shell selects, unless config sets one.
 func EngineConfig(config json.RawMessage, vars map[string]string) (json.RawMessage, error) {
 	target := vars[VarTargetVersion]
 	settings := map[string]any{}
@@ -46,7 +40,6 @@ func EngineConfig(config json.RawMessage, vars map[string]string) (json.RawMessa
 		}
 	}
 	if settings == nil {
-		// A null configuration selects no settings.
 		settings = map[string]any{}
 	}
 	if target != "" && settings[engineTargetKey] == nil {

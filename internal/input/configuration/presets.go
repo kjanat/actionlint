@@ -1,7 +1,6 @@
 package configuration
 
-// Presets enables checks without a configuration file. These runtime
-// selections apply after file overrides and never mutate project configuration.
+// Presets apply after file overrides and never mutate project configuration.
 type Presets struct {
 	// Strict enables all stable rules, including non-recommended rules.
 	Strict bool

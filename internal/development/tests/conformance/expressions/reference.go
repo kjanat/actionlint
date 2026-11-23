@@ -19,7 +19,6 @@ import (
 
 var errGitHubReferenceUnavailable = errors.New("runny reference unavailable")
 
-// Check access once per test process, before starting any reference containers.
 // A cached image needs no registry credentials. Pulling the private image
 // requires Docker credentials with access to it.
 var githubReferenceImage = sync.OnceValues(func() (string, error) {
@@ -61,7 +60,6 @@ func CheckValue(t *testing.T, input string, variables map[string]any, want any) 
 	CheckOutcome(t, input, variables, Expectation{Value: want})
 }
 
-// FailurePhase identifies success or the stage that rejected an expression.
 type FailurePhase uint8
 
 const (
@@ -70,14 +68,12 @@ const (
 	RuntimeFailure
 )
 
-// Expectation describes the value or exception that Runny must report.
 type Expectation struct {
 	Failure       FailurePhase
 	Value         any
 	ExceptionType string
 }
 
-// JSONMode selects the runner's fromJSON parser for a reference comparison.
 type JSONMode uint8
 
 const (
@@ -85,7 +81,6 @@ const (
 	StrictJSON
 )
 
-// runGitHubReference invokes a command in the pinned image after checking access.
 func runGitHubReference(t *testing.T, operation, input string, variables map[string]any, mode JSONMode) ([]byte, string) {
 	t.Helper()
 	if mode != LooseJSON && mode != StrictJSON {
@@ -135,8 +130,7 @@ func CheckOutcome(t *testing.T, input string, variables map[string]any, want Exp
 	CheckOutcomeWithJSONMode(t, input, variables, StrictJSON, want)
 }
 
-// CheckOutcomeWithJSONMode compares an expression using the selected JSON parser.
-// LooseJSON uses Newtonsoft.Json; StrictJSON uses System.Text.Json.
+// CheckOutcomeWithJSONMode runs LooseJSON with Newtonsoft.Json and StrictJSON with System.Text.Json.
 func CheckOutcomeWithJSONMode(t *testing.T, input string, variables map[string]any, mode JSONMode, want Expectation) {
 	t.Helper()
 	output, image := runGitHubReference(t, "eval-expr", input, variables, mode)

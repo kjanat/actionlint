@@ -1,7 +1,6 @@
 package sourcetext
 
-// TokenEndColumn returns the exclusive rune column of the token delimited by
-// space, tab, CR or LF at column, with a minimum span of one character.
+// TokenEndColumn returns an exclusive rune column, ends tokens at space, tab, CR or LF, and spans at least one character.
 func TokenEndColumn(line string, column int) int {
 	if column < 1 {
 		return column + 1
@@ -19,8 +18,7 @@ func TokenEndColumn(line string, column int) int {
 	return max(column+1, end)
 }
 
-// ByteOffsetAtColumn converts a one-based rune column to a byte offset.
-// The exclusive EOF column is valid; nonpositive and later columns are invalid.
+// ByteOffsetAtColumn accepts the exclusive EOF column and rejects nonpositive and later columns.
 func ByteOffsetAtColumn(s string, column int) (int, bool) {
 	if column <= 0 {
 		return 0, false
@@ -38,8 +36,7 @@ func ByteOffsetAtColumn(s string, column int) (int, bool) {
 	return 0, false
 }
 
-// InclusiveEnd returns explicit unchanged when it is at or beyond column.
-// Earlier values request token inference. It does not clamp to the line.
+// InclusiveEnd returns explicit when it is at or beyond column and never clamps to the line.
 func InclusiveEnd(line string, column, explicit int) int {
 	if explicit >= column {
 		return explicit

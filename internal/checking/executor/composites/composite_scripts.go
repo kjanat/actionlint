@@ -301,8 +301,8 @@ func (analysis *compositeAnalyzer) describeCall(step workflows.BoundStep) (sourc
 
 func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference sourcetext.Reference, visit func() error) error {
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *finding.Finding) {
-		// Metadata declarations belong to their captured target, which the run
-		// binds after source admission. Other findings belong to this invocation.
+		// Metadata declarations belong to their captured target. The run
+		// binds the target after source admission. Other findings belong to this invocation.
 		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {
 			finding.Binding = bindings.Rule(finding.Rule).ID()
 		}

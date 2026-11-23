@@ -11,11 +11,7 @@ import (
 	"sync"
 )
 
-// VersionProbe holds the result of one version probe for every backend that
-// shares it, so a command is probed and its failure warned about once. Each
-// caller keeps its own cancellation: an interrupted probe leaves the next
-// caller to run it again. A completed failure is kept as text, so every
-// caller gets its own error. The zero value is ready to use.
+// VersionProbe probes a command once for every backend that shares it, and its zero value is ready to use.
 type VersionProbe struct {
 	mu      sync.Mutex
 	pending chan struct{}
@@ -25,8 +21,6 @@ type VersionProbe struct {
 	failed  bool
 }
 
-// run returns the shared result, running execute when no probe completed. A
-// completed failure is passed to warning once.
 func (p *VersionProbe) run(ctx context.Context, execute func() (string, error), warning func(error)) (string, error) {
 	for {
 		if err := ctx.Err(); err != nil {
@@ -79,8 +73,6 @@ func canceled(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
-// identifyVersion extracts the version from probe output and checks it
-// against minimum, when set.
 func identifyVersion(name string, pattern *regexp.Regexp, minimum, output string) (string, error) {
 	match := pattern.FindStringSubmatch(output)
 	if match == nil {
@@ -103,10 +95,7 @@ func identifyVersion(name string, pattern *regexp.Regexp, minimum, output string
 	return version, nil
 }
 
-// compareVersions orders dotted numeric versions with an optional
-// "-prerelease" and "+build" suffix by semantic-versioning precedence:
-// missing numeric parts are zero, a prerelease precedes its release and build
-// metadata is ignored.
+// compareVersions follows semantic-versioning precedence, and missing numeric parts are zero.
 func compareVersions(a, b string) (int, error) {
 	left, err := parseVersion(a)
 	if err != nil {

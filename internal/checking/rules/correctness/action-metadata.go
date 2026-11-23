@@ -19,8 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Each workflow analysis owns its validation store.
-// Its templates contain no caller state and are also shared with nested composites.
+// actionMetadataValidation templates hold no caller state and are shared with nested composites.
 type actionMetadataValidation struct {
 	templates map[string][]*finding.Finding
 	copies    *finding.Copier

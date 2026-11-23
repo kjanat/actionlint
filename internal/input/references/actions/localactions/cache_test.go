@@ -84,8 +84,6 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 	}
 }
 
-// Normal cases
-
 func TestLocalActionsFindMetadataOK(t *testing.T) {
 	t.Parallel()
 	testdir := "testdata"
@@ -192,7 +190,6 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-			// read metadata repeatedly (should be cached)
 			for i := range 3 {
 				have, cached, err := c.FindMetadata(tc.spec)
 				if err != nil {
@@ -412,8 +409,6 @@ func TestLocalActionsNullCache(t *testing.T) {
 	testCheckCachedFlag(t, false, cached)
 }
 
-// Error cases
-
 func TestLocalActionsBrokenMetadata(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -441,8 +436,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 			}
 			testCheckCachedFlag(t, false, cached)
 
-			// Second try does not return error, but metadata is also nil not to show the same error from
-			// multiple rules.
+			// A second call returns nil metadata and no error, and only the first call reports the error.
 			m, cached, err = c.FindMetadata(tc.spec)
 			if err != nil {
 				t.Fatal("error was returned at second try", err)
@@ -507,7 +501,6 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 		errs = append(errs, <-errC)
 	}
 
-	// At least once error was reported
 	var err error
 	for _, e := range errs {
 		if e != nil {

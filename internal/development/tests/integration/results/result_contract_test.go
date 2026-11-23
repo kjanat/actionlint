@@ -215,7 +215,6 @@ permissions: {}
 		if err := json.Unmarshal(rendered.Bytes(), &value); err != nil {
 			t.Fatal(err)
 		}
-		// Future additive metadata is accepted without losing the status constraints.
 		value["future"] = map[string]any{"jobs": []string{"test"}}
 		if err := schema.Validate(value); err != nil {
 			t.Fatalf("exit %d: %v\n%s", code, err, &rendered)
@@ -235,7 +234,6 @@ permissions: {}
 	if err := compiler.AddResource("https://example.com/results.schema.json", document); err != nil {
 		t.Fatal(err)
 	}
-	// Resolve the relative reference to the exact result schema under test.
 	data, err = os.ReadFile("schemas/results/v1.schema.json")
 	if err != nil {
 		t.Fatal(err)

@@ -39,7 +39,6 @@ func (plan FormatPlan) Demands(index int) bool {
 }
 
 // PlanFormat validates the entire template before any replacement is evaluated.
-// Escaped braces are literal text; placeholders contain unsigned decimal indexes.
 func PlanFormat(format string, count int) FormatPlan {
 	plan := FormatPlan{valid: true}
 	var literal strings.Builder
@@ -108,10 +107,9 @@ func PlanFormat(format string, count int) FormatPlan {
 	return plan
 }
 
-// Valid reports whether the full template and every placeholder index are valid.
 func (plan FormatPlan) Valid() bool { return plan.valid }
 
-// Parts yields literal text and placeholders in evaluation order.
+// Parts yields parts in evaluation order.
 func (plan FormatPlan) Parts() iter.Seq[FormatPart] {
 	return func(yield func(FormatPart) bool) {
 		for _, part := range plan.parts {

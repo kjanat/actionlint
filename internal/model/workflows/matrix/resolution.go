@@ -15,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// matrixAxis is one declared matrix row. Complete is false when a value or the
-// row itself is dynamic, so Values may not enumerate every runtime value.
 type matrixAxis struct {
 	Name     string
 	Values   []value.Value
@@ -35,7 +33,6 @@ func (c Combination) Get(name string) (value.Value, bool) {
 	return v, ok
 }
 
-// Values yields combination fields in stable key order.
 func (c Combination) Values() iter.Seq2[string, value.Value] {
 	combinationValues := maps.Clone(c.values)
 	keys := slices.Sorted(maps.Keys(combinationValues))
@@ -66,8 +63,7 @@ func (c Combination) With(name string, item value.Value) Combination {
 }
 
 // merge returns a copy of c with every key of inclusion that is not a base
-// axis. Base axis keys are left alone: inclusion only merges into c when its
-// base axis values already match.
+// axis.
 func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination {
 	combinationValues := maps.Clone(c.values)
 	if combinationValues == nil {
@@ -86,7 +82,6 @@ func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination
 	return Combination{values: combinationValues, keyOrigins: keyOrigins, origin: c.origin}
 }
 
-// KeyOrigin returns the declaration location of a field, falling back to its value origin.
 func (c Combination) KeyOrigin(name string) value.Origin {
 	if origin, declared := c.keyOrigins[strings.ToLower(name)]; declared {
 		return origin
@@ -101,22 +96,17 @@ type Reach struct {
 	Complete     bool
 }
 
-// ExclusionProblem identifies a filter declaration that prevents complete matrix expansion.
-//
 //sumtype:decl
 type ExclusionProblem interface{ exclusionProblem() }
 
-// ExclusionWithoutAxes identifies an exclusion with no base axes to filter.
 type ExclusionWithoutAxes struct{ Origin value.Origin }
 
 func (ExclusionWithoutAxes) exclusionProblem() {}
 
-// EmptyExclusion identifies a filter without fields.
 type EmptyExclusion struct{ Origin value.Origin }
 
 func (EmptyExclusion) exclusionProblem() {}
 
-// UnknownExclusionAxis identifies a filter field absent from a closed axis domain.
 type UnknownExclusionAxis struct {
 	Name   string
 	Origin value.Origin
@@ -141,7 +131,6 @@ type Resolution struct {
 func (r Resolution) State() value.State { return r.state }
 
 // IncludesComplete reports whether all added combinations and their keys are known.
-// Their values may still be dynamic; Reachable retains those values explicitly.
 func (r Resolution) IncludesComplete() bool { return r.includeKnown }
 
 func (r Resolution) Open() bool {
@@ -149,7 +138,6 @@ func (r Resolution) Open() bool {
 }
 
 // ExclusionProblems yields invalid filters with their captured declaration origins.
-// An open axis domain does not establish that a named axis is absent.
 func (r Resolution) ExclusionProblems() iter.Seq[ExclusionProblem] {
 	return func(yield func(ExclusionProblem) bool) {
 		if len(r.exclude) == 0 {
@@ -184,7 +172,6 @@ func (r Resolution) hasExclusionIssues() bool {
 	return false
 }
 
-// ReachableNames yields base-axis and include-only names in stable order.
 func (r Resolution) ReachableNames() iter.Seq[string] {
 	names := make([]string, 0, len(r.axes))
 	seen := make(map[string]struct{}, len(r.axes))
@@ -376,9 +363,6 @@ func (r Resolution) Combinations(limit int) ([]Combination, bool) {
 	return r.combinations(limit, false)
 }
 
-// DeclarationCombinations retains excluded original declarations alongside the
-// execution combinations. Includes still merge only into surviving originals;
-// validation cannot turn a standalone include into a phantom merged job.
 func (r Resolution) DeclarationCombinations(limit int) ([]Combination, bool) {
 	return r.combinations(limit, true)
 }
@@ -450,7 +434,6 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 		}
 		combinations = append(combinations, candidate)
 	}
-	// An include that matched no original becomes its own combination.
 	for index, inclusion := range r.include {
 		if merged[index] {
 			continue
@@ -467,7 +450,6 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 	return combinations, true
 }
 
-// excludes reports whether any exclude entry removes candidate.
 func (r Resolution) excludes(candidate Combination) bool {
 	for _, excluded := range r.exclude {
 		if exclusionMatches(candidate, nil, excluded) {
@@ -528,14 +510,10 @@ func (r Resolution) Reachable(axisName string) Reach {
 	return result
 }
 
-// ReachableAfterExcludes narrows base-axis alternatives by definite exclusions,
-// retaining all include assignments. Large or dynamic axes use partial proofs.
 func (r Resolution) ReachableAfterExcludes(axisName string) Reach {
 	return r.reachableAlternatives(axisName, true)
 }
 
-// DeclarationReachable preserves original axis declarations while retaining the
-// same proof of whether an include supplies a separate alternative as execution.
 func (r Resolution) DeclarationReachable(axisName string) Reach {
 	return r.reachableAlternatives(axisName, false)
 }
@@ -591,8 +569,6 @@ func (r Resolution) survivingBaseCombinations(limit int) ([]Combination, bool) {
 	return base.Combinations(limit)
 }
 
-// A fallback axis value is unreachable when one known exclusion covers it
-// regardless of the other axes. Conditional or dynamic exclusions prove less.
 func (r Resolution) definitelyExcludedAxisValue(axisName string, candidate value.Value) bool {
 	fixed := (Combination{}).With(axisName, candidate)
 	for _, exclusion := range r.exclude {
@@ -929,9 +905,6 @@ func appendUnique(combinationValues *[]value.Value, candidate value.Value) {
 	*combinationValues = append(*combinationValues, candidate)
 }
 
-// exclusionCandidates lists the values key name can take when an exclusion is
-// checked: the value set in fixed, otherwise every value of the matching axis
-// in free. The result is incomplete when free has no complete axis for name.
 func exclusionCandidates(fixed Combination, free []matrixAxis, name string) ([]value.Value, bool) {
 	if item, exists := fixed.Get(name); exists {
 		return []value.Value{item}, true
@@ -955,9 +928,6 @@ func exclusionMatches(fixed Combination, free []matrixAxis, expected Combination
 	return exclusionMatch(fixed, free, expected) == matchAlways
 }
 
-// exclusionMatch checks every candidate of each key of expected, as listed by
-// exclusionCandidates. A known mismatch disproves coverage; dynamic values
-// cannot prove a witness survives.
 func exclusionMatch(fixed Combination, free []matrixAxis, expected Combination) matchProof {
 	if len(expected.values) == 0 {
 		return matchNever

@@ -20,7 +20,6 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
-		// workflow0.yaml
 		{
 			Inputs: calls.Inputs{
 				"optional_input": {Name: "optional_input", Required: false, Type: definition.WorkflowCallEventInputTypeString},
@@ -34,7 +33,6 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				"required_secret": {Name: "required_secret", Required: true},
 			},
 		},
-		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: calls.Inputs{
 				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: definition.WorkflowCallEventInputTypeString},
@@ -48,7 +46,6 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				"required_secret": {Name: "REQUIRED_SECRET", Required: true},
 			},
 		},
-		// workflow2.yaml: No input and secret are defined
 		{
 			Inputs:  calls.Inputs{},
 			Outputs: calls.Outputs{},
@@ -116,13 +113,13 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		},
 		{
 			what:    "read workflow",
-			uses:    "./ok.yaml", // Defined in the workflow loader's testdata/reusable-workflows/ok.yaml.
+			uses:    "./ok.yaml",
 			inputs:  []string{"input2"},
 			secrets: []string{"secret2"},
 		},
 		{
 			what: "read broken workflow",
-			uses: "./broken.yaml", // Defined in the workflow loader's testdata/reusable-workflows/broken.yaml.
+			uses: "./broken.yaml",
 			errs: []string{
 				"error while parsing reusable workflow \"./broken.yaml\"",
 			},

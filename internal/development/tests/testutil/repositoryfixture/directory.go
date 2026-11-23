@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// Directory creates a temporary directory with an empty .git marker for discovery tests.
 func Directory(tb testing.TB) string {
 	tb.Helper()
 	root := tb.TempDir()

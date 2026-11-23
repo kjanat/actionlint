@@ -14,8 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// ResolvedReferenceCheck reports commit pins from captured resolver observations.
-// It does not resolve references or acquire repository data.
 type ResolvedReferenceCheck struct{}
 
 func NewResolvedReferenceCheck() *ResolvedReferenceCheck {

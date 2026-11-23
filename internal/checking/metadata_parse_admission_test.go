@@ -70,8 +70,6 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			if !quarantined {
 				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: probe}}}, []workspace.InputFile{unit})
 			} else {
-				// The existing constructor seam gives the test the real result owner;
-				// the analyzer runs after composition and source verification.
 				var store *capture.Store
 				probe.inspect = func() error {
 					captured, state, err := store.Lookup(metadataPath)

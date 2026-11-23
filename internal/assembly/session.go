@@ -13,13 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-// Session holds checking options with the selected plugins loaded and
-// registered. The command line, the language servers and the tool queries
-// all build their checks through Open. Close releases the plugins.
 type Session struct {
-	// Options are the caller's options with the plugins' reference resolver,
-	// script engines, tool providers, analyzers and runner providers
-	// registered in them.
 	Options checking.Options
 	plugins *pluginexecution.Loaded
 }
@@ -58,13 +52,12 @@ func Open(ctx context.Context, options checking.Options, sources pluginselection
 // long-lived session.
 func (s *Session) BeginAnalysis(ctx context.Context) error { return s.plugins.BeginAnalysis(ctx) }
 
-// Close releases the loaded plugins.
 func (s *Session) Close(ctx context.Context) error {
 	return s.plugins.Close(context.WithoutCancel(ctx))
 }
 
-// CheckPluginStatuses rejects selected plugins that their registry's cached
-// release status revokes, and writes status warnings to log. It reads no
+// CheckPluginStatuses rejects selected plugins whose cached release status in
+// their registry is revoked, and writes status warnings to log. It reads no
 // network.
 func CheckPluginStatuses(ctx context.Context, sources pluginselection.Sources, log io.Writer) error {
 	if sources.Releases == nil {
@@ -81,8 +74,8 @@ func CheckPluginStatuses(ctx context.Context, sources pluginselection.Sources, l
 	return nil
 }
 
-// loadDeclarations loads the selected plugins to read the rules they declare,
-// with the bundled tool providers registered. It runs no tool provider and
+// loadDeclarations loads the selected plugins to read their declared rules and
+// registers the bundled tool providers. It runs no tool provider and
 // downloads no executable. The caller closes the returned plugins.
 func loadDeclarations(ctx context.Context, sources pluginselection.Sources) (*pluginexecution.Loaded, checking.Options, error) {
 	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the no-sudo plugin component. Usage: build.sh [output.wasm]
-# Requires wit-bindgen, wasm-tools and wasi-sdk 25 or newer (WASI_SDK_PATH).
+# Usage: build.sh [output.wasm]
+# build.sh requires wit-bindgen, wasm-tools and wasi-sdk 25 or newer (WASI_SDK_PATH).
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"

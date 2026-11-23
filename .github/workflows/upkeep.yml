@@ -151,9 +151,7 @@ jobs:
           delete-branch: true
           add-paths: |
             go.mod
-            .mise.toml
             distribution/docker/Dockerfile
-            CONTRIBUTING.md
             flake.nix
             flake.lock
           commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"

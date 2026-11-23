@@ -14,17 +14,14 @@ import (
 	"testing"
 )
 
-// OCI media types the fixture serves.
 const (
 	IndexMediaType    = "application/vnd.oci.image.index.v1+json"
 	ManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 	emptyMediaType    = "application/vnd.oci.empty.v1+json"
-	// Repository is the one repository the fixture serves.
-	Repository = "actionlint/provider"
-	token      = "fixture-anonymous-token"
+	Repository        = "actionlint/provider"
+	token             = "fixture-anonymous-token"
 )
 
-// Descriptor describes one manifest or blob in the fixture.
 type Descriptor struct {
 	MediaType string    `json:"mediaType"`
 	Digest    string    `json:"digest"`
@@ -32,20 +29,17 @@ type Descriptor struct {
 	Platform  *Platform `json:"platform,omitempty"`
 }
 
-// Platform is the platform of an index entry.
 type Platform struct {
 	Architecture string `json:"architecture"`
 	OS           string `json:"os"`
 }
 
-// Hex returns the SHA256 hex of the descriptor's digest.
 func (d Descriptor) Hex() string { return strings.TrimPrefix(d.Digest, "sha256:") }
 
 // Registry is an OCI distribution server on a loopback httptest server.
 // Every request needs the anonymous bearer token, which /token hands out
 // after a 401 challenge, as GHCR does for public images.
 type Registry struct {
-	// host is the server's host:port.
 	host     string
 	server   *httptest.Server
 	mu       sync.Mutex
@@ -56,7 +50,6 @@ type Registry struct {
 	requests map[string]int
 }
 
-// New starts an OCI registry fixture closed with the test.
 func New(tb testing.TB) *Registry {
 	tb.Helper()
 	r := &Registry{content: map[string][]byte{}, types: map[string]string{}, served: map[string][]byte{}, tags: map[string]string{}, requests: map[string]int{}}
@@ -66,13 +59,10 @@ func New(tb testing.TB) *Registry {
 	return r
 }
 
-// Host returns the server's host:port, for oci://<host>/<Repository>.
 func (r *Registry) Host() string { return r.host }
 
-// Close stops the server, so later pulls must use the cache.
 func (r *Registry) Close() { r.server.Close() }
 
-// Blob stores data as a blob with mediaType.
 func (r *Registry) Blob(mediaType string, data []byte) Descriptor {
 	sum := sha256.Sum256(data)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
@@ -83,7 +73,6 @@ func (r *Registry) Blob(mediaType string, data []byte) Descriptor {
 	return Descriptor{MediaType: mediaType, Digest: digest, Size: int64(len(data))}
 }
 
-// Manifest stores an image manifest listing layers.
 func (r *Registry) Manifest(tb testing.TB, layers ...Descriptor) Descriptor {
 	tb.Helper()
 	config := r.Blob(emptyMediaType, []byte("{}"))
@@ -111,14 +100,12 @@ func (r *Registry) document(tb testing.TB, mediaType string, document map[string
 	return r.Blob(mediaType, data)
 }
 
-// Tag points tag at d.
 func (r *Registry) Tag(tag string, d Descriptor) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tags[tag] = d.Digest
 }
 
-// Reference returns oci://<host>/<Repository>@<digest of d>.
 func (r *Registry) Reference(d Descriptor) string {
 	return "oci://" + r.host + "/" + Repository + "@" + d.Digest
 }
@@ -130,7 +117,6 @@ func (r *Registry) Tamper(d Descriptor, data []byte) {
 	r.served[d.Digest] = append([]byte(nil), data...)
 }
 
-// Fetches returns how often the content of d was served.
 func (r *Registry) Fetches(d Descriptor) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()

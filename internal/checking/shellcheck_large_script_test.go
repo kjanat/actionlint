@@ -23,7 +23,6 @@ func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 		t.Skipf("shellcheck is necessary to run this test: %s", err)
 	}
 	// @kjanat's rhysd/actionlint#651 reproducer uses a single 128 KiB comment.
-	// The second case proves ShellCheck still checks code following that comment.
 	comment := "#" + strings.Repeat("x", 128*1024-2) + "\n"
 	for _, findings := range []bool{false, true} {
 		t.Run(fmt.Sprintf("findings=%t", findings), func(t *testing.T) {

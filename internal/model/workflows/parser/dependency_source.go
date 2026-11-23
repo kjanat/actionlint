@@ -6,8 +6,7 @@ import (
 )
 
 // IndexDependencySpans records physical scalar ends before the decoded model
-// leaves parsing. Aliases reuse the cached source mapping of their declaration.
-// IndexScalarSources supplies the physical graph; unavailable spans stay unset.
+// leaves parsing.
 func (p *Parser) IndexDependencySpans(workflow *definition.Workflow) {
 	if workflow == nil || p.scalarDocument == nil || p.scalarSources == nil {
 		return

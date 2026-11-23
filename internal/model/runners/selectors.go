@@ -21,7 +21,6 @@ func Selectors(job workflows.BoundJob) []runnerapi.Selector {
 	return selectors
 }
 
-// Alternative associates a runner selector with the matrix row that produced it.
 type Alternative struct {
 	Selector    runnerapi.Selector
 	Matrix      matrix.Combination
@@ -29,8 +28,7 @@ type Alternative struct {
 	MatrixKnown bool
 }
 
-// Alternatives joins execution rows to the provider selector that resolves them.
-// A matrix unrelated to runs-on does not change the provider's request or certainty.
+// Alternatives leaves the provider's request and certainty unchanged for a matrix unrelated to runs-on.
 func Alternatives(job workflows.BoundJob) []Alternative {
 	alternatives := selectorAlternatives(job)
 	for index := range alternatives {

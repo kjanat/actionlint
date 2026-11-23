@@ -5,7 +5,6 @@ import { defineConfig } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 export default defineConfig(
-	// Generated bundles and static assets are not editor source files.
 	{ ignores: ['dist/**', 'github-changelog/*.js', 'public/**'] },
 	eslint.configs.recommended,
 	ts.configs.strictTypeChecked,

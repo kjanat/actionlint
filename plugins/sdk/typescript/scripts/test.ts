@@ -3,9 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-// These tests run actionlint's jq transforms and schema validation. Unless
-// ACTIONLINT selects an executable, build actionlint from this checkout once.
-// Test the SDK TypeScript source directly.
+// Unless ACTIONLINT selects an executable, the tests build actionlint from this checkout once.
 const sdk = resolve(import.meta.dirname, '..');
 const repository = resolve(sdk, '../../..');
 const temporary = await mkdtemp(join(tmpdir(), 'actionlint-sdk-tests-'));
