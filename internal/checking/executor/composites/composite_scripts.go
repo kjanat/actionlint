@@ -151,7 +151,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if analysis.sourceSnapshots == nil {
 		return errors.New("action source registry is unavailable")
 	}
-	if !analysis.sourceSnapshots.AdmitsSnapshot(admitted) {
+	if !analysis.sourceSnapshots.HasSnapshot(admitted) {
 		return errors.New("action source snapshot belongs to a different registry")
 	}
 	snapshot, err := analysis.sourceSnapshots.Action(admitted.Capture(), meta)

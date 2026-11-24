@@ -38,7 +38,7 @@ func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 	}
 	reference := result.Batch.Scripts[0].Reference
 	declaration, exists := registry.Declaration(reference)
-	if !exists || !declaration.Present() || declaration.Reference() != reference || !registry.Admits(declaration) {
+	if !exists || !declaration.Present() || declaration.Reference() != reference || !registry.HasStep(declaration) {
 		t.Fatal("nested action declaration was not added to the workflow snapshot registry")
 	}
 }

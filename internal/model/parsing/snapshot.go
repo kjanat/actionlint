@@ -119,7 +119,7 @@ func (s *SourceSnapshots) LookupDocument(identity string) (SourceSnapshot, bool)
 	return SourceSnapshot{admitted}, true
 }
 
-func (s *SourceSnapshots) AdmitsSnapshot(snapshot SourceSnapshot) bool {
+func (s *SourceSnapshots) HasSnapshot(snapshot SourceSnapshot) bool {
 	return s != nil && snapshot.admission != nil && snapshot.admission.registry == s
 }
 
@@ -292,7 +292,7 @@ func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Admits(step workflows.BoundStep) bool {
+func (s *SourceSnapshots) HasStep(step workflows.BoundStep) bool {
 	if s == nil || !step.Present() {
 		return false
 	}

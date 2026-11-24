@@ -27,7 +27,7 @@ func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapsho
 	if analysis.sourceSnapshots == nil {
 		return errors.New("entry source registry is unavailable")
 	}
-	if !analysis.sourceSnapshots.AdmitsSnapshot(snapshot) {
+	if !analysis.sourceSnapshots.HasSnapshot(snapshot) {
 		return errors.New("entry source snapshot belongs to a different registry")
 	}
 	graph, err := invocation.NewBuilder(kind, snapshot.Reference(), analysis.budget)
