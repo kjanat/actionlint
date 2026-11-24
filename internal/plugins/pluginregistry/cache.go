@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
 func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin, error) {
@@ -22,7 +23,7 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	if err != nil {
 		return Pin{}, err
 	}
-	path := filepath.Join(directory, "selections", sha256hex.Digest([]byte(name+"\n"+selector))+".json")
+	path := filepath.Join(directory, "selections", selectionKey(name, selector, component.AcceptedInterfacesDigest())+".json")
 	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
 		data, err := readCacheBytes(ctx, path)
 		if err != nil {
@@ -61,6 +62,10 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 		return Pin{}, err
 	}
 	return pin, nil
+}
+
+func selectionKey(name, selector, accepted string) string {
+	return sha256hex.Digest([]byte(name + "\n" + selector + "\n" + accepted))
 }
 
 // Lookup reuses a previously verified registry resolution without network access.

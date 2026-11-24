@@ -97,7 +97,7 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	root := repositoryfixture.Directory(t)
 	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
@@ -118,7 +118,7 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.SetRepository(fixtureregistry.FixturePluginName, 99)
-	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v2.0.0", fixtureregistry.AnalyzerComponent())
 	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)

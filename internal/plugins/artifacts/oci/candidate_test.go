@@ -13,9 +13,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -62,7 +64,7 @@ func newOCICandidate(t *testing.T, kind artifacts.ArtifactFormat) ociCandidateFi
 	case artifacts.Component:
 		metadata = fmt.Appendf(metadata, `,"transport":"wasm-component","interface":"publisher:check/analyzer@9.0.0","wit_sha256":%q}`, strings.Repeat("b", 64))
 		contract = "publisher:check/analyzer@9.0.0#sha256=" + strings.Repeat("b", 64)
-		data = []byte{0, 97, 115, 109, 13, 0, 1, 0}
+		data = wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil)
 	case artifacts.ProviderManifest:
 		metadata = append(metadata, `,"transport":"process"}`...)
 		mediaType = artifacts.MediaTypeProviderManifest

@@ -325,6 +325,11 @@ func (s PluginSelection) selectedPlugins(ctx context.Context, project *installat
 				skipped = append(skipped, ref.Name())
 				continue
 			}
+			if project.DefaultPlugins && errors.Is(err, pluginregistry.ErrNoCompatibleRelease) {
+				network.Warn(ctx, "Skipping default plugin: "+err.Error())
+				skipped = append(skipped, ref.Name())
+				continue
+			}
 			return pluginregistry.ResolvedPlugins{}, nil, err
 		}
 		selected.Plugins = append(selected.Plugins, pins.Plugins...)

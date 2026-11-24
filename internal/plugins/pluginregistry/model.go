@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
@@ -50,6 +51,15 @@ type Version struct {
 	Version       string          `json:"version"`
 	Record        string          `json:"record"`
 	Compatibility []Compatibility `json:"compatibility"`
+	Imports       []string        `json:"imports,omitzero"`
+	Exports       []string        `json:"exports,omitzero"`
+}
+
+func (v Version) interfaces() (component.Interfaces, bool) {
+	if v.Imports == nil || v.Exports == nil {
+		return component.Interfaces{}, false
+	}
+	return component.Interfaces{Imports: v.Imports, Exports: v.Exports}, true
 }
 
 func contractInterface(contract string) string {

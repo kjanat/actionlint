@@ -45,7 +45,7 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 func TestPluginProjectSavesDeclaredRegistryOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +187,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 		t.Fatal(err)
 	}
 	original := project.Releases.Plugins[0]
-	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", fixtureregistry.AnalyzerComponent())
 	registry.Publish(t, "v1.0.0", "v2.0.0")
 	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {

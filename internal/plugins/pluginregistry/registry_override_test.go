@@ -17,7 +17,7 @@ type declaration struct{ name, version, registry string }
 func TestResolvedRegistryOverride(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
-	r.Add(t, "v1.0.0", emptyComponent)
+	r.Add(t, "v1.0.0", analyzerComponent)
 	original, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)

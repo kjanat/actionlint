@@ -10,19 +10,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
 func TestCachedPluginSelector(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	first, err := client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
 	requests := len(registry.Requests())
-	registry.Add(t, "v2.0.0", emptyComponent)
+	registry.Add(t, "v2.0.0", analyzerComponent)
 	for _, offline := range []bool{false, true} {
 		ctx, _ := network.WithSession(t.Context(), network.Options{Offline: offline})
 		got, err := client.ResolveCached(ctx, fixtureregistry.FixturePluginName, "latest")
@@ -45,7 +46,7 @@ func TestCachedPluginSelector(t *testing.T) {
 func TestCachedRegistryUsesClientAuthority(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	pin, err := client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
@@ -56,9 +57,9 @@ func TestCachedRegistryUsesClientAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	cache = filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)))
-	for _, entry := range []struct{ directory, selector string }{
-		{"selections", "latest"},
-		{"releases", pin.Version},
+	for _, entry := range []struct{ directory, selector, key string }{
+		{"selections", "latest", pin.Name + "\nlatest\n" + component.AcceptedInterfacesDigest()},
+		{"releases", pin.Version, pin.Name + "\n" + pin.Version},
 	} {
 		cached := pin
 		cached.Selector = entry.selector
@@ -67,7 +68,7 @@ func TestCachedRegistryUsesClientAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		name := sha256hex.Digest([]byte(pin.Name+"\n"+entry.selector)) + ".json"
+		name := sha256hex.Digest([]byte(entry.key)) + ".json"
 		if err := os.WriteFile(filepath.Join(cache, entry.directory, name), data, 0o600); err != nil {
 			t.Fatal(err)
 		}

@@ -42,7 +42,7 @@ func TestSameRegistry(t *testing.T) {
 func TestReleaseReplacementAcceptsRegistryHostCase(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	pin, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestEquivalentRegistrySpellingsShareCache(t *testing.T) {
 		t.Run(spelling, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.Add(t, "v1.0.0", emptyComponent)
+			registry.Add(t, "v1.0.0", analyzerComponent)
 			pin, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
 			if err != nil {
 				t.Fatal(err)
@@ -111,13 +111,13 @@ func TestDuplicateAliasAcrossRegistrySpellings(t *testing.T) {
 	t.Parallel()
 	first := fixtureregistry.NewPluginRegistry(t)
 	first.SetAliases("check")
-	first.Add(t, "v1.0.0", emptyComponent)
+	first.Add(t, "v1.0.0", analyzerComponent)
 	pin, err := registryClient(t, first).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
 	second := fixtureregistry.NewPluginRegistry(t)
-	second.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "other-check", BaseURL: fixtureregistry.FixtureRegistryURL, Name: "github.com/publisher/other", Aliases: []string{"check"}, RepositoryID: 11}, "v1.0.0", emptyComponent)
+	second.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "other-check", BaseURL: fixtureregistry.FixtureRegistryURL, Name: "github.com/publisher/other", Aliases: []string{"check"}, RepositoryID: 11}, "v1.0.0", analyzerComponent)
 	other, err := registryClient(t, second).Resolve(t.Context(), "github.com/publisher/other", "latest")
 	if err != nil {
 		t.Fatal(err)

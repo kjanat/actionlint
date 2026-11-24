@@ -25,7 +25,7 @@ const (
 func localCandidate(t *testing.T) (string, *pluginregistry.Client) {
 	t.Helper()
 	network := fixtureregistry.NewPluginRegistry(t)
-	data := network.Add(t, "v1.0.0", emptyComponent)
+	data := network.Add(t, "v1.0.0", analyzerComponent)
 	var record struct {
 		Artifact json.RawMessage `json:"artifact"`
 	}

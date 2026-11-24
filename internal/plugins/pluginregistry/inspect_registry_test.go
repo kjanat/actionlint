@@ -13,7 +13,7 @@ import (
 func TestInspectCachedReleaseOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	ref, err := pluginreference.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestInspectReleaseRejectsWithdrawnAndRevoked(t *testing.T) {
 		t.Run(string(state), func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.Add(t, "v1.0.0", emptyComponent)
+			registry.Add(t, "v1.0.0", analyzerComponent)
 			pin, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
 			if err != nil {
 				t.Fatal(err)
@@ -61,7 +61,7 @@ func TestInspectReleaseRejectsWithdrawnAndRevoked(t *testing.T) {
 func TestInspectReleaseRejectsCorruptDownload(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	pin, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
 	if err != nil {
 		t.Fatal(err)

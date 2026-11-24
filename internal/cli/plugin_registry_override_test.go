@@ -19,8 +19,8 @@ import (
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
-	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	r.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	r.Add(t, "v2.0.0", fixtureregistry.AnalyzerComponent())
 	const mirror = "https://mirror.example/"
 	for url, data := range r.Files() {
 		if relative, ok := strings.CutPrefix(url, fixtureregistry.FixtureRegistryURL); ok {

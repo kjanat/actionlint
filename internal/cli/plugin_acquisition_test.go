@@ -13,8 +13,8 @@ import (
 func TestExplicitRegistryGrantDoesNotPersistIntoConfiguration(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	registry.Add(t, "v2.0.0", fixtureregistry.AnalyzerComponent())
 	const private = "https://127.0.0.1:8443/catalogue/"
 	for location, data := range registry.Files() {
 		if relative, found := strings.CutPrefix(location, fixtureregistry.FixtureRegistryURL); found {

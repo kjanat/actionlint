@@ -44,7 +44,7 @@ func TestPluginInspectRegistry(t *testing.T) {
 			if _, tag, found := strings.Cut(source, "@"); found {
 				version = tag
 			}
-			registry.Add(t, version, []byte{0, 97, 115, 109, 13, 0, 1, 0})
+			registry.Add(t, version, fixtureregistry.AnalyzerComponent())
 			var stdout, stderr bytes.Buffer
 			command := Command{Stdout: &stdout, Stderr: &stderr, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
 			code := command.Main([]string{"actionlint", "plugin", "inspect", source, "--registry", fixtureregistry.FixtureRegistryURL, "--json"})

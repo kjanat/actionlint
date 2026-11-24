@@ -312,8 +312,16 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 			return Pin{}, err
 		}
 	}
+	var incompatible []error
 	for {
 		v, err := selectVersion(versions, selector)
+		if err != nil && len(incompatible) != 0 {
+			reasons := slices.Concat([]error{fmt.Errorf("%s: %w", name, ErrNoCompatibleRelease)}, incompatible)
+			if len(versions) != 0 {
+				reasons = append(reasons, err)
+			}
+			return Pin{}, errors.Join(reasons...)
+		}
 		if err != nil {
 			return Pin{}, err
 		}
@@ -331,6 +339,17 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		}
 		if err != nil {
 			return Pin{}, err
+		}
+		if selector == "latest" {
+			err := c.checkRelease(ctx, pin, v)
+			if _, ok := errors.AsType[*IncompatibleError](err); ok {
+				incompatible = append(incompatible, err)
+				versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
+				continue
+			}
+			if err != nil {
+				return Pin{}, err
+			}
 		}
 		if err := c.cacheRelease(ctx, pin); err != nil {
 			return Pin{}, err

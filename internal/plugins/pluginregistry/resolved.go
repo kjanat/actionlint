@@ -93,6 +93,9 @@ func (l ResolvedPlugins) Sync(ctx context.Context, options artifacts.Options, st
 		if err := p.Verify(a.Info); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", p.Name, p.Version, err)
 		}
+		if err := checkArtifact(p, a); err != nil {
+			return err
+		}
 	}
 	return nil
 }

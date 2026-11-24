@@ -27,7 +27,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	t.Parallel()
 	network := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(network)
-	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	network.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

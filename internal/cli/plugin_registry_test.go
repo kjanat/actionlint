@@ -179,7 +179,7 @@ func TestRegistryCLI(t *testing.T) {
 func TestRegistryManifestInstallAndMissingConfiguration(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
-	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	r.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Chdir(t.TempDir())
@@ -261,7 +261,7 @@ func TestRequestedPlugin(t *testing.T) {
 func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
-	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	r.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	t.Chdir(t.TempDir())
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
 	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--config", config, "--json")

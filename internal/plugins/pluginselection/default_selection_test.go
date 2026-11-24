@@ -4,10 +4,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
@@ -15,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-var emptyComponent = []byte{0, 97, 115, 109, 13, 0, 1, 0}
+var analyzerComponent = fixtureregistry.AnalyzerComponent()
 
 func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 	t.Parallel()
@@ -23,7 +26,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 		t.Run(tool, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{tool}, RepositoryID: 99}, "v1.0.0", emptyComponent)
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{tool}, RepositoryID: 99}, "v1.0.0", analyzerComponent)
 			root := t.TempDir()
 			path := filepath.Join(root, "actionlint.yaml")
 			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
@@ -68,6 +71,27 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 				t.Fatalf("configuration changed: %s error=%v", contents, err)
 			}
 		})
+	}
+}
+
+func TestDefaultPluginWithoutCompatibleReleaseIsSkipped(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}, "v1.0.0", wasmcomponent.Build(nil, []string{"kjanat:actionlint/analyzer@99.0.0"}, nil))
+	root := t.TempDir()
+	path := filepath.Join(root, "actionlint.yaml")
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, session := network.WithSession(t.Context(), network.Options{})
+	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+	selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+	if err != nil || len(selected.Paths) != 0 || !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) {
+		t.Fatalf("selected=%+v error=%v", selected, err)
+	}
+	warnings := session.Warnings()
+	if len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) {
+		t.Fatalf("warnings=%q", warnings)
 	}
 }
 
