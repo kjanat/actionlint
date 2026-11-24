@@ -116,4 +116,12 @@ func TestReleaseReplacementPreservesIdentityAndImmutability(t *testing.T) {
 			}
 		})
 	}
+	rehashed := old
+	rehashed.Contract = strings.SplitN(old.Contract, "#", 2)[0] + "#sha256=" + strings.Repeat("f", 64)
+	if rehashed.Contract == old.Contract {
+		t.Fatalf("fixture contract %q carries no WIT checksum", old.Contract)
+	}
+	if err := (pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{old}}).CheckReplacement(rehashed, ""); err != nil {
+		t.Fatalf("WIT checksum change rejected: %v", err)
+	}
 }

@@ -64,7 +64,7 @@ func (l ResolvedPlugins) CheckReplacement(pin Pin, selectedRegistry string) erro
 		if (!SameRegistry(old.Registry, pin.Registry) && !SameRegistry(selectedRegistry, pin.Registry)) || !strings.EqualFold(old.RepositoryName(), pin.RepositoryName()) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID {
 			return fmt.Errorf("publisher or plugin identity changed for %s; remove explicitly before switching", pin.Name)
 		}
-		if old.Origin != "candidate" && old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract || old.Kind != pin.Kind || old.Asset != pin.Asset) {
+		if old.Origin != "candidate" && old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || contractInterface(old.Contract) != contractInterface(pin.Contract) || old.Kind != pin.Kind || old.Asset != pin.Asset) {
 			return fmt.Errorf("immutable version %s@%s changed", pin.Name, pin.Version)
 		}
 		previous := "v" + strings.TrimPrefix(old.Version, "v")

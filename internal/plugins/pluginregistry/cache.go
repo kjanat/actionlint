@@ -230,6 +230,7 @@ func (c *Client) candidateCachePath(name, version, digest string) (string, error
 
 func sameCandidate(left, right Pin) bool {
 	left.Selector, right.Selector = left.Version, right.Version
+	left.Contract, right.Contract = contractInterface(left.Contract), contractInterface(right.Contract)
 	return left == right && SameRegistry(left.Registry, right.Registry)
 }
 
@@ -244,6 +245,7 @@ func sameRelease(left, right Pin) bool {
 	left.Registry = right.Registry
 	left.Alias, right.Alias = "", ""
 	left.Selector, right.Selector = left.Version, right.Version
+	left.Contract, right.Contract = contractInterface(left.Contract), contractInterface(right.Contract)
 	return left == right
 }
 

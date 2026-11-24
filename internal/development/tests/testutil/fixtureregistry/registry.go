@@ -365,8 +365,11 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 				if digest == "" {
 					digest = declared.LegacyWITSHA256
 				}
-				if declared.Interface != "" && digest != "" {
-					contract = declared.Interface + "#sha256=" + digest
+				if declared.Interface != "" {
+					contract = declared.Interface
+					if digest != "" {
+						contract += "#sha256=" + digest
+					}
 				}
 			}
 		}
