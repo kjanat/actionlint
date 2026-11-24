@@ -297,6 +297,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.configFlags(f)
 	a.toolFlags(f)
 	a.pluginFlags(f)
+	f.BoolVar(&a.inv.Check.TrustDefaultRegistry, "trust-default-plugin-registry", false, "Trust the built-in registry for default plugins, including DNS through a proxy")
+	annotateFlag(f, "trust-default-plugin-registry", "Remote dependencies")
 	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Enable stable correctness, security and suspicious rules and fail on warnings and errors")
 	f.BoolVar(&a.inv.Check.Experimental, "experimental", false, "Enable nursery rules")
 	annotateFlag(f, "strict", "Rule selection")

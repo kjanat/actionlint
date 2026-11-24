@@ -46,6 +46,7 @@ type checkInvocation struct {
 	ResolverCommand       string
 	ResolverArguments     []string
 	Offline               bool
+	TrustDefaultRegistry  bool
 	WarmCache             bool
 	Fix                   bool
 	ApplyFixes            bool
