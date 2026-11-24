@@ -43,6 +43,7 @@ type PluginSelection struct {
 	DisableTools              bool
 	DisabledTools, NamedTools []string
 	Acquisition               dependencycache.Acquisition
+	TrustDefaultRegistry      bool
 }
 
 func WithTools(selection PluginSelection, disabled, named []string) PluginSelection {
@@ -258,6 +259,12 @@ func (s PluginSelection) prepareProject(project *installation.Project) (*configu
 		project.Manifest.References = refs
 		project.Manifest.Declared = true
 		project.DefaultPlugins = true
+		if s.TrustDefaultRegistry {
+			project.StatusOptions.Network, err = artifacts.ExplicitSource(pluginreference.DefaultRegistry)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	if len(project.Manifest.References) != 0 && !project.DefaultPlugins {
 		for path := range project.Manifest.SourceContents() {
@@ -332,6 +339,9 @@ func (s PluginSelection) selectedPlugins(ctx context.Context, project *installat
 				network.Warn(ctx, "Skipping default plugin: "+err.Error())
 				skipped = append(skipped, ref.Name())
 				continue
+			}
+			if project.DefaultPlugins && !s.TrustDefaultRegistry && errors.Is(err, acquisitionhttp.ErrDNSFailed) {
+				err = fmt.Errorf("%w. If a trusted proxy resolves the default plugin registry hostname, rerun with `actionlint check --trust-default-plugin-registry .`", err)
 			}
 			return pluginregistry.ResolvedPlugins{}, nil, err
 		}

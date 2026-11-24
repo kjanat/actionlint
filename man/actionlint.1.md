@@ -124,6 +124,11 @@ check with a warning and exit status 0. Native tools can still reach the network
 **--online**
 : Allow network requests. Requests use `GH_TOKEN` or `GITHUB_TOKEN`.
 
+**--trust-default-plugin-registry**
+: Use the HTTP client's proxy and DNS settings for the built-in registry when actionlint
+selects its default plugins. Enable this when a trusted proxy can resolve the registry hostname
+and local DNS cannot.
+
 **--output-format**, **--output**, **-o** *MODE*
 : Select `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif` or `github`. The default
 is `pretty`. Repeat the flag to emit several formats.

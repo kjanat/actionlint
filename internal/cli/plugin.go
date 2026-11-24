@@ -61,9 +61,10 @@ func (c checkInvocation) pluginSelection(acquisition dependencycache.Acquisition
 	return pluginselection.WithTools(pluginselection.PluginSelection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
-		Acquisition:  acquisition,
-		DefaultTools: c.defaultPlugins(nil).Tools,
-		DisableTools: c.NoTools,
+		Acquisition:          acquisition,
+		DefaultTools:         c.defaultPlugins(nil).Tools,
+		DisableTools:         c.NoTools,
+		TrustDefaultRegistry: c.TrustDefaultRegistry,
 	}, c.DisabledTools, c.NamedTools)
 }
 

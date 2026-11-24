@@ -76,7 +76,7 @@ func NewPluginRegistry(t *testing.T) *PluginRegistry {
 		userCacheDir: t.TempDir(),
 	}
 	transport := r.transport(t)
-	r.connections = acquisitionhttp.Connections{Transport: transport, Resolver: &net.Resolver{PreferGo: true, Dial: fixtureDNS}}
+	r.connections = acquisitionhttp.Connections{Transport: transport, Resolver: Resolver("")}
 	t.Cleanup(transport.CloseIdleConnections)
 	return r
 }
@@ -154,9 +154,15 @@ func (r *PluginRegistry) transport(t *testing.T) *http.Transport {
 	}
 }
 
-// The production transport must validate and pin the fixtureDNS answer before
-// the fixture dialer handles the connection.
-func fixtureDNS(ctx context.Context, _, _ string) (net.Conn, error) {
+// Resolver returns a public fixture address, or NXDOMAIN for an excluded hostname.
+func Resolver(excludedHost string) *net.Resolver {
+	excludedHost = strings.ToLower(strings.TrimSuffix(excludedHost, "."))
+	return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return fixtureDNS(ctx, excludedHost)
+	}}
+}
+
+func fixtureDNS(ctx context.Context, excludedHost string) (net.Conn, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -177,6 +183,12 @@ func fixtureDNS(ctx context.Context, _, _ string) (net.Conn, error) {
 		}
 		response := dnsmessage.Message{ID: query.ID, Response: true, RecursionDesired: true, RecursionAvailable: true, Questions: query.Questions}
 		for _, question := range query.Questions {
+			name := strings.ToLower(question.Name.String())
+			// The resolver can retry a failed lookup with DNS search suffixes.
+			if excludedHost != "" && strings.HasPrefix(name, excludedHost+".") {
+				response.RCode = dnsmessage.RCodeNameError
+				break
+			}
 			if question.Type == dnsmessage.TypeA {
 				response.Answers = append(response.Answers, dnsmessage.Resource{Header: dnsmessage.ResourceHeader{Name: question.Name, Type: dnsmessage.TypeA, Class: dnsmessage.ClassINET, TTL: 60}, Body: &dnsmessage.AResource{A: [4]byte{1, 1, 1, 1}}})
 			}

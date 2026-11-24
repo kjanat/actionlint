@@ -461,6 +461,18 @@ actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
 ShellCheck and Ruff run as registry Wasm plugins by default. The first online check downloads them.
+If local DNS cannot resolve `plugins.actionlint.kjanat.dev`, use this command with a trusted proxy.
+
+```sh
+actionlint check --trust-default-plugin-registry .
+```
+
+Set `HTTPS_PROXY` to the proxy address and keep the registry hostname outside `NO_PROXY`.
+The flag lets the HTTP client use its normal DNS, proxy and TLS settings for the built-in registry
+when actionlint selects its default plugins. Use it only when you trust the proxy and the
+addresses it can reach. HTTPS registries declared in repository configuration still require public
+addresses.
+
 When no published release of a default plugin loads in this actionlint, the check skips that plugin
 and prints a warning. A default plugin's download is checked when the check first needs it. When the
 download fails the checks, actionlint records the release as unloadable and selects the next
