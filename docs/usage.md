@@ -801,7 +801,8 @@ version to the config's `plugins` list. Commit that file. `plugin sync` restores
 [plugin installation](plugins.md#install-from-the-registry).
 
 `plugin versions owner/repo` marks each published tag `compatible` or `incompatible` with this
-actionlint. An incompatible tag shows the interface that this actionlint cannot load. A tag is
+actionlint. An incompatible tag shows the reason, such as an unsupported interface or metadata
+that declares an interface the component does not export. A tag is
 `unknown` when the registry lists no imports and exports for it. `plugin install` and
 `plugin update` without an exact tag select the highest release that this actionlint can load.
 Install, update and sync read each downloaded WebAssembly component and fail on a component that

@@ -148,6 +148,7 @@ type Pin struct {
 	SHA256       string                   `json:"sha256"`
 	Contract     string                   `json:"contract"`
 	Metadata     string                   `json:"metadata,omitempty"`
+	Roles        component.Roles          `json:"roles,omitzero"`
 }
 
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }

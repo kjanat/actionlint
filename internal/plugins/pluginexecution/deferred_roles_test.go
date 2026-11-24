@@ -21,8 +21,8 @@ func TestDeferredEngineRequiresScriptOnlyRoles(t *testing.T) {
 		{component.Roles{ScriptEngine: component.ScriptEngine03Interface, Runner: component.Runner03Interface}, false},
 		{component.Roles{Analyzer: component.AnalyzerInterface}, false},
 	} {
-		if got := scriptOnly(tc.roles); got != tc.want {
-			t.Errorf("scriptOnly(%+v) = %t", tc.roles, got)
+		if got := tc.roles.ScriptOnly(); got != tc.want {
+			t.Errorf("%+v.ScriptOnly() = %t", tc.roles, got)
 		}
 	}
 	engine := &deferredScriptEngine{pin: pluginregistry.Pin{Kind: artifacts.Component}}

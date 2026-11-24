@@ -21,7 +21,7 @@ func TestReadInterfaces(t *testing.T) {
 	if err != nil || !slices.Equal(interfaces.Imports, []string{"wasi:cli/environment@0.2.0"}) || !slices.Equal(interfaces.Exports, []string{AnalyzerInterface}) {
 		t.Fatalf("interfaces=%+v error=%v", interfaces, err)
 	}
-	if _, err := CheckInterfaces(interfaces); err != nil {
+	if _, err := Admit(ListedInterfaces{Interfaces: interfaces}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ReadInterfaces(append(data, 0xff)); err == nil || !strings.Contains(err.Error(), "validate component contract") {
@@ -29,7 +29,7 @@ func TestReadInterfaces(t *testing.T) {
 	}
 }
 
-func TestCheckInterfacesImports(t *testing.T) {
+func TestAdmitDecidesImports(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		interfaces Interfaces
@@ -40,7 +40,7 @@ func TestCheckInterfacesImports(t *testing.T) {
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{AnalyzerInterface}}, "repository objects require the reference-resolver role"},
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{ReferenceResolverInterface}}, ""},
 	} {
-		_, err := CheckInterfaces(tc.interfaces)
+		_, err := Admit(ListedInterfaces{Interfaces: tc.interfaces})
 		if tc.want == "" && err != nil || tc.want != "" && (err == nil || err.Error() != tc.want) {
 			t.Errorf("%+v: error=%v, want %q", tc.interfaces, err, tc.want)
 		}
@@ -60,20 +60,20 @@ func TestAcceptedInterfacesDigest(t *testing.T) {
 	}
 }
 
-func TestCheckInterfacesReturnsExactRoles(t *testing.T) {
+func TestAdmitReturnsExactRoles(t *testing.T) {
 	t.Parallel()
 	all := []string{AnalyzerInterface, ToolIntegrationInterface, ReferenceResolverInterface, RunnerInterface, ScriptEngine03Interface, TemplateEffects03Interface}
-	roles, err := CheckInterfaces(Interfaces{Exports: all})
+	roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: all}})
 	want := Roles{Analyzer: AnalyzerInterface, ToolIntegration: ToolIntegrationInterface, ReferenceResolver: ReferenceResolverInterface, Runner: RunnerInterface, ScriptEngine: ScriptEngine03Interface, TemplateEffects: TemplateEffects03Interface}
 	if err != nil || roles != want || !slices.Equal(roles.Exports(), all) {
 		t.Fatalf("roles=%+v error=%v", roles, err)
 	}
 	for _, runner := range []string{RunnerInterface, Runner03Interface} {
-		if roles, err := CheckInterfaces(Interfaces{Exports: []string{runner}}); err != nil || roles != (Roles{Runner: runner}) {
+		if roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{runner}}}); err != nil || roles != (Roles{Runner: runner}) {
 			t.Fatalf("%s: roles=%+v error=%v", runner, roles, err)
 		}
 	}
-	if roles, err := CheckInterfaces(Interfaces{Exports: []string{"kjanat:actionlint/runner-provider@0.4.0"}}); err == nil || roles != (Roles{}) {
+	if roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{"kjanat:actionlint/runner-provider@0.4.0"}}}); err == nil || roles != (Roles{}) {
 		t.Fatalf("unsupported runner: roles=%+v error=%v", roles, err)
 	}
 }
@@ -110,13 +110,18 @@ func TestCheckDeclaredInterface(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsMetadataForAnotherInterfaceVersion(t *testing.T) {
-	t.Parallel()
-	metadata := `{"metadata_version":1,"id":"example","transport":"wasm-component","interface":"` + RunnerInterface + `"}`
+func withMetadata(data []byte, metadata string) []byte {
 	section := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
 	section = append(append(section, artifacts.MetadataSection...), metadata...)
-	data := append(wasmcomponent.Build(nil, []string{Runner03Interface}, nil), 0)
-	data = append(binary.AppendUvarint(data, uint64(len(section))), section...)
+	data = append(slices.Clone(data), 0)
+	return append(binary.AppendUvarint(data, uint64(len(section))), section...)
+}
+
+const olderRunnerMetadata = `{"metadata_version":1,"id":"example","transport":"wasm-component","interface":"` + RunnerInterface + `"}`
+
+func TestLoadRejectsMetadataForAnotherInterfaceVersion(t *testing.T) {
+	t.Parallel()
+	data := withMetadata(wasmcomponent.Build(nil, []string{Runner03Interface}, nil), olderRunnerMetadata)
 	path := filepath.Join(t.TempDir(), "runner.wasm")
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
@@ -125,28 +130,33 @@ func TestLoadRejectsMetadataForAnotherInterfaceVersion(t *testing.T) {
 	if err == nil {
 		_ = plugin.Close(t.Context())
 	}
-	if want := "plugin metadata declares " + RunnerInterface + "; the component exports " + Runner03Interface; err == nil || !strings.Contains(err.Error(), want) {
+	want := "plugin metadata declares " + RunnerInterface + "; the component exports " + Runner03Interface
+	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("error=%v, want %q", err, want)
+	}
+	if _, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{Runner03Interface}}, Metadata: []byte(olderRunnerMetadata)}); err == nil || err.Error() != want {
+		t.Fatalf("listed interfaces: error=%v, want %q", err, want)
 	}
 }
 
-func TestCheckComponentMatchesLoad(t *testing.T) {
+func TestAdmitMatchesLoad(t *testing.T) {
 	t.Parallel()
 	loadable, err := os.ReadFile(filepath.Join("testdata", "plugins", "no-sudo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for name, data := range map[string][]byte{
-		"loadable":           loadable,
-		"analyzer name only": wasmcomponent.Build(nil, []string{AnalyzerInterface}, nil),
-		"core module":        {0, 'a', 's', 'm', 1, 0, 0, 0},
-		"not WebAssembly":    []byte("plugin"),
+		"loadable":              loadable,
+		"analyzer name only":    wasmcomponent.Build(nil, []string{AnalyzerInterface}, nil),
+		"core module":           {0, 'a', 's', 'm', 1, 0, 0, 0},
+		"older runner metadata": withMetadata(wasmcomponent.Build(nil, []string{Runner03Interface}, nil), olderRunnerMetadata),
+		"not WebAssembly":       []byte("plugin"),
 	} {
 		path := filepath.Join(t.TempDir(), "plugin.wasm")
 		if err := os.WriteFile(path, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		roles, checked := CheckComponent(data)
+		roles, checked := Admit(ComponentBytes(data))
 		plugin, loaded := LoadComponentPlugin(t.Context(), path, Options{})
 		if loaded == nil {
 			if err := plugin.Close(t.Context()); err != nil {

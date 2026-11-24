@@ -33,12 +33,8 @@ func (r Roles) Exports() []string {
 	return slices.DeleteFunc([]string{r.Analyzer, r.ToolIntegration, r.ReferenceResolver, r.Runner, r.ScriptEngine, r.TemplateEffects}, func(name string) bool { return name == "" })
 }
 
-func CheckInterfaces(interfaces Interfaces) (Roles, error) {
-	roles, _, err := negotiate(interfaces)
-	if err != nil {
-		return Roles{}, err
-	}
-	return roles.names(), nil
+func (r Roles) ScriptOnly() bool {
+	return r.ScriptEngine != "" && r == Roles{ScriptEngine: r.ScriptEngine, TemplateEffects: r.TemplateEffects}
 }
 
 type admission struct {
@@ -47,15 +43,30 @@ type admission struct {
 	metadata []byte
 }
 
-func CheckComponent(data []byte) (Roles, error) {
-	admitted, err := admit(data)
+type Evidence interface {
+	admit() (admission, error)
+}
+
+type ComponentBytes []byte
+
+type ListedInterfaces struct {
+	Interfaces Interfaces
+	Metadata   []byte
+}
+
+func Admit(evidence Evidence) (Roles, error) {
+	admitted, err := evidence.admit()
 	if err != nil {
 		return Roles{}, err
 	}
 	return admitted.roles.names(), nil
 }
 
-func admit(data []byte) (admission, error) {
+func (listed ListedInterfaces) admit() (admission, error) {
+	return decide(listed.Interfaces, listed.Metadata)
+}
+
+func (data ComponentBytes) admit() (admission, error) {
 	kind, metadata, err := artifacts.Sniff(data)
 	if err != nil {
 		return admission{}, err
@@ -67,14 +78,22 @@ func admit(data []byte) (admission, error) {
 	if err != nil {
 		return admission{}, err
 	}
+	admitted, err := decide(interfaces, metadata)
+	if err != nil {
+		return admission{}, err
+	}
+	if err := checkRoleTypes(componentType, admitted.roles); err != nil {
+		return admission{}, err
+	}
+	return admitted, nil
+}
+
+func decide(interfaces Interfaces, metadata []byte) (admission, error) {
 	roles, required, err := negotiate(interfaces)
 	if err != nil {
 		return admission{}, err
 	}
 	if err := checkDeclaredInterface(metadata, roles.names()); err != nil {
-		return admission{}, err
-	}
-	if err := checkRoleTypes(componentType, roles); err != nil {
 		return admission{}, err
 	}
 	return admission{roles: roles, required: required, metadata: metadata}, nil

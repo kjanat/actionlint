@@ -1,7 +1,9 @@
 package pluginselection_test
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -92,6 +95,45 @@ func TestDefaultPluginWithoutCompatibleReleaseIsSkipped(t *testing.T) {
 	warnings := session.Warnings()
 	if len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) {
 		t.Fatalf("warnings=%q", warnings)
+	}
+}
+
+func TestLazyDefaultsFollowComponentExports(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		exports []string
+		lazy    bool
+	}{
+		{"script engine", []string{component.ScriptEngine03Interface}, true},
+		{"script engine and analyzer", []string{component.AnalyzerInterface, component.ScriptEngine03Interface}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			metadata := fmt.Appendf(nil, `{"metadata_version":1,"id":"test-engine","name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":"1.0.0","repository":"https://github.com/publisher/engine","transport":"wasm-component","interface":%q,"wit_sha256":%q}`, component.ScriptEngine03Interface, strings.Repeat("0", 64))
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v1.0.0", wasmcomponent.Build(nil, tc.exports, nil))
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"ruff"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			offline, _ := network.WithSession(t.Context(), network.Options{Offline: true})
+			for _, ctx := range []context.Context{t.Context(), offline} {
+				selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || selected.Releases == nil || len(selected.Releases.Plugins) != 1 {
+					t.Fatalf("selected=%+v error=%v", selected, err)
+				}
+				pin := selected.Releases.Plugins[0]
+				if !strings.HasPrefix(pin.Contract, component.ScriptEngine03Interface) {
+					t.Fatalf("contract=%s", pin.Contract)
+				}
+				if _, lazy := selected.LazySources[pin.Source()]; lazy != tc.lazy {
+					t.Fatalf("roles=%+v lazy=%t, want %t", pin.Roles, lazy, tc.lazy)
+				}
+			}
+		})
 	}
 }
 

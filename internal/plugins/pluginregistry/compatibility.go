@@ -36,50 +36,83 @@ type HostSupport struct {
 	Reason string        `json:"reason,omitempty"`
 }
 
-func (v Version) HostSupport() HostSupport {
-	interfaces, ok := v.interfaces()
-	if !ok {
-		return HostSupport{Status: SupportUnknown}
-	}
-	if _, err := component.CheckInterfaces(interfaces); err != nil {
-		return HostSupport{Status: SupportIncompatible, Reason: err.Error()}
-	}
-	return HostSupport{Status: SupportCompatible}
+type ListedVersion struct {
+	Version
+	Host HostSupport `json:"host"`
 }
 
-func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) error {
+func (c *Client) ListVersions(ctx context.Context, name string) ([]ListedVersion, error) {
+	var versions []Version
+	var resolve func(Version) (Pin, error)
+	if c.base.Scheme == "file" {
+		p, m, err := c.candidateManifest(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		versions = m.Versions
+		resolve = func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, v.Version) }
+	} else {
+		p, m, err := c.manifest(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		versions = m.Versions
+		resolve = func(v Version) (Pin, error) { return c.resolveVersion(ctx, p, m, v, v.Version) }
+	}
+	listed := make([]ListedVersion, len(versions))
+	for i, v := range versions {
+		listed[i] = ListedVersion{Version: v, Host: HostSupport{Status: SupportUnknown}}
+		interfaces, ok := v.interfaces()
+		if !ok {
+			continue
+		}
+		pin, err := resolve(v)
+		if err != nil {
+			return nil, err
+		}
+		listed[i].Host = HostSupport{Status: SupportCompatible}
+		if _, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces, Metadata: []byte(pin.Metadata)}); err != nil {
+			listed[i].Host = HostSupport{Status: SupportIncompatible, Reason: err.Error()}
+		}
+	}
+	return listed, nil
+}
+
+func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) (component.Roles, error) {
 	if pin.Kind != artifacts.Component {
-		return nil
+		return component.Roles{}, nil
 	}
 	if interfaces, ok := v.interfaces(); ok {
-		if _, err := component.CheckInterfaces(interfaces); err != nil {
-			return &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
-		}
-		return nil
+		return admit(pin, component.ListedInterfaces{Interfaces: interfaces, Metadata: []byte(pin.Metadata)})
 	}
 	options := pluginacquisition.ArtifactOptions(c.StatusOptions.Acquisition)
 	options.Network = c.StatusOptions.Network
 	if pin.Origin == "candidate" {
 		if err := pin.importCandidate(ctx, options); err != nil {
-			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+			return component.Roles{}, fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 	}
 	artifact, err := artifacts.Resolve(ctx, pin.Source(), options)
 	if err != nil {
-		return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		return component.Roles{}, fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 	}
 	if err := pin.Verify(artifact.Info); err != nil {
-		return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		return component.Roles{}, fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 	}
 	return checkArtifact(pin, artifact)
 }
 
-func checkArtifact(pin Pin, artifact *artifacts.Artifact) error {
+func checkArtifact(pin Pin, artifact *artifacts.Artifact) (component.Roles, error) {
 	if pin.Kind != artifacts.Component {
-		return nil
+		return component.Roles{}, nil
 	}
-	if _, err := component.CheckComponent(artifact.Bytes); err != nil {
-		return &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
+	return admit(pin, component.ComponentBytes(artifact.Bytes))
+}
+
+func admit(pin Pin, evidence component.Evidence) (component.Roles, error) {
+	roles, err := component.Admit(evidence)
+	if err != nil {
+		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
 	}
-	return nil
+	return roles, nil
 }

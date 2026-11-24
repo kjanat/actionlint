@@ -41,7 +41,7 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 
 func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits guestlimits.Limits, options Options) (*Plugin, error) {
 	path, data := artifact.Info.Source, artifact.Bytes
-	admitted, err := admit(data)
+	admitted, err := ComponentBytes(data).admit()
 	if err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, err)
 	}

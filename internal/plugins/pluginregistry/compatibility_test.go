@@ -165,13 +165,13 @@ func TestLatestStaysOnStableReleases(t *testing.T) {
 	}
 }
 
-func TestLatestCandidateSkipsIncompatibleRelease(t *testing.T) {
-	t.Parallel()
+func candidateRegistry(t *testing.T, versions string) *pluginregistry.Client {
+	t.Helper()
 	network := fixtureregistry.NewPluginRegistry(t)
 	root := filepath.Join(t.TempDir(), "candidates")
 	files := map[string][]byte{
 		"index.json":                 []byte(`{"schema_version":1,"source":"candidate","plugins":[{"name":"github.com/publisher/plugin","plugin_id":"no-sudo","manifest":"plugins/no-sudo/index.json"}]}`),
-		"plugins/no-sudo/index.json": []byte(`{"source":"candidate","name":"github.com/publisher/plugin","plugin_id":"no-sudo","versions":[{"version":"v1.0.0","record":"versions/v1.json"},{"version":"v2.0.0","record":"versions/v2.json"}]}`),
+		"plugins/no-sudo/index.json": []byte(`{"source":"candidate","name":"github.com/publisher/plugin","plugin_id":"no-sudo","versions":` + versions + `}`),
 	}
 	for tag, wasm := range map[string][]byte{"v1": analyzerComponent, "v2": futureComponent} {
 		data := network.Add(t, tag+".0.0", wasm)
@@ -197,6 +197,113 @@ func TestLatestCandidateSkipsIncompatibleRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return client
+}
+
+func declareRunner02(r *fixtureregistry.PluginRegistry, tag string) {
+	url := r.RecordURL(tag)
+	r.SetFile(url, bytes.ReplaceAll(r.File(url), []byte(component.Runner03Interface), []byte(component.RunnerInterface)))
+}
+
+func TestLatestSkipsReleaseDeclaringAnotherInterface(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.Add(t, "v2.0.0", fixtureregistry.RunnerComponent())
+	pin, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Version != "v2.0.0" || pin.Roles != (component.Roles{Runner: component.Runner03Interface}) {
+		t.Fatalf("latest with matching metadata=%+v error=%v", pin, err)
+	}
+	r = fixtureregistry.NewPluginRegistry(t)
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.Add(t, "v2.0.0", fixtureregistry.RunnerComponent())
+	declareRunner02(r, "v2.0.0")
+	pin, err = registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Version != "v1.0.0" || pin.Roles != (component.Roles{Analyzer: component.AnalyzerInterface}) {
+		t.Fatalf("latest=%+v error=%v", pin, err)
+	}
+	if slices.Contains(r.Requests(), artifactURL("v2.0.0")) {
+		t.Fatal("listed interfaces did not spare the incompatible download")
+	}
+}
+
+func TestSyncRejectsComponentDeclaringAnotherInterface(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.OmitInterfaces()
+	metadata := fmt.Appendf(nil, `{"metadata_version":1,"id":"no-sudo","name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":"2.0.0","repository":"https://%s","transport":"wasm-component","interface":%q,"wit_sha256":%q}`, fixtureregistry.FixturePluginName, component.RunnerInterface, strings.Repeat("0", 64))
+	r.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "no-sudo", BaseURL: fixtureregistry.FixtureRegistryURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10, Metadata: metadata}, "v2.0.0", fixtureregistry.RunnerComponent())
+	client := registryClient(t, r)
+	want := "plugin metadata declares " + component.RunnerInterface + "; the component exports " + component.Runner03Interface
+	if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) || !strings.Contains(err.Error(), want) || !slices.Contains(r.Requests(), artifactURL("v2.0.0")) {
+		t.Fatalf("latest error=%v", err)
+	}
+	exact, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pluginregistry.Sync(t.Context(), pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{exact}}, fixtureAcquisition(r))
+	if _, ok := errors.AsType[*pluginregistry.IncompatibleError](err); !ok || !strings.Contains(err.Error(), want) {
+		t.Fatalf("sync error=%v", err)
+	}
+}
+
+func TestListVersionsAdmitsListedInterfaces(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.Add(t, "v2.0.0", fixtureregistry.RunnerComponent())
+	r.Add(t, "v3.0.0", fixtureregistry.RunnerComponent())
+	r.Add(t, "v4.0.0", futureComponent)
+	declareRunner02(r, "v3.0.0")
+	versions, err := registryClient(t, r).ListVersions(t.Context(), fixtureregistry.FixturePluginName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []pluginregistry.HostSupport{
+		{Status: pluginregistry.SupportCompatible},
+		{Status: pluginregistry.SupportCompatible},
+		{Status: pluginregistry.SupportIncompatible, Reason: "plugin metadata declares " + component.RunnerInterface + "; the component exports " + component.Runner03Interface},
+		{Status: pluginregistry.SupportIncompatible, Reason: "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports " + component.AnalyzerInterface},
+	}
+	if got := hostSupport(versions); !slices.Equal(got, want) {
+		t.Fatalf("host support=%+v, want %+v", got, want)
+	}
+}
+
+func TestListVersionsWithoutInterfaceLists(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.OmitInterfaces()
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.DeleteFile(r.RecordURL("v1.0.0"))
+	versions, err := registryClient(t, r).ListVersions(t.Context(), fixtureregistry.FixturePluginName)
+	if err != nil || !slices.Equal(hostSupport(versions), []pluginregistry.HostSupport{{Status: pluginregistry.SupportUnknown}}) {
+		t.Fatalf("versions=%+v error=%v", versions, err)
+	}
+}
+
+func TestListVersionsReportsRecordFailures(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.DeleteFile(r.RecordURL("v1.0.0"))
+	if versions, err := registryClient(t, r).ListVersions(t.Context(), fixtureregistry.FixturePluginName); err == nil || !strings.Contains(err.Error(), "HTTP 404") {
+		t.Fatalf("versions=%+v error=%v", versions, err)
+	}
+}
+
+func hostSupport(versions []pluginregistry.ListedVersion) []pluginregistry.HostSupport {
+	support := make([]pluginregistry.HostSupport, len(versions))
+	for i, v := range versions {
+		support[i] = v.Host
+	}
+	return support
+}
+
+func TestLatestCandidateSkipsIncompatibleRelease(t *testing.T) {
+	t.Parallel()
+	client := candidateRegistry(t, `[{"version":"v1.0.0","record":"versions/v1.json"},{"version":"v2.0.0","record":"versions/v2.json"}]`)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil || pin.Version != "v1.0.0" || pin.Origin != "candidate" {
 		t.Fatalf("latest candidate=%+v error=%v", pin, err)

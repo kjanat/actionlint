@@ -360,7 +360,7 @@ func (c *Client) selectRelease(ctx context.Context, name, selector string, publi
 			return Pin{}, err
 		}
 		if selector == "latest" {
-			err := c.checkRelease(ctx, pin, v)
+			roles, err := c.checkRelease(ctx, pin, v)
 			if _, ok := errors.AsType[*IncompatibleError](err); ok {
 				incompatible = append(incompatible, err)
 				versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
@@ -369,6 +369,7 @@ func (c *Client) selectRelease(ctx context.Context, name, selector string, publi
 			if err != nil {
 				return Pin{}, err
 			}
+			pin.Roles = roles
 		}
 		return pin, nil
 	}

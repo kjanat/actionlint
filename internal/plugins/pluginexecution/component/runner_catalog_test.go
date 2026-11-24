@@ -145,7 +145,7 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 		t.Fatal("changed nested support contract accepted")
 	}
 	for _, names := range [][]string{{RunnerInterface}, {Runner03Interface}, {RunnerInterface, Runner03Interface}, {"kjanat:actionlint/runner-provider@0.4.0"}} {
-		roles, err := CheckInterfaces(Interfaces{Exports: names})
+		roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: names}})
 		switch {
 		case len(names) > 1:
 			if err == nil || !strings.Contains(err.Error(), "export one runner-provider version") {

@@ -173,7 +173,7 @@ func (c *Client) RememberCandidate(ctx context.Context, pin Pin, options artifac
 	if c.base.Scheme != "file" || pin.Origin != "candidate" || !SameRegistry(pin.Registry, c.base.String()) {
 		return errors.New("candidate pin belongs to another registry")
 	}
-	pin.Selector = pin.Version
+	pin.Selector, pin.Roles = pin.Version, component.Roles{}
 	if err := pin.Validate(); err != nil {
 		return err
 	}
@@ -251,6 +251,7 @@ func sameRelease(left, right Pin) bool {
 	left.Alias, right.Alias = "", ""
 	left.Selector, right.Selector = left.Version, right.Version
 	left.Contract, right.Contract = contractInterface(left.Contract), contractInterface(right.Contract)
+	left.Roles, right.Roles = component.Roles{}, component.Roles{}
 	return left == right
 }
 
@@ -281,7 +282,7 @@ func (c *Client) cacheRelease(ctx context.Context, pin Pin) error {
 	if err != nil {
 		return err
 	}
-	pin.Selector = pin.Version
+	pin.Selector, pin.Roles = pin.Version, component.Roles{}
 	if err := writeCacheFile(path, pin, true); err != nil {
 		if !errors.Is(err, os.ErrExist) {
 			return err

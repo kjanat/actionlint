@@ -24,11 +24,6 @@ type RegistryOptions struct {
 	Version  string
 }
 
-type listedVersion struct {
-	pluginregistry.Version
-	Host pluginregistry.HostSupport `json:"host"`
-}
-
 type undeclaredPluginError struct{ name string }
 
 func (e undeclaredPluginError) Error() string {
@@ -407,20 +402,16 @@ func (r RegistryRequest) discover(ctx context.Context, streams output.Streams, r
 	if err != nil {
 		return exitcode.UsageError{Cause: err}
 	}
-	versions, err := client.Versions(ctx, ref.Name())
+	versions, err := client.ListVersions(ctx, ref.Name())
 	if err != nil {
 		return err
 	}
 	if r.JSON {
-		listed := make([]listedVersion, len(versions))
-		for i, v := range versions {
-			listed[i] = listedVersion{v, v.HostSupport()}
-		}
-		return output.WriteJSONRecord(streams.Stdout, listed)
+		return output.WriteJSONRecord(streams.Stdout, versions)
 	}
 	for _, v := range versions {
-		support := v.HostSupport()
-		line := v.Version + "\t" + string(support.Status)
+		support := v.Host
+		line := v.Version.Version + "\t" + string(support.Status)
 		if support.Reason != "" {
 			line += ": " + support.Reason
 		}

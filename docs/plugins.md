@@ -193,8 +193,8 @@ Outside a Git repository, pass `--config FILE`.
 Pass the same `--plugin` arguments to `config show`, `config validate`, `doctor` and `config schema` when the
 configuration names plugin rules.
 
-The host refuses a component that exports an unsupported interface version, imports an ungranted interface or exports
-no supported role.
+The host refuses a component that exports an unsupported interface version, imports an ungranted interface, exports
+no supported role or declares an interface in its metadata that it does not export.
 
 Run `actionlint rules --plugin PATH --json` to list a plugin's rules, or `actionlint rules RULE --plugin PATH` to
 explain one. Duplicate rule names fail before analysis.

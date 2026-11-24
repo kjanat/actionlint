@@ -355,7 +355,7 @@ func (r *PluginRegistry) writeArtifact(t *testing.T, publisher PluginPublisher, 
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
 	primary := component.AnalyzerInterface
 	if interfaces, err := component.ReadInterfaces(wasm); err == nil {
-		if roles, err := component.CheckInterfaces(interfaces); err == nil {
+		if roles, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces}); err == nil {
 			primary = roles.Exports()[0]
 		}
 	}
@@ -469,6 +469,10 @@ func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte, aliases ...
 
 func AnalyzerComponent() []byte {
 	return componentFixture("plugins", "no-sudo.wasm")
+}
+
+func RunnerComponent() []byte {
+	return componentFixture("plugins", "runner-support-0.3.0.wasm")
 }
 
 // RuntimeFailureComponent passes admission and traps when the host describes it.

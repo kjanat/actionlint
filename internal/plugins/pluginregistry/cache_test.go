@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -83,6 +86,53 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	}
 	if _, err := cold.LookupCandidate(t.Context(), second.Name, second.Version, second.SHA256); err == nil || !strings.Contains(err.Error(), "run actionlint plugin update") {
 		t.Fatalf("cold cache restored a candidate without staging bytes: %v", err)
+	}
+}
+
+func TestImmutableCachesOmitSelectedRoles(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	if _, err := registryClient(t, registry).ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest"); err != nil {
+		t.Fatal(err)
+	}
+	registryCache, err := pluginacquisition.RegistryCacheDir(fixtureAcquisition(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, candidates := localCandidate(t)
+	candidates.StatusOptions.CacheDir = t.TempDir()
+	pin, err := candidates.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Roles != (component.Roles{Analyzer: component.AnalyzerInterface}) {
+		t.Fatalf("latest candidate=%+v error=%v", pin, err)
+	}
+	acquisition := candidates.StatusOptions.Acquisition
+	options := artifacts.Options{CacheDir: filepath.Join(acquisition.UserCacheDir, "actionlint", "artifacts"), Connections: acquisition.Connections}
+	if err := candidates.RememberCandidate(t.Context(), pin, options); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	for _, root := range []string{registryCache, candidates.StatusOptions.CacheDir} {
+		if err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			kind := filepath.Base(filepath.Dir(path))
+			if roles := bytes.Contains(data, []byte(`"roles"`)); roles != (kind == "selections") {
+				t.Errorf("%s records roles=%t", path, roles)
+			}
+			seen[kind] = path
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seen["releases"] == "" || seen["candidates"] == "" || seen["selections"] == "" {
+		t.Fatalf("cache kinds=%v", seen)
 	}
 }
 
