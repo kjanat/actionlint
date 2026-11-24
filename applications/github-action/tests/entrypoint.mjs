@@ -24,9 +24,10 @@ async function installManagedShell(environment) {
 	const registry = join(workspace, 'managed-catalogue');
 	const manifestDirectory = join(registry, 'plugins/shellcheck');
 	await mkdir(join(manifestDirectory, 'versions'), { recursive: true });
-	const witSHA256 = createHash('sha256')
-		.update(await readFile(join(source, 'plugins/protocol/wit/analyzer.wit')))
-		.digest('hex');
+	const wit = await readFile(join(source, 'plugins/protocol/wit/analyzer.wit'));
+	const witSHA256 = createHash('sha256').update(wit).digest('hex');
+	const witPackage = /^package kjanat:actionlint@([^;]+);/m.exec(wit.toString())?.[1];
+	if (!witPackage) throw new Error('analyzer.wit declares no kjanat:actionlint package version');
 	const metadata = {
 		metadata_version: 1,
 		id: 'shellcheck',
@@ -36,7 +37,7 @@ async function installManagedShell(environment) {
 		plugin_version: '1.0.0',
 		repository: 'https://github.com/publisher/managed-shellcheck',
 		transport: 'wasm-component',
-		interface: 'kjanat:actionlint/analyzer@0.1.0',
+		interface: `kjanat:actionlint/analyzer@${witPackage}`,
 		wit_sha256: witSHA256,
 	};
 	const metadataFile = join(registry, 'metadata.json');
