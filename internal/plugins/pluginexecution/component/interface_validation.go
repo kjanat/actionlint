@@ -49,6 +49,14 @@ type admission struct {
 	script      *declaredScript
 }
 
+type AdmissionError struct {
+	Err error
+}
+
+func (e *AdmissionError) Error() string { return e.Err.Error() }
+
+func (e *AdmissionError) Unwrap() error { return e.Err }
+
 type Evidence interface {
 	admit(ctx context.Context) (admission, error)
 }
@@ -69,7 +77,11 @@ func Admit(ctx context.Context, evidence Evidence) (Roles, error) {
 }
 
 func (listed ListedInterfaces) admit(context.Context) (admission, error) {
-	return decide(listed.Interfaces, listed.Metadata)
+	admitted, err := decide(listed.Interfaces, listed.Metadata)
+	if err != nil {
+		return admission{}, &AdmissionError{Err: err}
+	}
+	return admitted, nil
 }
 
 func (data ComponentBytes) admit(ctx context.Context) (admission, error) {
@@ -85,23 +97,26 @@ func (data ComponentBytes) admit(ctx context.Context) (admission, error) {
 func checkComponent(ctx context.Context, engine *wacogo.Engine, data []byte) (admission, *wacogo.Component, error) {
 	kind, metadata, err := artifacts.Sniff(data)
 	if err != nil {
-		return admission{}, nil, err
+		return admission{}, nil, &AdmissionError{Err: err}
 	}
 	if kind != artifacts.Component {
-		return admission{}, nil, errors.New("plugin requires a WebAssembly component")
+		return admission{}, nil, &AdmissionError{Err: errors.New("plugin requires a WebAssembly component")}
 	}
 	interfaces, componentType, err := parseInterfaces(data)
 	if err != nil {
-		return admission{}, nil, err
+		return admission{}, nil, &AdmissionError{Err: err}
 	}
 	admitted, err := decide(interfaces, metadata)
 	if err != nil {
-		return admission{}, nil, err
+		return admission{}, nil, &AdmissionError{Err: err}
 	}
 	if err := checkRoleTypes(componentType, admitted.roles); err != nil {
-		return admission{}, nil, err
+		return admission{}, nil, &AdmissionError{Err: err}
 	}
 	compiled, err := sharedComponentCompilation.load(ctx, engine, data)
+	if err != nil && ctx.Err() == nil {
+		err = &AdmissionError{Err: err}
+	}
 	if err != nil {
 		return admission{}, nil, err
 	}

@@ -1,12 +1,15 @@
 package component_test
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
@@ -64,5 +67,26 @@ func TestAdmitRunsEveryStaticLoadCheck(t *testing.T) {
 				t.Fatalf("load error=%v, want %q", loaded, want)
 			}
 		})
+	}
+}
+
+func TestAdmissionErrorCoversOnlyTheBytes(t *testing.T) {
+	t.Parallel()
+	valid, err := os.ReadFile(filepath.Join("testdata", "plugins", "no-sudo.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := component.Admit(canceled, component.ComponentBytes(valid)); err == nil || !errors.Is(err, context.Canceled) || errors.As(err, new(*component.AdmissionError)) {
+		t.Fatalf("canceled admission error=%v", err)
+	}
+	for name, evidence := range map[string]component.Evidence{
+		"bytes":  component.ComponentBytes(wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil)),
+		"listed": component.ListedInterfaces{Interfaces: component.Interfaces{Exports: []string{"kjanat:actionlint/analyzer@99.0.0"}}},
+	} {
+		if _, err := component.Admit(t.Context(), evidence); !errors.As(err, new(*component.AdmissionError)) {
+			t.Fatalf("%s: error=%v, want an admission error", name, err)
+		}
 	}
 }

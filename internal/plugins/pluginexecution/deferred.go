@@ -100,8 +100,12 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 		return nil, err
 	}
 	if b.pin.Kind == artifacts.Component {
-		if _, rejected := component.Admit(ctx, component.ComponentBytes(artifact.Bytes)); rejected != nil {
+		_, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
+		if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
 			return nil, b.skip(ctx, rejected)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	engine, err := b.load(ctx, artifact)
@@ -115,7 +119,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	return engine, nil
 }
 
-func (b *deferredScriptEngine) skip(ctx context.Context, reason error) error {
+func (b *deferredScriptEngine) skip(ctx context.Context, reason *component.AdmissionError) error {
 	_, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
 	if err != nil && !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) {
 		return err

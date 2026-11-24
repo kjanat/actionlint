@@ -411,12 +411,16 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 		if s.DefaultPlugins && pin.Kind == artifacts.Component {
-			if _, rejected := component.Admit(ctx, component.ComponentBytes(artifact.Bytes)); rejected != nil {
+			_, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
+			if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
 				if err := s.reselect(ctx, i, rejected); err != nil {
 					return err
 				}
 				i--
 				continue
+			}
+			if err != nil {
+				return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 			}
 		}
 		pluginArtifacts[pin.Source()] = artifact
@@ -425,7 +429,7 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 	return nil
 }
 
-func (s *Sources) reselect(ctx context.Context, index int, reason error) error {
+func (s *Sources) reselect(ctx context.Context, index int, reason *component.AdmissionError) error {
 	pin := s.Releases.Plugins[index]
 	releases := *s.Releases
 	releases.Plugins = slices.Clone(s.Releases.Plugins)

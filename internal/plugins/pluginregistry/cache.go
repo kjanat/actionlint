@@ -108,7 +108,7 @@ func (c *Client) rejection(ctx context.Context, pin Pin) (string, bool, error) {
 	return record.Reason, true, nil
 }
 
-func Reselect(ctx context.Context, pin Pin, reason error, acquisition dependencycache.Acquisition) (Pin, error) {
+func Reselect(ctx context.Context, pin Pin, reason *component.AdmissionError, acquisition dependencycache.Acquisition) (Pin, error) {
 	c, err := New(pin.Registry, acquisition)
 	if err != nil {
 		return Pin{}, err

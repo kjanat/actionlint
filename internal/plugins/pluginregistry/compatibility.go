@@ -126,8 +126,8 @@ func checkArtifact(ctx context.Context, pin Pin, artifact *artifacts.Artifact) (
 
 func admit(ctx context.Context, pin Pin, evidence component.Evidence) (component.Roles, error) {
 	roles, err := component.Admit(ctx, evidence)
-	if err != nil {
-		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
+	if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
+		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: rejected}
 	}
-	return roles, nil
+	return roles, err
 }
