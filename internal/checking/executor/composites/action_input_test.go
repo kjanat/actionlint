@@ -24,7 +24,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/%s/collect=%t", tc.action, tc.selector, collect), func(t *testing.T) {
 				t.Parallel()
 				analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: collect, scriptInputs: []checkinputs.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}}
-				content := []byte(fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with: {code: 'missing()'}\n", tc.action))
+				content := fmt.Appendf(nil, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with: {code: 'missing()'}\n", tc.action)
 				parsed := parsing.Workflow(content)
 				registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 				snapshot, err := snapshots.Document("fixture.yml", content, parsed)

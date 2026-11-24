@@ -35,7 +35,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {require-commit-hash: {level: error, options: {exclude: %s}}}}}`, exclusions)))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, `lint: {rules: {preset: none, policy: {require-commit-hash: {level: error, options: {exclude: %s}}}}}`, exclusions))
 			if err != nil {
 				t.Fatal(err)
 			}
