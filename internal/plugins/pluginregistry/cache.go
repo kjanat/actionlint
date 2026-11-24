@@ -47,8 +47,14 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 			if !exists || !sameRelease(pin, selected) {
 				return Pin{}, errors.New("cached plugin selection has no matching verified release")
 			}
-			selected.Registry = pin.Registry
-			return selected, nil
+			_, rejected, err := c.rejection(ctx, selected)
+			if err != nil {
+				return Pin{}, err
+			}
+			if !rejected {
+				selected.Registry = pin.Registry
+				return selected, nil
+			}
 		}
 	}
 	if network.Settings(ctx).Offline {

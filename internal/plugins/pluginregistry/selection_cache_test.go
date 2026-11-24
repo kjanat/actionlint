@@ -2,6 +2,7 @@ package pluginregistry_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestCachedPluginSelector(t *testing.T) {
@@ -83,5 +85,39 @@ func TestCachedRegistryUsesClientAuthority(t *testing.T) {
 	}
 	if len(registry.Requests()) != requests {
 		t.Fatal("cached records should work offline")
+	}
+}
+
+func TestCachedSelectionOfRejectedReleaseIsNotReused(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", analyzerComponent)
+	registry.Add(t, "v2.0.0", analyzerComponent)
+	client := registryClient(t, registry)
+	pin, err := client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Version != "v2.0.0" {
+		t.Fatalf("selection=%+v error=%v", pin, err)
+	}
+	cache, err := pluginacquisition.RegistryCacheDir(fixtureAcquisition(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)), "selections", sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AcceptedInterfacesDigest()))+".json")
+	stale, err := os.ReadFile(selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next, err := pluginregistry.Reselect(t.Context(), pin, &component.AdmissionError{Err: errors.New("rejected bytes")}, fixtureAcquisition(registry)); err != nil || next.Version != "v1.0.0" {
+		t.Fatalf("reselected=%+v error=%v", next, err)
+	}
+	for _, offline := range []bool{true, false} {
+		if err := os.WriteFile(selection, stale, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ctx, _ := network.WithSession(t.Context(), network.Options{Offline: offline})
+		got, err := client.ResolveCached(ctx, fixtureregistry.FixturePluginName, "latest")
+		if offline && (!network.OnlyOffline(err) || got.Version != "") || !offline && (err != nil || got.Version != "v1.0.0") {
+			t.Fatalf("offline=%t: selection=%+v error=%v", offline, got, err)
+		}
 	}
 }
