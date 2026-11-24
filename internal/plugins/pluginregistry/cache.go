@@ -20,66 +20,82 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	if !pluginreference.ValidName(name) && !pluginreference.ValidAlias(name) || !pluginreference.ValidVersion(selector) {
 		return Pin{}, errors.New("invalid plugin name or version selector")
 	}
-	path, err := c.selectionPath(name, selector)
+	shared, host, err := c.selectionPaths(name, selector)
 	if err != nil {
 		return Pin{}, err
 	}
 	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
-		data, err := readCacheBytes(ctx, path)
-		if err != nil {
-			return Pin{}, err
-		}
-		if data != nil {
-			var selected Pin
-			if err := jsonv2.Unmarshal(data, &selected, jsonv2.RejectUnknownMembers(true)); err != nil {
-				return Pin{}, err
-			}
-			if err := selected.Validate(); err != nil {
-				return Pin{}, err
-			}
-			if !SameRegistry(selected.Registry, c.base.String()) || selected.Name != name && selected.Alias != name || selected.Selector != selector {
-				return Pin{}, errors.New("cached plugin selection disagrees with requested registry, name or selector")
-			}
-			pin, exists, err := c.cachedRelease(ctx, selected.Name, selected.Version)
-			if err != nil {
-				return Pin{}, err
-			}
-			if !exists || !sameRelease(pin, selected) {
-				return Pin{}, errors.New("cached plugin selection has no matching verified release")
-			}
-			_, rejected, err := c.rejection(ctx, selected)
-			if err != nil {
-				return Pin{}, err
-			}
-			if !rejected {
-				selected.Registry = pin.Registry
-				return selected, nil
+		for _, path := range []string{host, shared} {
+			selected, found, err := c.cachedSelection(ctx, path, name, selector)
+			if err != nil || found {
+				return selected, err
 			}
 		}
 	}
 	if network.Settings(ctx).Offline {
 		return Pin{}, network.Missing(name + "@" + selector)
 	}
-	pin, err := c.resolve(ctx, name, selector, false)
+	pin, fallback, err := c.resolveSelection(ctx, name, selector, false)
 	if err != nil {
 		return Pin{}, err
 	}
-	if err := writeCacheFile(path, pin, false); err != nil {
+	if fallback {
+		return pin, writeCacheFile(host, pin, false)
+	}
+	if err := os.Remove(host); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return Pin{}, err
 	}
-	return pin, nil
+	return pin, writeCacheFile(shared, pin, false)
+}
+
+func (c *Client) cachedSelection(ctx context.Context, path, name, selector string) (Pin, bool, error) {
+	data, err := readCacheBytes(ctx, path)
+	if err != nil || data == nil {
+		return Pin{}, false, err
+	}
+	var selected Pin
+	if err := jsonv2.Unmarshal(data, &selected, jsonv2.RejectUnknownMembers(true)); err != nil {
+		return Pin{}, false, err
+	}
+	if err := selected.Validate(); err != nil {
+		return Pin{}, false, err
+	}
+	if !SameRegistry(selected.Registry, c.base.String()) || selected.Name != name && selected.Alias != name || selected.Selector != selector {
+		return Pin{}, false, errors.New("cached plugin selection disagrees with requested registry, name or selector")
+	}
+	pin, exists, err := c.cachedRelease(ctx, selected.Name, selected.Version)
+	if err != nil {
+		return Pin{}, false, err
+	}
+	if !exists || !sameRelease(pin, selected) {
+		return Pin{}, false, errors.New("cached plugin selection has no matching verified release")
+	}
+	_, rejected, err := c.rejection(ctx, selected)
+	if err != nil || rejected {
+		return Pin{}, false, err
+	}
+	selected.Registry = pin.Registry
+	return selected, true, nil
 }
 
 func selectionKey(name, selector, accepted string) string {
 	return sha256hex.Digest([]byte(name + "\n" + selector + "\n" + accepted))
 }
 
-func (c *Client) selectionPath(name, selector string) (string, error) {
+func (c *Client) selectionPaths(name, selector string) (string, string, error) {
 	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return filepath.Join(directory, "selections", selectionKey(name, selector, component.AcceptedInterfacesDigest())+".json"), nil
+	directory = filepath.Join(directory, "selections")
+	return filepath.Join(directory, selectionKey(name, selector, component.AcceptedInterfacesDigest())+".json"), filepath.Join(directory, selectionKey(name, selector, c.admissionIdentity())+".json"), nil
+}
+
+func (c *Client) admissionIdentity() string {
+	if c.identity != "" {
+		return c.identity
+	}
+	return component.AdmissionIdentity()
 }
 
 type rejectedRelease struct {
@@ -92,7 +108,7 @@ func (c *Client) rejectionPath(digest string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(directory, "rejected", sha256hex.Digest([]byte(digest+"\n"+component.AdmissionIdentity()))+".json"), nil
+	return filepath.Join(directory, "rejected", sha256hex.Digest([]byte(digest+"\n"+c.admissionIdentity()))+".json"), nil
 }
 
 func (c *Client) rejection(ctx context.Context, pin Pin) (string, bool, error) {
@@ -119,6 +135,10 @@ func Reselect(ctx context.Context, pin Pin, reason *component.AdmissionError, ac
 	if err != nil {
 		return Pin{}, err
 	}
+	return c.reselect(ctx, pin, reason)
+}
+
+func (c *Client) reselect(ctx context.Context, pin Pin, reason *component.AdmissionError) (Pin, error) {
 	path, err := c.rejectionPath(pin.SHA256)
 	if err != nil {
 		return Pin{}, err
@@ -130,12 +150,14 @@ func Reselect(ctx context.Context, pin Pin, reason *component.AdmissionError, ac
 	if name == "" {
 		name = pin.Name
 	}
-	selection, err := c.selectionPath(name, pin.Selector)
+	shared, host, err := c.selectionPaths(name, pin.Selector)
 	if err != nil {
 		return Pin{}, err
 	}
-	if err := os.Remove(selection); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return Pin{}, err
+	for _, selection := range []string{shared, host} {
+		if err := os.Remove(selection); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return Pin{}, err
+		}
 	}
 	return c.ResolveCached(ctx, name, pin.Selector)
 }

@@ -132,7 +132,8 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string, do
 	if err != nil {
 		return Pin{}, err
 	}
-	return c.selectRelease(ctx, name, selector, download, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
+	pin, _, err := c.selectRelease(ctx, name, selector, download, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
+	return pin, err
 }
 
 func (c *Client) candidatePin(ctx context.Context, p CatalogPlugin, v Version, selector string) (Pin, error) {

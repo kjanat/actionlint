@@ -31,6 +31,7 @@ type Client struct {
 	StatusOptions StatusOptions
 	base          *url.URL
 	http          *http.Client
+	identity      string
 }
 
 func registryURL(raw string) (*url.URL, error) {
@@ -277,46 +278,49 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 }
 
 func (c *Client) resolve(ctx context.Context, name, selector string, download bool) (Pin, error) {
+	pin, _, err := c.resolveSelection(ctx, name, selector, download)
+	return pin, err
+}
+
+func (c *Client) resolveSelection(ctx context.Context, name, selector string, download bool) (Pin, bool, error) {
 	if c.base.Scheme == "file" {
-		return c.resolveCandidate(ctx, name, selector, download)
+		pin, err := c.resolveCandidate(ctx, name, selector, download)
+		return pin, false, err
 	}
 	if network.Settings(ctx).Offline {
 		if !pluginreference.ValidName(name) || !pluginreference.ValidVersion(selector) || selector == "latest" {
-			return Pin{}, network.Missing(name + "@" + selector)
+			return Pin{}, false, network.Missing(name + "@" + selector)
 		}
 		pin, err := c.Lookup(ctx, name, selector)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		directory, err := statusDirectory(pin.Registry, c.StatusOptions)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		statuses, err := readStatusSnapshot(ctx, directory)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
-		if err := checkStatus(ctx, pin, statuses, c.StatusOptions, true); err != nil {
-			return Pin{}, err
-		}
-		return pin, nil
+		return pin, false, checkStatus(ctx, pin, statuses, c.StatusOptions, true)
 	}
 	statuses, err := c.RefreshStatuses(ctx)
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	p, m, err := c.manifest(ctx, name)
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	versions := slices.Clone(m.Versions)
 	if selector == "latest" {
 		versions, err = c.availableVersions(ctx, p, m, statuses)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 	}
-	pin, err := c.selectRelease(ctx, name, selector, download, m.Versions, versions, func(v Version) (Pin, error) {
+	pin, fallback, err := c.selectRelease(ctx, name, selector, download, m.Versions, versions, func(v Version) (Pin, error) {
 		pin, err := c.resolveVersion(ctx, p, m, v, selector)
 		if err != nil {
 			return Pin{}, err
@@ -327,22 +331,20 @@ func (c *Client) resolve(ctx context.Context, name, selector string, download bo
 		return pin, checkStatus(ctx, pin, statuses, c.StatusOptions, true)
 	})
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
-	if err := c.cacheRelease(ctx, pin); err != nil {
-		return Pin{}, err
-	}
-	return pin, nil
+	return pin, fallback, c.cacheRelease(ctx, pin)
 }
 
-func (c *Client) selectRelease(ctx context.Context, name, selector string, download bool, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, error) {
+func (c *Client) selectRelease(ctx context.Context, name, selector string, download bool, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, bool, error) {
 	if selector == "latest" && slices.ContainsFunc(published, func(v Version) bool { return stableRelease(v.Version) }) {
 		versions = slices.DeleteFunc(slices.Clone(versions), func(v Version) bool { return !stableRelease(v.Version) })
 		if len(versions) == 0 {
-			return Pin{}, fmt.Errorf("%s: no published stable release is available; select an exact tag with --version", name)
+			return Pin{}, false, fmt.Errorf("%s: no published stable release is available; select an exact tag with --version", name)
 		}
 	}
 	var incompatible []error
+	fallback := false
 	for {
 		v, err := selectVersion(versions, selector)
 		if err != nil && len(incompatible) != 0 {
@@ -350,10 +352,10 @@ func (c *Client) selectRelease(ctx context.Context, name, selector string, downl
 			if len(versions) != 0 {
 				reasons = append(reasons, err)
 			}
-			return Pin{}, errors.Join(reasons...)
+			return Pin{}, false, errors.Join(reasons...)
 		}
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		pin, err := resolve(v)
 		if selector == "latest" && errors.Is(err, errReleaseUnavailable) {
@@ -361,21 +363,23 @@ func (c *Client) selectRelease(ctx context.Context, name, selector string, downl
 			continue
 		}
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		if selector == "latest" {
 			roles, err := c.checkRelease(ctx, pin, v, download)
 			if _, ok := errors.AsType[*IncompatibleError](err); ok {
+				_, recorded := errors.AsType[recordedRejectionError](err)
+				fallback = fallback || recorded
 				incompatible = append(incompatible, err)
 				versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
 				continue
 			}
 			if err != nil {
-				return Pin{}, err
+				return Pin{}, false, err
 			}
 			pin.Roles = roles
 		}
-		return pin, nil
+		return pin, fallback, nil
 	}
 }
 

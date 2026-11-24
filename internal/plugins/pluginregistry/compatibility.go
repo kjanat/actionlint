@@ -23,6 +23,10 @@ func (e *IncompatibleError) Error() string {
 
 func (e *IncompatibleError) Unwrap() error { return e.Err }
 
+type recordedRejectionError string
+
+func (r recordedRejectionError) Error() string { return string(r) }
+
 type SupportStatus string
 
 const (
@@ -89,7 +93,7 @@ func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version, download 
 		return component.Roles{}, err
 	}
 	if rejected {
-		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: errors.New(reason)}
+		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: recordedRejectionError(reason)}
 	}
 	var listed component.Roles
 	if interfaces, ok := v.interfaces(); ok {

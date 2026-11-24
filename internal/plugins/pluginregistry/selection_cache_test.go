@@ -102,13 +102,18 @@ func TestCachedSelectionOfRejectedReleaseIsNotReused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection := filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)), "selections", sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AcceptedInterfacesDigest()))+".json")
+	selections := filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)), "selections")
+	selection := filepath.Join(selections, sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AcceptedInterfacesDigest()))+".json")
+	fallback := filepath.Join(selections, sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AdmissionIdentity()))+".json")
 	stale, err := os.ReadFile(selection)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if next, err := pluginregistry.Reselect(t.Context(), pin, &component.AdmissionError{Err: errors.New("rejected bytes")}, fixtureAcquisition(registry)); err != nil || next.Version != "v1.0.0" {
 		t.Fatalf("reselected=%+v error=%v", next, err)
+	}
+	if err := os.Remove(fallback); err != nil {
+		t.Fatal(err)
 	}
 	for _, offline := range []bool{true, false} {
 		if err := os.WriteFile(selection, stale, 0o600); err != nil {
