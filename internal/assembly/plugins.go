@@ -125,34 +125,11 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			return options, &pluginexecution.LoadError{Err: fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine)}
 		}
 		seen[metadata.Engine] = true
-		found := false
-		options.Tools = slices.Clone(options.Tools)
-		for i, registration := range options.Tools {
-			if registration.Name != metadata.Engine {
-				continue
-			}
-			if registration.WithBackend == nil {
-				return options, &pluginexecution.LoadError{Err: fmt.Errorf("tool %q cannot replace its backend", metadata.Engine)}
-			}
-			replacement, err := registration.WithBackend(engine.Backend)
-			if err != nil {
-				return options, &pluginexecution.LoadError{Err: err}
-			}
-			replacement, err = backends.WithScriptInputs(replacement, metadata, engine.Backend)
-			if err != nil {
-				return options, &pluginexecution.LoadError{Err: err}
-			}
-			options.Tools[i] = replacement
-			found = true
-			break
+		tools, err := registerScriptEngine(options.Tools, engine)
+		if err != nil {
+			return options, &pluginexecution.LoadError{Err: err}
 		}
-		if !found {
-			registration, err := backends.RegisterEngine(metadata, engine.Backend)
-			if err != nil {
-				return options, &pluginexecution.LoadError{Err: err}
-			}
-			options.Tools = append(options.Tools, registration)
-		}
+		options.Tools = tools
 	}
 
 	for _, local := range l.Providers {
@@ -216,6 +193,47 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 	options.Analyzers = slices.Concat(options.Analyzers, l.Registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.RunnerProviders())
 	return options, checkPluginTools(l, options.Tools)
+}
+
+func registerScriptEngine(tools []contract.Registration, engine pluginexecution.ScriptEngineRegistration) ([]contract.Registration, error) {
+	tools = slices.Clone(tools)
+	metadata := engine.Descriptor
+	for i, registration := range tools {
+		if registration.Name != metadata.Engine {
+			continue
+		}
+		if registration.WithBackend == nil {
+			return nil, fmt.Errorf("tool %q cannot replace its backend", metadata.Engine)
+		}
+		replacement, err := registration.WithBackend(engine.Backend)
+		if err != nil {
+			return nil, err
+		}
+		replacement, err = backends.WithScriptInputs(replacement, metadata, engine.Backend)
+		if err != nil {
+			return nil, err
+		}
+		tools[i] = replacement
+		return tools, nil
+	}
+	registration, err := backends.RegisterEngine(metadata, engine.Backend)
+	if err != nil {
+		return nil, err
+	}
+	return append(tools, registration), nil
+}
+
+func refreshScriptEngine(current, base []contract.Registration, engine pluginexecution.ScriptEngineRegistration) ([]contract.Registration, error) {
+	rebuilt, err := registerScriptEngine(base, engine)
+	if err != nil {
+		return nil, err
+	}
+	named := func(registration contract.Registration) bool { return registration.Name == engine.Descriptor.Engine }
+	tools := slices.DeleteFunc(slices.Clone(current), named)
+	for _, registration := range slices.DeleteFunc(rebuilt, func(registration contract.Registration) bool { return !named(registration) }) {
+		tools = append(tools, backends.Configure(registration))
+	}
+	return tools, nil
 }
 
 func checkPluginTools(l *pluginexecution.Loaded, registrations []contract.Registration) error {

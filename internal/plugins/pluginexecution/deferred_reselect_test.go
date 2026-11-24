@@ -150,6 +150,27 @@ func TestReselectedReleaseThatCannotLoadLazilyIsRejected(t *testing.T) {
 	}
 }
 
+func TestLoadedRegistrationFollowsReselectedDescriptor(t *testing.T) {
+	t.Parallel()
+	fixture := newDeferredReselection(t, wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+	registered := fixture.engine.ScriptDescriptor()
+	registered.ScriptInputs = registered.ScriptInputs[:1]
+	fixture.engine.descriptor = registered.Clone()
+	loaded := &Loaded{deferred: []*deferredScriptEngine{fixture.engine}, ScriptEngines: []ScriptEngineRegistration{{fixture.engine, registered}}}
+	ctx, session := network.WithSession(t.Context(), network.Options{})
+	checkSkipped(ctx, t, fixture.engine, session, "incompatible analyzer contract")
+	changed, err := loaded.BeginAnalysis(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changed) != 1 || len(changed[0].Descriptor.ScriptInputs) != 2 || !sameScriptDescriptor(loaded.ScriptEngines[0].Descriptor, fixture.engine.ScriptDescriptor()) {
+		t.Fatalf("changed=%+v registered=%+v", changed, loaded.ScriptEngines[0].Descriptor)
+	}
+	if changed, err := loaded.BeginAnalysis(ctx); err != nil || len(changed) != 0 {
+		t.Fatalf("unchanged analysis: changed=%+v error=%v", changed, err)
+	}
+}
+
 func TestReselectedReleaseWithAnotherEngineIsRejected(t *testing.T) {
 	t.Parallel()
 	fixture := newDeferredReselection(t, wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
