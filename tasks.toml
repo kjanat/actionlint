@@ -111,11 +111,20 @@ env = { ANALYSIS_MERGE_CHECK = "1" }
 ["lint:gopls"]
 # Only gopls runs the fmtappendf and writestring analyzers.
 run         = '''
-diagnostics="$(git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go' | xargs -0 gopls check -severity=hint)"
+paths="$(mktemp)"
+trap 'rm -f -- "$paths"' EXIT
+git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go' > "$paths" || {
+  status=$?
+  if [ "$status" -ne 1 ]; then exit "$status"; fi
+}
+if [ ! -s "$paths" ]; then exit 0; fi
+status=0
+diagnostics="$(xargs -0 gopls check -severity=hint < "$paths")" || status=$?
 if [ -n "$diagnostics" ]; then
   printf '%s\n' "$diagnostics" >&2
   exit 1
 fi
+exit "$status"
 '''
 run_windows = '''
 $ErrorActionPreference = 'Stop'
