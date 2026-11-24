@@ -395,6 +395,53 @@ jobs:
       - name: Test Rust SDK consumers through the Go host
         run: mise run plugins-check-rust-sdk
       - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli
+  example-scanners:
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
+    name: Example providers with real scanners
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env: { MISE_ENABLE_TOOLS: "bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+    steps:
+      - *ActCheckNocred
+      - *GoGomod
+      - name: Install Bun and the scanners
+        uses: *SetupMise
+        with: {
+          version: 2026.11.4,
+          mise_dir: "${{ github.workspace }}-mise",
+          cache: true,
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
+          monorepo: false,
+          add_shims_to_path: false,
+        }
+        env: { MISE_ENABLE_TOOLS: "bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+      - name: Build actionlint
+        run: go build -o "${RUNNER_TEMP}/actionlint" ./cmd/actionlint;
+          printf 'ACTIONLINT=%s\n' "${RUNNER_TEMP}/actionlint" >> "${GITHUB_ENV}"
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+      - name: Pack the example providers
+        run: run -s @kjanat-actionlint/plugin-sdk:build;
+          run -pk
+          @kjanat-actionlint/plugin-grant:pack
+          @kjanat-actionlint/plugin-grype:pack
+          @kjanat-actionlint/plugin-poutine:pack
+          @kjanat-actionlint/plugin-psscriptanalyzer:pack
+          @kjanat-actionlint/plugin-runner-guard:pack
+          @kjanat-actionlint/plugin-syft:pack
+          @kjanat-actionlint/plugin-trailing-space:pack
+          @kjanat-actionlint/plugin-yamllint:pack
+          @kjanat-actionlint/plugin-zizmor:pack
+      - name: Download the Grype vulnerability database
+        run: grype db update
+      - name: Run the example providers against their scanners
+        env: { ACTIONLINT_REGISTRY_TEST: "1", ACTIONLINT_PLUGIN_TEST_MODE: "local" }
+        run: bun --cwd plugins/examples/external-linters test;
+          bun --cwd plugins/examples/psscriptanalyzer test
   docker:
     needs: [changes, checks]
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}

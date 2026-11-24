@@ -9,11 +9,6 @@ command = "go"
 args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
-[wrappers.poutine]
-command = "docker"
-args    = ["run", "-qt", "--rm", "--pull=always", "-eGH_TOKEN", "ghcr.io/boostsecurityio/poutine:latest"]
-env     = { GH_TOKEN = "{{ exec(command='gh auth token') | default(value='') }}" }
-
 [wrappers.modernize]
 command = "go"
 args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
@@ -35,6 +30,9 @@ wit-bindgen               = "0.63.0"
 uv                        = "0.13.7"
 yamllint                  = { version = "1.38.0", depends = ["uv"] }
 zizmor                    = "1.31.1"
+grant                     = "0.8.0"
+poutine                   = { version = "1.1.6", os = ["linux", "macos"] }
+runner-guard              = "3.1.5"
 tombi                     = "1.11.1"
 markscribe                = "0.8.1"
 pandoc                    = {
@@ -74,6 +72,9 @@ pandoc        = "github:jgm/pandoc"
 kprint        = "npm:@kprint/kprint"
 typescript    = "github:microsoft/TypeScript"
 biome         = "github:biomejs/biome"
+grant         = "github:anchore/grant"
+poutine       = "github:boostsecurityio/poutine"
+runner-guard  = "github:Vigilant-LLC/runner-guard"
 markscribe    = "github:charmbracelet/markscribe"
 shellcheck    = "github:koalaman/shellcheck"
 rshellcheck   = "cargo:rshellcheck"
