@@ -96,7 +96,7 @@ minimum_release_age_excludes        = [
 [env]
 _.path        = [
   {
-    path  = "{% if 'npm:runner-run' in tools %}{{ tools['npm:runner-run'].path }}/node_modules/@runner-run/{{ os(macos='darwin', windows='win32') }}-{{ arch() }}{% if os() == 'linux' %}-{{ libc() }}{% elif os() == 'windows' %}-msvc{% endif %}/bin{% else %}{{config_root}}/node_modules/.bin{% endif %}",
+    path  = "{% if 'runner-run' in tools %}{{ tools['runner-run'].path }}/node_modules/@runner-run/{{ os(macos='darwin', windows='win32') }}-{{ arch() }}{% if os() == 'linux' %}-{{ libc() }}{% elif os() == 'windows' %}-msvc{% endif %}/bin{% else %}{{config_root}}/node_modules/.bin{% endif %}",
     tools = true
   },
   "{{config_root}}/node_modules/.bin",
