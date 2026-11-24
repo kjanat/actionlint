@@ -13,7 +13,7 @@ flowchart LR
     %% renovate: depName=github.com/kjanat/wazero
     A --> Z["kjanat/wazero<br/>v1.12.2"]
     %% renovate: depName=github.com/kjanat/go-modules
-    A --> G["kjanat/go-modules<br/>v0.10.0"]
+    A --> G["kjanat/go-modules<br/>v0.11.1"]
     W --> G
     W --> Z
     G --> Z
