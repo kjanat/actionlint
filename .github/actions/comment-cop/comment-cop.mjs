@@ -132,9 +132,20 @@ function stripCommentPrefix(line) {
 		.trim();
 }
 
+/** @param {PendingGroup} group @param {string[] | undefined} sourceLines */
+function continuesDocComment(group, sourceLines) {
+	if (sourceLines === undefined || group.lang === 'hash' || !group.lines[0].trimStart().startsWith('*')) return false;
+	for (let index = group.start - 2; index >= 0; index--) {
+		const text = sourceLines[index].trimStart();
+		if (text.startsWith('/**')) return true;
+		if (text !== '*' && !text.startsWith('* ')) return false;
+	}
+	return false;
+}
+
 /** @param {PendingGroup} group @param {string} nextLine @param {string[] | undefined} sourceLines */
 function isDocBlock(group, nextLine, sourceLines) {
-	if (group.doc) return true;
+	if (group.doc || continuesDocComment(group, sourceLines)) return true;
 	if (group.lang !== 'go') return false;
 	let firstLine = group.lines[0];
 	if (sourceLines !== undefined) {
@@ -416,6 +427,25 @@ if (process.env.NODE_TEST_CONTEXT) {
 			assert.deepEqual(reasons('rule.go', hunk(lines, start, from, to), lines), []);
 			assert.deepEqual(reasons('rule.go', hunk(lines, start, from, to)), [['3 lines']]);
 		}
+	});
+
+	test('does not measure a JSDoc block by length when the hunk starts below its opener', () => {
+		/** @param {string} opener */
+		const block = opener => [
+			'export interface Provider {',
+			`\t${opener}`,
+			'\t * Host variable names copied into the process.',
+			'\t * Defaults to none.',
+			'\t * Declare PATH to launch installed commands.',
+			'\t */',
+			'\tenv?: string[];',
+			'}',
+		];
+		const doc = block('/**');
+		assert.deepEqual(reasons('src/index.ts', hunk(doc, 1, 3, 5), doc), []);
+		assert.deepEqual(reasons('src/index.ts', hunk(doc, 1, 3, 5)), [['3 lines']]);
+		const plain = block('/*');
+		assert.deepEqual(reasons('src/index.ts', hunk(plain, 1, 3, 5), plain), [['3 lines']]);
 	});
 
 	test('scans Markdown prose but skips fenced code', () => {

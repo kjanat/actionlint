@@ -64,16 +64,16 @@ leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 [[ -z "${leftover}" ]]
 
 expect_inputs() {
-	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false}
+	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false} forks=${6:-false}
 	local output
 	: >"${GITHUB_OUTPUT}"
 	bash "${inputs_script}" "${base}" "${head}"
 	output=$(cat "${GITHUB_OUTPUT}")
-	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s' "${tables}" "${readme}" "${nix}")" ]]
+	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s\nforks=%s' "${tables}" "${readme}" "${nix}" "${forks}")" ]]
 }
 
 check_input() {
-	local path=$1 tables=$2 readme=$3 nix=${4:-false}
+	local path=$1 tables=$2 readme=$3 nix=${4:-false} forks=${5:-false}
 	local base head directory
 	base=$(git write-tree)
 	directory=$(dirname "${path}")
@@ -81,8 +81,8 @@ check_input() {
 	echo fixture >"${path}"
 	git add --all
 	head=$(git write-tree)
-	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}"
-	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}"
+	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}" "${forks}"
+	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}" "${forks}"
 }
 
 check_input docs/unrelated.md false false
@@ -113,10 +113,16 @@ check_input docs/screenshots/demo-workflow.yaml false false
 check_input docs/screenshots/actionlint.yaml false false
 check_input tools/docs/readme-demo.mjs false true
 check_input README.md false true
-check_input go.mod true true true
-check_input go.sum true true true
-check_input .github/workflows/autofix.yml true true true
-check_input tools/ci/autofix-inputs.bash true true true
+check_input go.mod true true true true
+check_input go.sum true true true true
+check_input .github/workflows/autofix.yml true true true true
+check_input tools/ci/autofix-inputs.bash true true true true
+check_input plugins/sdk/go/go.mod false false false true
+check_input plugins/sdk/go/go.sum false false false true
+check_input plugins/examples/insecure-download/go.mod false false false true
+check_input plugins/examples/insecure-download/go.sum false false false true
+check_input docs/go-forks.md false false false true
+check_input internal/development/generators/go-forks/main.go true true true true
 check_input flake.nix false false true
 check_input flake.lock false false true
 check_input distribution/nix/package.nix false false true
