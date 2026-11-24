@@ -1,6 +1,6 @@
 # Go dependency forks
 
-Renovate updates the version labels.
+`mise run generate:go-forks` sets each version label to the version that Go selects. The `go.bytecodealliance.org/cm` label must match in the root module, the Go plugin SDK and the `insecure-download` example.
 
 ```mermaid
 flowchart LR
