@@ -5,7 +5,7 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	ScriptEngineInterface = "kjanat:actionlint/script-engine@0.2.0"
-	scriptEngineWITSHA256 = "c20d7e9e516166576fdf19bfd86e0843838179b12ad55350c33db8d04c2eaa9b"
+	scriptEngineWITSHA256 = "77ac7cd73f909de44925b5481b537f6adb8555d765acd94fc8bbc9e8bf2785a7"
 )
 
 func expectedScriptEngineInterface() *wp.ComponentType {

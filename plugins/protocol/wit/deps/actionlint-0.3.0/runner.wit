@@ -30,7 +30,8 @@ interface runner-provider {
     record request {
         target: string,
         service: service,
-        /// One host-owned UTC calendar date, encoded as YYYY-MM-DD.
+        /// The host sets as-of to the --as-of or --runner-as-of date, or else to
+        /// today's UTC date, as YYYY-MM-DD.
         as-of: string,
         scope: string,
         snapshot: snapshot,

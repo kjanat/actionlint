@@ -191,7 +191,8 @@ type Request struct {
 	Target  string        `json:"target"`
 	Service Service       `json:"service"`
 
-	// One host-owned UTC calendar date, encoded as YYYY-MM-DD.
+	// The host sets as-of to the --as-of or --runner-as-of date, or else to
+	// today's UTC date, as YYYY-MM-DD.
 	AsOf      string            `json:"as-of"`
 	Scope     string            `json:"scope"`
 	Snapshot  Snapshot          `json:"snapshot"`

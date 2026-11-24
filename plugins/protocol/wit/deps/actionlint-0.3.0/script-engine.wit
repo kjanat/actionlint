@@ -1,8 +1,8 @@
 package kjanat:actionlint@0.3.0;
 
-/// A snippet engine. The host owns shell selection, expression masking, source
-/// mapping, suppression and scheduling. The engine reads no document and no
-/// files except the resources it requests and the host grants for a check.
+/// A snippet engine. The host selects the shell, masks expressions, maps source
+/// positions, applies suppressions and schedules calls. The engine reads no
+/// document and no files except the resources it requests and the host grants for a check.
 /// Version 0.3.0 adds fixes, findings in files the engine read, the request
 /// directory, excluded codes and resource negotiation to 0.2.0.
 interface script-engine {
