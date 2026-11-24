@@ -31,6 +31,7 @@ type Client struct {
 	StatusOptions StatusOptions
 	base          *url.URL
 	http          *http.Client
+	identity      string
 }
 
 func registryURL(raw string) (*url.URL, error) {
@@ -273,50 +274,53 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 }
 
 func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error) {
+	return c.resolve(ctx, name, selector, true)
+}
+
+func (c *Client) resolve(ctx context.Context, name, selector string, download bool) (Pin, error) {
+	pin, _, err := c.resolveSelection(ctx, name, selector, download)
+	return pin, err
+}
+
+func (c *Client) resolveSelection(ctx context.Context, name, selector string, download bool) (Pin, bool, error) {
 	if c.base.Scheme == "file" {
-		return c.resolveCandidate(ctx, name, selector)
+		pin, err := c.resolveCandidate(ctx, name, selector, download)
+		return pin, false, err
 	}
 	if network.Settings(ctx).Offline {
 		if !pluginreference.ValidName(name) || !pluginreference.ValidVersion(selector) || selector == "latest" {
-			return Pin{}, network.Missing(name + "@" + selector)
+			return Pin{}, false, network.Missing(name + "@" + selector)
 		}
 		pin, err := c.Lookup(ctx, name, selector)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		directory, err := statusDirectory(pin.Registry, c.StatusOptions)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 		statuses, err := readStatusSnapshot(ctx, directory)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
-		if err := checkStatus(ctx, pin, statuses, c.StatusOptions, true); err != nil {
-			return Pin{}, err
-		}
-		return pin, nil
+		return pin, false, checkStatus(ctx, pin, statuses, c.StatusOptions, true)
 	}
 	statuses, err := c.RefreshStatuses(ctx)
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	p, m, err := c.manifest(ctx, name)
 	if err != nil {
-		return Pin{}, err
+		return Pin{}, false, err
 	}
 	versions := slices.Clone(m.Versions)
 	if selector == "latest" {
 		versions, err = c.availableVersions(ctx, p, m, statuses)
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
 	}
-	for {
-		v, err := selectVersion(versions, selector)
-		if err != nil {
-			return Pin{}, err
-		}
+	pin, fallback, err := c.selectRelease(ctx, name, selector, download, m.Versions, versions, func(v Version) (Pin, error) {
 		pin, err := c.resolveVersion(ctx, p, m, v, selector)
 		if err != nil {
 			return Pin{}, err
@@ -324,19 +328,65 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		if pluginreference.ValidAlias(name) {
 			pin.Alias = name
 		}
-		err = checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+		return pin, checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+	})
+	if err != nil {
+		return Pin{}, false, err
+	}
+	return pin, fallback, c.cacheRelease(ctx, pin)
+}
+
+func (c *Client) selectRelease(ctx context.Context, name, selector string, download bool, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, bool, error) {
+	if selector == "latest" && slices.ContainsFunc(published, func(v Version) bool { return stableRelease(v.Version) }) {
+		versions = slices.DeleteFunc(slices.Clone(versions), func(v Version) bool { return !stableRelease(v.Version) })
+		if len(versions) == 0 {
+			return Pin{}, false, fmt.Errorf("%s: no published stable release is available; select an exact tag with --version", name)
+		}
+	}
+	var incompatible []error
+	fallback := false
+	for {
+		v, err := selectVersion(versions, selector)
+		if err != nil && len(incompatible) != 0 {
+			reasons := slices.Concat([]error{fmt.Errorf("%s: %w", name, ErrNoCompatibleRelease)}, incompatible)
+			if len(versions) != 0 {
+				reasons = append(reasons, err)
+			}
+			return Pin{}, false, errors.Join(reasons...)
+		}
+		if err != nil {
+			return Pin{}, false, err
+		}
+		pin, err := resolve(v)
 		if selector == "latest" && errors.Is(err, errReleaseUnavailable) {
 			versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
 			continue
 		}
 		if err != nil {
-			return Pin{}, err
+			return Pin{}, false, err
 		}
-		if err := c.cacheRelease(ctx, pin); err != nil {
-			return Pin{}, err
+		if selector == "latest" {
+			roles, err := c.checkRelease(ctx, pin, v, download)
+			if _, ok := errors.AsType[*IncompatibleError](err); ok {
+				_, recorded := errors.AsType[recordedRejectionError](err)
+				fallback = fallback || recorded
+				incompatible = append(incompatible, err)
+				versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
+				continue
+			}
+			if err != nil {
+				return Pin{}, false, err
+			}
+			pin.Roles = roles
 		}
-		return pin, nil
+		return pin, fallback, nil
 	}
+}
+
+func stableRelease(version string) bool {
+	normalized := "v" + strings.TrimPrefix(version, "v")
+	core, _, _ := strings.Cut(normalized, "+")
+	return semver.IsValid(normalized) && semver.Prerelease(normalized) == "" && strings.Count(core, ".") == 2
 }
 
 func (c *Client) availableVersions(ctx context.Context, plugin CatalogPlugin, manifest manifest, statuses StatusSnapshot) ([]Version, error) {
@@ -397,8 +447,7 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 	if s.isOCI() && r.URL != s.Artifact.reference {
 		return Pin{}, errors.New("registry OCI location disagrees with publication source")
 	}
-	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.assetName(), URL: r.URL, SHA256: s.sourceDigest(), Contract: d.Contract}
-	pin.Metadata = string(d.Metadata)
+	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.assetName(), URL: r.URL, SHA256: s.sourceDigest(), Contract: d.Contract, Metadata: string(d.Metadata)}
 	if i.SchemaVersion == 2 {
 		pin.Repository = i.Provider + ".com/" + i.Repository
 	}

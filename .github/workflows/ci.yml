@@ -47,7 +47,7 @@ jobs:
         uses: &SetupMise jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         env: &MiseTemp { TEMP: "${{ runner.temp }}", TMP: "${{ runner.temp }}" }
         with: &TestTools
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -65,7 +65,7 @@ jobs:
         if: env.CI_UNIT == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
       - if: env.CI_UNIT == 'true'
-        run: go test ./...
+        run: go test -trimpath ./...
       # Check that actionlint builds without CGO.
       - if: env.CI_UNIT == 'true'
         run: go build ./cmd/actionlint
@@ -108,7 +108,7 @@ jobs:
       - name: Install project tools
         uses: *SetupMise
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -151,7 +151,7 @@ jobs:
       - name: Install project tools
         uses: *SetupMise
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -185,7 +185,7 @@ jobs:
           - name: Install Node.js, npm, Bun, Pandoc and GoReleaser
             uses: *SetupMise
             with: {
-              version: 2026.11.4,
+              version: 2026.11.10,
               mise_dir: "${{ github.workspace }}-mise",
               cache: true,
               cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
@@ -257,7 +257,7 @@ jobs:
       - *Uv
       - uses: *SetupMise
         with: {
-          version: 2026.11.4,
+          version: 2026.11.10,
           mise_dir: "${{ github.workspace }}-mise",
           cache: true,
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
@@ -292,7 +292,7 @@ jobs:
       - *ActCheckNocred
       - uses: *SetupMise
         with: {
-          version: 2026.11.4,
+          version: 2026.11.10,
           mise_dir: "${{ github.workspace }}-mise",
           cache: true,
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
@@ -342,7 +342,7 @@ jobs:
           - name: Install the WebAssembly build tools and formatter
             uses: *SetupMise
             with:
-              version: 2026.11.4
+              version: 2026.11.10
               mise_dir: "${{ github.workspace }}-mise"
               cache: true
               cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -371,8 +371,18 @@ jobs:
         run: cargo package --locked -p actionlint-extension-api --all-features
       - name: Build the pinned Wasmtime runner host
         run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
-      - name: Build the plugin fixtures from source
-        run: mise run --force plugins
+      - name: Build the plugin fixtures from source and match the committed fixtures
+        run: |
+          mise run --force plugins
+          git diff --exit-code -- internal/plugins/pluginexecution/component/testdata internal/plugins/pluginexecution/module/testdata
+          untracked="$(git ls-files --others --exclude-standard -- internal/plugins/pluginexecution/component/testdata internal/plugins/pluginexecution/module/testdata)"
+          test -z "${untracked}"
+      - name: Test the C example through the CLI and match its committed fixture
+        run: mise run test:example:no-sudo;
+          git diff --exit-code -- internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm
+      - name: Install PSScriptAnalyzer for the PowerShell example
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
       - name: Load the Rust, C and TinyGo examples
         run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/pluginexecution/component/testdata/plugins/pipe-to-shell.wasm
@@ -380,12 +390,81 @@ jobs:
           --plugin internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm
           internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
       - name: Test plugins including Wasmtime runner parity
-        env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
+        env: {
+          ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host",
+          ACTIONLINT_TEST_PSSCRIPTANALYZER: "1",
+        }
         run: test -x "${ACTIONLINT_RUNNER_HOST}";
           go test -count=1 -v ./internal/plugins/pluginexecution/component ./internal/plugins/pluginexecution/module ./internal/development/tests/integration/plugins
       - name: Test Rust SDK consumers through the Go host
         run: mise run plugins-check-rust-sdk
       - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli
+  example-scanners:
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
+    name: Example providers with real scanners
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,runner-run" }
+    steps:
+      - *ActCheckNocred
+      - *GoGomod
+      - name: Install Bun and the scanners
+        uses: *SetupMise
+        with: {
+          version: 2026.11.10,
+          mise_dir: "${{ github.workspace }}-mise",
+          cache: true,
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
+          monorepo: false,
+          add_shims_to_path: false,
+        }
+        env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,runner-run" }
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+      - name: Build actionlint
+        run: go build -o "${RUNNER_TEMP}/actionlint" ./cmd/actionlint;
+          printf 'ACTIONLINT=%s\n' "${RUNNER_TEMP}/actionlint" >> "${GITHUB_ENV}"
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+      - name: Pack the example providers
+        run: run -s @kjanat-actionlint/plugin-sdk:build;
+          run -pk
+          @kjanat-actionlint/plugin-grant:pack
+          @kjanat-actionlint/plugin-grype:pack
+          @kjanat-actionlint/plugin-poutine:pack
+          @kjanat-actionlint/plugin-psscriptanalyzer:pack
+          @kjanat-actionlint/plugin-runner-guard:pack
+          @kjanat-actionlint/plugin-syft:pack
+          @kjanat-actionlint/plugin-trailing-space:pack
+          @kjanat-actionlint/plugin-yamllint:pack
+          @kjanat-actionlint/plugin-zizmor:pack
+      - name: Download the Grype vulnerability database
+        run: grype db update
+      - name: Run the example providers against their scanners
+        env: { ACTIONLINT_REGISTRY_TEST: "1", ACTIONLINT_PLUGIN_TEST_MODE: "local" }
+        run: bun --cwd plugins/examples/external-linters test;
+          bun --cwd plugins/examples/psscriptanalyzer test
+      - name: Download the published Ruff and ShellCheck plugins
+        run: |
+          directory="${RUNNER_TEMP}/published"
+          mkdir -p "${directory}"
+          curl --fail --silent --show-error --location --output "${directory}/ruff.wasm" \
+            https://github.com/kjanat/actionlint-plugin-ruff/releases/download/v0.4.0/plugin.wasm
+          curl --fail --silent --show-error --location --output "${directory}/shellcheck.wasm" \
+            https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.3.1/plugin.wasm
+          printf '%s  %s\n' \
+            f191de7ecc7c004dd5a6edbb25fd31dd68cb56fe22516dfbc3dd3a0a1d6a2a7c "${directory}/ruff.wasm" \
+            6c5ec0746a001b468283442ee7ddcacf5fa31bafc0ebe91ed2b4c9f05e71af31 "${directory}/shellcheck.wasm" \
+            | sha256sum --check
+      - name: Test the plugin SDK and the published Ruff and ShellCheck plugins
+        env: {
+          ACTIONLINT_TEST_PLUGIN_SDK: "1",
+          ACTIONLINT_TEST_RUFF_WASM: "${{ runner.temp }}/published/ruff.wasm",
+          ACTIONLINT_TEST_SHELLCHECK_WASM: "${{ runner.temp }}/published/shellcheck.wasm",
+        }
+        run: go test -count=1 -v -run 'TestTypeScript|TestReal' ./internal/development/tests/integration/plugins ./internal/development/tests/integration/cli
   docker:
     needs: [changes, checks]
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}

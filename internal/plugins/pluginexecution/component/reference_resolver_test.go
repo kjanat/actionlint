@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -252,21 +253,21 @@ func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
 
 func TestReferenceResolverRoleAndImports(t *testing.T) {
 	t.Parallel()
-	roles, err := extensionRoles([]wacogo.ExportDesc{{Name: ReferenceResolverInterface, Kind: wacogo.SortInstance}})
-	if err != nil || !roles.referenceResolver {
+	roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: []string{ReferenceResolverInterface}}})
+	if err != nil || roles != (Roles{ReferenceResolver: ReferenceResolverInterface}) {
 		t.Fatalf("roles=%+v error=%v", roles, err)
 	}
-	if _, err := extensionRoles([]wacogo.ExportDesc{{Name: "kjanat:actionlint-resolver/reference-resolver@2.0.0", Kind: wacogo.SortInstance}}); err == nil {
+	if _, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: []string{"kjanat:actionlint-resolver/reference-resolver@2.0.0"}}}); err == nil {
 		t.Fatal("accepted unsupported resolver version")
 	}
-	if _, err := extensionRoles([]wacogo.ExportDesc{{Name: ReferenceResolverInterface, Kind: wacogo.SortFunc}}); err == nil {
-		t.Fatal("accepted function as resolver interface")
+	if _, err := ReadInterfaces(wasmcomponent.Build(nil, []string{AnalyzerInterface}, []string{ReferenceResolverInterface})); err == nil || !strings.Contains(err.Error(), "must be an interface instance") {
+		t.Fatalf("accepted type as resolver interface: %v", err)
 	}
-	required, err := validateImports([]wacogo.ImportDesc{{Name: RepositoryObjectsInterface, Kind: wacogo.SortInstance}})
+	required, err := validateImports([]string{RepositoryObjectsInterface})
 	if err != nil || !required.repositoryObjects {
 		t.Fatalf("required=%+v error=%v", required, err)
 	}
-	if _, err := validateImports([]wacogo.ImportDesc{{Name: "wasi:sockets/tcp@0.2.0", Kind: wacogo.SortInstance}}); err == nil {
+	if _, err := validateImports([]string{"wasi:sockets/tcp@0.2.0"}); err == nil {
 		t.Fatal("granted socket access")
 	}
 }

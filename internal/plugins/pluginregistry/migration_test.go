@@ -14,7 +14,7 @@ func TestRegistryTransportMigration(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
-	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
+	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", analyzerComponent)
 	registry.Publish(t, "v1.0.0", "v2.0.0")
 	client := registryClient(t, registry)
 	old, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
@@ -63,7 +63,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
+			registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", analyzerComponent)
 			registry.Publish(t, "v2.0.0")
 			url := registry.RecordURL("v2.0.0")
 			registry.SetFile(url, bytes.Replace(registry.File(url), []byte(test.before), []byte(test.after), 1))
@@ -77,7 +77,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 func TestReleaseReplacementPreservesIdentityAndImmutability(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	old, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
@@ -115,5 +115,13 @@ func TestReleaseReplacementPreservesIdentityAndImmutability(t *testing.T) {
 				t.Fatal("rejected replacement changed existing pin")
 			}
 		})
+	}
+	rehashed := old
+	rehashed.Contract = strings.SplitN(old.Contract, "#", 2)[0] + "#sha256=" + strings.Repeat("f", 64)
+	if rehashed.Contract == old.Contract {
+		t.Fatalf("fixture contract %q carries no WIT checksum", old.Contract)
+	}
+	if err := (pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{old}}).CheckReplacement(rehashed, ""); err != nil {
+		t.Fatalf("WIT checksum change rejected: %v", err)
 	}
 }

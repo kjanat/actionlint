@@ -218,6 +218,47 @@ url = "https://github.com/goreleaser/goreleaser/releases/download/v2.20.0/gorele
 url_api = "https://api.github.com/repos/goreleaser/goreleaser/releases/assets/709488870"
 provenance = "github-attestations"
 
+[[tools.grant]]
+version = "0.8.0"
+backend = "github:anchore/grant"
+specifiers = ["0.8.0"]
+
+[tools.grant."platforms.linux-arm64"]
+checksum = "sha256:be8f254217797aeedbc2211fbf9f6160b3f871891a511b2fddb1b2326fed44d6"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673448"
+provenance = "github-attestations"
+
+[tools.grant."platforms.linux-x64"]
+checksum = "sha256:d0e545dd4ce42566c1a0fc97c355777a4ad0375f67508359ade40d1d80a11074"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673450"
+provenance = "github-attestations"
+
+[tools.grant."platforms.macos-arm64"]
+checksum = "sha256:9c550f7b7be6bf1c5e367974b454c2446ef327ceba442ba498edf1f87bdf7734"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673513"
+provenance = "github-attestations"
+
+[tools.grant."platforms.macos-x64"]
+checksum = "sha256:daeafa831d32f42d0a097aa8b5e271d654923150b320642685a6a9c03927dd93"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_darwin_amd64.tar.gz"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673527"
+provenance = "github-attestations"
+
+[tools.grant."platforms.windows-arm64"]
+checksum = "sha256:324cb8ca034b843686671562431357b09d9a8cfd30ef5627b3b037870a5da390"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_windows_arm64.zip"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673518"
+provenance = "github-attestations"
+
+[tools.grant."platforms.windows-x64"]
+checksum = "sha256:10bd6ffd58702cb38ad82f497f6fc50fc2d12947ee7d68721c5b04485fb920a5"
+url = "https://github.com/anchore/grant/releases/download/v0.8.0/grant_0.8.0_windows_amd64.zip"
+url_api = "https://api.github.com/repos/anchore/grant/releases/assets/756673535"
+provenance = "github-attestations"
+
 [[tools.grype]]
 version = "0.121.1"
 backend = "aqua:anchore/grype"
@@ -461,6 +502,35 @@ url = "https://github.com/jgm/pandoc/releases/download/3.13/pandoc-3.13-windows-
 url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/679545200"
 provenance = "github-attestations"
 
+[[tools.poutine]]
+version = "1.1.6"
+backend = "github:boostsecurityio/poutine"
+specifiers = ["1.1.6"]
+
+[tools.poutine."platforms.linux-arm64"]
+checksum = "sha256:460c90300c6329106b551c150682d12e457365f6436a6cbbd08fe79eb9a98131"
+url = "https://github.com/boostsecurityio/poutine/releases/download/v1.1.6/poutine_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/boostsecurityio/poutine/releases/assets/427347438"
+provenance = "github-attestations"
+
+[tools.poutine."platforms.linux-x64"]
+checksum = "sha256:abde716599a65608b023a69ed9316e5f083a7bca48612151c2720835883757ea"
+url = "https://github.com/boostsecurityio/poutine/releases/download/v1.1.6/poutine_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/boostsecurityio/poutine/releases/assets/427347440"
+provenance = "github-attestations"
+
+[tools.poutine."platforms.macos-arm64"]
+checksum = "sha256:9384f02eeefb4d0778fc61ee4c675e15898b9b01c9cf821dc854d702c4e8a6b2"
+url = "https://github.com/boostsecurityio/poutine/releases/download/v1.1.6/poutine_Darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/boostsecurityio/poutine/releases/assets/427347441"
+provenance = "github-attestations"
+
+[tools.poutine."platforms.macos-x64"]
+checksum = "sha256:27c9b86bd12db19e27c05c22a42dc44492dd00ed2ab7287900b28cd2effb94d3"
+url = "https://github.com/boostsecurityio/poutine/releases/download/v1.1.6/poutine_Darwin_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/boostsecurityio/poutine/releases/assets/427347450"
+provenance = "github-attestations"
+
 [[tools.rshellcheck]]
 version = "1.2.0"
 backend = "cargo:rshellcheck"
@@ -507,19 +577,51 @@ url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-x86_64-pc
 url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999369"
 provenance = "github-attestations"
 
+[[tools.runner-guard]]
+version = "3.1.5"
+backend = "github:Vigilant-LLC/runner-guard"
+specifiers = ["3.1.5"]
+
+[tools.runner-guard."platforms.linux-arm64"]
+checksum = "sha256:b6628642ecc8f56be8461449ab7bb873f02ddba22bc749500a7b39e51c7472e9"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393806"
+
+[tools.runner-guard."platforms.linux-x64"]
+checksum = "sha256:cdf54cc5a4379cebdabc4e63b0b2f2066dccc2e0dfc6fb3b46d2db5fdef674e1"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393813"
+
+[tools.runner-guard."platforms.macos-arm64"]
+checksum = "sha256:b31da1838e9dc78582c6baab16c775368273718bf38f28f52cae24160d911f55"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393811"
+
+[tools.runner-guard."platforms.macos-x64"]
+checksum = "sha256:0ac69efa18e923190cb5679805fc990dac07acd6b91f4a886ca231abd0396914"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_darwin_amd64.tar.gz"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393803"
+
+[tools.runner-guard."platforms.windows-arm64"]
+checksum = "sha256:e4d74c7a7fb4288347b74ab403c17c2ee9846e9e46e3eed062edca6bed260c7b"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_windows_arm64.zip"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393804"
+
+[tools.runner-guard."platforms.windows-x64"]
+checksum = "sha256:651301ea83d8e7e6bd126e90c7cf7030fa26b21ebf94a64a1e8bcbad455f742b"
+checksum_source = "mise-versions"
+url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_windows_amd64.zip"
+url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393805"
+
 [[tools.runner-run]]
 version = "0.28.0"
 backend = "npm:runner-run"
 specifiers = ["0.28.0"]
-
-[[tools.rust]]
-version = "1.100.0"
-backend = "core:rust"
-specifiers = ["latest"]
-
-[tools.rust.options]
-components = "clippy,rustfmt"
-targets = "wasm32-unknown-unknown,wasm32-wasip2"
 
 [[tools.rust]]
 version = "1.99.0"

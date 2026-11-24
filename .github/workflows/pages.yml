@@ -65,7 +65,7 @@ jobs:
       - name: Install project tools
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"

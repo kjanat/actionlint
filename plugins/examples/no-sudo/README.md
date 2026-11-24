@@ -11,7 +11,7 @@ mise exec -- bash plugins/examples/no-sudo/package.sh
 
 String values in [`descriptor.h`](descriptor.h) must be valid C and JSON string literals. Edit package identity and release information in [`metadata.json.in`](metadata.json.in). Set `ACTIONLINT_WIT` to an absolute path for both commands to build against another copy of the WIT contract.
 
-Run the plugin with actionlint v2. The supplied workflow runs `sudo make install`, and actionlint exits with status 1.
+Run the plugin with actionlint v2. The supplied workflow runs `sudo make install`. actionlint reports a warning and exits with status 0. Add `--strict` to make warnings fail the check with status 1.
 
 ```sh
 actionlint check --no-config --no-tool shellcheck --no-tool ruff \

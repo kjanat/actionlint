@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -26,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -65,6 +65,7 @@ type Sources struct {
 	DisabledTools, NamedTools []string
 	SkippedTools              []string
 	DisableTools              bool
+	DefaultPlugins            bool
 	Configured                bool
 	Acquisition               dependencycache.Acquisition
 }
@@ -174,7 +175,8 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		starts = []string{filepath.Dir(path)}
 	}
 	roots := map[string]bool{}
-	var selected Sources
+	var repositoryRoot string
+	var skipped []string
 	var selectedProject *installation.Project
 	var configs []*configuration.Config
 	for _, start := range starts {
@@ -195,19 +197,19 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			return Sources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, skipped, err := s.selectedPlugins(ctx, project)
+		pins, projectSkipped, err := s.selectedPlugins(ctx, project)
 		if err != nil {
 			return Sources{}, err
 		}
-		selected.SkippedTools = append(selected.SkippedTools, skipped...)
+		skipped = append(skipped, projectSkipped...)
 		if len(pins.Plugins) != 0 || len(project.DirectSources()) != 0 {
-			selected.RepositoryRoot, selected.RepositoryScoped = root, true
+			repositoryRoot = root
 			selectedProject = project
 		}
 	}
 	if selectedProject == nil {
 		if len(configs) != 0 {
-			return Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: configs, Overlays: slices.Clone(s.Overlays), SkippedTools: selected.SkippedTools}, nil
+			return Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: configs, Overlays: slices.Clone(s.Overlays), SkippedTools: skipped}, nil
 		}
 		resolved, err := s.RuleSet.ResolveBeforePlugins(nil, s.Overlays)
 		if err != nil {
@@ -230,7 +232,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 	if len(roots) != 1 {
 		return Sources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
 	}
-	return s.sourcesFromProject(ctx, selectedProject, selected.RepositoryRoot)
+	return s.sourcesFromProject(ctx, selectedProject, repositoryRoot)
 }
 
 func RepositorySearchStart(path string) string {
@@ -287,10 +289,11 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *instal
 	selected.Configurations = []*configuration.Config{prepared}
 	selected.Overlays = slices.Clone(s.Overlays)
 	selected.Configured = true
+	selected.DefaultPlugins = project.DefaultPlugins
 	if s.lazyDefaults && project.DefaultPlugins {
 		selected.LazySources = map[string]pluginregistry.Pin{}
 		for _, pin := range releases.Plugins {
-			if pin.Metadata != "" && (pin.Kind == artifacts.Core || pin.Kind == artifacts.Component && strings.HasPrefix(pin.Contract, "kjanat:actionlint/script-engine@")) {
+			if pin.Deferrable() {
 				selected.LazySources[pin.Source()] = pin
 			}
 		}
@@ -322,6 +325,11 @@ func (s PluginSelection) selectedPlugins(ctx context.Context, project *installat
 		pins, err := project.SelectedPlugins(ctx, []pluginreference.Reference{ref})
 		if err != nil {
 			if s.DisableTools && network.OnlyOffline(err) {
+				skipped = append(skipped, ref.Name())
+				continue
+			}
+			if project.DefaultPlugins && errors.Is(err, pluginregistry.ErrNoCompatibleRelease) {
+				network.Warn(ctx, "Skipping default plugin: "+err.Error())
 				skipped = append(skipped, ref.Name())
 				continue
 			}
@@ -386,7 +394,8 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 		return err
 	}
 	pluginArtifacts := make(map[string]*artifacts.Artifact, len(s.Releases.Plugins))
-	for _, pin := range s.Releases.Plugins {
+	for i := 0; i < len(s.Releases.Plugins); i++ {
+		pin := s.Releases.Plugins[i]
 		if _, lazy := s.LazySources[pin.Source()]; lazy {
 			continue
 		}
@@ -401,9 +410,47 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 		if err := pin.Verify(artifact.Info); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
+		if s.DefaultPlugins && pin.Kind == artifacts.Component {
+			_, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
+			if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
+				if err := s.reselect(ctx, i, rejected); err != nil {
+					return err
+				}
+				i--
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+			}
+		}
 		pluginArtifacts[pin.Source()] = artifact
 	}
 	s.Artifacts = pluginArtifacts
+	return nil
+}
+
+func (s *Sources) reselect(ctx context.Context, index int, reason *component.AdmissionError) error {
+	pin := s.Releases.Plugins[index]
+	releases := *s.Releases
+	releases.Plugins = slices.Clone(s.Releases.Plugins)
+	next, err := pluginregistry.Reselect(ctx, pin, reason, s.Acquisition)
+	switch {
+	case errors.Is(err, pluginregistry.ErrNoCompatibleRelease) || network.OnlyOffline(err):
+		network.Warn(ctx, "Skipping default plugin: "+err.Error())
+		releases.Plugins = slices.Delete(releases.Plugins, index, index+1)
+		s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
+		name := pin.Alias
+		if name == "" {
+			name = pin.Name
+		}
+		s.SkippedTools = append(s.SkippedTools, name)
+	case err != nil:
+		return err
+	default:
+		releases.Plugins[index] = next
+		s.Paths[slices.Index(s.Paths, pin.Source())] = next.Source()
+	}
+	s.Releases = &releases
 	return nil
 }
 

@@ -41,7 +41,7 @@ func (p *Plugin) ScriptDescriptor() scriptengine.Descriptor {
 	return p.scriptDescriptor.Clone()
 }
 
-func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) error {
+func (p *Plugin) loadScriptEngine(ctx context.Context, declared *declaredScript) error {
 	value, err := p.callInterface(ctx, p.script.interfaceName(), "describe")
 	if err != nil {
 		return err
@@ -53,14 +53,14 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 	if err := p.script.liftCapabilities(value, &descriptor); err != nil {
 		return err
 	}
-	if err := verifyScriptMetadata(staticMetadata, p.script.interfaceName(), &descriptor); err != nil {
+	if err := declared.verify(&descriptor); err != nil {
 		return err
 	}
 	p.scriptDescriptor = &descriptor
 	return nil
 }
 
-func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
+func (p *Plugin) loadTemplateEffects(ctx context.Context) error {
 	value, err := p.callInterface(ctx, p.script.templateEffects().interfaceName(), "contract")
 	if err != nil {
 		return err
@@ -68,9 +68,6 @@ func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte)
 	contract, ok := value.(wacogo.ValString)
 	if !ok || string(contract) != scriptengine.TemplateEffectsContract {
 		return errors.New("unsupported template effects contract")
-	}
-	if err := verifyTemplateMetadata(staticMetadata, string(contract)); err != nil {
-		return err
 	}
 	p.scriptDescriptor.TemplateContract = string(contract)
 	return nil
@@ -381,47 +378,68 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 	return d, nil
 }
 
+type declaredScript struct {
+	MetadataVersion int               `json:"metadata_version"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	PluginVersion   string            `json:"plugin_version"`
+	Transport       string            `json:"transport"`
+	Interface       string            `json:"interface"`
+	Rules           []rule.Descriptor `json:"rules"`
+	ConfigSchema    json.RawMessage   `json:"config_schema"`
+	Engine          struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	} `json:"engine"`
+	Capabilities struct {
+		ScriptShells    []string                       `json:"script_shells"`
+		ScriptInputs    []checkinputs.ScriptInput      `json:"script_inputs"`
+		Fixes           bool                           `json:"fixes"`
+		ReportedSources bool                           `json:"reported_sources"`
+		Resources       []checkinputs.ToolResourceKind `json:"resources"`
+		Format          bool                           `json:"format"`
+	} `json:"capabilities"`
+}
+
 func verifyScriptMetadata(data []byte, iface string, d *scriptengine.Descriptor) error {
 	if data == nil {
+		return (*declaredScript)(nil).verify(d)
+	}
+	declared, err := readDeclaredScript(data, iface)
+	if err != nil {
+		return err
+	}
+	return declared.verify(d)
+}
+
+func readDeclaredScript(data []byte, iface string) (*declaredScript, error) {
+	var declared declaredScript
+	if err := jsonv2.Unmarshal(data, &declared); err != nil {
+		return nil, fmt.Errorf("script engine metadata: %w", err)
+	}
+	if declared.MetadataVersion != 1 || declared.Transport != "wasm-component" || declared.Interface != iface ||
+		declared.Capabilities.Format || len(declared.Rules) != 1 {
+		return nil, errors.New("script engine static metadata disagrees with its typed descriptor")
+	}
+	if err := checkinputs.ValidateScriptInputs(declared.Capabilities.ScriptInputs); err != nil {
+		return nil, fmt.Errorf("script engine static input selectors: %w", err)
+	}
+	return &declared, nil
+}
+
+func (declared *declaredScript) verify(d *scriptengine.Descriptor) error {
+	if declared == nil {
 		if len(d.Shells) == 0 {
 			return errors.New("script descriptor needs shell or static action-input selectors")
 		}
 		return nil
 	}
-	var declared struct {
-		MetadataVersion int               `json:"metadata_version"`
-		ID              string            `json:"id"`
-		Name            string            `json:"name"`
-		PluginVersion   string            `json:"plugin_version"`
-		Transport       string            `json:"transport"`
-		Interface       string            `json:"interface"`
-		Rules           []rule.Descriptor `json:"rules"`
-		ConfigSchema    json.RawMessage   `json:"config_schema"`
-		Engine          struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"engine"`
-		Capabilities struct {
-			ScriptShells    []string                       `json:"script_shells"`
-			ScriptInputs    []checkinputs.ScriptInput      `json:"script_inputs"`
-			Fixes           bool                           `json:"fixes"`
-			ReportedSources bool                           `json:"reported_sources"`
-			Resources       []checkinputs.ToolResourceKind `json:"resources"`
-			Format          bool                           `json:"format"`
-		} `json:"capabilities"`
-	}
-	if err := jsonv2.Unmarshal(data, &declared); err != nil {
-		return fmt.Errorf("script engine metadata: %w", err)
-	}
 	capabilities := declared.Capabilities
-	if declared.MetadataVersion != 1 || declared.Transport != "wasm-component" ||
-		declared.Interface != iface ||
-		declared.ID != d.ID || declared.PluginVersion != d.Version || declared.Name != d.Name ||
+	if declared.ID != d.ID || declared.PluginVersion != d.Version || declared.Name != d.Name ||
 		declared.Engine.Name != d.Engine || declared.Engine.Version != d.EngineVersion ||
 		!slices.Equal(capabilities.ScriptShells, d.Shells) ||
 		capabilities.Fixes != d.Fixes || capabilities.ReportedSources != d.ReportedSources ||
-		!slices.Equal(capabilities.Resources, d.Resources) || capabilities.Format ||
-		len(declared.Rules) != 1 {
+		!slices.Equal(capabilities.Resources, d.Resources) {
 		return errors.New("script engine static metadata disagrees with its typed descriptor")
 	}
 	declaredRule, runtimeRule := declared.Rules[0], d.Rule
@@ -436,13 +454,10 @@ func verifyScriptMetadata(data []byte, iface string, d *scriptengine.Descriptor)
 	if !reflect.DeepEqual(declaredRule, runtimeRule) {
 		return errors.New("script engine static rule metadata disagrees with its typed descriptor")
 	}
-	if err := checkinputs.ValidateScriptInputs(declared.Capabilities.ScriptInputs); err != nil {
-		return fmt.Errorf("script engine static input selectors: %w", err)
-	}
-	if len(d.Shells)+len(declared.Capabilities.ScriptInputs) == 0 {
+	if len(d.Shells)+len(capabilities.ScriptInputs) == 0 {
 		return errors.New("script descriptor needs shell or static action-input selectors")
 	}
-	d.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
+	d.ScriptInputs = slices.Clone(capabilities.ScriptInputs)
 	return nil
 }
 

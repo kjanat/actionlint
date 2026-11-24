@@ -4,6 +4,7 @@ package scriptengine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"slices"
 
@@ -13,6 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
+
+var ErrUnavailable = errors.New("script engine is unavailable for this analysis")
 
 type Backend interface {
 	Check(context.Context, Request) ([]Diagnostic, error)

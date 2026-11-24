@@ -110,8 +110,7 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
 			}
-			options := checking.Options{WorkingDir: workspace.Directory(), SkipProjectConfig: true, Tools: registry.Registrations(selections)}
-			options.ReadFile = (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).ReadFile
+			options := checking.Options{WorkingDir: workspace.Directory(), SkipProjectConfig: true, Tools: registry.Registrations(selections), ReadFile: (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).ReadFile}
 			session, err := assembly.Open(ctx, options, pluginselection.Sources{})
 			if err != nil {
 				return lsp.Analysis{}, err

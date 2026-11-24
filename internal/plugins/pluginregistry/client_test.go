@@ -14,10 +14,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-var emptyComponent = []byte{0, 97, 115, 109, 13, 0, 1, 0}
+var analyzerComponent = fixtureregistry.AnalyzerComponent()
 
 func fixtureAcquisition(r *fixtureregistry.PluginRegistry) dependencycache.Acquisition {
 	return dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
@@ -36,7 +37,7 @@ func TestRegistrySelection(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	for _, tag := range []string{"v1.9.0", "v1.10.0", "v2.0.0-rc.1", "nightly"} {
-		r.Add(t, tag, emptyComponent)
+		r.Add(t, tag, analyzerComponent)
 	}
 	c := registryClient(t, r)
 	for _, tc := range []struct{ selector, want string }{{"latest", "v1.10.0"}, {"nightly", "nightly"}, {"v2.0.0-rc.1", "v2.0.0-rc.1"}} {
@@ -50,8 +51,8 @@ func TestRegistrySelection(t *testing.T) {
 	if err != nil || preview.Version != "v2.0.0-rc.1" {
 		t.Fatalf("preview-only plugin was not installable: %+v, %v", preview, err)
 	}
-	r.Add(t, "v2.0.0-rc.2", emptyComponent)
-	r.Add(t, "v2.0.0-rc.10", emptyComponent)
+	r.Add(t, "v2.0.0-rc.2", analyzerComponent)
+	r.Add(t, "v2.0.0-rc.10", analyzerComponent)
 	r.Publish(t, "v2.0.0-rc.1", "v2.0.0-rc.2", "v2.0.0-rc.10")
 	preview, err = c.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil || preview.Version != "v2.0.0-rc.10" {
@@ -91,7 +92,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			r := fixtureregistry.NewPluginRegistry(t)
-			r.Add(t, "v1.0.0", emptyComponent)
+			r.Add(t, "v1.0.0", analyzerComponent)
 			url := r.RecordURL("v1.0.0")
 			if tc.index {
 				url = fixtureregistry.FixtureRegistryURL + "index.json"
@@ -107,9 +108,9 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
-	r.Add(t, "v1.0.0", emptyComponent)
+	r.Add(t, "v1.0.0", analyzerComponent)
 	url := r.RecordURL("v1.0.0")
-	data := bytes.ReplaceAll(r.File(url), []byte("kjanat:actionlint/analyzer@0.1.0"), []byte("vendor:future/analyzer@9.0.0"))
+	data := bytes.ReplaceAll(r.File(url), []byte(component.AnalyzerInterface), []byte("vendor:future/analyzer@9.0.0"))
 	data = bytes.Replace(data, []byte(`"metadata_version":1`), []byte(`"metadata_version":1,"abi_version":{"vendor":"extension"}`), 1)
 	r.SetFile(url, data)
 	if _, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
@@ -125,7 +126,7 @@ func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 func TestPinnedSyncVerifiesOfflineArtifacts(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
-	r.Add(t, "v1.0.0", emptyComponent)
+	r.Add(t, "v1.0.0", analyzerComponent)
 	pin, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +165,7 @@ func TestPinnedSyncVerifiesOfflineArtifacts(t *testing.T) {
 func TestResolvedPluginValidation(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
-	r.Add(t, "v1.0.0", emptyComponent)
+	r.Add(t, "v1.0.0", analyzerComponent)
 	p, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +197,7 @@ func TestResolvedPluginValidation(t *testing.T) {
 func TestCompressedRegistryArtifact(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
-	raw := r.Add(t, "v1.0.0", emptyComponent)
+	raw := r.Add(t, "v1.0.0", analyzerComponent)
 	var compressed bytes.Buffer
 	w := gzip.NewWriter(&compressed)
 	if _, err := w.Write(raw); err != nil {

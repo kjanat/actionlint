@@ -40,8 +40,8 @@ func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
 		t.Run(string(state), func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.Add(t, "v1.0.0", emptyComponent)
-			registry.Add(t, "v2.0.0", emptyComponent)
+			registry.Add(t, "v1.0.0", analyzerComponent)
+			registry.Add(t, "v2.0.0", analyzerComponent)
 			client := registryClient(t, registry)
 			pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
 			if err != nil {
@@ -70,7 +70,7 @@ func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
 func TestDeprecatedSelectionWarns(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
@@ -89,7 +89,7 @@ func TestDeprecatedSelectionWarns(t *testing.T) {
 func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
@@ -166,7 +166,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 func TestStatusRequiresExactDigestAndValidSnapshot(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {

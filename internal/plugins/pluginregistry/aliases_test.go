@@ -14,7 +14,7 @@ func TestRegistryAssignedAliases(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("community-check", "other-name")
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	client := registryClient(t, registry)
 	for _, name := range []string{"community-check", "other-name", fixtureregistry.FixturePluginName} {
 		pin, err := client.Resolve(t.Context(), name, "latest")
@@ -49,7 +49,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.SetAliases(aliases...)
-			registry.Add(t, "v1.0.0", emptyComponent)
+			registry.Add(t, "v1.0.0", analyzerComponent)
 			if _, err := registryClient(t, registry).Search(t.Context(), "unrelated"); err == nil {
 				t.Fatal("invalid aliases outside query accepted")
 			}
@@ -57,7 +57,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("shared")
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	var catalog pluginregistry.Catalog
 	if err := json.Unmarshal(registry.File(fixtureregistry.FixtureRegistryURL+"index.json"), &catalog); err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("check")
-	registry.Add(t, "v1.0.0", emptyComponent)
+	registry.Add(t, "v1.0.0", analyzerComponent)
 	pin, err := registryClient(t, registry).Resolve(t.Context(), "check", "latest")
 	if err != nil {
 		t.Fatal(err)

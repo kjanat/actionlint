@@ -15,17 +15,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
@@ -41,15 +46,17 @@ type PluginPublisher struct {
 // PluginRegistry methods and RoundTrip share one lock, and tests can change
 // files and the offline flag while the code under test makes requests.
 type PluginRegistry struct {
-	mu           sync.Mutex
-	files        map[string][]byte
-	pending      map[string][][]byte
-	requests     []string
-	versions     []string
-	publisher    PluginPublisher
-	offline      bool
-	connections  acquisitionhttp.Connections
-	userCacheDir string
+	mu             sync.Mutex
+	files          map[string][]byte
+	pending        map[string][][]byte
+	requests       []string
+	versions       []string
+	interfaces     map[string]component.Interfaces
+	omitInterfaces bool
+	publisher      PluginPublisher
+	offline        bool
+	connections    acquisitionhttp.Connections
+	userCacheDir   string
 }
 
 const (
@@ -64,6 +71,7 @@ func NewPluginRegistry(t *testing.T) *PluginRegistry {
 	r := &PluginRegistry{
 		files:        map[string][]byte{FixtureRegistryURL + "statuses.json": []byte(emptyStatuses)},
 		pending:      make(map[string][][]byte),
+		interfaces:   make(map[string]component.Interfaces),
 		publisher:    PluginPublisher{PluginID: "no-sudo", BaseURL: FixtureRegistryURL, Name: FixturePluginName, RepositoryID: 10},
 		userCacheDir: t.TempDir(),
 	}
@@ -304,9 +312,9 @@ func (r *PluginRegistry) AddArtifact(t *testing.T, tag, asset string, wasm []byt
 	t.Helper()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	data := writeArtifact(t, r.files, r.publisher, tag, asset, wasm)
+	data := r.writeArtifact(t, r.publisher, tag, asset, wasm)
 	r.versions = append(r.versions, tag)
-	writeCatalogue(t, r.files, r.publisher, r.versions...)
+	r.writeCatalogue(t, r.publisher, r.versions...)
 	return bytes.Clone(data)
 }
 
@@ -318,8 +326,8 @@ func (r *PluginRegistry) AddPlugin(t *testing.T, publisher PluginPublisher, tag 
 	if _, ok := r.files[publisher.BaseURL+"statuses.json"]; !ok {
 		r.files[publisher.BaseURL+"statuses.json"] = []byte(emptyStatuses)
 	}
-	data := writeArtifact(t, r.files, publisher, tag, "plugin.wasm", wasm)
-	writeCatalogue(t, r.files, publisher, tag)
+	data := r.writeArtifact(t, publisher, tag, "plugin.wasm", wasm)
+	r.writeCatalogue(t, publisher, tag)
 	return bytes.Clone(data)
 }
 
@@ -327,7 +335,14 @@ func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 	t.Helper()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	writeCatalogue(t, r.files, r.publisher, versions...)
+	r.writeCatalogue(t, r.publisher, versions...)
+}
+
+func (r *PluginRegistry) PublishPlugin(t *testing.T, publisher PluginPublisher, versions ...string) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.writeCatalogue(t, publisher, versions...)
 }
 
 func publisherKey(publisher PluginPublisher) string {
@@ -339,15 +354,21 @@ func recordURL(publisher PluginPublisher, tag string) string {
 	return publisher.BaseURL + "plugins/" + publisherKey(publisher) + "/versions/" + version + ".json"
 }
 
-func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublisher, tag, asset string, wasm []byte) []byte {
+func (r *PluginRegistry) writeArtifact(t *testing.T, publisher PluginPublisher, tag, asset string, wasm []byte) []byte {
 	t.Helper()
 	format, _, err := artifacts.Sniff(wasm)
 	if err != nil {
 		t.Fatalf("registry fixture artifact: %v", err)
 	}
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
-	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","wit_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, fixtureWITSHA256)
-	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureWITSHA256
+	primary := component.AnalyzerInterface
+	if interfaces, err := component.ReadInterfaces(wasm); err == nil {
+		if roles, err := component.Admit(t.Context(), component.ListedInterfaces{Interfaces: interfaces}); err == nil {
+			primary = roles.Exports()[0]
+		}
+	}
+	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":%q,"wit_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, primary, fixtureWITSHA256)
+	kind, contract := "component", primary+"#sha256="+fixtureWITSHA256
 	if format == artifacts.Core {
 		kind, contract = "core", "wasm-core-json/1"
 		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-core-json","abi_version":1}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name)
@@ -365,67 +386,63 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 				if digest == "" {
 					digest = declared.LegacyWITSHA256
 				}
-				if declared.Interface != "" && digest != "" {
-					contract = declared.Interface + "#sha256=" + digest
+				if declared.Interface != "" {
+					contract = declared.Interface
+					if digest != "" {
+						contract += "#sha256=" + digest
+					}
 				}
 			}
 		}
 	}
-	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
-	section = append(section, []byte("actionlint.plugin")...)
-	section = append(section, metadata...)
-	data := bytes.Clone(wasm[:8])
-	// Replacing discovery metadata must leave embedded modules and components intact.
-	for rest := wasm[8:]; len(rest) > 0; {
-		original := rest
-		id := rest[0]
-		size, count := binary.Uvarint(rest[1:])
-		body := rest[1+count : 1+count+int(size)]
-		rest = rest[1+count+int(size):]
-		if id == 0 {
-			length, count := binary.Uvarint(body)
-			if string(body[count:count+int(length)]) == artifacts.MetadataSection {
-				continue
-			}
-		}
-		data = append(data, original[:len(original)-len(rest)]...)
-	}
-	data = append(data, 0)
-	data = binary.AppendUvarint(data, uint64(len(section)))
-	data = append(data, section...)
+	data := ReplaceMetadata(wasm, metadata)
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
 	artifactURL := "https://" + publisher.Name + "/releases/download/" + tag + "/" + asset
 	submission := fmt.Sprintf(`{"schema_version":1,"provider":"github","repository":%q,"tag":%q,"asset":%q,"sha256":%q,"kind":%q}`, repository, tag, asset, digest, kind)
 	declaration := fmt.Sprintf(`{"kind":%q,"sha256":%q,"plugin_id":%q,"plugin_version":%q,"repository":%q,"contract":%q,"metadata":%s}`, kind, digest, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, contract, metadata)
 	record := fmt.Sprintf(`{"record_version":2,"artifact":%s,"submission":%s,"receipt":{"schema_version":1,"submission":%s,"identity":{"issuer":"https://token.actions.githubusercontent.com","repository_id":"%d","owner_id":"5","repository":%q,"ref":%q,"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},"repository_id":%d,"owner_id":5,"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","url":%q,"upstream_immutable":true,"release_id":11,"asset_id":12}`, declaration, submission, submission, publisher.RepositoryID, repository, "refs/tags/"+tag, publisher.RepositoryID, artifactURL)
-	files[artifactURL] = data
-	files[recordURL(publisher, tag)] = []byte(record)
+	r.files[artifactURL] = data
+	r.files[recordURL(publisher, tag)] = []byte(record)
+	delete(r.interfaces, recordURL(publisher, tag))
+	if format == artifacts.Component {
+		if interfaces, err := component.ReadInterfaces(data); err == nil {
+			r.interfaces[recordURL(publisher, tag)] = interfaces
+		}
+	}
 	return data
 }
 
-func writeCatalogue(t *testing.T, files map[string][]byte, publisher PluginPublisher, versions ...string) {
+func (r *PluginRegistry) writeCatalogue(t *testing.T, publisher PluginPublisher, versions ...string) {
 	t.Helper()
 	manifestPath := "plugins/" + publisherKey(publisher) + "/index.json"
 	aliases, err := json.Marshal(publisher.Aliases)
 	if err != nil {
 		t.Fatal(err)
 	}
-	files[publisher.BaseURL+"index.json"] = fmt.Appendf(nil, `{"schema_version":1,"plugins":[{"name":%q,"aliases":%s,"plugin_id":%q,"manifest":%q}]}`, publisher.Name, aliases, publisher.PluginID, manifestPath)
+	r.files[publisher.BaseURL+"index.json"] = fmt.Appendf(nil, `{"schema_version":1,"plugins":[{"name":%q,"aliases":%s,"plugin_id":%q,"manifest":%q}]}`, publisher.Name, aliases, publisher.PluginID, manifestPath)
 	links := make([]json.RawMessage, 0, len(versions))
 	for _, version := range versions {
 		key := fmt.Sprintf("%x", sha256.Sum256([]byte(version)))
-		links = append(links, fmt.Appendf(nil, `{"version":%q,"record":%q,"compatibility":[]}`, version, "versions/"+key+".json"))
+		link := map[string]any{"version": version, "record": "versions/" + key + ".json", "compatibility": []any{}}
+		if interfaces, ok := r.interfaces[recordURL(publisher, version)]; ok && !r.omitInterfaces {
+			link["imports"], link["exports"] = interfaces.Imports, interfaces.Exports
+		}
+		encoded, err := json.Marshal(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		links = append(links, encoded)
 	}
 	data, err := json.Marshal(links)
 	if err != nil {
 		t.Fatal(err)
 	}
-	files[publisher.BaseURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"%d","owner_id":"5","provider":"github","repository":%q,"plugin_id":%q},"versions":%s}`, publisher.RepositoryID, strings.TrimPrefix(publisher.Name, "github.com/"), publisher.PluginID, data)
+	r.files[publisher.BaseURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"%d","owner_id":"5","provider":"github","repository":%q,"plugin_id":%q},"versions":%s}`, publisher.RepositoryID, strings.TrimPrefix(publisher.Name, "github.com/"), publisher.PluginID, data)
 }
 
 func NewDefaultPluginRegistry(t *testing.T, aliases ...string) *PluginRegistry {
 	t.Helper()
-	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0}, aliases...)
+	return NewDefaultPluginRegistryWithArtifact(t, AnalyzerComponent(), aliases...)
 }
 
 // NewDefaultPluginRegistryWithArtifact gives the identity at index i repository ID 10+i.
@@ -456,4 +473,68 @@ func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte, aliases ...
 	}
 	r.SetFile(base+"index.json", data)
 	return r
+}
+
+func AnalyzerComponent() []byte {
+	return componentFixture("plugins", "no-sudo.wasm")
+}
+
+func RunnerComponent() []byte {
+	return componentFixture("plugins", "runner-support-0.3.0.wasm")
+}
+
+// RuntimeFailureComponent passes admission and traps when the host describes it.
+func RuntimeFailureComponent() []byte {
+	return componentFixture("contracts", "compatible-contract.wasm")
+}
+
+func componentFixture(path ...string) []byte {
+	directory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	name := filepath.Join(append([]string{"internal", "plugins", "pluginexecution", "component", "testdata"}, path...)...)
+	reader := files.New(context.Background(), nil, nil)
+	for {
+		data, err := reader.ReadFile(filepath.Join(directory, name))
+		if err == nil {
+			return data
+		}
+		parent := filepath.Dir(directory)
+		if !errors.Is(err, fs.ErrNotExist) || parent == directory {
+			panic(err)
+		}
+		directory = parent
+	}
+}
+
+func (r *PluginRegistry) OmitInterfaces() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.omitInterfaces = true
+}
+
+func ReplaceMetadata(wasm []byte, metadata string) []byte {
+	section := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
+	section = append(section, artifacts.MetadataSection...)
+	section = append(section, metadata...)
+	data := bytes.Clone(wasm[:8])
+	// Replacing discovery metadata must leave embedded modules and components intact.
+	for rest := wasm[8:]; len(rest) > 0; {
+		original := rest
+		id := rest[0]
+		size, count := binary.Uvarint(rest[1:])
+		body := rest[1+count : 1+count+int(size)]
+		rest = rest[1+count+int(size):]
+		if id == 0 {
+			length, count := binary.Uvarint(body)
+			if string(body[count:count+int(length)]) == artifacts.MetadataSection {
+				continue
+			}
+		}
+		data = append(data, original[:len(original)-len(rest)]...)
+	}
+	data = append(data, 0)
+	data = binary.AppendUvarint(data, uint64(len(section)))
+	return append(data, section...)
 }

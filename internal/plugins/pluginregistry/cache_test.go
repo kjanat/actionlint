@@ -3,7 +3,9 @@ package pluginregistry_test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -50,6 +54,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	record = bytes.ReplaceAll(record, []byte("Test plugin"), []byte("Next plugin"))
 	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(first.SHA256), []byte(secondDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -86,10 +91,78 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	}
 }
 
+func TestImmutableCachesOmitSelectedRoles(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	if _, err := registryClient(t, registry).ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest"); err != nil {
+		t.Fatal(err)
+	}
+	registryCache, err := pluginacquisition.RegistryCacheDir(fixtureAcquisition(registry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, candidates := localCandidate(t)
+	candidates.StatusOptions.CacheDir = t.TempDir()
+	pin, err := candidates.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Roles != (component.Roles{Analyzer: component.AnalyzerInterface}) {
+		t.Fatalf("latest candidate=%+v error=%v", pin, err)
+	}
+	acquisition := candidates.StatusOptions.Acquisition
+	options := artifacts.Options{CacheDir: filepath.Join(acquisition.UserCacheDir, "actionlint", "artifacts"), Connections: acquisition.Connections}
+	if err := candidates.RememberCandidate(t.Context(), pin, options); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	for _, root := range []string{registryCache, candidates.StatusOptions.CacheDir} {
+		if err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			kind := filepath.Base(filepath.Dir(path))
+			if roles := bytes.Contains(data, []byte(`"roles"`)); roles != (kind == "selections") {
+				t.Errorf("%s records roles=%t", path, roles)
+			}
+			seen[kind] = path
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seen["releases"] == "" || seen["candidates"] == "" || seen["selections"] == "" {
+		t.Fatalf("cache kinds=%v", seen)
+	}
+	data, err := os.ReadFile(seen["candidates"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cached map[string]any
+	if err := json.Unmarshal(data, &cached); err != nil || cached["metadata"] == nil {
+		t.Fatalf("cached candidate=%s error=%v", data, err)
+	}
+	delete(cached, "metadata")
+	if data, err = json.Marshal(cached); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(seen["candidates"]); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(seen["candidates"], data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := candidates.RememberCandidate(t.Context(), pin, options); err != nil {
+		t.Fatalf("candidate cached without metadata: %v", err)
+	}
+}
+
 func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +206,7 @@ func TestRegistryLookupRejectsFloatingDeclarations(t *testing.T) {
 func TestRegistryResolutionRejectsChangedImmutableVersion(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +214,7 @@ func TestRegistryResolutionRejectsChangedImmutableVersion(t *testing.T) {
 	if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
 		t.Fatal(err)
 	}
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0, 0, 1, 0})
+	registry.Add(t, "v1.0.0", append(fixtureregistry.AnalyzerComponent(), 0, 1, 0))
 	registry.Publish(t, "v1.0.0")
 	if _, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err == nil || !strings.Contains(err.Error(), "immutable") {
 		t.Fatalf("observed release was replaced: %v", err)

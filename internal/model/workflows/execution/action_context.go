@@ -37,8 +37,8 @@ func CallFacts(view workflows.BoundStep, platform runners.Platform) (invocation.
 		ShellPathUnknown:           ShellPathUnknown(env),
 		CheckoutEnvironmentUnknown: CheckoutEnvironmentUnknown(env, platform),
 		LookupEnvironmentUnknown:   ShellEnvironmentUnknownForPlatform(env, platform) || ShellPathUnknownForPlatform(env, platform),
+		Uses:                       action.Uses.Text(),
 	}
-	effects.Uses = action.Uses.Text()
 	if enabled, known := conditions.Condition(view.Condition()); known {
 		effects.Condition = invocation.ConditionSkipped
 		if enabled {

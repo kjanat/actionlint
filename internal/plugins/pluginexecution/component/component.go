@@ -37,6 +37,7 @@ type Plugin struct {
 	scriptDescriptor   *scriptengine.Descriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
+	roles              Roles
 	runner             runnerProtocol
 	// With the template-effects role, the paired template-effects check
 	// replaces the script engine's check.
@@ -62,6 +63,8 @@ type Plugin struct {
 }
 
 func (p *Plugin) ArtifactDigest() string { return p.digest }
+
+func (p *Plugin) Roles() Roles { return p.roles }
 
 func (p *Plugin) Path() string { return p.path }
 

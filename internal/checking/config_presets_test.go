@@ -75,9 +75,7 @@ jobs:
 		request := analysisRequest{WorkingDir: root, OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			called = true
 			return append(rules, rule)
-		}}
-
-		request.Sources = []workspace.InputFile{{Path: filepath.Join(root, "test.yml"), InputPath: filepath.Join(root, "test.yml"), Content: content, Project: nil}}
+		}, Sources: []workspace.InputFile{{Path: filepath.Join(root, "test.yml"), InputPath: filepath.Join(root, "test.yml"), Content: content, Project: nil}}}
 		if _, err := testFindings(runTestAnalysis(t.Context(), request)); err != nil {
 			t.Fatal(err)
 		}

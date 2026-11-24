@@ -23,7 +23,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/kjanat/wacogo"
 )
 
 const scriptFixture03 = "testdata/plugins/script-engine-0.3.0.wasm"
@@ -74,16 +73,10 @@ func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 
 func TestScriptEngineVersionMismatch(t *testing.T) {
 	t.Parallel()
-	instance := func(names ...string) []wacogo.ExportDesc {
-		exports := make([]wacogo.ExportDesc, len(names))
-		for i, name := range names {
-			exports[i] = wacogo.ExportDesc{Name: name, Kind: wacogo.SortInstance}
-		}
-		return exports
-	}
+	instance := func(names ...string) []string { return names }
 	for _, tc := range []struct {
 		name    string
-		exports []wacogo.ExportDesc
+		exports []string
 		want    string
 	}{
 		{"unsupported version", instance("kjanat:actionlint/script-engine@0.4.0"), "this host supports " + ScriptEngineInterface + " and " + ScriptEngine03Interface},
@@ -95,20 +88,20 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := extensionRoles(tc.exports); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: tc.exports}}); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
 	}
 	for _, version := range []string{ScriptEngineInterface, ScriptEngine03Interface} {
-		roles, err := extensionRoles(instance(version))
-		if err != nil || roles.script.interfaceName() != version || roles.templateEffects != nil {
+		roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: instance(version)}})
+		if err != nil || roles != (Roles{ScriptEngine: version}) {
 			t.Fatalf("%s: roles=%+v err=%v", version, roles, err)
 		}
 	}
 	for script, template := range map[string]string{ScriptEngineInterface: TemplateEffectsInterface, ScriptEngine03Interface: TemplateEffects03Interface} {
-		roles, err := extensionRoles(instance(script, template))
-		if err != nil || roles.script.interfaceName() != script || roles.templateEffects.interfaceName() != template {
+		roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: instance(script, template)}})
+		if err != nil || roles != (Roles{ScriptEngine: script, TemplateEffects: template}) {
 			t.Fatalf("%s with %s: roles=%+v err=%v", script, template, roles, err)
 		}
 	}

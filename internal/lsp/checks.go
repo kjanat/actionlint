@@ -39,10 +39,13 @@ func (s *editorPluginHost) analyze(ctx context.Context, documents map[string]Doc
 	if err := s.sources.ValidateScope(ctx, checking.ConfigurationRules(), slices.Collect(maps.Keys(documents))); err != nil {
 		return Analysis{}, err
 	}
-	if err := s.session.BeginAnalysis(ctx); err != nil {
+	current, err := s.session.BeginAnalysis(ctx)
+	if err != nil {
 		return Analysis{}, err
 	}
-	return analyzeDocuments(ctx, s.options, documents)
+	options := s.options
+	options.Tools = current.Tools
+	return analyzeDocuments(ctx, options, documents)
 }
 
 func analyzeDocuments(ctx context.Context, options checking.Options, documents map[string]Document) (Analysis, error) {

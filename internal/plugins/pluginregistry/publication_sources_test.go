@@ -17,7 +17,7 @@ import (
 func TestRegistryInspectionCannotGrantPrivateArtifactAccess(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	url := registry.RecordURL("v1.0.0")
 	var published record
 	if err := jsonv2.Unmarshal(registry.File(url), &published); err != nil {
@@ -55,7 +55,7 @@ func TestRegistryV2PublicationSources(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
 			network := fixtureregistry.NewPluginRegistry(t)
-			network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+			network.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 			url := network.RecordURL("v1.0.0")
 			var published record
 			if err := jsonv2.Unmarshal(network.File(url), &published); err != nil {

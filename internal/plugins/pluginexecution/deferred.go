@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -36,32 +37,37 @@ type deferredScriptEngine struct {
 	failure     error
 	retryAfter  time.Time
 	reserved    rule.Names
+	skipped     bool
+	next        *pluginregistry.Pin
+	reselected  bool
 	closed      bool
 }
 
 func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition dependencycache.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
-	var descriptor scriptengine.Descriptor
-	if pin.Kind == artifacts.Component {
-		var err error
-		descriptor, err = component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		metadata, err := module.ReadMetadata([]byte(pin.Metadata))
-		if err != nil {
-			return nil, err
-		}
-		descriptor = metadata.ScriptDescriptor()
-		for _, operation := range metadata.Interfaces["check"] {
-			if operation.Version == 3 {
-				descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
-				descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
-				break
-			}
-		}
+	descriptor, err := deferredDescriptor(pin, reserved)
+	if err != nil {
+		return nil, err
 	}
 	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition, reserved: reserved}, nil
+}
+
+func deferredDescriptor(pin pluginregistry.Pin, reserved rule.Names) (scriptengine.Descriptor, error) {
+	if pin.Kind == artifacts.Component {
+		return component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
+	}
+	metadata, err := module.ReadMetadata([]byte(pin.Metadata))
+	if err != nil {
+		return scriptengine.Descriptor{}, err
+	}
+	descriptor := metadata.ScriptDescriptor()
+	for _, operation := range metadata.Interfaces["check"] {
+		if operation.Version == 3 {
+			descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
+			descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
+			break
+		}
+	}
+	return descriptor, nil
 }
 
 func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend, err error) {
@@ -77,7 +83,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if b.closed {
 		return nil, errors.New("default script engine is closed")
 	}
-	if b.backend != nil || b.failure != nil {
+	if b.backend != nil || b.failure != nil || b.skipped {
 		return b.backend, b.failure
 	}
 	defer func() {
@@ -97,6 +103,18 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if err := b.pin.Verify(artifact.Info); err != nil {
 		return nil, err
 	}
+	if b.pin.Kind == artifacts.Component {
+		roles, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
+		if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
+			return nil, b.skip(ctx, rejected)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !roles.ScriptOnly() {
+			return nil, b.skip(ctx, &component.AdmissionError{Err: errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles")})
+		}
+	}
 	engine, err := b.load(ctx, artifact)
 	if err != nil {
 		return nil, err
@@ -106,6 +124,20 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	}
 	b.backend = engine
 	return engine, nil
+}
+
+func (b *deferredScriptEngine) skip(ctx context.Context, reason *component.AdmissionError) error {
+	next, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
+	switch {
+	case err == nil:
+		b.next = &next
+		err = &pluginregistry.IncompatibleError{Name: b.pin.Name, Version: b.pin.Version, Err: reason}
+	case !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) && !network.OnlyOffline(err):
+		return err
+	}
+	network.Warn(ctx, "Skipping default plugin: "+err.Error())
+	b.skipped = true
+	return nil
 }
 
 func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time) error {
@@ -122,21 +154,44 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 		b.failure = nil
 		b.retryAfter = time.Time{}
 	}
-	return nil
+	for b.next != nil {
+		next := *b.next
+		b.next = nil
+		descriptor, rejected := b.lazyDescriptor(next)
+		b.pin = next
+		if rejected == nil {
+			b.descriptor, b.skipped, b.reselected = descriptor, false, true
+			break
+		}
+		if err := b.skip(ctx, rejected); err != nil {
+			return err
+		}
+	}
+	if !b.reselected || b.skipped {
+		return nil
+	}
+	return pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition})
+}
+
+func (b *deferredScriptEngine) lazyDescriptor(next pluginregistry.Pin) (scriptengine.Descriptor, *component.AdmissionError) {
+	if !next.Deferrable() {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: errors.New("default plugin release has no script-only metadata to load on demand")}
+	}
+	descriptor, err := deferredDescriptor(next, b.reserved)
+	if err != nil {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: err}
+	}
+	if descriptor.Engine != b.descriptor.Engine || descriptor.Rule.Name != b.descriptor.Rule.Name {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: fmt.Errorf("default plugin release provides script engine %q with rule %q; the session registered engine %q with rule %q", descriptor.Engine, descriptor.Rule.Name, b.descriptor.Engine, b.descriptor.Rule.Name)}
+	}
+	return descriptor, nil
 }
 
 func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Artifact) (deferredBackend, error) {
 	if b.pin.Kind == artifacts.Core {
 		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(b.acquisition)})
 	}
-	engine, err := component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
-	if err != nil {
-		return nil, err
-	}
-	if !engine.HasScriptEngine() || engine.HasAnalyzer() || engine.HasRunnerProvider() || engine.HasReferenceResolver() {
-		return nil, errors.Join(errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles"), engine.Close(context.WithoutCancel(ctx)))
-	}
-	return engine, nil
+	return component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
 }
 
 func sameScriptDescriptor(left, right scriptengine.Descriptor) bool {
@@ -160,12 +215,15 @@ func (b *deferredScriptEngine) Check(ctx context.Context, request scriptengine.R
 	if err != nil {
 		return nil, err
 	}
+	if engine == nil {
+		return nil, scriptengine.ErrUnavailable
+	}
 	return engine.Check(ctx, request)
 }
 
 func (b *deferredScriptEngine) ValidateConfig(ctx context.Context, config json.RawMessage) error {
 	engine, err := b.get(ctx)
-	if err != nil {
+	if err != nil || engine == nil {
 		return err
 	}
 	return engine.ValidateConfig(ctx, config)

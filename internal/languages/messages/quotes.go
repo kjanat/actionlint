@@ -50,8 +50,7 @@ func Quotes(ss []string) string {
 		}
 	}
 	n += (l - 1) * 2 // comma
-	b := QuotesBuilder{}
-	b.buf = make([]byte, 0, longest)
+	b := QuotesBuilder{buf: make([]byte, 0, longest)}
 	b.inner.Grow(n)
 	for _, s := range ss {
 		b.Append(s)
@@ -77,8 +76,7 @@ func QuotesAll(sss ...[]string) string {
 		}
 		n += (len(ss) - 1) * 2 // comma
 	}
-	b := QuotesBuilder{}
-	b.buf = make([]byte, 0, longest)
+	b := QuotesBuilder{buf: make([]byte, 0, longest)}
 	n += (len(sss) - 1) * 2 // comma
 	if n > 0 {
 		b.inner.Grow(n)

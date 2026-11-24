@@ -2,11 +2,9 @@ package component
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
@@ -16,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
+	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -40,14 +39,7 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 }
 
 func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits guestlimits.Limits, options Options) (*Plugin, error) {
-	path, data := artifact.Info.Source, artifact.Bytes
-	kind, staticMetadata, err := artifacts.Sniff(data)
-	if err != nil {
-		return nil, err
-	}
-	if kind != artifacts.Component {
-		return nil, errors.New("plugin requires a WebAssembly component")
-	}
+	path := artifact.Info.Source
 	engine := sharedComponentCompilation.newEngine(ctx, limits)
 	p := &Plugin{
 		path: path, digest: artifact.Info.SHA256,
@@ -55,31 +47,20 @@ func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits gues
 		gate:   semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16},
 	}
-	if err := p.load(ctx, data, staticMetadata); err != nil {
+	admitted, component, err := checkComponent(ctx, engine, artifact.Bytes)
+	if err == nil {
+		err = p.load(ctx, component, admitted)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
 	return p, nil
 }
 
-func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
-	component, err := sharedComponentCompilation.load(ctx, p.engine, data)
-	if err != nil {
-		return err
-	}
-	roles, err := extensionRoles(component.Exports())
-	if err != nil {
-		return err
-	}
-	required, err := validateImports(component.Imports())
-	if err != nil {
-		return err
-	}
-	if required.repositoryObjects && !roles.referenceResolver {
-		return errors.New("repository objects require the reference-resolver role")
-	}
-	if err := validatePluginInterfaces(data, roles); err != nil {
-		return err
-	}
+func (p *Plugin) load(ctx context.Context, component *wacogo.Component, admitted admission) error {
+	var err error
+	roles, required := admitted.roles, admitted.required
+	p.roles = roles.names()
 	p.component = component
 	p.referenceResolver = roles.referenceResolver
 	if required.repositoryObjects {
@@ -126,18 +107,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		if err := p.loadAnalyzer(ctx); err != nil {
 			return err
 		}
-		var metadata struct {
-			Definitions []commands.Definition `json:"invocation_definitions"`
-		}
-		if len(staticMetadata) != 0 {
-			if err := json.Unmarshal(staticMetadata, &metadata); err != nil {
-				return err
-			}
-		}
-		if _, err := commands.New(metadata.Definitions); err != nil {
-			return err
-		}
-		p.analyzerDescriptor.InvocationDefinitions = metadata.Definitions
+		p.analyzerDescriptor.InvocationDefinitions = admitted.invocations
 	}
 	if roles.toolIntegration {
 		if err := p.loadToolIntegration(ctx); err != nil {
@@ -152,19 +122,14 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	}
 	if roles.script != nil {
 		p.script = roles.script
-		if err := p.loadScriptEngine(ctx, staticMetadata); err != nil {
+		if err := p.loadScriptEngine(ctx, admitted.script); err != nil {
 			return err
 		}
 	}
 	if roles.templateEffects != nil {
-		if err := p.loadTemplateEffects(ctx, staticMetadata); err != nil {
-			return err
-		}
-	} else if roles.script != nil {
-		if err := verifyTemplateMetadata(staticMetadata, ""); err != nil {
+		if err := p.loadTemplateEffects(ctx); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

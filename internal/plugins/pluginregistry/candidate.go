@@ -127,15 +127,16 @@ func (c *Client) candidateManifest(ctx context.Context, name string) (CatalogPlu
 	return CatalogPlugin{}, candidateManifest{}, fmt.Errorf("plugin %q not found in candidate catalogue", name)
 }
 
-func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (Pin, error) {
+func (c *Client) resolveCandidate(ctx context.Context, name, selector string, download bool) (Pin, error) {
 	p, m, err := c.candidateManifest(ctx, name)
 	if err != nil {
 		return Pin{}, err
 	}
-	v, err := selectVersion(m.Versions, selector)
-	if err != nil {
-		return Pin{}, err
-	}
+	pin, _, err := c.selectRelease(ctx, name, selector, download, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
+	return pin, err
+}
+
+func (c *Client) candidatePin(ctx context.Context, p CatalogPlugin, v Version, selector string) (Pin, error) {
 	var r registryCandidate
 	if err := readCandidate(ctx, c, path.Join(path.Dir(p.Manifest), v.Record), &r); err != nil {
 		return Pin{}, err
@@ -145,7 +146,7 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 	if r.Source != "candidate" || d.PluginID != p.PluginID || !pluginreference.ValidRepository(repository) || (!strings.EqualFold(p.Name, repository) && (p.Name != strings.ToLower(p.PluginID) || !strings.HasPrefix(p.Name, repository+"/"))) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("candidate declaration disagrees with catalogue")
 	}
-	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract}
+	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract, Metadata: string(d.Metadata)}
 	if pluginreference.IsOCI(r.URL) {
 		pin.Asset = ""
 	}

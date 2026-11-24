@@ -477,8 +477,7 @@ func (b *Backend) stdin(request scriptengine.Request, config any) (string, error
 	if b.spec.Stdin != toolmanifest.StdinRequest {
 		return request.Source, nil
 	}
-	payload := scriptengine.Request{Source: request.Source, Filename: request.Filename}
-	payload.Environment = request.Environment
+	payload := scriptengine.Request{Source: request.Source, Filename: request.Filename, Environment: request.Environment}
 	if b.spec.Config.Render == toolmanifest.RenderJSONStdin && config != nil {
 		encoded, err := json.Marshal(config)
 		if err != nil {

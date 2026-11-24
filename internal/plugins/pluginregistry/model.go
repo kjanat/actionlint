@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
@@ -50,6 +51,20 @@ type Version struct {
 	Version       string          `json:"version"`
 	Record        string          `json:"record"`
 	Compatibility []Compatibility `json:"compatibility"`
+	Imports       []string        `json:"imports,omitzero"`
+	Exports       []string        `json:"exports,omitzero"`
+}
+
+func (v Version) interfaces() (component.Interfaces, bool) {
+	if v.Imports == nil || v.Exports == nil {
+		return component.Interfaces{}, false
+	}
+	return component.Interfaces{Imports: v.Imports, Exports: v.Exports}, true
+}
+
+func contractInterface(contract string) string {
+	name, _, _ := strings.Cut(contract, "#")
+	return name
 }
 
 type identity struct {
@@ -133,9 +148,14 @@ type Pin struct {
 	SHA256       string                   `json:"sha256"`
 	Contract     string                   `json:"contract"`
 	Metadata     string                   `json:"metadata,omitempty"`
+	Roles        component.Roles          `json:"roles,omitzero"`
 }
 
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
+
+func (p Pin) Deferrable() bool {
+	return p.Metadata != "" && (p.Kind == artifacts.Core || p.Kind == artifacts.Component && p.Roles.ScriptOnly())
+}
 
 func (p Pin) Source() string {
 	if pluginreference.IsOCI(p.URL) {
@@ -276,30 +296,18 @@ func (p Pin) verifyMetadata(data []byte) error {
 		}
 	}
 	if p.Kind == artifacts.Component && m.Transport == "wasm-component" {
-		var component struct {
-			Interface       string `json:"interface"`
-			WITSHA256       string `json:"wit_sha256"`
-			LegacyWITSHA256 string `json:"contract_sha256"`
+		var declared struct {
+			Interface string `json:"interface"`
 		}
-		if err := jsonv2.Unmarshal(data, &component); err != nil {
+		if err := jsonv2.Unmarshal(data, &declared); err != nil {
 			return err
 		}
-		if component.WITSHA256 != "" && component.LegacyWITSHA256 != "" && component.WITSHA256 != component.LegacyWITSHA256 {
-			return errors.New("plugin metadata declares conflicting WIT checksums")
-		}
-		// Published releases used contract_sha256 before the field was renamed.
-		witSHA256 := component.WITSHA256
-		if witSHA256 == "" {
-			witSHA256 = component.LegacyWITSHA256
-		}
-		if component.Interface != "" && digestPattern.MatchString(witSHA256) {
-			contract = component.Interface + "#sha256=" + witSHA256
-		}
+		contract = declared.Interface
 	}
 	if p.Kind == artifacts.ProviderManifest && m.Transport == "process" {
 		contract = "process/1"
 	}
-	if contract == "" || contract != p.Contract {
+	if contract == "" || contract != contractInterface(p.Contract) {
 		return errors.New("plugin contract disagrees with registry pin")
 	}
 	return nil

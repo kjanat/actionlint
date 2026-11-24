@@ -207,14 +207,22 @@ func (l *Loaded) RunnerProviders() []runnerapi.Registration {
 	return registrations
 }
 
-func (l *Loaded) BeginAnalysis(ctx context.Context) error {
+func (l *Loaded) BeginAnalysis(ctx context.Context) ([]ScriptEngineRegistration, error) {
 	now := time.Now()
+	var changed []ScriptEngineRegistration
 	for _, engine := range l.deferred {
 		if err := engine.beginAnalysis(ctx, now); err != nil {
-			return err
+			return changed, err
+		}
+		descriptor := engine.ScriptDescriptor()
+		for i, registration := range l.ScriptEngines {
+			if registration.Backend == scriptengine.Backend(engine) && !sameScriptDescriptor(registration.Descriptor, descriptor) {
+				l.ScriptEngines[i].Descriptor = descriptor
+				changed = append(changed, l.ScriptEngines[i])
+			}
 		}
 	}
-	return nil
+	return changed, nil
 }
 
 func (l *Loaded) Close(ctx context.Context) error {

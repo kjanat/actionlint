@@ -20,7 +20,7 @@ import (
 
 func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry, id, tag string, process bool) (CatalogPlugin, string) {
 	t.Helper()
-	data := network.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: id, BaseURL: fixtureregistry.FixtureRegistryURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10}, tag, []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	data := network.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: id, BaseURL: fixtureregistry.FixtureRegistryURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10}, tag, fixtureregistry.AnalyzerComponent())
 	var catalog Catalog
 	if err := jsonv2.Unmarshal(network.File(fixtureregistry.FixtureRegistryURL+"index.json"), &catalog); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry
 func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 	t.Parallel()
 	network := fixtureregistry.NewPluginRegistry(t)
-	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	network.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
 	legacyFiles := network.Files()
 	var catalog Catalog
 	if err := jsonv2.Unmarshal(network.File(fixtureregistry.FixtureRegistryURL+"index.json"), &catalog); err != nil {

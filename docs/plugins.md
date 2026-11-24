@@ -45,8 +45,10 @@ plugins:
 ```
 
 Install resolves an alias and writes the canonical package and exact version to the config.
-Without `@version`, or with `--version latest`, install selects the highest stable semantic version.
-A plugin with only prereleases gets its newest prerelease.
+Without `@version`, or with `--version latest`, install selects the newest stable semantic version
+that this actionlint can load. A plugin with only prereleases gets its newest loadable prerelease.
+A release is loadable when its downloaded component passes the checks that loading runs.
+`plugin versions` marks each tag `compatible`, `incompatible` or `unknown`.
 Reinstalling keeps the declared version and registry.
 Use an object for a custom registry:
 
@@ -192,8 +194,8 @@ Outside a Git repository, pass `--config FILE`.
 Pass the same `--plugin` arguments to `config show`, `config validate`, `doctor` and `config schema` when the
 configuration names plugin rules.
 
-The host refuses a component that exports an unsupported interface version, imports an ungranted interface or exports
-no supported role.
+The host refuses a component that exports an unsupported interface version, imports an ungranted interface, exports
+no supported role or declares an interface in its metadata that it does not export.
 
 Run `actionlint rules --plugin PATH --json` to list a plugin's rules, or `actionlint rules RULE --plugin PATH` to
 explain one. Duplicate rule names fail before analysis.

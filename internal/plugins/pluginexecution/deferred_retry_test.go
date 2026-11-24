@@ -117,7 +117,7 @@ func TestLoadedBeginAnalysisClearsExpiredFailures(t *testing.T) {
 	}
 	engine.retryAfter = time.Now().Add(-time.Second)
 	loaded := &Loaded{deferred: []*deferredScriptEngine{engine}}
-	if err := loaded.BeginAnalysis(t.Context()); err != nil {
+	if _, err := loaded.BeginAnalysis(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if engine.failure != nil || len(registry.Requests()) != 1 {

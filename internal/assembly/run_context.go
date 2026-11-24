@@ -131,9 +131,11 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	if result == nil {
 		result = &report.Analysis{}
 	}
-	run := RunContext{WorkingDir: options.WorkingDir}
-	run.Files = lintedFiles(options.WorkingDir, result.LintedFiles)
-	run.Repositories = repositoryStates(ctx, options.WorkingDir, result.LintedFiles)
+	run := RunContext{
+		WorkingDir:   options.WorkingDir,
+		Files:        lintedFiles(options.WorkingDir, result.LintedFiles),
+		Repositories: repositoryStates(ctx, options.WorkingDir, result.LintedFiles),
+	}
 	for _, configuration := range result.Configurations {
 		run.Configurations = append(run.Configurations, configurationState(options.WorkingDir, configuration))
 	}

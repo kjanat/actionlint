@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
+	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -16,6 +19,8 @@ import (
 type Session struct {
 	Options checking.Options
 	plugins *pluginexecution.Loaded
+	tools   []contract.Registration
+	mu      sync.Mutex
 }
 
 // Open checks the cached release status of the selected plugins, loads them
@@ -37,6 +42,7 @@ func Open(ctx context.Context, options checking.Options, sources pluginselection
 	if err != nil {
 		return nil, err
 	}
+	tools := slices.Clone(options.Tools)
 	options, err = ConfigurePlugins(plugins, ctx, options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
@@ -45,12 +51,24 @@ func Open(ctx context.Context, options checking.Options, sources pluginselection
 	if err != nil {
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
 	}
-	return &Session{Options: options, plugins: plugins}, nil
+	return &Session{Options: options, plugins: plugins, tools: tools}, nil
 }
 
 // BeginAnalysis prepares the loaded plugins for another analysis in a
-// long-lived session.
-func (s *Session) BeginAnalysis(ctx context.Context) error { return s.plugins.BeginAnalysis(ctx) }
+// long-lived session and returns the options for that analysis.
+func (s *Session) BeginAnalysis(ctx context.Context) (checking.Options, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	changed, err := s.plugins.BeginAnalysis(ctx)
+	for _, engine := range changed {
+		tools, refreshErr := refreshScriptEngine(s.Options.Tools, s.tools, engine)
+		if refreshErr != nil {
+			return s.Options, errors.Join(err, &pluginexecution.LoadError{Err: refreshErr})
+		}
+		s.Options.Tools = tools
+	}
+	return s.Options, err
+}
 
 func (s *Session) Close(ctx context.Context) error {
 	return s.plugins.Close(context.WithoutCancel(ctx))

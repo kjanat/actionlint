@@ -33,7 +33,7 @@ func TestPluginPlanNestedRepositories(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			wasmA := []byte{0, 97, 115, 109, 13, 0, 1, 0}
+			wasmA := fixtureregistry.AnalyzerComponent()
 			wasmB := append(bytes.Clone(wasmA), 0, 2, 1, 'b')
 			wasmC := append(bytes.Clone(wasmA), 0, 2, 1, 'c')
 			var registry *fixtureregistry.PluginRegistry

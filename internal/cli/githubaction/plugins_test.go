@@ -45,7 +45,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+			pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -215,16 +215,24 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Checks: checks, ReadFile: options.ReadFile, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
-	request.SourceOverlays = overlays
-	request.NoIgnore = options.NoIgnore
-	request.RemoteActions = options.RemoteActions
-	request.RemoteWorkflows = options.RemoteWorkflows
+	request := analysisRequest{
+		ExecutionEnvironment: options.ExecutionEnvironment,
+		Processes:            processes,
+		Checks:               checks,
+		ReadFile:             options.ReadFile,
+		RulePresets:          options.Presets,
+		LogWriter:            log,
+		AllowConfigProcesses: options.AllowConfigProcesses,
+		SourceOverlays:       overlays,
+		NoIgnore:             options.NoIgnore,
+		RemoteActions:        options.RemoteActions,
+		RemoteWorkflows:      options.RemoteWorkflows,
+		Repository:           options.Repository,
+		DiskSources:          input.Kind == checkrequest.Files || input.Kind == checkrequest.Repository,
+	}
 	if request.RemoteWorkflows == nil {
 		request.RemoteWorkflows, _ = options.RemoteActions.(reusableworkflows.Provider)
 	}
-	request.Repository = options.Repository
-	request.DiskSources = input.Kind == checkrequest.Files || input.Kind == checkrequest.Repository
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.LoadModuleBackend

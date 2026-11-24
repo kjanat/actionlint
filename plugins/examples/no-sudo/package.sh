@@ -18,14 +18,14 @@ wit_sha256="$(tr -d '\r' <"${wit_directory}/analyzer.wit" | sha256sum)"
 wit_sha256="${wit_sha256%% *}"
 
 "${sdk}/bin/wasm32-wasip2-clang" -E -P -x c metadata.json.in \
-	| jq --arg interface "${interface}" --arg wit_sha256 "${wit_sha256}" '
+	| jq -b --arg interface "${interface}" --arg wit_sha256 "${wit_sha256}" '
         .interface = $interface | .wit_sha256 = $wit_sha256 |
         .descriptor.required_inputs |= (with_entries(select(.value)) | keys_unsorted | map(ascii_downcase)) |
         .descriptor.options_schema |= fromjson |
         .description = .descriptor.description |
         .engine = {name: .descriptor.name, version: .plugin_version}
     ' >"${output}/metadata.json"
-jq '.descriptor.options_schema' "${output}/metadata.json" >"${output}/schema.json"
+jq -b '.descriptor.options_schema' "${output}/metadata.json" >"${output}/schema.json"
 printf '%s\n' "${license}" >"${output}/LICENSE"
 cp "${component}" "${output}/plugin.wasm"
 

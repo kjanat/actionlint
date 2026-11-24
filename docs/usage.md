@@ -461,6 +461,10 @@ actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
 ShellCheck and Ruff run as registry Wasm plugins by default. The first online check downloads them.
+When no published release of a default plugin loads in this actionlint, the check skips that plugin
+and prints a warning. A default plugin's download is checked when the check first needs it. When the
+download fails the checks, actionlint records the release as unloadable and selects the next
+loadable release. A Ruff engine that fails this way is skipped for the current check.
 Use `--tool shellcheck` or `--tool ruff` to run an installed native executable. See
 [Ruff configuration](config.md#ruff) for Python checks.
 
@@ -797,6 +801,19 @@ abort before any write.
 version to the config's `plugins` list. Commit that file. `plugin sync` restores exact pins, and
 `plugin update` refreshes declared versions. See
 [plugin installation](plugins.md#install-from-the-registry).
+
+`plugin versions owner/repo` marks each published tag `compatible` or `incompatible` with this
+actionlint. An incompatible tag shows the reason, such as an unsupported interface or metadata
+that declares an interface the component does not export. A tag is `unknown` when the registry
+lists no imports and exports for it. For a tag whose lists pass, the command downloads the
+component and checks it.
+
+`plugin install` and `plugin update` without an exact tag select the newest stable release that
+this actionlint can load. A plugin without a stable release gets its newest loadable prerelease.
+A release is loadable when its downloaded component passes the checks that loading runs. The
+registry's import and export lists only rule out releases before the download. Install, update
+and sync fail on a component that this actionlint cannot load, and install and update then leave
+the config unchanged.
 
 `--plugin PATH` loads a WebAssembly plugin or a replacement resolver component. A `.json` path
 loads a [local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a

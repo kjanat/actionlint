@@ -3,7 +3,6 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,9 +56,7 @@ func TestComponentThroughCLI(t *testing.T) {
 			command.Dir = root
 			var stdout, stderr bytes.Buffer
 			command.Stdout, command.Stderr = &stdout, &stderr
-			err := command.Run()
-			var status *exec.ExitError
-			if err != nil && (!errors.As(err, &status) || status.ExitCode() != 1) {
+			if err := command.Run(); err != nil {
 				t.Fatalf("actionlint: %v\n%s\n%s", err, &stderr, &stdout)
 			}
 			var report struct {
@@ -73,13 +70,13 @@ func TestComponentThroughCLI(t *testing.T) {
 				t.Fatalf("JSON report: %v\n%s", err, &stdout)
 			}
 			if !tc.finding {
-				if err != nil || len(report.Diagnostics) != 0 {
-					t.Fatalf("clean script: status=%v report=%s", err, &stdout)
+				if len(report.Diagnostics) != 0 {
+					t.Fatalf("clean script: report=%s", &stdout)
 				}
 				return
 			}
-			if err == nil || len(report.Diagnostics) != 1 {
-				t.Fatalf("expected one finding and exit 1: status=%v report=%s", err, &stdout)
+			if len(report.Diagnostics) != 1 {
+				t.Fatalf("expected one warning and exit 0: report=%s", &stdout)
 			}
 			finding := report.Diagnostics[0]
 			before, _, found := strings.Cut(text, "sudo")

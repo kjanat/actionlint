@@ -1,21 +1,29 @@
 package pluginselection_test
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-var emptyComponent = []byte{0, 97, 115, 109, 13, 0, 1, 0}
+var analyzerComponent = fixtureregistry.AnalyzerComponent()
 
 func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 	t.Parallel()
@@ -23,7 +31,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 		t.Run(tool, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{tool}, RepositoryID: 99}, "v1.0.0", emptyComponent)
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{tool}, RepositoryID: 99}, "v1.0.0", analyzerComponent)
 			root := t.TempDir()
 			path := filepath.Join(root, "actionlint.yaml")
 			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
@@ -66,6 +74,166 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 			contents, err := os.ReadFile(path)
 			if err != nil || string(contents) != "{}" {
 				t.Fatalf("configuration changed: %s error=%v", contents, err)
+			}
+		})
+	}
+}
+
+func TestDefaultPluginWithoutCompatibleReleaseIsSkipped(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}, "v1.0.0", wasmcomponent.Build(nil, []string{"kjanat:actionlint/analyzer@99.0.0"}, nil))
+	root := t.TempDir()
+	path := filepath.Join(root, "actionlint.yaml")
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, session := network.WithSession(t.Context(), network.Options{})
+	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+	selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+	if err != nil || len(selected.Paths) != 0 || !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) {
+		t.Fatalf("selected=%+v error=%v", selected, err)
+	}
+	warnings := session.Warnings()
+	if len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) {
+		t.Fatalf("warnings=%q", warnings)
+	}
+}
+
+func TestDefaultPluginRejectedAtHydrate(t *testing.T) {
+	t.Parallel()
+	const broken = "https://github.com/publisher/engine/releases/download/v2.0.0/plugin.wasm"
+	publisher := fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}
+	for _, older := range []bool{true, false} {
+		t.Run(fmt.Sprintf("older=%t", older), func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			versions := []string{"v2.0.0"}
+			if older {
+				registry.AddPlugin(t, publisher, "v1.0.0", analyzerComponent)
+				versions = []string{"v1.0.0", "v2.0.0"}
+			}
+			registry.AddPlugin(t, publisher, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			registry.PublishPlugin(t, publisher, versions...)
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			for run := range 2 {
+				registry.ResetRequests()
+				ctx, session := network.WithSession(t.Context(), network.Options{})
+				selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || selected.Releases == nil {
+					t.Fatalf("run %d: selected=%+v error=%v", run, selected, err)
+				}
+				if downloaded := slices.Contains(registry.Requests(), broken); downloaded != (run == 0) {
+					t.Fatalf("run %d downloaded the rejected release=%t: %v", run, downloaded, registry.Requests())
+				}
+				warnings := session.Warnings()
+				if older {
+					if len(selected.Releases.Plugins) != 1 || selected.Releases.Plugins[0].Version != "v1.0.0" || len(selected.Artifacts) != 1 || !slices.Equal(selected.Paths, []string{selected.Releases.Plugins[0].Source()}) || len(selected.SkippedTools) != 0 || len(warnings) != 0 {
+						t.Fatalf("run %d: selected=%+v warnings=%q", run, selected, warnings)
+					}
+					continue
+				}
+				if len(selected.Releases.Plugins) != 0 || len(selected.Paths) != 0 || !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) || len(warnings) != 1 ||
+					!strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) || !strings.Contains(warnings[0], "incompatible analyzer contract") {
+					t.Fatalf("run %d: selected=%+v warnings=%q", run, selected, warnings)
+				}
+			}
+		})
+	}
+}
+
+func TestOfflineHydrateSkipsRejectedDefaultWithoutCachedSuccessor(t *testing.T) {
+	t.Parallel()
+	publisher := fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}
+	for _, disableTools := range []bool{false, true} {
+		t.Run(fmt.Sprintf("disableTools=%t", disableTools), func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			registry.AddPlugin(t, publisher, "v1.0.0", analyzerComponent)
+			registry.AddPlugin(t, publisher, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			registry.PublishPlugin(t, publisher, "v1.0.0", "v2.0.0")
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			client, err := pluginregistry.New(pluginregistry.DefaultURL, acquisition)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pin, err := client.ResolveCached(t.Context(), "shellcheck", "latest")
+			if err != nil || pin.Version != "v2.0.0" {
+				t.Fatalf("warm selection=%+v error=%v", pin, err)
+			}
+			if _, err := artifacts.Resolve(t.Context(), pin.Source(), pluginacquisition.ArtifactOptions(acquisition)); err != nil {
+				t.Fatal(err)
+			}
+			registry.SetOffline(true)
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, session := network.WithSession(t.Context(), network.Options{Offline: !disableTools})
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, DisableTools: disableTools, Acquisition: acquisition}
+			selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+			if err != nil || selected.Releases != nil && len(selected.Releases.Plugins) != 0 || len(selected.Paths) != 0 {
+				t.Fatalf("selected=%+v error=%v", selected, err)
+			}
+			warnings := session.Warnings()
+			if disableTools {
+				if len(warnings) != 0 || len(selected.SkippedTools) != 0 {
+					t.Fatalf("disabled tools selected defaults: skipped=%v warnings=%q", selected.SkippedTools, warnings)
+				}
+				return
+			}
+			if !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) || len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Skipping default plugin: ") || !strings.Contains(warnings[0], "is not cached") {
+				t.Fatalf("skipped=%v warnings=%q", selected.SkippedTools, warnings)
+			}
+		})
+	}
+}
+
+func TestLazyDefaultsFollowComponentExports(t *testing.T) {
+	t.Parallel()
+	const artifact = "https://github.com/publisher/engine/releases/download/v1.0.0/plugin.wasm"
+	for _, tc := range []struct {
+		name    string
+		exports []string
+		lazy    bool
+	}{
+		{"script engine", []string{component.ScriptEngine03Interface}, true},
+		{"script engine and analyzer", []string{component.AnalyzerInterface, component.ScriptEngine03Interface}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			metadata := fmt.Appendf(nil, `{"metadata_version":1,"id":"test-engine","name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":"1.0.0","repository":"https://github.com/publisher/engine","transport":"wasm-component","interface":%q,"wit_sha256":%q,"rules":[{}]}`, component.ScriptEngine03Interface, strings.Repeat("0", 64))
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v1.0.0", wasmcomponent.Build(nil, tc.exports, nil))
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"ruff"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			if !tc.lazy {
+				selected, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || !slices.Contains(registry.Requests(), artifact) || !slices.Equal(selected.SkippedTools, []string{"ruff"}) {
+					t.Fatalf("eager default: selected=%+v error=%v requests=%v", selected, err, registry.Requests())
+				}
+				return
+			}
+			offline, _ := network.WithSession(t.Context(), network.Options{Offline: true})
+			for _, ctx := range []context.Context{t.Context(), offline} {
+				selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || selected.Releases == nil || len(selected.Releases.Plugins) != 1 {
+					t.Fatalf("selected=%+v error=%v", selected, err)
+				}
+				pin := selected.Releases.Plugins[0]
+				if _, lazy := selected.LazySources[pin.Source()]; !lazy || slices.Contains(registry.Requests(), artifact) {
+					t.Fatalf("roles=%+v lazy=%t requests=%v", pin.Roles, lazy, registry.Requests())
+				}
 			}
 		})
 	}

@@ -15,7 +15,7 @@ import (
 func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Add(t, "v1.0.0", fixtureregistry.RuntimeFailureComponent())
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -44,8 +44,8 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 			t.Parallel()
 			args := append([]string{"check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"}, scenario.args...)
 			output := pluginCommandTest(t, acquisition, scenario.status, args...)
-			if !strings.Contains(output, "export") {
-				t.Fatalf("did not reach runtime export validation: %s", output)
+			if !strings.Contains(output, "unreachable") {
+				t.Fatalf("did not reach plugin execution: %s", output)
 			}
 		})
 	}

@@ -6,8 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/cli/githubaction"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
-
-	_ "time/tzdata"
 )
 
 func main() {

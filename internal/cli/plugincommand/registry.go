@@ -402,7 +402,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams output.Streams, r
 	if err != nil {
 		return exitcode.UsageError{Cause: err}
 	}
-	versions, err := client.Versions(ctx, ref.Name())
+	versions, err := client.ListVersions(ctx, ref.Name())
 	if err != nil {
 		return err
 	}
@@ -410,7 +410,12 @@ func (r RegistryRequest) discover(ctx context.Context, streams output.Streams, r
 		return output.WriteJSONRecord(streams.Stdout, versions)
 	}
 	for _, v := range versions {
-		if _, err := fmt.Fprintln(streams.Stdout, v.Version); err != nil {
+		support := v.Host
+		line := v.Version.Version + "\t" + string(support.Status)
+		if support.Reason != "" {
+			line += ": " + support.Reason
+		}
+		if _, err := fmt.Fprintln(streams.Stdout, line); err != nil {
 			return err
 		}
 		for _, evidence := range v.Compatibility {
