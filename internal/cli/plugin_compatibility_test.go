@@ -25,7 +25,7 @@ func TestPluginCommandsSelectLoadableReleases(t *testing.T) {
 	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	reason := "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports " + component.AnalyzerInterface
+	reason := "unprovided interface: plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports " + component.AnalyzerInterface
 	listing := pluginCommandTest(t, acquisition, 0, "plugin", "versions", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL)
 	if listing != "v1.0.0\tcompatible\nv2.0.0\tincompatible: "+reason+"\n" {
 		t.Fatalf("versions listing:\n%s", listing)

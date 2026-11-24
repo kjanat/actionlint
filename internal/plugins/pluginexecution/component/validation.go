@@ -65,13 +65,13 @@ func negotiate(interfaces Interfaces) (extensionRoleSet, importRequirements, err
 				continue
 			}
 			if export != candidate.name {
-				return roles, importRequirements{}, fmt.Errorf("plugin exports %s; this host supports %s", export, candidate.name)
+				return roles, importRequirements{}, fmt.Errorf("%w: plugin exports %s; this host supports %s", ErrUnprovidedInterface, export, candidate.name)
 			}
 			*candidate.role = true
 		}
 	}
 	if !roles.analyzer && roles.runner == nil && roles.script == nil && !roles.referenceResolver {
-		return roles, importRequirements{}, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
+		return roles, importRequirements{}, fmt.Errorf("%w: plugin does not export %s, %s, %s or %s", ErrUnprovidedInterface, AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, importRequirements{}, errors.New("tool integration requires analyzer interface")
@@ -100,7 +100,7 @@ func sameFamily(name, known string) bool {
 func negotiateVersion[V versionedRole](export string, accepted []V, role *V, kind string) error {
 	index := slices.IndexFunc(accepted, func(version V) bool { return version.interfaceName() == export })
 	if index < 0 {
-		return fmt.Errorf("plugin exports %s; this host supports %s", export, strings.Join(interfaceNames(accepted), " and "))
+		return fmt.Errorf("%w: plugin exports %s; this host supports %s", ErrUnprovidedInterface, export, strings.Join(interfaceNames(accepted), " and "))
 	}
 	var none V
 	if *role != none {
@@ -146,7 +146,7 @@ func validateImports(imports []string) (importRequirements, error) {
 		})
 		if index >= 0 {
 			if canonical != wasmparser.CanonicalizeImportName(provided[index].name) {
-				return required, fmt.Errorf("plugin imports %s; this host provides %s", imported, provided[index].name)
+				return required, fmt.Errorf("%w: plugin imports %s; this host provides %s", ErrUnprovidedInterface, imported, provided[index].name)
 			}
 			if provided[index].required != nil {
 				*provided[index].required = true
@@ -154,7 +154,7 @@ func validateImports(imports []string) (importRequirements, error) {
 			continue
 		}
 		if !slices.ContainsFunc(grantedImportPrefixes, func(prefix string) bool { return strings.HasPrefix(imported, prefix) }) {
-			return required, fmt.Errorf("plugin imports %s, which this host does not grant", imported)
+			return required, fmt.Errorf("%w: plugin imports %s, which this host does not grant", ErrUnprovidedInterface, imported)
 		}
 	}
 	return required, nil
