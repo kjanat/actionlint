@@ -168,15 +168,8 @@ func TestAdmitMatchesLoad(t *testing.T) {
 			if roles != (Roles{Analyzer: AnalyzerInterface}) || plugin.Roles() != roles {
 				t.Errorf("%s: selection roles %+v, load roles %+v", name, roles, plugin.Roles())
 			}
-		case checked == nil || loaded == nil || !strings.Contains(loaded.Error(), stableReason(checked)):
+		case checked == nil || loaded == nil || !strings.HasSuffix(loaded.Error(), " "+path+": "+checked.Error()):
 			t.Errorf("%s: selection error %v, load error %v", name, checked, loaded)
 		}
 	}
-}
-
-// stableReason drops the missing export name, which the subtype checker
-// picks from a map.
-func stableReason(err error) string {
-	reason, _, _ := strings.Cut(err.Error(), "`")
-	return reason
 }

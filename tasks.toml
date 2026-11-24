@@ -6,11 +6,11 @@ depends     = ["protocol:sdk"]
 sources     = ["plugins/protocol/wit/**", "go.mod", "go.sum"]
 outputs     = ["plugins/sdk/go/bindings/**"]
 run         = [
-  "go tool wit-bindgen-go generate --versioned --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
-  "go tool wit-bindgen-go generate --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
-  "go tool wit-bindgen-go generate --versioned --world reference-resolver-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
-  "go tool wit-bindgen-go generate --versioned --world kjanat:actionlint/runner-plugin@0.2.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
-  "go tool wit-bindgen-go generate --versioned --world kjanat:actionlint/runner-plugin@0.3.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --cm go.bytecodealliance.org/cm --versioned --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --cm go.bytecodealliance.org/cm --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --cm go.bytecodealliance.org/cm --versioned --world reference-resolver-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --cm go.bytecodealliance.org/cm --versioned --world kjanat:actionlint/runner-plugin@0.2.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --cm go.bytecodealliance.org/cm --versioned --world kjanat:actionlint/runner-plugin@0.3.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
   "kprint fmt plugins/sdk/go/bindings"
 ]
 
