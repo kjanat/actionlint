@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -97,7 +98,7 @@ func TestReselectDefaultUsesBuiltInRegistry(t *testing.T) {
 	registry.AddPlugin(t, publisher, "v2.0.0", analyzerComponent)
 	registry.PublishPlugin(t, publisher, "v1.0.0", "v2.0.0")
 	options := pluginregistry.StatusOptions{Acquisition: fixtureAcquisition(registry)}
-	options.Acquisition.Connections.Resolver = fixtureregistry.Resolver("plugins.actionlint.kjanat.dev")
+	options.Acquisition.Connections.Resolver = fixtureregistry.Resolver(pluginreference.DefaultRegistryHost)
 	var err error
 	options.Network, err = artifacts.ExplicitSource(pluginregistry.DefaultURL)
 	if err != nil {
@@ -132,6 +133,7 @@ func TestReselectDefaultUsesBuiltInRegistry(t *testing.T) {
 	if requests := registry.Requests(); len(requests) != 0 {
 		t.Fatalf("requested registry data for a foreign pin: %v", requests)
 	}
+	pin.Registry = "https://" + pluginreference.DefaultRegistryHost + ":443/"
 	if next, err := pluginregistry.ReselectDefault(t.Context(), pin, reason, options); err != nil || next.Version != "v1.0.0" {
 		t.Fatalf("reselected=%+v error=%v", next, err)
 	}
