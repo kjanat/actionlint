@@ -5,7 +5,7 @@ package referenceresolver
 import (
 	"unsafe"
 
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // ResolutionShape is used for storage in variant or result types.

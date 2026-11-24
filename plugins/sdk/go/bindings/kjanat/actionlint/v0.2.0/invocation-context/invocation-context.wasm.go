@@ -3,7 +3,7 @@
 package invocationcontext
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // This file contains wasmimport and wasmexport declarations for "kjanat:actionlint@0.2.0".

@@ -3,7 +3,7 @@
 package referenceresolver
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // Exports represents the caller-defined exports from "kjanat:actionlint-resolver/reference-resolver@0.1.0".

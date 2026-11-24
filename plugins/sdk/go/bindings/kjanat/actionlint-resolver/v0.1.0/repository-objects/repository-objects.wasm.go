@@ -3,7 +3,7 @@
 package repositoryobjects
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // This file contains wasmimport and wasmexport declarations for "kjanat:actionlint-resolver@0.1.0".

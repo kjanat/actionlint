@@ -7,7 +7,7 @@
 package repositoryobjects
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // Repository represents the record "kjanat:actionlint-resolver/repository-objects@0.1.0#repository".
