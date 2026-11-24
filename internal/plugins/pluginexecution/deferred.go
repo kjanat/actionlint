@@ -153,20 +153,34 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 		b.failure = nil
 		b.retryAfter = time.Time{}
 	}
-	if b.next != nil {
+	for b.next != nil {
 		next := *b.next
 		b.next = nil
-		if !next.Deferrable() {
+		descriptor, rejected := b.lazyDescriptor(next)
+		b.pin = next
+		if rejected == nil {
+			b.descriptor, b.skipped = descriptor, false
 			return nil
 		}
-		descriptor, err := deferredDescriptor(next, b.reserved)
-		if err != nil {
-			network.Warn(ctx, "Skipping default plugin: "+err.Error())
-			return nil
+		if err := b.skip(ctx, rejected); err != nil {
+			return err
 		}
-		b.pin, b.descriptor, b.skipped = next, descriptor, false
 	}
 	return nil
+}
+
+func (b *deferredScriptEngine) lazyDescriptor(next pluginregistry.Pin) (scriptengine.Descriptor, *component.AdmissionError) {
+	if !next.Deferrable() {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: errors.New("default plugin release has no script-only metadata to load on demand")}
+	}
+	descriptor, err := deferredDescriptor(next, b.reserved)
+	if err != nil {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: err}
+	}
+	if descriptor.Engine != b.descriptor.Engine || descriptor.Rule.Name != b.descriptor.Rule.Name {
+		return scriptengine.Descriptor{}, &component.AdmissionError{Err: fmt.Errorf("default plugin release provides script engine %q with rule %q; the session registered engine %q with rule %q", descriptor.Engine, descriptor.Rule.Name, b.descriptor.Engine, b.descriptor.Rule.Name)}
+	}
+	return descriptor, nil
 }
 
 func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Artifact) (deferredBackend, error) {
