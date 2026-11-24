@@ -461,6 +461,8 @@ actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
 ShellCheck and Ruff run as registry Wasm plugins by default. The first online check downloads them.
+When no published release of a default plugin loads in this actionlint, the check skips that plugin
+and prints a warning.
 Use `--tool shellcheck` or `--tool ruff` to run an installed native executable. See
 [Ruff configuration](config.md#ruff) for Python checks.
 
@@ -797,6 +799,13 @@ abort before any write.
 version to the config's `plugins` list. Commit that file. `plugin sync` restores exact pins, and
 `plugin update` refreshes declared versions. See
 [plugin installation](plugins.md#install-from-the-registry).
+
+`plugin versions owner/repo` marks each published tag `compatible` or `incompatible` with this
+actionlint. An incompatible tag shows the interface that this actionlint cannot load. A tag is
+`unknown` when the registry lists no imports and exports for it. `plugin install` and
+`plugin update` without an exact tag select the highest release that this actionlint can load.
+Install, update and sync read each downloaded WebAssembly component and fail on a component that
+this actionlint cannot load. Install and update then leave the config unchanged.
 
 `--plugin PATH` loads a WebAssembly plugin or a replacement resolver component. A `.json` path
 loads a [local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a

@@ -58,12 +58,13 @@ Options can come before or after filenames. **--** makes later arguments filenam
 : Remove the whole cache except plugin revocation records.
 
 **plugin search** [*QUERY*], **plugin versions** *PLUGIN*
-: Search the registry for plugins, or list the published tags of one plugin.
+: Search the registry for plugins, or list the published tags of one plugin and whether this
+actionlint can load each tag.
 
 **plugin install** [*PLUGIN*] [**--version** *TAG|latest*]
 : Add a plugin to the config's **plugins** list and download it. Without a name, the command
-installs every declared plugin. The default version is the highest stable release. Prereleases
-need an exact tag.
+installs every declared plugin. The default version is the highest stable release that this
+actionlint can load. Prereleases need an exact tag.
 
 **plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
 : List, update or remove declared plugins, or download declared releases into the cache. Use

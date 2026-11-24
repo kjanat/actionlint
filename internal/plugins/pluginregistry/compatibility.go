@@ -23,6 +23,30 @@ func (e *IncompatibleError) Error() string {
 
 func (e *IncompatibleError) Unwrap() error { return e.Err }
 
+type SupportStatus string
+
+const (
+	SupportCompatible   SupportStatus = "compatible"
+	SupportIncompatible SupportStatus = "incompatible"
+	SupportUnknown      SupportStatus = "unknown"
+)
+
+type HostSupport struct {
+	Status SupportStatus `json:"status"`
+	Reason string        `json:"reason,omitempty"`
+}
+
+func (v Version) HostSupport() HostSupport {
+	interfaces, ok := v.interfaces()
+	if !ok {
+		return HostSupport{Status: SupportUnknown}
+	}
+	if err := component.CheckInterfaces(interfaces); err != nil {
+		return HostSupport{Status: SupportIncompatible, Reason: err.Error()}
+	}
+	return HostSupport{Status: SupportCompatible}
+}
+
 func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) error {
 	if pin.Kind != artifacts.Component {
 		return nil

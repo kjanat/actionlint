@@ -45,8 +45,9 @@ plugins:
 ```
 
 Install resolves an alias and writes the canonical package and exact version to the config.
-Without `@version`, or with `--version latest`, install selects the highest stable semantic version.
-A plugin with only prereleases gets its newest prerelease.
+Without `@version`, or with `--version latest`, install selects the highest stable semantic version
+that this actionlint can load. A plugin with only prereleases gets its newest loadable prerelease.
+`plugin versions` marks each tag `compatible`, `incompatible` or `unknown`.
 Reinstalling keeps the declared version and registry.
 Use an object for a custom registry:
 
