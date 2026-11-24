@@ -29,13 +29,13 @@ func InferReferences(all []*finding.Finding, path string, references map[string]
 		if at, exists := refs.Positions[[2]int{finding.Start.Line, finding.Start.Column}]; exists {
 			ref = at
 		}
-		owner := finding.Owner
-		if owner != nil && !finding.Source.RawScript {
-			if job, exists := refs.Jobs[strings.ToLower(owner.Job)]; exists {
+		site := finding.Site
+		if site != nil && !finding.Source.RawScript {
+			if job, exists := refs.Jobs[strings.ToLower(site.Job)]; exists {
 				ref = job
 			}
-			if owner.Step != nil {
-				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Column}]; exists {
+			if site.Step != nil {
+				if step, exists := refs.Positions[[2]int{site.Step.Line, site.Step.Column}]; exists {
 					ref = step
 				}
 			}

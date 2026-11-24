@@ -46,7 +46,7 @@ func (ctx *deepCopyContext) deepCopyFinding(in Finding) Finding {
 	out.Source = ctx.deepCopyDiagnosticSource_0501a5497ec72587ae9bdd2ba5c771c1(in.Source)
 	out.SuppressionOrigin = ctx.deepCopyValue_b4a5b1b397d5a381792c663e0ca0b89d(in.SuppressionOrigin)
 	out.IgnoreOrigin = ctx.deepCopyValue_cade73ba6682831b20b4b140993cb18b(in.IgnoreOrigin)
-	out.Owner = ctx.deepCopyValue_488883a8c9e16b542a80654da9eff6cf(in.Owner)
+	out.Site = ctx.deepCopyValue_2e2706e8ba5f9b26fb8cba3ed9ebbd32(in.Site)
 	out.MetadataIdentity = ctx.deepCopyValue_42b6878d647d4ff2cce39f1e3f24130d(in.MetadataIdentity)
 	return out
 }
@@ -91,12 +91,12 @@ func (ctx *deepCopyContext) deepCopyValue_cade73ba6682831b20b4b140993cb18b(in *w
 	return (*workflows.IgnoreOrigin)(&out)
 }
 
-func (ctx *deepCopyContext) deepCopyValue_488883a8c9e16b542a80654da9eff6cf(in *Owner) *Owner {
+func (ctx *deepCopyContext) deepCopyValue_2e2706e8ba5f9b26fb8cba3ed9ebbd32(in *Site) *Site {
 	if in == nil {
 		return nil
 	}
-	out := ctx.deepCopyOwner_04cdcfd326366ef897e9d060f96b402e(*in)
-	return (*Owner)(&out)
+	out := ctx.deepCopySite_99b17ae6bd3ed8cc2669ea23c030dc76(*in)
+	return (*Site)(&out)
 }
 
 func (ctx *deepCopyContext) deepCopyValue_42b6878d647d4ff2cce39f1e3f24130d(in *MetadataIdentity) *MetadataIdentity {
@@ -147,7 +147,7 @@ func (ctx *deepCopyContext) deepCopyIgnoreOrigin_ce6258af93770ac5e14442ea11fa101
 	return out
 }
 
-func (ctx *deepCopyContext) deepCopyOwner_04cdcfd326366ef897e9d060f96b402e(in Owner) Owner {
+func (ctx *deepCopyContext) deepCopySite_99b17ae6bd3ed8cc2669ea23c030dc76(in Site) Site {
 	out := in
 	out.Step = ctx.deepCopyValue_634b2e8e9c575f1e53c12b5d6b315388(in.Step)
 	return out

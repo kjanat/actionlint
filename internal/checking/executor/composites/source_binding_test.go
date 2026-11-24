@@ -142,8 +142,8 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	units := result.Batch.Scripts
-	if len(units) != 2 || units[0].Reference != units[1].Reference || units[0].Owner == nil || units[1].Owner == nil || units[0].Owner == units[1].Owner {
-		t.Fatalf("depth-two invocations did not retain one declaration with distinct owners: %+v", units)
+	if len(units) != 2 || units[0].Reference != units[1].Reference || units[0].Site == nil || units[1].Site == nil || units[0].Site == units[1].Site {
+		t.Fatalf("depth-two invocations did not retain one declaration with distinct sites: %+v", units)
 	}
 	wantJobs := map[string]bool{"Release": false, "Verify": false}
 	for i, unit := range units {
@@ -151,7 +151,7 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 		_, expectedJob := wantJobs[unit.Origin.Job]
 		graphScript, existsInGraph := result.Batch.CallGraph.Script(unit.Occurrence)
 		path, hasPath := result.Batch.CallGraph.Path(graphScript.Owner)
-		if !exists || !existsInGraph || !hasPath || len(path) != 2 || fact.JobID != unit.Origin.Job || unit.Owner.Job != unit.Origin.Job || !expectedJob {
+		if !exists || !existsInGraph || !hasPath || len(path) != 2 || fact.JobID != unit.Origin.Job || unit.Site.Job != unit.Origin.Job || !expectedJob {
 			t.Fatalf("script %d lost source-derived original job ID: unit=%+v fact=%+v", i, unit, fact)
 		}
 		wantJobs[unit.Origin.Job] = true
@@ -183,7 +183,7 @@ func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
 		t.Fatalf("standalone nested scripts = %d, want 1", len(units))
 	}
 	fact, exists := result.Batch.Fact(0, false)
-	if !exists || units[0].Origin.Job != "" || units[0].Owner.Job != "" || fact.JobID != "" {
+	if !exists || units[0].Origin.Job != "" || units[0].Site.Job != "" || fact.JobID != "" {
 		t.Fatalf("standalone nested script fabricated a job identity: unit=%+v fact=%+v", units[0], fact)
 	}
 }
@@ -255,7 +255,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	batch := prepareCollectedScripts(t, analysis)
 	unit := batch.Scripts[0]
 	fact, exists := batch.Fact(0, false)
-	if !exists || unit.Origin.Job != "Build" || unit.Owner.Job != "Build" || fact.JobID != "Build" {
+	if !exists || unit.Origin.Job != "Build" || unit.Site.Job != "Build" || fact.JobID != "Build" {
 		t.Fatalf("nested prepared output trusted mutable collector job state: unit=%+v fact=%+v", unit, fact)
 	}
 }

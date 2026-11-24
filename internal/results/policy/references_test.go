@@ -35,20 +35,20 @@ func TestInferReferencesPrefersExplicitStepOverIgnoreOrigin(t *testing.T) {
 	explicit := sourcetext.Reference{Document: "provider", Node: "explicit"}
 	for _, tc := range []struct {
 		name      string
-		owner     *finding.Owner
+		site      *finding.Site
 		reference *sourcetext.Reference
 		raw       bool
 		want      sourcetext.Reference
 	}{
-		{name: "explicit owner", owner: &finding.Owner{Job: "test", Step: second.Pos}, want: secondRef},
+		{name: "explicit site", site: &finding.Site{Job: "test", Step: second.Pos}, want: secondRef},
 		{name: "ignore alone", want: firstRef},
-		{name: "raw source", owner: &finding.Owner{Job: "test", Step: second.Pos}, raw: true, want: firstRef},
-		{name: "provider reference", owner: &finding.Owner{Job: "test", Step: second.Pos}, reference: &explicit, want: explicit},
+		{name: "raw source", site: &finding.Site{Job: "test", Step: second.Pos}, raw: true, want: firstRef},
+		{name: "provider reference", site: &finding.Site{Job: "test", Step: second.Pos}, reference: &explicit, want: explicit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			item := &finding.Finding{
-				Start: *first.Pos, Owner: tc.owner,
+				Start: *first.Pos, Site: tc.site,
 				IgnoreOrigin: new(*origin), Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
 			InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
@@ -73,7 +73,7 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 	refs := facts.Index("ci.yml", content, workflow, false)
 	item := &finding.Finding{
 		Start: sourcetext.Position{Line: 1, Column: 1},
-		Owner: &finding.Owner{Job: job.ID.Value},
+		Site:  &finding.Site{Job: job.ID.Value},
 	}
 	InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
 	want := refs.Jobs["build"]

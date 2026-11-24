@@ -108,7 +108,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			if d.Path == unit.Path {
 				finding.Source.Content = unit.Content
 			}
-			finding.IgnoreOrigin, finding.Owner = unit.Origin, unit.Owner
+			finding.IgnoreOrigin, finding.Site = unit.Origin, unit.Site
 			findings = append(findings, finding)
 		}
 		if err != nil {

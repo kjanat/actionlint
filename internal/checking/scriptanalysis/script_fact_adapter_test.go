@@ -295,7 +295,7 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 				t.Fatalf("unit selection changed: calls=%d findings=%v error=%v", calls, findings, err)
 			}
 			for i, finding := range findings {
-				if finding.Path != units[i].Path || !reflect.DeepEqual(finding.Owner, units[i].Owner) || !reflect.DeepEqual(finding.IgnoreOrigin, units[i].Origin) {
+				if finding.Path != units[i].Path || !reflect.DeepEqual(finding.Site, units[i].Site) || !reflect.DeepEqual(finding.IgnoreOrigin, units[i].Origin) {
 					t.Fatalf("shared defaults lost display/provenance: %+v", finding)
 				}
 			}
@@ -425,7 +425,7 @@ func TestFactAnalyzerPreservesForeignDiagnosticPath(t *testing.T) {
 		t.Fatalf("foreign findings lost: %v %v", findings, err)
 	}
 	for _, finding := range findings {
-		if finding.Path != "sourced/helper.sh" || finding.Source.Content != nil || finding.Snippet != "captured foreign snippet" || finding.Owner == nil || finding.IgnoreOrigin == nil {
+		if finding.Path != "sourced/helper.sh" || finding.Source.Content != nil || finding.Snippet != "captured foreign snippet" || finding.Site == nil || finding.IgnoreOrigin == nil {
 			t.Fatalf("unit provenance overwrote foreign diagnostic source: %+v", finding)
 		}
 	}

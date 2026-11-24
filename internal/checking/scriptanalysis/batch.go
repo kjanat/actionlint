@@ -34,7 +34,7 @@ type Unit struct {
 	Path        string
 	Content     []byte
 	Origin      *workflows.IgnoreOrigin
-	Owner       *finding.Owner
+	Site        *finding.Site
 	Scope       *Scope
 	// Execution is nil when the analysis did not resolve the run's shell and working directory.
 	Execution    *scripts.Execution

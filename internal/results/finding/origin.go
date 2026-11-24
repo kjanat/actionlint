@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-type Owner struct {
+type Site struct {
 	Job  string
 	Step *sourcetext.Position
 }

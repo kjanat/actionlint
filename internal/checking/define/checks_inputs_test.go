@@ -94,7 +94,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			}
 			if scope == "step" {
 				findings := adapter.Errs()
-				if len(findings) != 1 || findings[0].Rule != native.Name || findings[0].Owner == nil || findings[0].Owner.Job != "build" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "build" {
+				if len(findings) != 1 || findings[0].Rule != native.Name || findings[0].Site == nil || findings[0].Site.Job != "build" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "build" {
 					t.Fatalf("step finding lost its declaring job: %+v", findings)
 				}
 			}

@@ -25,7 +25,7 @@ type Finding struct {
 	// reconciled across all invocations of the same captured source before publication.
 	UnusedSuppressionRule string
 	IgnoreOrigin          *workflows.IgnoreOrigin
-	Owner                 *Owner
+	Site                  *Site
 	MetadataIdentity      *MetadataIdentity
 	MetadataParseSource   sourcetext.Revision
 }

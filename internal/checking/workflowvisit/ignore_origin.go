@@ -14,8 +14,8 @@ func VisitWithOrigin(pass Pass, origin *workflows.IgnoreOrigin, hasIgnores bool,
 	}
 	before := rule.FindingCount()
 	defer rule.AnnotateSince(before, func(item *finding.Finding) {
-		if item.Owner == nil && item.Source.Content == nil {
-			item.Owner = &finding.Owner{Job: origin.Job, Step: origin.StepPosition}
+		if item.Site == nil && item.Source.Content == nil {
+			item.Site = &finding.Site{Job: origin.Job, Step: origin.StepPosition}
 		}
 	})
 	// Metadata can have file-specific ignores even when its caller has none.
