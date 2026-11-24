@@ -50,9 +50,8 @@ export interface ScriptRequest {
 }
 
 /**
- * Environment-name behavior for one possible execution OS. Windows merges names
- * without case, and Bash looks up the exported spelling exactly. A runner or an
- * earlier command can still supply missing names through GITHUB_ENV.
+ * Windows merges environment names without case. Bash looks up the exported
+ * spelling exactly. GITHUB_ENV can supply missing names.
  */
 export interface ScriptEnvironment {
 	operating_system: 'linux' | 'macos' | 'windows';
@@ -205,9 +204,8 @@ export interface ProviderIdentity {
 	severities?: Record<string, Severity>;
 	/**
 	 * Host environment variable names copied verbatim into the provider process.
-	 * Defaults to none. Declare PATH when a callback launches another installed
-	 * command, and TEMP/TMP when it needs the host's temporary directory. Windows
-	 * tools may also need SystemRoot, COMSPEC or PATHEXT.
+	 * Defaults to none. Declare PATH to launch installed commands, TEMP/TMP for the
+	 * temp directory, and SystemRoot, COMSPEC or PATHEXT for Windows tools.
 	 */
 	env_passthrough?: string[];
 	/**
