@@ -261,7 +261,7 @@ func TestRequestedPlugin(t *testing.T) {
 func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
-	r.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	r.Add(t, "v1.0.0", fixtureregistry.RuntimeFailureComponent())
 	t.Chdir(t.TempDir())
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
 	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--config", config, "--json")

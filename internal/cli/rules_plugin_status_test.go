@@ -15,7 +15,7 @@ import (
 func TestRulesPluginFailureExitStatus(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+	registry.Add(t, "v1.0.0", fixtureregistry.RuntimeFailureComponent())
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -33,9 +33,9 @@ func TestRulesPluginFailureExitStatus(t *testing.T) {
 		args          []string
 		status        int
 	}{
-		{"automatic", "export", nil, 3},
-		{"config", "export", []string{"--config", filepath.Join(root, ".github", "actionlint.yaml")}, 3},
-		{"explicit invalid", "export", []string{"--plugin", lock.Plugins[0].Source()}, 2},
+		{"automatic", "unreachable", nil, 3},
+		{"config", "unreachable", []string{"--config", filepath.Join(root, ".github", "actionlint.yaml")}, 3},
+		{"explicit invalid", "unreachable", []string{"--plugin", lock.Plugins[0].Source()}, 2},
 		{"explicit missing", "missing.wasm", []string{"--plugin", filepath.Join(root, "missing.wasm")}, 2},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {

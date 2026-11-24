@@ -129,3 +129,44 @@ func TestLoadRejectsMetadataForAnotherInterfaceVersion(t *testing.T) {
 		t.Fatalf("error=%v, want %q", err, want)
 	}
 }
+
+func TestCheckComponentMatchesLoad(t *testing.T) {
+	t.Parallel()
+	loadable, err := os.ReadFile(filepath.Join("testdata", "plugins", "no-sudo.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{
+		"loadable":           loadable,
+		"analyzer name only": wasmcomponent.Build(nil, []string{AnalyzerInterface}, nil),
+		"core module":        {0, 'a', 's', 'm', 1, 0, 0, 0},
+		"not WebAssembly":    []byte("plugin"),
+	} {
+		path := filepath.Join(t.TempDir(), "plugin.wasm")
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		roles, checked := CheckComponent(data)
+		plugin, loaded := LoadComponentPlugin(t.Context(), path, Options{})
+		if loaded == nil {
+			if err := plugin.Close(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		switch {
+		case checked == nil && loaded == nil:
+			if roles != (Roles{Analyzer: AnalyzerInterface}) || plugin.Roles() != roles {
+				t.Errorf("%s: selection roles %+v, load roles %+v", name, roles, plugin.Roles())
+			}
+		case checked == nil || loaded == nil || !strings.Contains(loaded.Error(), stableReason(checked)):
+			t.Errorf("%s: selection error %v, load error %v", name, checked, loaded)
+		}
+	}
+}
+
+// stableReason drops the missing export name, which the subtype checker
+// picks from a map.
+func stableReason(err error) string {
+	reason, _, _ := strings.Cut(err.Error(), "`")
+	return reason
+}

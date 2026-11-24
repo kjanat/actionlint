@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"github.com/kjanat/wacogo/wasmparser"
 )
 
@@ -38,6 +39,45 @@ func CheckInterfaces(interfaces Interfaces) (Roles, error) {
 		return Roles{}, err
 	}
 	return roles.names(), nil
+}
+
+type admission struct {
+	roles    extensionRoleSet
+	required importRequirements
+	metadata []byte
+}
+
+func CheckComponent(data []byte) (Roles, error) {
+	admitted, err := admit(data)
+	if err != nil {
+		return Roles{}, err
+	}
+	return admitted.roles.names(), nil
+}
+
+func admit(data []byte) (admission, error) {
+	kind, metadata, err := artifacts.Sniff(data)
+	if err != nil {
+		return admission{}, err
+	}
+	if kind != artifacts.Component {
+		return admission{}, errors.New("plugin requires a WebAssembly component")
+	}
+	interfaces, componentType, err := parseInterfaces(data)
+	if err != nil {
+		return admission{}, err
+	}
+	roles, required, err := negotiate(interfaces)
+	if err != nil {
+		return admission{}, err
+	}
+	if err := checkDeclaredInterface(metadata, roles.names()); err != nil {
+		return admission{}, err
+	}
+	if err := checkRoleTypes(componentType, roles); err != nil {
+		return admission{}, err
+	}
+	return admission{roles: roles, required: required, metadata: metadata}, nil
 }
 
 func (r extensionRoleSet) names() Roles {

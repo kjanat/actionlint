@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
-	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
@@ -62,9 +62,9 @@ func newOCICandidate(t *testing.T, kind artifacts.ArtifactFormat) ociCandidateFi
 		contract = "wasm-core-json/99"
 		data = []byte{0, 97, 115, 109, 1, 0, 0, 0}
 	case artifacts.Component:
-		metadata = fmt.Appendf(metadata, `,"transport":"wasm-component","interface":"publisher:check/analyzer@9.0.0","wit_sha256":%q}`, strings.Repeat("b", 64))
-		contract = "publisher:check/analyzer@9.0.0#sha256=" + strings.Repeat("b", 64)
-		data = wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil)
+		metadata = fmt.Appendf(metadata, `,"transport":"wasm-component","interface":%q,"wit_sha256":%q}`, component.AnalyzerInterface, strings.Repeat("b", 64))
+		contract = component.AnalyzerInterface + "#sha256=" + strings.Repeat("b", 64)
+		data = fixtureregistry.ReplaceMetadata(fixtureregistry.AnalyzerComponent(), string(metadata))
 	case artifacts.ProviderManifest:
 		metadata = append(metadata, `,"transport":"process"}`...)
 		mediaType = artifacts.MediaTypeProviderManifest
@@ -72,7 +72,7 @@ func newOCICandidate(t *testing.T, kind artifacts.ArtifactFormat) ociCandidateFi
 	default:
 		t.Fatalf("unsupported fixture kind %q", kind)
 	}
-	if kind != artifacts.ProviderManifest {
+	if kind == artifacts.Core {
 		section := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
 		section = append(section, artifacts.MetadataSection...)
 		section = append(section, metadata...)

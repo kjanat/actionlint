@@ -140,3 +140,24 @@ func TestSelectionCacheBelongsToAcceptedInterfaces(t *testing.T) {
 		t.Fatalf("selection of another host was reused: %v", err)
 	}
 }
+
+func TestLatestChecksComponentTypes(t *testing.T) {
+	t.Parallel()
+	r := fixtureregistry.NewPluginRegistry(t)
+	r.OmitInterfaces()
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.Add(t, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+	client := registryClient(t, r)
+	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || pin.Version != "v1.0.0" {
+		t.Fatalf("latest=%+v error=%v", pin, err)
+	}
+	exact, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pluginregistry.Sync(t.Context(), pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{exact}}, fixtureAcquisition(r))
+	if _, ok := errors.AsType[*pluginregistry.IncompatibleError](err); !ok || !strings.Contains(err.Error(), "incompatible analyzer contract") {
+		t.Fatalf("sync accepted an analyzer without its functions: %v", err)
+	}
+}

@@ -18,13 +18,15 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -385,28 +387,7 @@ func (r *PluginRegistry) writeArtifact(t *testing.T, publisher PluginPublisher, 
 			}
 		}
 	}
-	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
-	section = append(section, []byte("actionlint.plugin")...)
-	section = append(section, metadata...)
-	data := bytes.Clone(wasm[:8])
-	// Replacing discovery metadata must leave embedded modules and components intact.
-	for rest := wasm[8:]; len(rest) > 0; {
-		original := rest
-		id := rest[0]
-		size, count := binary.Uvarint(rest[1:])
-		body := rest[1+count : 1+count+int(size)]
-		rest = rest[1+count+int(size):]
-		if id == 0 {
-			length, count := binary.Uvarint(body)
-			if string(body[count:count+int(length)]) == artifacts.MetadataSection {
-				continue
-			}
-		}
-		data = append(data, original[:len(original)-len(rest)]...)
-	}
-	data = append(data, 0)
-	data = binary.AppendUvarint(data, uint64(len(section)))
-	data = append(data, section...)
+	data := ReplaceMetadata(wasm, metadata)
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
 	artifactURL := "https://" + publisher.Name + "/releases/download/" + tag + "/" + asset
 	submission := fmt.Sprintf(`{"schema_version":1,"provider":"github","repository":%q,"tag":%q,"asset":%q,"sha256":%q,"kind":%q}`, repository, tag, asset, digest, kind)
@@ -487,11 +468,50 @@ func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte, aliases ...
 }
 
 func AnalyzerComponent() []byte {
-	return wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil)
+	return componentFixture("plugins", "no-sudo.wasm")
+}
+
+// RuntimeFailureComponent passes admission and traps when the host describes it.
+func RuntimeFailureComponent() []byte {
+	return componentFixture("contracts", "compatible-contract.wasm")
+}
+
+func componentFixture(path ...string) []byte {
+	_, source, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(append([]string{filepath.Dir(source), "..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata"}, path...)...))
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
 
 func (r *PluginRegistry) OmitInterfaces() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.omitInterfaces = true
+}
+
+func ReplaceMetadata(wasm []byte, metadata string) []byte {
+	section := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
+	section = append(section, artifacts.MetadataSection...)
+	section = append(section, metadata...)
+	data := bytes.Clone(wasm[:8])
+	// Replacing discovery metadata must leave embedded modules and components intact.
+	for rest := wasm[8:]; len(rest) > 0; {
+		original := rest
+		id := rest[0]
+		size, count := binary.Uvarint(rest[1:])
+		body := rest[1+count : 1+count+int(size)]
+		rest = rest[1+count+int(size):]
+		if id == 0 {
+			length, count := binary.Uvarint(body)
+			if string(body[count:count+int(length)]) == artifacts.MetadataSection {
+				continue
+			}
+		}
+		data = append(data, original[:len(original)-len(rest)]...)
+	}
+	data = append(data, 0)
+	data = binary.AppendUvarint(data, uint64(len(section)))
+	return append(data, section...)
 }

@@ -41,12 +41,9 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 
 func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits guestlimits.Limits, options Options) (*Plugin, error) {
 	path, data := artifact.Info.Source, artifact.Bytes
-	kind, staticMetadata, err := artifacts.Sniff(data)
+	admitted, err := admit(data)
 	if err != nil {
-		return nil, err
-	}
-	if kind != artifacts.Component {
-		return nil, errors.New("plugin requires a WebAssembly component")
+		return nil, fmt.Errorf("plugin %s: %w", path, err)
 	}
 	engine := sharedComponentCompilation.newEngine(ctx, limits)
 	p := &Plugin{
@@ -55,31 +52,18 @@ func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits gues
 		gate:   semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16},
 	}
-	if err := p.load(ctx, data, staticMetadata); err != nil {
+	if err := p.load(ctx, data, admitted); err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
 	return p, nil
 }
 
-func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
+func (p *Plugin) load(ctx context.Context, data []byte, admitted admission) error {
 	component, err := sharedComponentCompilation.load(ctx, p.engine, data)
 	if err != nil {
 		return err
 	}
-	interfaces, componentType, err := parseInterfaces(data)
-	if err != nil {
-		return err
-	}
-	roles, required, err := negotiate(interfaces)
-	if err != nil {
-		return err
-	}
-	if err := checkDeclaredInterface(staticMetadata, roles.names()); err != nil {
-		return err
-	}
-	if err := checkRoleTypes(componentType, roles); err != nil {
-		return err
-	}
+	roles, required, staticMetadata := admitted.roles, admitted.required, admitted.metadata
 	p.roles = roles.names()
 	p.component = component
 	p.referenceResolver = roles.referenceResolver

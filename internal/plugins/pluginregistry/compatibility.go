@@ -73,11 +73,7 @@ func checkArtifact(pin Pin, artifact *artifacts.Artifact) error {
 	if pin.Kind != artifacts.Component {
 		return nil
 	}
-	interfaces, err := component.ReadInterfaces(artifact.Bytes)
-	if err == nil {
-		_, err = component.CheckInterfaces(interfaces)
-	}
-	if err != nil {
+	if _, err := component.CheckComponent(artifact.Bytes); err != nil {
 		return &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
 	}
 	return nil
