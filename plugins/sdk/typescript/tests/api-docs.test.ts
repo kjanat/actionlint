@@ -64,7 +64,7 @@ document.rule.name;
 				const text = documentation(position);
 				assert.match(text, /Host environment variable names/, `${name} hover at ${position}`);
 				assert.match(text, /Defaults to none/);
-				assert.match(text, /launches another installed command/);
+				assert.match(text, /Declare PATH to launch installed commands/);
 			}
 		}
 		assert.match(documentation(source.indexOf('document.documentKinds') + 'document.'.length), /Defaults to both/);
