@@ -17,6 +17,7 @@ flowchart LR
     G --> Z
     %% renovate: depName=github.com/kjanat/go-modules/cm
     E[Go plugin SDK] --> CM["kjanat/go-modules/cm<br/>v0.4.0"]
+    %% renovate: depName=go.bytecodealliance.org/cm
     G --> U["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
     CM --> U
     %% renovate: depName=github.com/invopop/jsonschema
@@ -28,9 +29,10 @@ flowchart LR
     A -. indirect pin .-> P
 ```
 
-| Fork                                                      | Upstream                                                                      | Role                   |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------- |
-| [kjanat/go-yaml/v4](https://github.com/kjanat/go-yaml)    | [yaml/go-yaml](https://github.com/yaml/go-yaml)                               | YAML decoding          |
-| [kjanat/wacogo](https://github.com/kjanat/wacogo)         | [partite-ai/wacogo](https://github.com/partite-ai/wacogo)                     | Component execution    |
-| [kjanat/go-modules](https://github.com/kjanat/go-modules) | [bytecodealliance/go-modules](https://github.com/bytecodealliance/go-modules) | WIT binding generation |
-| [kjanat/wazero](https://github.com/kjanat/wazero)         | [wazero/wazero](https://github.com/wazero/wazero)                             | Core Wasm execution    |
+| Fork                                                                        | Upstream                                                                                      | Role                   |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------- |
+| [kjanat/go-yaml/v4](https://github.com/kjanat/go-yaml)                      | [yaml/go-yaml](https://github.com/yaml/go-yaml)                                               | YAML decoding          |
+| [kjanat/wacogo](https://github.com/kjanat/wacogo)                           | [partite-ai/wacogo](https://github.com/partite-ai/wacogo)                                     | Component execution    |
+| [kjanat/go-modules](https://github.com/kjanat/go-modules)                   | [bytecodealliance/go-modules](https://github.com/bytecodealliance/go-modules)                 | WIT binding generation |
+| [kjanat/go-modules/cm](https://github.com/kjanat/go-modules/tree/master/cm) | [bytecodealliance/go-modules/cm](https://github.com/bytecodealliance/go-modules/tree/main/cm) | Component Model types  |
+| [kjanat/wazero](https://github.com/kjanat/wazero)                           | [wazero/wazero](https://github.com/wazero/wazero)                                             | Core Wasm execution    |

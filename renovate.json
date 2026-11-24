@@ -87,6 +87,17 @@
       "minimumGroupSize": 2
     },
     {
+      "matchDepNames": [
+        "go.bytecodealliance.org/cm"
+      ],
+      "enabled": true,
+      "overrideDatasource": "github-tags",
+      "overridePackageName": "bytecodealliance/go-modules",
+      "extractVersion": "^cm/(?<version>v.+)$",
+      "groupName": "go.bytecodealliance.org/cm",
+      "minimumGroupSize": 2
+    },
+    {
       "matchDatasources": [
         "go"
       ],
