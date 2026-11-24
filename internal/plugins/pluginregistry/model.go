@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 )
 
-const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
+const DefaultURL = pluginreference.DefaultRegistry
 
 var (
 	namePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)

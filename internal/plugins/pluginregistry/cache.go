@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
-	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -130,8 +129,16 @@ func (c *Client) rejection(ctx context.Context, pin Pin) (string, bool, error) {
 	return record.Reason, true, nil
 }
 
-func Reselect(ctx context.Context, pin Pin, reason *component.AdmissionError, acquisition dependencycache.Acquisition) (Pin, error) {
-	c, err := New(pin.Registry, acquisition)
+// ReselectDefault records a rejection and retries selection against the built-in registry.
+func ReselectDefault(ctx context.Context, pin Pin, reason *component.AdmissionError, options StatusOptions) (Pin, error) {
+	if !SameRegistry(pin.Registry, DefaultURL) {
+		return Pin{}, errors.New("rejected default plugin pin belongs to another registry")
+	}
+	u, err := registryURL(DefaultURL)
+	if err != nil {
+		return Pin{}, err
+	}
+	c, err := newClient(u, options.Network, options)
 	if err != nil {
 		return Pin{}, err
 	}

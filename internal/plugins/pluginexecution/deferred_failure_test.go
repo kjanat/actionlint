@@ -28,7 +28,7 @@ func deferredUnavailableFixture(t *testing.T) (*deferredScriptEngine, *fixturere
 	}
 	registry.DeleteFile(pin.URL)
 	registry.ResetRequests()
-	return &deferredScriptEngine{gate: make(chan struct{}, 1), pin: pin, acquisition: acquisition}, registry
+	return &deferredScriptEngine{gate: make(chan struct{}, 1), pin: pin, status: pluginregistry.StatusOptions{Acquisition: acquisition}}, registry
 }
 
 func TestDeferredScriptEngineCachesAcquisitionFailure(t *testing.T) {
@@ -54,7 +54,7 @@ func TestDeferredScriptEngineCachesAcquisitionFailure(t *testing.T) {
 func TestDeferredScriptEngineRetriesCanceledAcquisition(t *testing.T) {
 	t.Parallel()
 	engine, registry := deferredUnavailableFixture(t)
-	transport, ok := engine.acquisition.Connections.Transport.(*http.Transport)
+	transport, ok := engine.status.Acquisition.Connections.Transport.(*http.Transport)
 	if !ok {
 		t.Fatal("fixture does not provide HTTP transport")
 	}
@@ -71,7 +71,7 @@ func TestDeferredScriptEngineRetriesCanceledAcquisition(t *testing.T) {
 		}
 		return original(ctx, network, address)
 	}
-	engine.acquisition.Connections.Transport = transport
+	engine.status.Acquisition.Connections.Transport = transport
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { _, err := engine.get(ctx); done <- err }()
@@ -91,7 +91,7 @@ func TestDeferredScriptEngineRetriesCanceledAcquisition(t *testing.T) {
 func TestDeferredScriptEngineCachesInternalTimeout(t *testing.T) {
 	t.Parallel()
 	engine, _ := deferredUnavailableFixture(t)
-	transport, ok := engine.acquisition.Connections.Transport.(*http.Transport)
+	transport, ok := engine.status.Acquisition.Connections.Transport.(*http.Transport)
 	if !ok {
 		t.Fatal("fixture does not provide HTTP transport")
 	}
@@ -103,7 +103,7 @@ func TestDeferredScriptEngineCachesInternalTimeout(t *testing.T) {
 		<-ctx.Done()
 		return nil, ctx.Err()
 	}
-	engine.acquisition.Connections.Transport = transport
+	engine.status.Acquisition.Connections.Transport = transport
 	var first error
 	for range 5 {
 		_, err := engine.get(t.Context())

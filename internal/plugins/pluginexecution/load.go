@@ -26,6 +26,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
@@ -77,7 +78,9 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 				loaded.SkippedTools = append(loaded.SkippedTools, ids[index])
 				continue
 			}
-			engine, err := newDeferredScriptEngine(pin, sources.Acquisition, reserved)
+			engine, err := newDeferredScriptEngine(pin, pluginregistry.StatusOptions{
+				Acquisition: sources.Acquisition, Network: sources.DefaultRegistryNetwork,
+			}, reserved)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}

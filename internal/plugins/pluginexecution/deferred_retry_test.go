@@ -44,7 +44,7 @@ func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := newDeferredScriptEngine(pin, acquisition, rule.Names{})
+	engine, err := newDeferredScriptEngine(pin, pluginregistry.StatusOptions{Acquisition: acquisition}, rule.Names{})
 	if err != nil {
 		t.Fatal(err)
 	}

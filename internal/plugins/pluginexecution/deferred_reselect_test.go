@@ -47,7 +47,7 @@ func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
 	if metadata, err = json.Marshal(declared); err != nil {
 		t.Fatal(err)
 	}
-	publisher := fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: fixtureregistry.FixtureRegistryURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10, Metadata: metadata}
+	publisher := fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: pluginregistry.DefaultURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10, Metadata: metadata}
 	registry.AddPlugin(t, publisher, "v1.0.0", script)
 	publisher.Metadata = nil
 	versions := []string{"v1.0.0"}
@@ -58,7 +58,7 @@ func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
 	}
 	registry.PublishPlugin(t, publisher, versions...)
 	acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	client, err := pluginregistry.New(pluginregistry.DefaultURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition}
+	engine := &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, status: pluginregistry.StatusOptions{Acquisition: acquisition}}
 	t.Cleanup(func() {
 		if err := engine.Close(context.WithoutCancel(t.Context())); err != nil {
 			t.Error(err)
@@ -239,7 +239,7 @@ func TestRevokedReselectedReleaseBlocksAnalysis(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture.registry.SetFile(fixtureregistry.FixtureRegistryURL+"statuses.json", data)
+	fixture.registry.SetFile(pluginregistry.DefaultURL+"statuses.json", data)
 	if _, err := fixture.client.RefreshStatuses(t.Context()); err != nil {
 		t.Fatal(err)
 	}
