@@ -23,8 +23,9 @@ import (
 )
 
 type deferredReselection struct {
-	engine *deferredScriptEngine
-	client *pluginregistry.Client
+	engine   *deferredScriptEngine
+	client   *pluginregistry.Client
+	registry *fixtureregistry.PluginRegistry
 }
 
 func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
@@ -82,7 +83,7 @@ func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
 			t.Error(err)
 		}
 	})
-	return deferredReselection{engine: engine, client: client}
+	return deferredReselection{engine: engine, client: client, registry: registry}
 }
 
 func checkSkipped(ctx context.Context, t *testing.T, engine *deferredScriptEngine, session *network.Session, want string) {
@@ -211,5 +212,38 @@ func TestReselectedReleaseWithReservedRuleIsRejected(t *testing.T) {
 	}
 	if !fixture.engine.skipped || fixture.engine.next != nil {
 		t.Fatalf("skipped=%t next=%v", fixture.engine.skipped, fixture.engine.next)
+	}
+}
+
+func TestRevokedReselectedReleaseBlocksAnalysis(t *testing.T) {
+	t.Parallel()
+	fixture := newDeferredReselection(t, wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+	ctx, session := network.WithSession(t.Context(), network.Options{})
+	checkSkipped(ctx, t, fixture.engine, session, "incompatible analyzer contract")
+	if err := fixture.engine.beginAnalysis(ctx, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if backend, err := fixture.engine.get(ctx); err != nil || backend == nil {
+		t.Fatalf("reselected release: backend=%v error=%v", backend, err)
+	}
+	pin := fixture.engine.pin
+	status := pluginregistry.ReleaseStatus{
+		Name: pin.Name, Version: pin.Version, SHA256: pin.SHA256, Status: pluginregistry.ReleaseRevoked,
+		Reason: "Publisher revoked this artifact", ChangedAt: time.Now().UTC(),
+		Actor: pluginregistry.StatusActor{
+			Kind: "registry-admin", ID: "123", Name: "maintainer",
+			Workflow: "owner/registry/.github/workflows/status.yml@refs/heads/master", RunID: "10:1",
+		},
+	}
+	data, err := json.Marshal(pluginregistry.StatusSnapshot{SchemaVersion: 1, Releases: []pluginregistry.ReleaseStatus{status}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.registry.SetFile(fixtureregistry.FixtureRegistryURL+"statuses.json", data)
+	if _, err := fixture.client.RefreshStatuses(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.engine.beginAnalysis(ctx, time.Now()); err == nil || !strings.Contains(err.Error(), "revoked") {
+		t.Fatalf("revoked reselected release analysis error=%v", err)
 	}
 }

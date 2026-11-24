@@ -39,6 +39,7 @@ type deferredScriptEngine struct {
 	reserved    rule.Names
 	skipped     bool
 	next        *pluginregistry.Pin
+	reselected  bool
 	closed      bool
 }
 
@@ -159,14 +160,17 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 		descriptor, rejected := b.lazyDescriptor(next)
 		b.pin = next
 		if rejected == nil {
-			b.descriptor, b.skipped = descriptor, false
-			return nil
+			b.descriptor, b.skipped, b.reselected = descriptor, false, true
+			break
 		}
 		if err := b.skip(ctx, rejected); err != nil {
 			return err
 		}
 	}
-	return nil
+	if !b.reselected || b.skipped {
+		return nil
+	}
+	return pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition})
 }
 
 func (b *deferredScriptEngine) lazyDescriptor(next pluginregistry.Pin) (scriptengine.Descriptor, *component.AdmissionError) {
