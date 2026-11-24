@@ -312,6 +312,32 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 			return Pin{}, err
 		}
 	}
+	pin, err := c.selectRelease(ctx, name, selector, m.Versions, versions, func(v Version) (Pin, error) {
+		pin, err := c.resolveVersion(ctx, p, m, v, selector)
+		if err != nil {
+			return Pin{}, err
+		}
+		if pluginreference.ValidAlias(name) {
+			pin.Alias = name
+		}
+		return pin, checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+	})
+	if err != nil {
+		return Pin{}, err
+	}
+	if err := c.cacheRelease(ctx, pin); err != nil {
+		return Pin{}, err
+	}
+	return pin, nil
+}
+
+func (c *Client) selectRelease(ctx context.Context, name, selector string, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, error) {
+	if selector == "latest" && slices.ContainsFunc(published, func(v Version) bool { return stableRelease(v.Version) }) {
+		versions = slices.DeleteFunc(slices.Clone(versions), func(v Version) bool { return !stableRelease(v.Version) })
+		if len(versions) == 0 {
+			return Pin{}, fmt.Errorf("%s: no published stable release is available; select an exact tag with --version", name)
+		}
+	}
 	var incompatible []error
 	for {
 		v, err := selectVersion(versions, selector)
@@ -325,14 +351,7 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		if err != nil {
 			return Pin{}, err
 		}
-		pin, err := c.resolveVersion(ctx, p, m, v, selector)
-		if err != nil {
-			return Pin{}, err
-		}
-		if pluginreference.ValidAlias(name) {
-			pin.Alias = name
-		}
-		err = checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+		pin, err := resolve(v)
 		if selector == "latest" && errors.Is(err, errReleaseUnavailable) {
 			versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
 			continue
@@ -351,11 +370,14 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 				return Pin{}, err
 			}
 		}
-		if err := c.cacheRelease(ctx, pin); err != nil {
-			return Pin{}, err
-		}
 		return pin, nil
 	}
+}
+
+func stableRelease(version string) bool {
+	normalized := "v" + strings.TrimPrefix(version, "v")
+	core, _, _ := strings.Cut(normalized, "+")
+	return semver.IsValid(normalized) && semver.Prerelease(normalized) == "" && strings.Count(core, ".") == 2
 }
 
 func (c *Client) availableVersions(ctx context.Context, plugin CatalogPlugin, manifest manifest, statuses StatusSnapshot) ([]Version, error) {

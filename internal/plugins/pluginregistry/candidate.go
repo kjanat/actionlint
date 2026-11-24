@@ -132,10 +132,10 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 	if err != nil {
 		return Pin{}, err
 	}
-	v, err := selectVersion(m.Versions, selector)
-	if err != nil {
-		return Pin{}, err
-	}
+	return c.selectRelease(ctx, name, selector, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
+}
+
+func (c *Client) candidatePin(ctx context.Context, p CatalogPlugin, v Version, selector string) (Pin, error) {
 	var r registryCandidate
 	if err := readCandidate(ctx, c, path.Join(path.Dir(p.Manifest), v.Record), &r); err != nil {
 		return Pin{}, err

@@ -59,6 +59,11 @@ func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) error {
 	}
 	options := pluginacquisition.ArtifactOptions(c.StatusOptions.Acquisition)
 	options.Network = c.StatusOptions.Network
+	if pin.Origin == "candidate" {
+		if err := pin.importCandidate(ctx, options); err != nil {
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+	}
 	artifact, err := artifacts.Resolve(ctx, pin.Source(), options)
 	if err != nil {
 		return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
