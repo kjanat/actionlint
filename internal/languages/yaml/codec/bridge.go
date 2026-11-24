@@ -21,11 +21,11 @@ func fromParser(root *upstream.Node, seen map[*upstream.Node]*Node) (*Node, erro
 		if old := seen[n]; old != nil {
 			return old, nil
 		}
-		kind, err := ownedKind(n.Kind)
+		kind, err := codecKind(n.Kind)
 		if err != nil {
 			return nil, err
 		}
-		style, err := ownedStyle(n.Style)
+		style, err := codecStyle(n.Style)
 		if err != nil {
 			return nil, err
 		}

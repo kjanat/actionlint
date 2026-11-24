@@ -141,11 +141,11 @@ func (s Setting) LoadOptions(dst any) (bool, error) {
 	if s.options == nil {
 		return false, nil
 	}
-	owned, err := configdecode.Encode(s.options)
+	encoded, err := configdecode.Encode(s.options)
 	if err != nil {
 		return false, err
 	}
-	if err := configdecode.Decode(owned, dst); err != nil {
+	if err := configdecode.Decode(encoded, dst); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -185,15 +185,15 @@ func parseSetting(value any) (Setting, error) {
 			if !ok {
 				return Setting{}, configdecode.At("options", errors.New("options must be a mapping"))
 			}
-			owned, err := configdecode.Encode(mapping)
+			encoded, err := configdecode.Encode(mapping)
 			if err != nil {
 				return Setting{}, err
 			}
-			ownedMapping, ok := owned.(map[string]any)
+			encodedMapping, ok := encoded.(map[string]any)
 			if !ok {
 				return Setting{}, errors.New("encoded rule options must be a mapping")
 			}
-			next.options = ownedMapping
+			next.options = encodedMapping
 		}
 	} else if err := next.level.DecodeConfig(value); err != nil {
 		return Setting{}, err

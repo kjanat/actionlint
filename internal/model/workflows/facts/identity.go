@@ -107,9 +107,9 @@ func (s skeleton) bind(path string, content []byte) References {
 	index := sourcetext.NewReferenceIndex(path, content)
 	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*definition.Step]sourcetext.Reference{}, StepJobs: map[*definition.Step]string{}, Jobs: map[string]sourcetext.Reference{}, Positions: map[[2]int]sourcetext.Reference{}}
 	var walk func(string, []skeletonStep)
-	walk = func(owner string, steps []skeletonStep) {
+	walk = func(prefix string, steps []skeletonStep) {
 		for _, step := range steps {
-			ref := index.Ref(owner, step.key, step.fingerprint, step.address)
+			ref := index.Ref(prefix, step.key, step.fingerprint, step.address)
 			refs.Steps[step.step] = ref
 			refs.StepJobs[step.step] = step.job
 			if step.hasPosition {

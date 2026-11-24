@@ -36,11 +36,11 @@ func (p *ParsedSource) bind(identity string) *workflows.BoundDocument {
 }
 
 func Workflow(content []byte) Document {
-	owned := bytes.Clone(content)
-	w, issues := parser.ParseWorkflow(owned)
+	cloned := bytes.Clone(content)
+	w, issues := parser.ParseWorkflow(cloned)
 	return Document{
 		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
-		Parsed: &ParsedSource{text: string(owned), workflow: w},
+		Parsed: &ParsedSource{text: string(cloned), workflow: w},
 	}
 }
 

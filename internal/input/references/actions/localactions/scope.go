@@ -63,7 +63,7 @@ func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) 
 	if c == nil || !context.Valid() {
 		return nil, ErrInvalidCompositeContext
 	}
-	owner := c.documentOwner()
+	shared := c.sharedDocuments()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.retired {
@@ -74,7 +74,7 @@ func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) 
 	}
 	before := c.state()
 	child := &Resolver{
-		runners: c.runners, base: c.base, sourceMappings: c.sourceMappings, documents: owner,
+		runners: c.runners, base: c.base, sourceMappings: c.sourceMappings, documents: shared,
 		checkout: before.checkout, platform: before.platform, caseInsensitive: before.caseInsensitive,
 		checkoutEnvUnknown: before.checkoutEnvUnknown, persistentEnvUnknown: before.persistentEnvUnknown,
 		shellEnvUnknown: before.shellEnvUnknown,

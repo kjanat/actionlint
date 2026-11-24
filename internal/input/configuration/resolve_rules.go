@@ -328,14 +328,14 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 	// Binding writes name indexes into policies and override lint structs.
 	// Detach those structs from configurations shared by workflow checks.
 	if policy := config.Policy.DisallowSuppressions; policy != nil {
-		owned := *policy
-		config.Policy.DisallowSuppressions = &owned
+		copied := *policy
+		config.Policy.DisallowSuppressions = &copied
 	}
 	config.Overrides = slices.Clone(config.Overrides)
 	for i := range config.Overrides {
 		if lint := config.Overrides[i].Lint; lint != nil {
-			owned := *lint
-			config.Overrides[i].Lint = &owned
+			copied := *lint
+			config.Overrides[i].Lint = &copied
 		}
 	}
 	for _, source := range config.Lint.Rules.bindingSources {

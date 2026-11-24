@@ -91,8 +91,8 @@ func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 	if cached == nil {
 		return nil
 	}
-	owned := cloneScriptSource(*cached)
-	return &owned
+	cloned := cloneScriptSource(*cached)
+	return &cloned
 }
 
 func (p *Parser) scalarSource(key sourcetext.Position, value string) *definition.ScriptSource {

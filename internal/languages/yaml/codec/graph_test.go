@@ -93,28 +93,28 @@ func TestRecursiveAliasGraphEncodesWithoutExpanding(t *testing.T) {
 func TestKindAndStyleMappings(t *testing.T) {
 	t.Parallel()
 	for _, pair := range kinds {
-		gotParser, parserErr := parserKind(pair.owned)
-		gotOwned, ownedErr := ownedKind(pair.parser)
-		if parserErr != nil || ownedErr != nil || gotParser != pair.parser || gotOwned != pair.owned {
-			t.Fatalf("kind pair %+v: %v, %v, %v, %v", pair, gotParser, gotOwned, parserErr, ownedErr)
+		gotParser, parserErr := parserKind(pair.codec)
+		gotCodec, codecErr := codecKind(pair.parser)
+		if parserErr != nil || codecErr != nil || gotParser != pair.parser || gotCodec != pair.codec {
+			t.Fatalf("kind pair %+v: %v, %v, %v, %v", pair, gotParser, gotCodec, parserErr, codecErr)
 		}
 	}
-	if _, err := ownedKind(upstream.StreamNode); err == nil {
+	if _, err := codecKind(upstream.StreamNode); err == nil {
 		t.Fatal("stream accepted as document node")
 	}
 	for mask := range 1 << len(styles) {
-		var wantOwned Style
+		var wantCodec Style
 		var wantParser upstream.Style
 		for i, pair := range styles {
 			if mask&(1<<i) != 0 {
-				wantOwned |= pair.owned
+				wantCodec |= pair.codec
 				wantParser |= pair.parser
 			}
 		}
-		gotParser, parserErr := parserStyle(wantOwned)
-		gotOwned, ownedErr := ownedStyle(wantParser)
-		if parserErr != nil || ownedErr != nil || gotParser != wantParser || gotOwned != wantOwned {
-			t.Fatalf("style subset %d: %v, %v, %v, %v", mask, gotParser, gotOwned, parserErr, ownedErr)
+		gotParser, parserErr := parserStyle(wantCodec)
+		gotCodec, codecErr := codecStyle(wantParser)
+		if parserErr != nil || codecErr != nil || gotParser != wantParser || gotCodec != wantCodec {
+			t.Fatalf("style subset %d: %v, %v, %v, %v", mask, gotParser, gotCodec, parserErr, codecErr)
 		}
 	}
 }

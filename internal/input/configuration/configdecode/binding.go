@@ -20,7 +20,7 @@ type Decoder interface{ DecodeConfig(any) error }
 
 type Encoder interface{ EncodeConfig() (any, error) }
 
-type OwnedCopier interface{ CopyConfig() (any, error) }
+type ConfigCopier interface{ CopyConfig() (any, error) }
 
 var ErrUnknownKey = errors.New("unknown key")
 

@@ -438,7 +438,7 @@ func TestTransportCopyKeepsSettingsWithoutSharing(t *testing.T) {
 		HTTP2:             &http.HTTP2Config{MaxReadFrameSize: 65536},
 		Protocols:         protocols,
 	}
-	copied, err := ownedTransport(base)
+	copied, err := copySupportedTransport(base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,7 +446,7 @@ func TestTransportCopyKeepsSettingsWithoutSharing(t *testing.T) {
 		t.Fatal("configuration snapshot executed caller callbacks")
 	}
 	if copied == base || copied.TLSClientConfig == base.TLSClientConfig || copied.HTTP2 == base.HTTP2 || copied.Protocols == base.Protocols {
-		t.Fatal("ownedTransport shares configuration containers with base")
+		t.Fatal("copySupportedTransport shares configuration containers with base")
 	}
 	if copied.TLSClientConfig.RootCAs != roots || copied.TLSClientConfig.ClientSessionCache != sessions || !bytes.Equal(copied.TLSClientConfig.Certificates[0].Certificate[0], []byte{1, 2, 3}) {
 		t.Fatal("TLS trust, client certificate or session settings changed")
@@ -495,12 +495,12 @@ func TestTransportCopyKeepsHTTP2Choice(t *testing.T) {
 	if len(native.TLSNextProto) == 0 {
 		t.Fatal("native HTTP/2 initialization did not install its callbacks")
 	}
-	copied, err := ownedTransport(native)
+	copied, err := copySupportedTransport(native)
 	if err != nil || copied.TLSNextProto != nil || !copied.ForceAttemptHTTP2 {
 		t.Fatalf("native HTTP/2 configuration rejected or disabled: %v", err)
 	}
 	disabled := &http.Transport{ForceAttemptHTTP2: true, TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{}}
-	copied, err = ownedTransport(disabled)
+	copied, err = copySupportedTransport(disabled)
 	if err != nil || copied.TLSNextProto == nil || len(copied.TLSNextProto) != 0 {
 		t.Fatalf("explicit HTTP/2 disable was lost: %v", err)
 	}

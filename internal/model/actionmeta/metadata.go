@@ -157,8 +157,8 @@ func expectedMapping(where string, n *codec.Node) error {
 // ParseActionMetadata returns partially decoded metadata along with a decode error.
 func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{}
-	owned := bytes.Clone(content)
-	root, err := codec.ParseYAML(owned)
+	cloned := bytes.Clone(content)
+	root, err := codec.ParseYAML(cloned)
 	if err == nil && root.Kind != 0 {
 		err = Decode(root, metadata)
 		if admissionErr := parser.AdmitYAMLAliases(root); admissionErr != nil {
@@ -169,7 +169,7 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 			}
 		}
 	}
-	metadata.manifest = &manifest{text: string(owned)}
+	metadata.manifest = &manifest{text: string(cloned)}
 	metadata.Directory, metadata.Filename = filepath.Dir(path), filepath.Base(path)
 	if sourcetext.RemoteAddress(path) {
 		metadata.Directory, metadata.Filename = remotePathParts(path)

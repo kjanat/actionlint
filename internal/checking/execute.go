@@ -776,17 +776,17 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 				continue
 			}
 			entry := admitted[file.captured.Revision().Document()]
-			own := finding.Path == "" || finding.Path == file.source.Path || finding.Path == file.source.InputPath || finding.Path == entry.Document
+			inFile := finding.Path == "" || finding.Path == file.source.Path || finding.Path == file.source.InputPath || finding.Path == entry.Document
 			if relative, err := filepath.Rel(workingDir, entry.Document); err == nil {
-				own = own || finding.Path == relative
+				inFile = inFile || finding.Path == relative
 			}
 			for _, alias := range entry.Aliases {
-				own = own || finding.Path == alias
+				inFile = inFile || finding.Path == alias
 				if relative, err := filepath.Rel(workingDir, alias); err == nil {
-					own = own || finding.Path == relative
+					inFile = inFile || finding.Path == relative
 				}
 			}
-			if !own && (finding.Reference == nil || finding.Reference.Document == file.captured.Revision().Document()) {
+			if !inFile && (finding.Reference == nil || finding.Reference.Document == file.captured.Revision().Document()) {
 				withheld++
 				continue
 			}
@@ -811,7 +811,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 					continue
 				}
 			} else if finding.Source.Content != nil || finding.Source.RawScript {
-				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source.Content) != nil {
+				if !inFile || !file.captured.Valid() || captures.Verify(file.captured, finding.Source.Content) != nil {
 					withheld++
 					continue
 				}

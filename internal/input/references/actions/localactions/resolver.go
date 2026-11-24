@@ -86,7 +86,7 @@ func NewResolver(cache *ManifestCache, checkoutMappings map[string]string) *Reso
 // SetRunners must run before the resolver is used, and composite children inherit it.
 func (c *Resolver) SetRunners(runners *runners.Knowledge) { c.runners = runners }
 
-func (c *Resolver) documentOwner() *resolverDocuments {
+func (c *Resolver) sharedDocuments() *resolverDocuments {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.documents == nil {
@@ -140,21 +140,21 @@ func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 }
 
 func (c *Resolver) Sources() map[string][]byte {
-	owner := c.documentOwner()
-	owner.mu.RLock()
-	defer owner.mu.RUnlock()
-	cloned := make(map[string][]byte, len(owner.used))
-	for path, document := range owner.used {
+	shared := c.sharedDocuments()
+	shared.mu.RLock()
+	defer shared.mu.RUnlock()
+	cloned := make(map[string][]byte, len(shared.used))
+	for path, document := range shared.used {
 		cloned[path] = document.Content()
 	}
 	return cloned
 }
 
 func (c *Resolver) SourceDocuments() map[string]SourceDocument {
-	owner := c.documentOwner()
-	owner.mu.RLock()
-	defer owner.mu.RUnlock()
-	return maps.Clone(owner.used)
+	shared := c.sharedDocuments()
+	shared.mu.RLock()
+	defer shared.mu.RUnlock()
+	return maps.Clone(shared.used)
 }
 
 func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) {
@@ -189,10 +189,10 @@ func (c *Resolver) lookupRepositorySource(spec string) MetadataResult {
 	}
 	address := captured.Revision().Document()
 	document := SourceDocument{path: address, address: address, captured: captured, parsed: parsed.Parsed}
-	owner := c.documentOwner()
-	owner.mu.Lock()
-	owner.used[address] = document
-	owner.mu.Unlock()
+	shared := c.sharedDocuments()
+	shared.mu.Lock()
+	shared.used[address] = document
+	shared.mu.Unlock()
 	status := MetadataResolved
 	if !loaded.Valid || !parsed.CanAnalyze() {
 		status = MetadataParseFailed
@@ -297,10 +297,10 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 	source, exists := c.base.sources[spec]
 	c.base.mu.RUnlock()
 	if exists {
-		owner := c.documentOwner()
-		owner.mu.Lock()
-		owner.used[source.path] = SourceDocument(source)
-		owner.mu.Unlock()
+		shared := c.sharedDocuments()
+		shared.mu.Lock()
+		shared.used[source.path] = SourceDocument(source)
+		shared.mu.Unlock()
 	}
 	return result, cached
 }

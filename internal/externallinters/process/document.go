@@ -117,7 +117,7 @@ func (d *DocumentAnalyzer) AnalyzeDocument(ctx context.Context, input checkinput
 	result, err := d.backend.run(ctx, transport, nil, &request)
 	if d.directory {
 		if freshness := currentDocument(ctx, input); freshness != nil {
-			return nil, errors.Join(owned(ctx, err), freshness)
+			return nil, errors.Join(detachError(ctx, err), freshness)
 		}
 	}
 	findings := make([]results.Diagnostic, 0, len(result.Diagnostics))
@@ -129,7 +129,7 @@ func (d *DocumentAnalyzer) AnalyzeDocument(ctx context.Context, input checkinput
 		}
 		findings = append(findings, finding)
 	}
-	return findings, owned(ctx, err)
+	return findings, detachError(ctx, err)
 }
 
 // A directory-capable process can read the file and ignore stdin. Refuse stale

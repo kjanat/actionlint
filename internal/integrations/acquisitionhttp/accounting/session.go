@@ -147,10 +147,10 @@ func (s *RequestTracker) admit(request *http.Request) (groupKey, quotaKey, error
 	b := s.budgets[key]
 	now := s.now()
 	reservation, _ := request.Context().Value(quotaReservationKey{}).(*QuotaReservation)
-	owned := uint64(0)
+	fromReservation := uint64(0)
 	protected := b.reserved
 	if reservation != nil && reservation.session == s && reservation.key == key && !reservation.closed {
-		owned = min(cost, reservation.remaining)
+		fromReservation = min(cost, reservation.remaining)
 		protected -= reservation.remaining
 	}
 	err := s.checkBudget(group, key, b, cost, protected, now)
@@ -159,9 +159,9 @@ func (s *RequestTracker) admit(request *http.Request) (groupKey, quotaKey, error
 		stats.QuotaRejections++
 	} else {
 		stats.Attempts++
-		if owned != 0 {
-			reservation.remaining -= owned
-			b.reserved -= owned
+		if fromReservation != 0 {
+			reservation.remaining -= fromReservation
+			b.reserved -= fromReservation
 			s.budgets[key] = b
 		}
 		if b.known && b.reset.After(now) && cost <= b.remaining {

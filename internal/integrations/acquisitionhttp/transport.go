@@ -117,7 +117,7 @@ func (t *transport) prepare(request *http.Request, selected endpoint.Authority, 
 	if err := request.Context().Err(); err != nil {
 		return nil, nil, err
 	}
-	checked, err := ownedTransport(original)
+	checked, err := copySupportedTransport(original)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -181,8 +181,8 @@ func (t *transport) prepare(request *http.Request, selected endpoint.Authority, 
 }
 
 // net/http HTTP/2 setup treats a nil TLSNextProto differently from an explicitly empty map.
-// ownedTransport never inherits deprecated dial hooks or registered protocol handlers.
-func ownedTransport(original *http.Transport) (*http.Transport, error) {
+// copySupportedTransport never inherits deprecated dial hooks or registered protocol handlers.
+func copySupportedTransport(original *http.Transport) (*http.Transport, error) {
 	if original == nil || original.DialTLSContext != nil {
 		return nil, ErrUnsupportedTransport
 	}

@@ -66,11 +66,11 @@ func inlineSettings(values map[string]any) (toolSettingsInline, error) {
 	if _, err := json.Marshal(values); err != nil {
 		return nil, err
 	}
-	owned := make(toolSettingsInline, len(values))
+	copied := make(toolSettingsInline, len(values))
 	for key, value := range values {
-		owned[key] = configdecode.Native(value)
+		copied[key] = configdecode.Native(value)
 	}
-	return owned, nil
+	return copied, nil
 }
 
 func (inline toolSettingsInline) values() map[string]any {

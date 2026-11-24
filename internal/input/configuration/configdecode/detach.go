@@ -27,14 +27,14 @@ func detachDynamic(value reflect.Value, active map[dynamicVisit]bool, hooks bool
 		return value, nil
 	}
 	if hooks && value.Kind() != reflect.Pointer && value.Kind() != reflect.Interface && value.CanInterface() {
-		owner, ok := reflect.TypeAssert[OwnedCopier](value)
+		copier, ok := reflect.TypeAssert[ConfigCopier](value)
 		if !ok {
 			addressable := reflect.New(value.Type())
 			addressable.Elem().Set(value)
-			owner, ok = reflect.TypeAssert[OwnedCopier](addressable)
+			copier, ok = reflect.TypeAssert[ConfigCopier](addressable)
 		}
 		if ok {
-			copied, err := owner.CopyConfig()
+			copied, err := copier.CopyConfig()
 			if err != nil {
 				return reflect.Value{}, err
 			}

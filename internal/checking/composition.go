@@ -35,16 +35,16 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 	}
 	for _, registration := range s.checks.tools {
 		toolContext.Config = context.Bindings.Rule(registration.Descriptor.Name).Config()
-		owned, err := toolContext.Detached()
+		detached, err := toolContext.Detached()
 		if err != nil {
 			return selected, err
 		}
-		if registration.Enabled != nil && !registration.Enabled(owned) {
+		if registration.Enabled != nil && !registration.Enabled(detached) {
 			continue
 		}
-		adapter, err := registration.Build(owned)
+		adapter, err := registration.Build(detached)
 		if err != nil {
-			if registration.Required == nil || registration.Required(owned) {
+			if registration.Required == nil || registration.Required(detached) {
 				return selected, err
 			}
 			s.log(fmt.Sprintf("Tool %q was disabled:", registration.Name), err)
@@ -71,16 +71,16 @@ func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Sc
 	for _, registration := range d.registeredTools {
 		cfg := scope.Rule(registration.Descriptor.Name).Config()
 		c.Config = cfg
-		owned, err := c.Detached()
+		detached, err := c.Detached()
 		if err != nil {
 			return nil, err
 		}
-		if ConfigurationRules().DiagnosticLevel(cfg, registration.Name) == "off" || registration.Enabled != nil && !registration.Enabled(owned) {
+		if ConfigurationRules().DiagnosticLevel(cfg, registration.Name) == "off" || registration.Enabled != nil && !registration.Enabled(detached) {
 			continue
 		}
 		inputs = append(inputs, registration.ScriptInputs...)
 		if registration.InputSelectors != nil {
-			additional, err := registration.InputSelectors(owned)
+			additional, err := registration.InputSelectors(detached)
 			if err != nil {
 				return nil, err
 			}

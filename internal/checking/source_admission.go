@@ -68,7 +68,7 @@ func (s *analysisSession) admitReportedSources(all []*finding.Finding, entryPath
 			metadataSources[document.Capture().Revision()] = true
 		}
 	}
-	entryOwns := func(path string) bool {
+	isEntryPath := func(path string) bool {
 		if path == "" || path == entryPath || path == sourcePath {
 			return true
 		}
@@ -121,7 +121,7 @@ func (s *analysisSession) admitReportedSources(all []*finding.Finding, entryPath
 			}
 			finding.Source.Unavailable = marker
 			finding.Reference, finding.Fixes = nil, nil
-		} else if !entryOwns(finding.Path) {
+		} else if !isEntryPath(finding.Path) {
 			foreignEvidence := finding.Reference != nil
 			if foreignEvidence && composed.EntrySnapshot.Present() {
 				foreignEvidence = finding.Reference.Document != composed.EntrySnapshot.Reference().Document

@@ -51,11 +51,11 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 			continue
 		}
 		// Options come from the last named setting, and a default level defers to earlier explicit levels.
-		ownLevel, err := settingLevelNode(setting)
+		declaredLevel, err := settingLevelNode(setting)
 		if err != nil {
 			return nil, err
 		}
-		if ownLevel == "default" && level != "default" {
+		if declaredLevel == "default" && level != "default" {
 			if isMapping(setting) {
 				setting = cloneMapping(setting)
 			} else {

@@ -224,8 +224,8 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 			}
 			return
 		}
-		ownMapping := seen == nil
-		if ownMapping {
+		isTopLevel := seen == nil
+		if isTopLevel {
 			seen = map[string]bool{}
 		}
 		for i := 0; i+1 < len(n.Content); i += 2 {
@@ -273,7 +273,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated)
 		}
 		for _, key := range d.required {
-			if ownMapping && !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
+			if isTopLevel && !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
 				rule.actionSchemaError(meta, n, location, CodeMissingField, fmt.Sprintf("missing required key %q", key))
 			}
 		}

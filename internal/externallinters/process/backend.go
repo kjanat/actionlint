@@ -188,14 +188,14 @@ func (b *Backend) ValidateConfig(_ context.Context, config json.RawMessage) erro
 
 func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 	if available, err := b.available(ctx); err != nil || !available {
-		return false, owned(ctx, err)
+		return false, detachError(ctx, err)
 	}
 	if b.spec.Version == nil || b.spec.Version.TemplateEffects == "" {
 		return true, nil
 	}
 	version, err := b.probe.run(ctx, func() (string, error) { return b.identify(ctx) }, nil)
 	if err != nil {
-		return false, owned(ctx, err)
+		return false, detachError(ctx, err)
 	}
 	if version == b.spec.Version.TemplateEffects {
 		return true, nil
@@ -248,7 +248,7 @@ func (b *Backend) ProbeVersion(ctx context.Context) (string, error) {
 		return "", errors.New(b.commandProblem)
 	}
 	version, err := b.identify(ctx)
-	return version, owned(ctx, err)
+	return version, detachError(ctx, err)
 }
 
 func (b *Backend) identify(ctx context.Context) (string, error) {
@@ -287,10 +287,10 @@ func (b *Backend) execution(args []string, stdin, directory string) hostprocess.
 
 func (b *Backend) Run(ctx context.Context, request scriptengine.Request, vars map[string]string) (DecodedCheck, error) {
 	result, err := b.run(ctx, request, vars, nil)
-	return result, owned(ctx, err)
+	return result, detachError(ctx, err)
 }
 
-func owned(ctx context.Context, err error) error {
+func detachError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
 	}

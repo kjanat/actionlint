@@ -501,7 +501,7 @@ func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
 		return Outcome{}, fmt.Errorf("%w: %s cannot be resolved by a caller", ErrInvalidOutcome, lookup.kind)
 	}
 	if lookup.kind == OutcomeExpanded {
-		if owner, active, found := b.activeOwner(rec.call.Parent(), lookup.target); found {
+		if owner, active, found := b.cycleAncestor(rec.call.Parent(), lookup.target); found {
 			lookup = cycleOutcome(lookup.target, active, owner, id)
 		}
 	}
@@ -528,7 +528,7 @@ func sameDeclaration(a, c sourcetext.Reference) bool {
 	return a.Document == c.Document && a.Node == c.Node
 }
 
-func (b *Builder) activeOwner(parent ID, target sourcetext.Reference) (ID, sourcetext.Reference, bool) {
+func (b *Builder) cycleAncestor(parent ID, target sourcetext.Reference) (ID, sourcetext.Reference, bool) {
 	for p := parent; p != b.root; {
 		rec := b.records[b.index[p]]
 		if t, ok := rec.call.Outcome.Target(); ok && rec.call.Outcome.kind == OutcomeExpanded && sameDeclaration(t, target) {

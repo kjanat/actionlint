@@ -76,7 +76,7 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 	}
 	pin, exists, err := c.cachedRelease(ctx, name, version)
 	if err != nil {
-		return Pin{}, ownedLookupError(err)
+		return Pin{}, flattenLookupError(err)
 	}
 	if exists {
 		return pin, nil
@@ -85,7 +85,7 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 		return Pin{}, network.Missing(name + "@" + version)
 	}
 	pin, err = c.Resolve(ctx, name, version)
-	return pin, ownedLookupError(err)
+	return pin, flattenLookupError(err)
 }
 
 type releaseLookupError struct {
@@ -98,7 +98,7 @@ func (e releaseLookupError) Is(target error) bool {
 	return e.offline && target == network.ErrOffline || e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded || e.unavailable && target == errReleaseUnavailable
 }
 
-func ownedLookupError(err error) error {
+func flattenLookupError(err error) error {
 	if err == nil {
 		return nil
 	}

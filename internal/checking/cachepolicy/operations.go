@@ -67,21 +67,21 @@ func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		own := cachegrant.FromMetadata(job.Mode)
-		mode := granted.Override(own)
+		declared := cachegrant.FromMetadata(job.Mode)
+		mode := granted.Override(declared)
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid || known && valid && want&^have != 0 {
 			// Invalid declarations and ceiling mismatches have their own diagnostics.
 			continue
 		}
-		if !own.Present() && known {
+		if !declared.Present() && known {
 			for _, name := range job.Operations {
 				if operation := disabledCacheOperation(name, have); operation != "" {
 					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.Kind().String())
 				}
 			}
 		}
-		if job.Uses != "" && !own.Present() {
+		if job.Uses != "" && !declared.Present() {
 			r.checkCallOperations(pos, job.SourceUses, mode, checked)
 		}
 	}

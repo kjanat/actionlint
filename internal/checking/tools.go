@@ -35,11 +35,11 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (worksp
 			if r.NeedsProcess == nil {
 				continue
 			}
-			owned, err := (contract.Context{Config: cfg, ProjectConfig: project}).Detached()
+			detached, err := (contract.Context{Config: cfg, ProjectConfig: project}).Detached()
 			if err != nil {
 				return nil, err
 			}
-			needed, err := r.NeedsProcess(ctx, owned.Config, owned.ProjectConfig)
+			needed, err := r.NeedsProcess(ctx, detached.Config, detached.ProjectConfig)
 			if err != nil {
 				return nil, err
 			}

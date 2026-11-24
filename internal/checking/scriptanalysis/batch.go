@@ -236,10 +236,10 @@ func (batch Batch) ForTool(name string) (Batch, error) {
 		if err != nil {
 			return Batch{}, fmt.Errorf("prepare tool %q configuration: %w", name, err)
 		}
-		owned := *scope
-		owned.Config = detached
-		scopes[scope] = &owned
-		view.Scopes = append(view.Scopes, &owned)
+		scopeCopy := *scope
+		scopeCopy.Config = detached
+		scopes[scope] = &scopeCopy
+		view.Scopes = append(view.Scopes, &scopeCopy)
 	}
 	for i := range view.Scripts {
 		view.Scripts[i].Scope = scopes[view.Scripts[i].Scope]
