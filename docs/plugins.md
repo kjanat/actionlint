@@ -70,7 +70,7 @@ name    = "github.com/kjanat/actionlint-plugin-shellcheck"
 version = "v0.2.0"
 ```
 
-A direct artifact table has a digest-pinned `source` URL or OCI reference instead of `name`, `version` and `registry`.
+A direct artifact table replaces `name`, `version` and `registry` with a digest-pinned `source` URL or OCI reference.
 
 ```sh
 actionlint plugin update github.com/owner/plugin --version latest
@@ -198,7 +198,7 @@ no supported role.
 Run `actionlint rules --plugin PATH --json` to list a plugin's rules, or `actionlint rules RULE --plugin PATH` to
 explain one. Duplicate rule names fail before analysis.
 
-### Suppression ownership
+### Suppression directives
 
 actionlint applies its own directives (`actionlint:ignore`, `actionlint-ignore`, `ignore[...]` and the next-line forms)
 and configured `ignores` after the plugin returns findings. The plugin or wrapped linter handles native directives such

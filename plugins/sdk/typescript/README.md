@@ -219,7 +219,7 @@ The root export runs in browsers and other web runtimes. `/stdio`, `/authoring`,
 - `/sarif` decodes active SARIF 2.1.0 findings with a URI allowlist. It drops findings with applied or accepted suppressions.
 - `/images` extracts static OCI references from workflow and action YAML.
 
-Your callback or wrapped linter handles its own native suppression syntax and returns active diagnostics. actionlint applies its YAML and config ignores afterwards. See [suppression ownership](../../../docs/plugins.md#suppression-ownership).
+Your callback or wrapped linter handles its own native suppression syntax and returns active diagnostics. actionlint applies its YAML and config ignores afterwards. See [suppression directives](../../../docs/plugins.md#suppression-directives).
 
 ## Build and test
 

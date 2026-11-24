@@ -472,7 +472,7 @@ Pass `--allow-config-processes` only when you trust the whole configuration, inc
 files. The `ACTIONLINT_TOOL_<ID>_*` variables configure
 [executables, arguments and environments](env.md#external-linters).
 
-ShellCheck runs in the step's working directory. Use absolute paths for wrapper-owned files.
+ShellCheck runs in the step's working directory. Write file paths in the `--tool shellcheck` command as absolute paths.
 actionlint sets ShellCheck's output format and input. Do not pass `-f`, `--format` or file
 arguments.
 
