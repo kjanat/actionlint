@@ -23,12 +23,16 @@ func TestDeferredScriptEngineRejectsBytesAndReselects(t *testing.T) {
 		t.Run(fmt.Sprintf("older=%t", older), func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
+			publisher := fixtureregistry.PluginPublisher{PluginID: "no-sudo", BaseURL: pluginregistry.DefaultURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10}
 			if older {
-				registry.Add(t, "v1.0.0", fixtureregistry.AnalyzerComponent())
+				registry.AddPlugin(t, publisher, "v1.0.0", fixtureregistry.AnalyzerComponent())
 			}
-			registry.Add(t, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			registry.AddPlugin(t, publisher, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			if older {
+				registry.PublishPlugin(t, publisher, "v1.0.0", "v2.0.0")
+			}
 			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-			client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
+			client, err := pluginregistry.New(pluginregistry.DefaultURL, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -36,7 +40,7 @@ func TestDeferredScriptEngineRejectsBytesAndReselects(t *testing.T) {
 			if err != nil || pin.Version != "v2.0.0" || slices.Contains(registry.Requests(), broken) {
 				t.Fatalf("selection=%+v error=%v requests=%v", pin, err, registry.Requests())
 			}
-			engine := &deferredScriptEngine{gate: make(chan struct{}, 1), pin: pin, acquisition: acquisition}
+			engine := &deferredScriptEngine{gate: make(chan struct{}, 1), pin: pin, status: pluginregistry.StatusOptions{Acquisition: acquisition}}
 			ctx, session := network.WithSession(t.Context(), network.Options{})
 			for range 2 {
 				if diagnostics, err := engine.Check(ctx, scriptengine.Request{}); !errors.Is(err, scriptengine.ErrUnavailable) || diagnostics != nil {

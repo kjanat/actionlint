@@ -15,7 +15,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
-const DefaultRegistry = "https://plugins.actionlint.kjanat.dev/"
+const (
+	DefaultRegistryHost = "plugins.actionlint.kjanat.dev"
+	DefaultRegistry     = "https://" + DefaultRegistryHost + "/"
+)
 
 var (
 	shortNamePattern        = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)

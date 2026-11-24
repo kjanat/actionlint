@@ -10,6 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -88,12 +90,24 @@ func TestCachedRegistryUsesClientAuthority(t *testing.T) {
 	}
 }
 
-func TestCachedSelectionOfRejectedReleaseIsNotReused(t *testing.T) {
+func TestReselectDefaultUsesBuiltInRegistry(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", analyzerComponent)
-	registry.Add(t, "v2.0.0", analyzerComponent)
-	client := registryClient(t, registry)
+	publisher := fixtureregistry.PluginPublisher{PluginID: "no-sudo", BaseURL: pluginregistry.DefaultURL, Name: fixtureregistry.FixturePluginName, RepositoryID: 10}
+	registry.AddPlugin(t, publisher, "v1.0.0", analyzerComponent)
+	registry.AddPlugin(t, publisher, "v2.0.0", analyzerComponent)
+	registry.PublishPlugin(t, publisher, "v1.0.0", "v2.0.0")
+	options := pluginregistry.StatusOptions{Acquisition: fixtureAcquisition(registry)}
+	options.Acquisition.Connections.Resolver = fixtureregistry.Resolver(pluginreference.DefaultRegistryHost)
+	var err error
+	options.Network, err = artifacts.ExplicitSource(pluginregistry.DefaultURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := pluginregistry.New(pluginregistry.DefaultURL, options.Acquisition)
+	if err != nil {
+		t.Fatal(err)
+	}
 	pin, err := client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil || pin.Version != "v2.0.0" {
 		t.Fatalf("selection=%+v error=%v", pin, err)
@@ -102,14 +116,25 @@ func TestCachedSelectionOfRejectedReleaseIsNotReused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selections := filepath.Join(cache, sha256hex.Digest([]byte(fixtureregistry.FixtureRegistryURL)), "selections")
+	selections := filepath.Join(cache, sha256hex.Digest([]byte(pluginregistry.DefaultURL)), "selections")
 	selection := filepath.Join(selections, sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AcceptedInterfacesDigest()))+".json")
 	fallback := filepath.Join(selections, sha256hex.Digest([]byte(pin.Name+"\nlatest\n"+component.AdmissionIdentity()))+".json")
 	stale, err := os.ReadFile(selection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if next, err := pluginregistry.Reselect(t.Context(), pin, &component.AdmissionError{Err: errors.New("rejected bytes")}, fixtureAcquisition(registry)); err != nil || next.Version != "v1.0.0" {
+	reason := &component.AdmissionError{Err: errors.New("rejected bytes")}
+	foreign := pin
+	foreign.Registry = fixtureregistry.FixtureRegistryURL
+	registry.ResetRequests()
+	if _, err := pluginregistry.ReselectDefault(t.Context(), foreign, reason, options); err == nil {
+		t.Fatal("accepted a pin from another registry")
+	}
+	if requests := registry.Requests(); len(requests) != 0 {
+		t.Fatalf("requested registry data for a foreign pin: %v", requests)
+	}
+	pin.Registry = "https://" + pluginreference.DefaultRegistryHost + ":443/"
+	if next, err := pluginregistry.ReselectDefault(t.Context(), pin, reason, options); err != nil || next.Version != "v1.0.0" {
 		t.Fatalf("reselected=%+v error=%v", next, err)
 	}
 	if err := os.Remove(fallback); err != nil {

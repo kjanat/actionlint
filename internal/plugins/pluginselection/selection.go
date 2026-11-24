@@ -62,6 +62,7 @@ type Sources struct {
 	Artifacts        map[string]*artifacts.Artifact
 	// NetworkGrants come only from explicit source arguments and take nothing from project files.
 	NetworkGrants             map[string]acquisitionhttp.Grant
+	DefaultRegistryNetwork    acquisitionhttp.Grant
 	Overlays                  []configuration.Overlay
 	DisabledTools, NamedTools []string
 	SkippedTools              []string
@@ -297,6 +298,7 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *instal
 	selected.Overlays = slices.Clone(s.Overlays)
 	selected.Configured = true
 	selected.DefaultPlugins = project.DefaultPlugins
+	selected.DefaultRegistryNetwork = project.StatusOptions.Network
 	if s.lazyDefaults && project.DefaultPlugins {
 		selected.LazySources = map[string]pluginregistry.Pin{}
 		for _, pin := range releases.Plugins {
@@ -443,7 +445,9 @@ func (s *Sources) reselect(ctx context.Context, index int, reason *component.Adm
 	pin := s.Releases.Plugins[index]
 	releases := *s.Releases
 	releases.Plugins = slices.Clone(s.Releases.Plugins)
-	next, err := pluginregistry.Reselect(ctx, pin, reason, s.Acquisition)
+	next, err := pluginregistry.ReselectDefault(ctx, pin, reason, pluginregistry.StatusOptions{
+		Acquisition: s.Acquisition, Network: s.DefaultRegistryNetwork,
+	})
 	switch {
 	case errors.Is(err, pluginregistry.ErrNoCompatibleRelease) || network.OnlyOffline(err):
 		network.Warn(ctx, "Skipping default plugin: "+err.Error())

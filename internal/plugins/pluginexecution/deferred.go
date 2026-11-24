@@ -9,7 +9,6 @@ import (
 	"slices"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
@@ -29,26 +28,26 @@ type deferredBackend interface {
 }
 
 type deferredScriptEngine struct {
-	gate        chan struct{}
-	descriptor  scriptengine.Descriptor
-	pin         pluginregistry.Pin
-	acquisition dependencycache.Acquisition
-	backend     deferredBackend
-	failure     error
-	retryAfter  time.Time
-	reserved    rule.Names
-	skipped     bool
-	next        *pluginregistry.Pin
-	reselected  bool
-	closed      bool
+	gate       chan struct{}
+	descriptor scriptengine.Descriptor
+	pin        pluginregistry.Pin
+	status     pluginregistry.StatusOptions
+	backend    deferredBackend
+	failure    error
+	retryAfter time.Time
+	reserved   rule.Names
+	skipped    bool
+	next       *pluginregistry.Pin
+	reselected bool
+	closed     bool
 }
 
-func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition dependencycache.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
+func newDeferredScriptEngine(pin pluginregistry.Pin, status pluginregistry.StatusOptions, reserved rule.Names) (*deferredScriptEngine, error) {
 	descriptor, err := deferredDescriptor(pin, reserved)
 	if err != nil {
 		return nil, err
 	}
-	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition, reserved: reserved}, nil
+	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, status: status, reserved: reserved}, nil
 }
 
 func deferredDescriptor(pin pluginregistry.Pin, reserved rule.Names) (scriptengine.Descriptor, error) {
@@ -93,10 +92,10 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 		}
 	}()
 	releases := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}
-	if err := releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition}); err != nil {
+	if err := releases.CheckStatuses(ctx, b.status); err != nil {
 		return nil, err
 	}
-	artifact, err := artifacts.Resolve(ctx, b.pin.Source(), pluginacquisition.ArtifactOptions(b.acquisition))
+	artifact, err := artifacts.Resolve(ctx, b.pin.Source(), pluginacquisition.ArtifactOptions(b.status.Acquisition))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +126,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 }
 
 func (b *deferredScriptEngine) skip(ctx context.Context, reason *component.AdmissionError) error {
-	next, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
+	next, err := pluginregistry.ReselectDefault(ctx, b.pin, reason, b.status)
 	switch {
 	case err == nil:
 		b.next = &next
@@ -170,7 +169,7 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 	if !b.reselected || b.skipped {
 		return nil
 	}
-	return pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition})
+	return pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}.CheckStatuses(ctx, b.status)
 }
 
 func (b *deferredScriptEngine) lazyDescriptor(next pluginregistry.Pin) (scriptengine.Descriptor, *component.AdmissionError) {
@@ -189,7 +188,7 @@ func (b *deferredScriptEngine) lazyDescriptor(next pluginregistry.Pin) (scripten
 
 func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Artifact) (deferredBackend, error) {
 	if b.pin.Kind == artifacts.Core {
-		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(b.acquisition)})
+		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(b.status.Acquisition)})
 	}
 	return component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
 }
