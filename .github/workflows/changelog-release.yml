@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     environment: { name: npm, url: "${{ steps.publish.outputs.url }}" }
-    env: { NPM_CONFIG_PROVENANCE: "${{ !inputs.dry-run }}", MISE_ENABLE_TOOLS: "bun,npm:runner-run" }
+    env: { NPM_CONFIG_PROVENANCE: "${{ !inputs.dry-run }}", MISE_ENABLE_TOOLS: "bun,runner-run" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
@@ -24,13 +24,13 @@ jobs:
       - name: Install Bun
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           monorepo: false
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "bun,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "bun,runner-run" }
       - name: Install dependencies, check types and test the changelog package
         run: runner i --no-tools -fs @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test
       - name: Build and pack the changelog package

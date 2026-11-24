@@ -1,7 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 #:tombi toml-version = "v1.1.0"
 
-min_version   = { soft = "2026.11.3" }
+min_version   = { soft = "2026.11.10" }
 monorepo_root = true
 
 [wrappers.actionlint]
@@ -90,13 +90,7 @@ minimum_release_age_excludes        = [
 ]
 
 [env]
-_.path        = [
-  {
-    path  = "{% if 'npm:runner-run' in tools %}{{ tools['npm:runner-run'].path }}/node_modules/@runner-run/{{ os(macos='darwin', windows='win32') }}-{{ arch() }}{% if os() == 'linux' %}-{{ libc() }}{% elif os() == 'windows' %}-msvc{% endif %}/bin{% else %}{{config_root}}/node_modules/.bin{% endif %}",
-    tools = true
-  },
-  "{{config_root}}/node_modules/.bin",
-]
+_.path        = ["{{config_root}}/node_modules/.bin"]
 GOFLAGS       = "-buildvcs=true"
 VOLTA_BYPASS  = 1
 WASI_SDK_PATH = { value = "{% if 'wasi-sdk' in tools %}{{ tools['wasi-sdk'].path }}{% endif %}", tools = true }

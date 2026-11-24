@@ -453,11 +453,6 @@ version = "12.2.0"
 backend = "npm:npm"
 specifiers = ["12.2.0"]
 
-[[tools."npm:runner-run"]]
-version = "0.28.0"
-backend = "npm:runner-run"
-specifiers = ["0.28.0"]
-
 [[tools.pandoc]]
 version = "3.13"
 backend = "github:jgm/pandoc"
@@ -623,14 +618,10 @@ checksum_source = "mise-versions"
 url = "https://github.com/Vigilant-LLC/runner-guard/releases/download/v3.1.5/runner-guard_3.1.5_windows_amd64.zip"
 url_api = "https://api.github.com/repos/Vigilant-LLC/runner-guard/releases/assets/403393805"
 
-[[tools.rust]]
-version = "1.100.0"
-backend = "core:rust"
-specifiers = ["latest"]
-
-[tools.rust.options]
-components = "clippy,rustfmt"
-targets = "wasm32-unknown-unknown,wasm32-wasip2"
+[[tools.runner-run]]
+version = "0.28.0"
+backend = "npm:runner-run"
+specifiers = ["0.28.0"]
 
 [[tools.rust]]
 version = "1.99.0"

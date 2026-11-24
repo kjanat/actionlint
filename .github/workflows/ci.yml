@@ -47,7 +47,7 @@ jobs:
         uses: &SetupMise jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         env: &MiseTemp { TEMP: "${{ runner.temp }}", TMP: "${{ runner.temp }}" }
         with: &TestTools
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -102,20 +102,20 @@ jobs:
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['wasm']) }}
     name: Wasm
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,runner-run" }
     steps:
       - *ActCheckNocred
       - name: Install project tools
         uses: *SetupMise
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           cache_save_post: true
           monorepo: false
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,runner-run" }
       - name: Install JavaScript dependencies
         run: runner install --pm bun --no-tools --frozen
       - name: Build command manual
@@ -145,20 +145,20 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript']) }}
     name: JavaScript
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,runner-run" }
     steps:
       - *ActCheckNocred
       - name: Install project tools
         uses: *SetupMise
         with:
-          version: 2026.11.4
+          version: 2026.11.10
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           cache_save_post: true
           monorepo: false
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,runner-run" }
       - name: Install dependencies and test JavaScript tooling
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: runner install --pm bun --no-tools --frozen test:js lint:biome
@@ -174,7 +174,7 @@ jobs:
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
     name: Release snapshot
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc,npm:runner-run,goreleaser" }
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc,runner-run,goreleaser" }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
@@ -185,14 +185,14 @@ jobs:
           - name: Install Node.js, npm, Bun, Pandoc and GoReleaser
             uses: *SetupMise
             with: {
-              version: 2026.11.4,
+              version: 2026.11.10,
               mise_dir: "${{ github.workspace }}-mise",
               cache: true,
               cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
               monorepo: false,
               add_shims_to_path: false,
             }
-            env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc,npm:runner-run,goreleaser" }
+            env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc,runner-run,goreleaser" }
       - name: Build JavaScript Action release files outside the checkout
         run: bun install --frozen-lockfile --ignore-scripts;
           version="$(cat VERSION)";
@@ -250,21 +250,21 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['lint']) }}
     name: Lint
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,runner-run" }
     steps:
       - *ActCheckNocred
       - *Go
       - *Uv
       - uses: *SetupMise
         with: {
-          version: 2026.11.4,
+          version: 2026.11.10,
           mise_dir: "${{ github.workspace }}-mise",
           cache: true,
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
           monorepo: false,
           add_shims_to_path: false,
         }
-        env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,runner-run" }
       - name: Install golangci-lint
         run: version="$(MISE_ENABLE_TOOLS=golangci-lint mise tool golangci-lint --requested)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
@@ -292,7 +292,7 @@ jobs:
       - *ActCheckNocred
       - uses: *SetupMise
         with: {
-          version: 2026.11.4,
+          version: 2026.11.10,
           mise_dir: "${{ github.workspace }}-mise",
           cache: true,
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
@@ -342,7 +342,7 @@ jobs:
           - name: Install the WebAssembly build tools and formatter
             uses: *SetupMise
             with:
-              version: 2026.11.4
+              version: 2026.11.10
               mise_dir: "${{ github.workspace }}-mise"
               cache: true
               cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
@@ -405,21 +405,21 @@ jobs:
     name: Example providers with real scanners
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,runner-run" }
     steps:
       - *ActCheckNocred
       - *GoGomod
       - name: Install Bun and the scanners
         uses: *SetupMise
         with: {
-          version: 2026.11.4,
+          version: 2026.11.10,
           mise_dir: "${{ github.workspace }}-mise",
           cache: true,
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
           monorepo: false,
           add_shims_to_path: false,
         }
-        env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,runner-run" }
       - name: Install PSScriptAnalyzer
         shell: pwsh
         run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
@@ -502,7 +502,7 @@ jobs:
     name: GitHub Action
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,npm:runner-run,goreleaser" }
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,runner-run,goreleaser" }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
