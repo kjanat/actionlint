@@ -150,7 +150,7 @@ type listed struct {
 }
 
 func selected(ctx context.Context, dir string, paths []string) (map[string]string, error) {
-	command := exec.CommandContext(ctx, "go", append([]string{"list", "-m", "-e", "-json"}, paths...)...)
+	command := exec.CommandContext(ctx, "go", append([]string{"list", "-mod=readonly", "-m", "-e", "-json"}, paths...)...)
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOWORK=off")
 	var stderr bytes.Buffer

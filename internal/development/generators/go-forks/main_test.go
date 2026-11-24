@@ -96,6 +96,18 @@ func TestRunUpdatesStaleLabels(t *testing.T) {
 	}
 }
 
+func TestRunIgnoresVendorModeFromGOFLAGS(t *testing.T) {
+	t.Setenv("GOFLAGS", "-mod=vendor")
+	root := moduleTree(t, staleDoc, "v0.3.0")
+	var stdout bytes.Buffer
+	if err := run(context.Background(), root, false, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff("docs/go-forks.md: example.com/fork v1.1.0 -> v1.2.0\n", stdout.String()); diff != "" {
+		t.Fatal(diff)
+	}
+}
+
 func TestRunErrors(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
