@@ -30,29 +30,6 @@ func TestCheckDefaultRegistryThroughProxy(t *testing.T) {
 	const hostname = "plugins.actionlint.kjanat.dev"
 	const authority = hostname + ":443"
 	const trustFlag = "--trust-default-plugin-registry"
-	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck")
-	origin := registry.Connections().Transport.(*http.Transport)
-
-	repo := t.TempDir()
-	t.Chdir(repo)
-	if out, err := gitcommand.Command(t.Context(), "git", repo, "init", "-q").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v\n%s", err, out)
-	}
-	const configPath = ".github/actionlint.yaml"
-	const configBody = "tools: {ruff: {enabled: false}}\n"
-	for name, body := range map[string]string{
-		configPath:                    configBody,
-		".github/workflows/check.yml": "on: push\npermissions: {}\njobs: {check: {runs-on: ubuntu-latest, steps: [{uses: ./local}]}}\n",
-		"local/action.yml":            "name: Local\ndescription: Local action\nruns: {using: docker, image: 'docker://alpine:3.22'}\n",
-	} {
-		if err := os.MkdirAll(filepath.Dir(name), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(name, []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	for _, tc := range []struct {
 		name         string
 		flags        []string
@@ -71,18 +48,29 @@ func TestCheckDefaultRegistryThroughProxy(t *testing.T) {
 		{name: "wrong TLS hostname", flags: []string{trustFlag}, wrongTLSName: true, wantConnect: true, wantCode: 3, wantError: "x509: certificate is valid for"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck")
+			origin := registry.Connections().Transport.(*http.Transport)
+			repo := t.TempDir()
+			t.Chdir(repo)
+			if out, err := gitcommand.Command(t.Context(), "git", repo, "init", "-q").CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v\n%s", err, out)
+			}
+			config := "tools: {ruff: {enabled: false}}\n"
 			if tc.declare {
-				data := []byte(configBody + "plugins: [{name: github.com/kjanat/actionlint-plugin-shellcheck, version: v1.0.0, registry: " + pluginreference.DefaultRegistry + "}]\n")
-				if err := os.WriteFile(configPath, data, 0o600); err != nil {
+				config += "plugins: [{name: github.com/kjanat/actionlint-plugin-shellcheck, version: v1.0.0, registry: " + pluginreference.DefaultRegistry + "}]\n"
+			}
+			for name, body := range map[string]string{
+				".github/actionlint.yaml":     config,
+				".github/workflows/check.yml": "on: push\npermissions: {}\njobs: {check: {runs-on: ubuntu-latest, steps: [{uses: ./local}]}}\n",
+				"local/action.yml":            "name: Local\ndescription: Local action\nruns: {using: docker, image: 'docker://alpine:3.22'}\n",
+			} {
+				if err := os.MkdirAll(filepath.Dir(name), 0o700); err != nil {
 					t.Fatal(err)
 				}
-				t.Cleanup(func() {
-					if err := os.WriteFile(configPath, []byte(configBody), 0o600); err != nil {
-						t.Error(err)
-					}
-				})
+				if err := os.WriteFile(name, []byte(body), 0o600); err != nil {
+					t.Fatal(err)
+				}
 			}
-			registry.ResetRequests()
 			tlsConfig := origin.TLSClientConfig.Clone()
 			dialOrigin := origin.DialContext
 			if tc.wrongTLSName {
