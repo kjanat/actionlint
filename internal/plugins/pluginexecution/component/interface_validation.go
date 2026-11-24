@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -276,6 +277,36 @@ func acceptedInterfaces() []string {
 
 func AcceptedInterfacesDigest() string {
 	return sha256hex.Digest([]byte(strings.Join(acceptedInterfaces(), "\n")))
+}
+
+var admissionModules = []string{"github.com/kjanat/wacogo", "github.com/kjanat/wazero"}
+
+func AdmissionIdentity() string {
+	info, _ := debug.ReadBuildInfo()
+	return admissionIdentity(info)
+}
+
+func admissionIdentity(info *debug.BuildInfo) string {
+	lines := acceptedInterfaces()
+	if info != nil {
+		lines = append(lines, "main "+info.Main.Path+" "+info.Main.Version+" "+info.Main.Sum)
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" || setting.Key == "vcs.modified" {
+				lines = append(lines, setting.Key+" "+setting.Value)
+			}
+		}
+		for _, dependency := range info.Deps {
+			if !slices.Contains(admissionModules, dependency.Path) {
+				continue
+			}
+			module := dependency
+			if dependency.Replace != nil {
+				module = dependency.Replace
+			}
+			lines = append(lines, "module "+dependency.Path+" "+module.Path+" "+module.Version+" "+module.Sum)
+		}
+	}
+	return sha256hex.Digest([]byte(strings.Join(lines, "\n")))
 }
 
 // validateAnalyzerInterface rejects incompatible analyzer interfaces before guest startup.

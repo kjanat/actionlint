@@ -86,7 +86,7 @@ func (c *Client) rejectionPath(digest string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(directory, "rejected", sha256hex.Digest([]byte(digest+"\n"+component.AcceptedInterfacesDigest()))+".json"), nil
+	return filepath.Join(directory, "rejected", sha256hex.Digest([]byte(digest+"\n"+component.AdmissionIdentity()))+".json"), nil
 }
 
 func (c *Client) rejection(ctx context.Context, pin Pin) (string, bool, error) {
