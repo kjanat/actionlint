@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/wasmcomponent"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
@@ -211,7 +211,7 @@ func candidateRegistry(t *testing.T, versions string) *pluginregistry.Client {
 			t.Fatal(err)
 		}
 	}
-	client, err := pluginregistry.New((&url.URL{Scheme: "file", Path: filepath.ToSlash(root) + "/"}).String(), fixtureAcquisition(network))
+	client, err := pluginregistry.New(sourcetext.FileURI(root)+"/", fixtureAcquisition(network))
 	if err != nil {
 		t.Fatal(err)
 	}
