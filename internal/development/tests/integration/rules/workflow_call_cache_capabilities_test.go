@@ -22,7 +22,7 @@ import (
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*finding.Finding {
 	t.Helper()
 	root := t.TempDir()
-	cache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
+	cache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)

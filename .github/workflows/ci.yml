@@ -268,6 +268,9 @@ jobs:
       - name: Install golangci-lint
         run: version="$(MISE_ENABLE_TOOLS=golangci-lint mise tool golangci-lint --requested)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
+      - name: Install gopls
+        run: version="$(MISE_ENABLE_TOOLS=gopls mise tool gopls --requested)";
+          go install "golang.org/x/tools/gopls@v${version}"
       - run: go mod tidy -diff
       - name: Build actionlint
         run: run mise:build

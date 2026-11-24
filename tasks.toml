@@ -108,8 +108,69 @@ env = { DEEP_COPIES_CHECK = "1" }
 run = "go generate -run analysis-merge ./..."
 env = { ANALYSIS_MERGE_CHECK = "1" }
 
+["lint:gopls"]
+# Only gopls runs the fmtappendf and writestring analyzers.
+run         = '''
+paths="$(mktemp)"
+trap 'rm -f -- "$paths"' EXIT
+git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go' > "$paths" || {
+  status=$?
+  if [ "$status" -ne 1 ]; then exit "$status"; fi
+}
+if [ ! -s "$paths" ]; then exit 0; fi
+status=0
+diagnostics="$(xargs -0 gopls check -severity=hint < "$paths")" || status=$?
+if [ -n "$diagnostics" ]; then
+  printf '%s\n' "$diagnostics" >&2
+  exit 1
+fi
+exit "$status"
+'''
+run_windows = '''
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+$paths = git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go'
+if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
+if (-not $paths) { exit 0 }
+$files = $paths.Split([char]0, [StringSplitOptions]::RemoveEmptyEntries)
+
+function Invoke-GoplsCheck($batch) {
+  $diagnostics = gopls check -severity=hint @batch
+  $status = $LASTEXITCODE
+  if ($diagnostics) {
+    [Console]::Error.WriteLine(($diagnostics -join [Environment]::NewLine))
+    exit 1
+  }
+  if ($status -ne 0) { exit $status }
+}
+
+# Leave room for the executable and flags within Windows' command-line limit.
+$batch = [Collections.Generic.List[string]]::new()
+$length = 0
+foreach ($file in $files) {
+  $file = "./$file"
+  $argumentLength = $file.Length + 3
+  if ($length + $argumentLength -gt 30000) {
+    Invoke-GoplsCheck $batch
+    $batch.Clear()
+    $length = 0
+  }
+  $batch.Add($file)
+  $length += $argumentLength
+}
+if ($batch.Count) { Invoke-GoplsCheck $batch }
+'''
+
 ["lint"]
-depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground", "lint:deep-copies", "lint:analysis-merge", "lint:go-forks"]
+depends     = [
+  "lint:golangci",
+  "lint:gopls",
+  "lint:vulnerabilities",
+  "lint:playground",
+  "lint:deep-copies",
+  "lint:analysis-merge",
+  "lint:go-forks"
+]
 description = "Run Go, generated-code, vulnerability and browser checks"
 
 ["lint:go-forks"]

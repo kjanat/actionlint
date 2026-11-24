@@ -88,7 +88,7 @@ func (s Store) Materialize(ctx context.Context, digest, filename string, limit i
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	if err := os.Rename(f.Name(), path); err != nil {
+	if err := install(ctx, f.Name(), path, data); err != nil {
 		return "", err
 	}
 	return path, nil

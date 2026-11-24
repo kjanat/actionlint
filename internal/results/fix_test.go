@@ -16,7 +16,6 @@ func TestFixCloneDoesNotAliasEditsAndRevisions(t *testing.T) {
 	clone := original.Clone()
 	clone.Revisions["a.yml"] = "changed"
 	clone.Edits[0].Replacement = "changed"
-	clone.Applicability = applicability.Unsafe
 	if original.Revisions["a.yml"] != "revision" || original.Edits[0].Replacement != "first" || original.Edits[1].Replacement != "second" || original.Applicability != applicability.Safe {
 		t.Fatalf("editing a copy changed the original: %+v", original)
 	}

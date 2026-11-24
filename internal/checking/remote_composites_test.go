@@ -453,7 +453,7 @@ func TestRemoteCompositeAdviceRemainsVisible(t *testing.T) {
 			provider, _ := remoteCompositeProvider(t, map[string]string{
 				"example/action": "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo \"${{ github.workspace }}\"\n",
 			})
-			cfg, err := ConfigurationRules().ParseConfig([]byte(fmt.Sprintf("lint: {dependencies: {fail-on-all: %t}}", failOnAll)))
+			cfg, err := ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {dependencies: {fail-on-all: %t}}", failOnAll))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -177,6 +177,11 @@ version = "2.15.0"
 backend = "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
 specifiers = ["2.15.0"]
 
+[[tools.gopls]]
+version = "0.24.0"
+backend = "go:golang.org/x/tools/gopls"
+specifiers = ["0.24.0"]
+
 [[tools.goreleaser]]
 version = "2.20.0"
 backend = "aqua:goreleaser/goreleaser"

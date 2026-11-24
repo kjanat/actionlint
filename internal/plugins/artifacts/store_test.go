@@ -88,6 +88,46 @@ func TestPublishRepairsCorruptArtifacts(t *testing.T) {
 	}
 }
 
+func TestRepublishingIdenticalBytesKeepsTheCachedFile(t *testing.T) {
+	t.Parallel()
+	data := []byte("published once")
+	path := filepath.Join(t.TempDir(), digestOf(data))
+	if err := cacheFile(t.Context(), path, data); err != nil {
+		t.Fatal(err)
+	}
+	probe := path + ".link-probe"
+	linkErr := os.Link(path, probe)
+	if linkErr == nil {
+		if err := os.Remove(probe); err != nil {
+			t.Fatal(err)
+		}
+	}
+	original, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// On Windows, File.Stat captures identity from the open handle.
+	before, statErr := original.Stat()
+	if err := errors.Join(statErr, original.Close()); err != nil {
+		t.Fatal(err)
+	}
+	if err := cacheFile(t.Context(), path, data); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(actual, data) {
+		t.Fatalf("republished artifact=%q error=%v", actual, err)
+	}
+	if linkErr != nil {
+		t.Logf("file identity requires hard-link support: %v", linkErr)
+		return
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatalf("republishing identical bytes replaced the cached file: error=%v", err)
+	}
+}
+
 func TestPublishArtifactInLongCachePath(t *testing.T) {
 	t.Parallel()
 	store := Store{Dir: filepath.Join(t.TempDir(), strings.Repeat("a", 150), strings.Repeat("b", 150))}
