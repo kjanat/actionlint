@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -156,25 +157,30 @@ func TestRealShellcheckComponentConfiguration(t *testing.T) {
 	if module == "" {
 		t.Skip("set ACTIONLINT_TEST_SHELLCHECK_WASM to a packaged ShellCheck component")
 	}
-	config := filepath.Join(t.TempDir(), "actionlint.yaml")
-	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $HOME\n        shell: bash\npermissions: {}\n"
+	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $HOME $(pwd)\n        shell: bash\npermissions: {}\n"
 	for _, tc := range []struct {
-		options, want string
+		options       string
+		want, without []string
 		status        int
 	}{
-		{"{}", "SC2086", 1},
-		{"{disable: [SC2086]}", "", 0},
-		{"{shel: sh}", "additional properties 'shel' not allowed", 3},
+		{"{}", []string{"SC2086", "SC2046"}, nil, 1},
+		{"{disable: [SC2086]}", []string{"SC2046"}, []string{"SC2086"}, 1},
+		{"{shel: sh}", []string{"tools.shellcheck.config: at /: additional properties 'shel' not allowed"}, []string{"SC2046"}, 3},
 	} {
-		content := "lint: {rules: {preset: none, correctness: {shellcheck: error}}}\ntools: {shellcheck: {config: " + tc.options + "}}\n"
-		if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		var stdout, stderr bytes.Buffer
-		cmd := cli.Command{Stdin: strings.NewReader(workflow), Stdout: &stdout, Stderr: &stderr}
-		status := cmd.Main([]string{"actionlint", "check", "--no-tool=ruff", "--no-color", "--summary=false", "--config=" + config, "--plugin=" + module, "-"})
-		if status != tc.status || !strings.Contains(stdout.String()+stderr.String(), tc.want) || tc.status == 0 && stdout.Len() != 0 {
-			t.Fatalf("options=%s: exit=%d stdout=%s stderr=%s", tc.options, status, &stdout, &stderr)
-		}
+		t.Run(tc.options, func(t *testing.T) {
+			t.Parallel()
+			config := filepath.Join(t.TempDir(), "actionlint.yaml")
+			content := "lint: {rules: {preset: none, correctness: {shellcheck: error}}}\ntools: {shellcheck: {config: " + tc.options + "}}\n"
+			if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr bytes.Buffer
+			cmd := cli.Command{Stdin: strings.NewReader(workflow), Stdout: &stdout, Stderr: &stderr, Acquisition: dependencycache.Acquisition{UserCacheDir: t.TempDir()}}
+			status := cmd.Main([]string{"actionlint", "check", "--offline", "--no-tool=ruff", "--no-color", "--summary=false", "--config=" + config, "--plugin=" + module, "-"})
+			output := stdout.String() + stderr.String()
+			if status != tc.status || slices.ContainsFunc(tc.want, func(want string) bool { return !strings.Contains(output, want) }) || slices.ContainsFunc(tc.without, func(code string) bool { return strings.Contains(output, code) }) {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", status, &stdout, &stderr)
+			}
+		})
 	}
 }
