@@ -151,4 +151,4 @@ func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {
 	return p.report
 }
 
-func (p *SuppressionsPolicy) CopyConfig() (any, error) { return copyOwnedSuppressionsPolicy(*p), nil }
+func (p *SuppressionsPolicy) CopyConfig() (any, error) { return deepCopySuppressionsPolicy(*p), nil }

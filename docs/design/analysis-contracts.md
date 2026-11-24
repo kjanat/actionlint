@@ -30,4 +30,4 @@ The extension boundary copies analyzer inputs, descriptors and diagnostics. Each
 
 ## Generated files
 
-The `owned-copies` and `analysis-merge` generators under `internal/development/generators` write copy and merge code for shared types. They stop on fields they cannot classify. `run lint` checks that their output is current.
+The `deep-copies` and `analysis-merge` generators under `internal/development/generators` write copy and merge code for shared types. They stop on fields they cannot classify. `run lint` checks that their output is current.

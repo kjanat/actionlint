@@ -222,7 +222,7 @@ func (s Setting) EncodeConfig() (any, error) {
 	return wire, nil
 }
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/ruleconfig -type Group -output internal/input/configuration/ruleconfig/owned_group.gen.go
+//go:generate go run ../../../development/generators/deep-copies -root ../../../.. -package ./internal/input/configuration/ruleconfig -type Group -output internal/input/configuration/ruleconfig/deep_copy_group.gen.go
 
 type Group struct {
 	preset Preset
@@ -293,4 +293,4 @@ func (g Group) EncodeConfig() (any, error) {
 	return groupWire{Preset: g.preset, Level: g.level, Rules: maps.Clone(g.rules)}, nil
 }
 
-func (g Group) CopyConfig() (any, error) { return copyOwnedGroup(g), nil }
+func (g Group) CopyConfig() (any, error) { return deepCopyGroup(g), nil }

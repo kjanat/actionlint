@@ -308,4 +308,4 @@ func RunnerLabels(facts repository.Settings) []string {
 	return nil
 }
 
-func (r RepositoryConfig) CopyConfig() (any, error) { return copyOwnedRepositoryConfig(r), nil }
+func (r RepositoryConfig) CopyConfig() (any, error) { return deepCopyRepositoryConfig(r), nil }

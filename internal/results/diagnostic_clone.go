@@ -1,5 +1,5 @@
 package results
 
-//go:generate go run ../development/generators/owned-copies -root ../.. -package ./internal/results -type Diagnostic -output internal/results/owned_copy.gen.go
+//go:generate go run ../development/generators/deep-copies -root ../.. -package ./internal/results -type Diagnostic -output internal/results/deep_copy.gen.go
 
-func (d Diagnostic) Clone() Diagnostic { return copyOwnedDiagnostic(d) }
+func (d Diagnostic) Clone() Diagnostic { return deepCopyDiagnostic(d) }

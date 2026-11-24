@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type BackendSelection -output internal/input/configuration/tools/owned_backend.gen.go
+//go:generate go run ../../../development/generators/deep-copies -root ../../../.. -package ./internal/input/configuration/tools -type BackendSelection -output internal/input/configuration/tools/deep_copy_backend.gen.go
 
 // BackendSelection behaves as an omitted backend when it is the zero value.
 type BackendSelection struct {
@@ -167,4 +167,4 @@ func NormalizePaths(value any, directory string) {
 	}
 }
 
-func (b *BackendSelection) CopyConfig() (any, error) { return copyOwnedBackendSelection(*b), nil }
+func (b *BackendSelection) CopyConfig() (any, error) { return deepCopyBackendSelection(*b), nil }

@@ -53,7 +53,7 @@ type LintRulesConfig struct {
 	Disable []string `yaml:"disable" jsonschema:"nullable"`
 }
 
-//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/input/configuration -type ruleState,lintState,NetworkConfig,RepositoryConfig,SuppressionsPolicy -output internal/input/configuration/owned_state.gen.go
+//go:generate go run ../../development/generators/deep-copies -root ../../.. -package ./internal/input/configuration -type ruleState,lintState,NetworkConfig,RepositoryConfig,SuppressionsPolicy -output internal/input/configuration/deep_copy_state.gen.go
 
 type lintState struct {
 	source    any `clone:"shared"`
@@ -102,7 +102,7 @@ func (c LintConfig) CopyConfig() (any, error) {
 		return nil, err
 	}
 	next := copied
-	next.lintState = copyOwnedlintState(c.lintState)
+	next.lintState = deepCopylintState(c.lintState)
 	return LintConfig(next), nil
 }
 
@@ -113,7 +113,7 @@ func (c *LintRulesConfig) CopyConfig() (any, error) {
 		return nil, err
 	}
 	next := copied
-	next.ruleState = copyOwnedruleState(c.ruleState)
+	next.ruleState = deepCopyruleState(c.ruleState)
 	return LintRulesConfig(next), nil
 }
 
@@ -210,4 +210,4 @@ func (c *LintRulesConfig) SetResolved(levels map[string]ruleconfig.Level) {
 	c.resolved = levels
 }
 
-func (v NetworkConfig) CopyConfig() (any, error) { return copyOwnedNetworkConfig(v), nil }
+func (v NetworkConfig) CopyConfig() (any, error) { return deepCopyNetworkConfig(v), nil }
