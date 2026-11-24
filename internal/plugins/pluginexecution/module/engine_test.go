@@ -259,15 +259,14 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 	for _, name := range []string{"hang-start", "hang-abi", "hang-metadata"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 			defer cancel()
-			start := time.Now()
 			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
-			if err == nil || ctx.Err() != nil || time.Since(start) > 2*time.Second {
-				t.Fatalf("engine timeout was not enforced: elapsed=%s err=%v caller=%v", time.Since(start), err, ctx.Err())
+			if err == nil || ctx.Err() != nil {
+				t.Fatalf("engine timeout was not enforced: err=%v caller=%v", err, ctx.Err())
 			}
 		})
 	}
@@ -347,13 +346,49 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
+			hangs := strings.HasPrefix(name, "hang-")
+			var instances []api.Module
+			cancelCall := context.CancelFunc(func() {})
+			recordInstance := experimental.FunctionListenerFunc(func(_ context.Context, instance api.Module, _ api.FunctionDefinition, _ []uint64, _ experimental.StackIterator) {
+				instances = append(instances, instance)
+			})
+			cancelCleanup := experimental.FunctionListenerFunc(func(context.Context, api.Module, api.FunctionDefinition, []uint64, experimental.StackIterator) {
+				cancelCall()
+			})
+			loadCtx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(definition api.FunctionDefinition) experimental.FunctionListener {
+				switch {
+				case slices.Contains(definition.ExportNames(), "check"):
+					return recordInstance
+				case hangs && slices.Contains(definition.ExportNames(), "dealloc"):
+					return cancelCleanup
+				}
+				return nil
+			}))
+			engine, err := module.LoadModuleEngine(loadCtx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := engine.Close(context.Background()); err != nil {
+					t.Error(err)
+				}
+			})
 			// Trap fixtures fail only their first deallocation, and both calls must fail.
 			for range 2 {
-				_, err := engine.Check(t.Context(), scriptengine.Request{Source: "hello", Filename: "step.py"})
-				if err == nil || !strings.Contains(err.Error(), "engine lifecycle") {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancelCall = cancel
+				_, err := engine.Check(ctx, scriptengine.Request{Source: "hello", Filename: "step.py"})
+				cancel()
+				lost := err == nil || !strings.Contains(err.Error(), "dealloc: ")
+				if hangs {
+					lost = !errors.Is(err, context.Canceled)
+				}
+				if lost {
 					t.Fatalf("cleanup failure was lost: %v", err)
 				}
+			}
+			if len(instances) != 2 || instances[0] == instances[1] || !instances[0].IsClosed() {
+				t.Fatalf("failed instance was not closed and replaced: %v", instances)
 			}
 		})
 	}

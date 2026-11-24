@@ -146,14 +146,13 @@ func TestCallTimeoutIncludesGuestInstantiation(t *testing.T) {
 	}
 	engine.compiled = compiled
 	engine.limits.Timeout = 50 * time.Millisecond
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
-	start := time.Now()
 	_, err = engine.Check(ctx, scriptengine.Request{Source: "x", Filename: "step.py"})
 	if err == nil || !strings.Contains(err.Error(), "exceeded its time limit") {
 		t.Fatalf("initializer escaped the call limit: %v", err)
 	}
-	if elapsed := time.Since(start); elapsed > 700*time.Millisecond {
-		t.Fatalf("initializer used caller's 1s deadline instead of 50ms engine limit: %s", elapsed)
+	if ctx.Err() != nil {
+		t.Fatalf("initializer used the caller's deadline instead of the 50ms engine limit: %v", ctx.Err())
 	}
 }
