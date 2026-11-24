@@ -412,11 +412,6 @@ version = "12.2.0"
 backend = "npm:npm"
 specifiers = ["12.2.0"]
 
-[[tools."npm:runner-run"]]
-version = "0.28.0"
-backend = "npm:runner-run"
-specifiers = ["0.28.0"]
-
 [[tools.pandoc]]
 version = "3.13"
 backend = "github:jgm/pandoc"
@@ -511,6 +506,11 @@ checksum = "sha256:bc831eaa01912323099d7bc185981bf6bb1960931350bd3ad6a82f7a59a46
 url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-x86_64-pc-windows-msvc.zip"
 url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999369"
 provenance = "github-attestations"
+
+[[tools.runner-run]]
+version = "0.28.0"
+backend = "npm:runner-run"
+specifiers = ["0.28.0"]
 
 [[tools.rust]]
 version = "1.100.0"
