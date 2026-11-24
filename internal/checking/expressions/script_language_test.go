@@ -21,7 +21,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 				if shell == "" {
 					key = "jobs.<job_id>.steps.with"
 				}
-				rule.checkScriptString(ownedStringFixture(&definition.String{Value: "const value = ${{ " + expression + " }}", Pos: &sourcetext.Position{Line: 1, Column: 1}}), key, shell)
+				rule.checkScriptString(stringFixture(&definition.String{Value: "const value = ${{ " + expression + " }}", Pos: &sourcetext.Position{Line: 1, Column: 1}}), key, shell)
 				positionDependent := expression == "github.sha" || expression == "hashFiles('**/go.sum')"
 				unsafe := positionDependent || shell != "bash" && shell != "sh"
 				findings := rule.Findings()
@@ -41,7 +41,7 @@ func TestGitHubScriptDoesNotUseShellWordProof(t *testing.T) {
 		t.Fatal(errs)
 	}
 	rule := newTestChecker()
-	view := ownedWorkflowFixture(workflow)
+	view := boundWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
 	for _, err := range []error{rule.VisitWorkflowPre(view), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
 		if err != nil {

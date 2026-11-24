@@ -56,24 +56,24 @@ func testStep(tb testing.TB, job workflows.BoundJob, index int) workflows.BoundS
 	return steps[index]
 }
 
-func ownedWorkflowFixture(workflow *definition.Workflow) workflows.BoundWorkflow {
+func boundWorkflowFixture(workflow *definition.Workflow) workflows.BoundWorkflow {
 	return workflows.Bind("unit-expression", "", workflow, false, "").Workflow()
 }
 
-func ownedStringFixture(value *definition.String) *definition.String {
+func stringFixture(value *definition.String) *definition.String {
 	return value
 }
 
-func ownedMatrixFixture(matrix *definition.Matrix) *definition.Matrix {
-	workflow := ownedWorkflowFixture(&definition.Workflow{Jobs: map[string]*definition.Job{"test": {Strategy: &definition.Strategy{Matrix: matrix}}}})
+func boundMatrixFixture(matrix *definition.Matrix) *definition.Matrix {
+	workflow := boundWorkflowFixture(&definition.Workflow{Jobs: map[string]*definition.Job{"test": {Strategy: &definition.Strategy{Matrix: matrix}}}})
 	job, _ := workflow.Job("test")
 	return job.Strategy.Matrix
 }
 
-func ownedRawStringFixture(value *definition.RawYAMLString) *definition.RawYAMLString {
+func rawStringFixture(value *definition.RawYAMLString) *definition.RawYAMLString {
 	return value
 }
 
-func ownedMatrixRowFixture(row *definition.MatrixRow) *definition.MatrixRow {
+func matrixRowFixture(row *definition.MatrixRow) *definition.MatrixRow {
 	return row
 }

@@ -18,7 +18,7 @@ func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 			}
 			return metadata, nil
 		}}, Options{})
-		outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: reference}))
+		outputs := checker.getActionOutputsType(stringFixture(&definition.String{Value: reference}))
 		if result, exists := outputs.Property("result"); !exists || result.Kind() != exprtypes.KindString {
 			t.Fatalf("%s: missing result output: %v", reference, outputs)
 		}
@@ -31,7 +31,7 @@ func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
 	t.Parallel()
 	checker := NewVisitor(Dependencies{}, Options{})
-	outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: "./missing"}))
+	outputs := checker.getActionOutputsType(stringFixture(&definition.String{Value: "./missing"}))
 	if mapped, known := outputs.Mapped(); !known || mapped.Kind() != exprtypes.KindString {
 		t.Fatalf("unavailable metadata was treated as no outputs: %v", outputs)
 	}
@@ -53,7 +53,7 @@ func TestActionOutputDeclarationCompleteness(t *testing.T) {
 			metadata := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\n" + tc.source))
 			for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
 				checker := NewVisitor(Dependencies{Action: func(string) (actionmeta.Definition, error) { return metadata, nil }}, Options{})
-				outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: reference}))
+				outputs := checker.getActionOutputsType(stringFixture(&definition.String{Value: reference}))
 				if outputs.IsStrict() != tc.strict {
 					t.Fatalf("%s: strict=%t, want %t", reference, outputs.IsStrict(), tc.strict)
 				}

@@ -22,7 +22,7 @@ func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots,
 	return declarations.NewCapturedSnapshots(tb, base)
 }
 
-func ownedApplicationStep(step *definition.Step) workflows.BoundStep {
+func boundApplicationStep(step *definition.Step) workflows.BoundStep {
 	workflow := workflows.Bind("unit-application", "", &definition.Workflow{Jobs: map[string]*definition.Job{"unit": {Steps: []*definition.Step{step}}}}, false, "").Workflow()
 	job, _ := workflow.Job("unit")
 	for step := range job.Steps() {

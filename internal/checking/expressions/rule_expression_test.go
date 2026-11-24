@@ -108,7 +108,7 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			have := rule.checkRawYAMLString(ownedRawStringFixture(&definition.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &sourcetext.Position{}}))
+			have := rule.checkRawYAMLString(rawStringFixture(&definition.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &sourcetext.Position{}}))
 			if diff := cmp.Diff(tc.want, have); diff != "" {
 				t.Fatalf(`wanted %s but got %s
 diff:

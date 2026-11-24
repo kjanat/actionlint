@@ -52,7 +52,7 @@ jobs:
 					t.Fatal(errs)
 				}
 				rule := newTestChecker()
-				rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
+				rule.checkMatrix(boundMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
 				if errs := rule.Findings(); len(errs) != tc.wantErrors {
 					t.Fatalf("want %d errors, got %v", tc.wantErrors, errs)
 				}
@@ -87,7 +87,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 				t.Fatalf("reserved key source lost: %#v", matrixValue)
 			}
 			rule := newTestChecker()
-			rule.checkMatrix(ownedMatrixFixture(matrixValue), matrix.Resolve(workflow.Jobs["test"].Strategy))
+			rule.checkMatrix(boundMatrixFixture(matrixValue), matrix.Resolve(workflow.Jobs["test"].Strategy))
 			if len(rule.Findings()) != 1 || !strings.Contains(rule.Findings()[0].Message, `undefined variable "missing"`) {
 				t.Fatalf("want source-key expression diagnostic, got %v", rule.Findings())
 			}
@@ -123,7 +123,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
+			ty := rule.checkMatrix(boundMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
 			if len(rule.Findings()) != 0 {
 				t.Fatal(rule.Findings())
 			}

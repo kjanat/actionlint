@@ -166,7 +166,7 @@ func TestMetadataSourceAdmissionRejectsMissingDocumentAndVerifyMismatch(t *testi
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), correctness.InvalidActionReferenceRule.Base(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(boundApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]

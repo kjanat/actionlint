@@ -57,18 +57,18 @@ func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *configu
 	for path, cfg := range sourceConfigs {
 		batch.Policy.SourceBindings[path] = registry.Prepare(caller, cfg, cfg)
 	}
-	owned := make([]*finding.Finding, len(batch.Findings))
+	copies := make([]*finding.Finding, len(batch.Findings))
 	for i, f := range batch.Findings {
 		copyOfFinding := *f
 		f = &copyOfFinding
-		owned[i] = f
+		copies[i] = f
 		scope := batch.Policy.Scope
 		if selected, ok := batch.Policy.SourceBindings[f.Path]; ok {
 			scope = selected
 		}
 		f.Binding = scope.Rule(f.Rule).ID()
 	}
-	batch.Findings = owned
+	batch.Findings = copies
 	batch.Policy.Bindings = registry.Seal()
 	return batch
 }

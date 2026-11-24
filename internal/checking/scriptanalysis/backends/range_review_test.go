@@ -45,9 +45,9 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("test")
 	stepView := slices.Collect(job.Steps())[0]
-	ownedRun, _ := stepView.Run()
+	boundRun, _ := stepView.Run()
 	scriptRun := *run
-	scriptRun.Source = ownedRun.Source
+	scriptRun.Source = boundRun.Source
 	for _, end := range []sourcetext.Position{{Line: 2, Column: 3}, {Line: 1, Column: 7}} {
 		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})
 		if err != nil {

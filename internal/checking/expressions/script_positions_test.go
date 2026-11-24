@@ -134,7 +134,7 @@ func TestNullInterpolationUsesScriptPosition(t *testing.T) {
 		{"echo '${{ null }}'", false},
 	} {
 		rule := newTestChecker()
-		rule.checkScriptString(ownedStringFixture(&definition.String{Value: tc.script, Pos: &sourcetext.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run", "bash")
+		rule.checkScriptString(stringFixture(&definition.String{Value: tc.script, Pos: &sourcetext.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run", "bash")
 		findings := rule.Findings()
 		if tc.unsafe {
 			if len(findings) != 1 || findings[0].Rule != "script-interpolation" {

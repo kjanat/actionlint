@@ -192,9 +192,9 @@ func mutateCallInput(t *testing.T, f *invocationFixture, view workflows.BoundSte
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
 		for key, job := range f.original.Jobs {
-			owned := workflowStepViews(t, workflowView(t, f.root), key)
+			views := workflowStepViews(t, workflowView(t, f.root), key)
 			for index, step := range job.Steps {
-				if owned[index].Reference() == view.Reference() {
+				if views[index].Reference() == view.Reference() {
 					step.Exec.(*definition.ExecAction).Uses.Value = text
 					return
 				}

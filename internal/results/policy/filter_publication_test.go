@@ -42,8 +42,8 @@ func publishSuppressionFixture(t *testing.T, p policy.DocumentInputs, cfg *confi
 	if cfg == nil {
 		cfg = &configuration.Config{}
 	} else {
-		owned := *cfg
-		cfg = &owned
+		copied := *cfg
+		cfg = &copied
 	}
 	cfg.Lint.Rules = enabled.Lint.Rules
 	originalRestrictions := cfg.Policy.DisallowSuppressions
