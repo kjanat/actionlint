@@ -16,6 +16,7 @@ groups   = true
 timing   = true
 
 [tasks]
-build      = { env = { SKIP_GO_GENERATE = "1" } }
-actionlint = { source = "go" }
-lint       = { source = "mise" }
+build               = { env = { SKIP_GO_GENERATE = "1" } }
+actionlint          = { source = "go" }
+lint                = { source = "mise" }
+"package.json:lint" = { source = "package.json" }
