@@ -46,11 +46,6 @@ biome                     = {
   version        = "2.6.6",
   version_prefix = "@biomejs/biome@",
 }
-rust                      = {
-  version    = "latest",
-  components = ["clippy", "rustfmt"],
-  targets    = ["wasm32-unknown-unknown", "wasm32-wasip2"]
-}
 golangci-lint             = { version = "2.15.0", depends = ["go"] }
 "github:rhysd/actionlint" = { version = "1.7.12", depends = ["cargo:rshellcheck"] }
 wasi-sdk                  = {

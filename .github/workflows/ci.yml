@@ -371,8 +371,12 @@ jobs:
         run: cargo package --locked -p actionlint-extension-api --all-features
       - name: Build the pinned Wasmtime runner host
         run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
-      - name: Build the plugin fixtures from source
-        run: mise run --force plugins
+      - name: Build the plugin fixtures from source and match the committed fixtures
+        run: |
+          mise run --force plugins
+          git diff --exit-code -- internal/plugins/pluginexecution/component/testdata internal/plugins/pluginexecution/module/testdata
+          untracked="$(git ls-files --others --exclude-standard -- internal/plugins/pluginexecution/component/testdata internal/plugins/pluginexecution/module/testdata)"
+          test -z "${untracked}"
       - name: Test the C example through the CLI and match its committed fixture
         run: mise run test:example:no-sudo;
           git diff --exit-code -- internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm
