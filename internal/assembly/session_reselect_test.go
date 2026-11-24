@@ -100,7 +100,7 @@ func TestSessionRoutesByReselectedDescriptor(t *testing.T) {
 	if len(opened.plugins.ScriptEngines) != 1 {
 		t.Fatalf("script engines=%+v", opened.plugins.ScriptEngines)
 	}
-	if diagnostics, err := opened.plugins.ScriptEngines[0].Backend.Check(ctx, scriptengine.Request{}); err != nil || diagnostics != nil {
+	if diagnostics, err := opened.plugins.ScriptEngines[0].Backend.Check(ctx, scriptengine.Request{}); !errors.Is(err, scriptengine.ErrUnavailable) || diagnostics != nil {
 		t.Fatalf("rejected release: diagnostics=%v error=%v", diagnostics, err)
 	}
 	if warnings := session.Warnings(); len(warnings) != 1 || !strings.Contains(warnings[0], publisher.Name+"@v2.0.0 does not load") {

@@ -40,6 +40,13 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 		}
 	}
 	result.diagnostics, result.err = r.backend.Check(ctx, request)
+	if errors.Is(result.err, scriptengine.ErrUnavailable) {
+		result.diagnostics, result.err, result.skipped = nil, nil, true
+		if r.context.Skipped != nil {
+			r.context.Skipped(r.descriptor.Name)
+		}
+		return result
+	}
 	result.directory = request.Directory
 	if grant == nil {
 		return result

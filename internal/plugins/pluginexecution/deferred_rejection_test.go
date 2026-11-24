@@ -39,7 +39,7 @@ func TestDeferredScriptEngineRejectsBytesAndReselects(t *testing.T) {
 			engine := &deferredScriptEngine{gate: make(chan struct{}, 1), pin: pin, acquisition: acquisition}
 			ctx, session := network.WithSession(t.Context(), network.Options{})
 			for range 2 {
-				if diagnostics, err := engine.Check(ctx, scriptengine.Request{}); err != nil || diagnostics != nil {
+				if diagnostics, err := engine.Check(ctx, scriptengine.Request{}); !errors.Is(err, scriptengine.ErrUnavailable) || diagnostics != nil {
 					t.Fatalf("skipped engine: diagnostics=%v error=%v", diagnostics, err)
 				}
 			}

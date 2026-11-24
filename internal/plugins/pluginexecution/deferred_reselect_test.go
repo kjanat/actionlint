@@ -87,7 +87,7 @@ func newDeferredReselection(t *testing.T, newer ...[]byte) deferredReselection {
 
 func checkSkipped(ctx context.Context, t *testing.T, engine *deferredScriptEngine, session *network.Session, want string) {
 	t.Helper()
-	if diagnostics, err := engine.Check(ctx, scriptengine.Request{}); err != nil || diagnostics != nil {
+	if diagnostics, err := engine.Check(ctx, scriptengine.Request{}); !errors.Is(err, scriptengine.ErrUnavailable) || diagnostics != nil {
 		t.Fatalf("skipped engine: diagnostics=%v error=%v", diagnostics, err)
 	}
 	warnings := session.Warnings()

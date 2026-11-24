@@ -208,8 +208,11 @@ func (b *deferredScriptEngine) ScriptDescriptor() scriptengine.Descriptor {
 
 func (b *deferredScriptEngine) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	engine, err := b.get(ctx)
-	if err != nil || engine == nil {
+	if err != nil {
 		return nil, err
+	}
+	if engine == nil {
+		return nil, scriptengine.ErrUnavailable
 	}
 	return engine.Check(ctx, request)
 }
