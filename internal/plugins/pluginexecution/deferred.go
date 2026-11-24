@@ -131,7 +131,7 @@ func (b *deferredScriptEngine) skip(ctx context.Context, reason *component.Admis
 	case err == nil:
 		b.next = &next
 		err = &pluginregistry.IncompatibleError{Name: b.pin.Name, Version: b.pin.Version, Err: reason}
-	case !errors.Is(err, pluginregistry.ErrNoCompatibleRelease):
+	case !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) && !network.OnlyOffline(err):
 		return err
 	}
 	network.Warn(ctx, "Skipping default plugin: "+err.Error())

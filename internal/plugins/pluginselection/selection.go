@@ -435,7 +435,7 @@ func (s *Sources) reselect(ctx context.Context, index int, reason *component.Adm
 	releases.Plugins = slices.Clone(s.Releases.Plugins)
 	next, err := pluginregistry.Reselect(ctx, pin, reason, s.Acquisition)
 	switch {
-	case errors.Is(err, pluginregistry.ErrNoCompatibleRelease):
+	case errors.Is(err, pluginregistry.ErrNoCompatibleRelease) || network.OnlyOffline(err):
 		network.Warn(ctx, "Skipping default plugin: "+err.Error())
 		releases.Plugins = slices.Delete(releases.Plugins, index, index+1)
 		s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })

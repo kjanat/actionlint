@@ -16,6 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -140,6 +142,54 @@ func TestDefaultPluginRejectedAtHydrate(t *testing.T) {
 					!strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) || !strings.Contains(warnings[0], "incompatible analyzer contract") {
 					t.Fatalf("run %d: selected=%+v warnings=%q", run, selected, warnings)
 				}
+			}
+		})
+	}
+}
+
+func TestOfflineHydrateSkipsRejectedDefaultWithoutCachedSuccessor(t *testing.T) {
+	t.Parallel()
+	publisher := fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}
+	for _, disableTools := range []bool{false, true} {
+		t.Run(fmt.Sprintf("disableTools=%t", disableTools), func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			registry.AddPlugin(t, publisher, "v1.0.0", analyzerComponent)
+			registry.AddPlugin(t, publisher, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			registry.PublishPlugin(t, publisher, "v1.0.0", "v2.0.0")
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			client, err := pluginregistry.New(pluginregistry.DefaultURL, acquisition)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pin, err := client.ResolveCached(t.Context(), "shellcheck", "latest")
+			if err != nil || pin.Version != "v2.0.0" {
+				t.Fatalf("warm selection=%+v error=%v", pin, err)
+			}
+			if _, err := artifacts.Resolve(t.Context(), pin.Source(), pluginacquisition.ArtifactOptions(acquisition)); err != nil {
+				t.Fatal(err)
+			}
+			registry.SetOffline(true)
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, session := network.WithSession(t.Context(), network.Options{Offline: !disableTools})
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, DisableTools: disableTools, Acquisition: acquisition}
+			selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+			if err != nil || selected.Releases != nil && len(selected.Releases.Plugins) != 0 || len(selected.Paths) != 0 {
+				t.Fatalf("selected=%+v error=%v", selected, err)
+			}
+			warnings := session.Warnings()
+			if disableTools {
+				if len(warnings) != 0 || len(selected.SkippedTools) != 0 {
+					t.Fatalf("disabled tools selected defaults: skipped=%v warnings=%q", selected.SkippedTools, warnings)
+				}
+				return
+			}
+			if !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) || len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Skipping default plugin: ") || !strings.Contains(warnings[0], "is not cached") {
+				t.Fatalf("skipped=%v warnings=%q", selected.SkippedTools, warnings)
 			}
 		})
 	}
