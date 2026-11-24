@@ -5,7 +5,7 @@ package invocationcontext
 import (
 	"unsafe"
 
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // CycleShape is used for storage in variant or result types.
