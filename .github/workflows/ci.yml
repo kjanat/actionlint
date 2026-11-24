@@ -65,7 +65,7 @@ jobs:
         if: env.CI_UNIT == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
       - if: env.CI_UNIT == 'true'
-        run: go test ./...
+        run: go test -trimpath ./...
       # Check that actionlint builds without CGO.
       - if: env.CI_UNIT == 'true'
         run: go build ./cmd/actionlint

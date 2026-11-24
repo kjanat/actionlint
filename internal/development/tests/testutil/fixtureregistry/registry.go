@@ -15,11 +15,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -481,14 +482,23 @@ func RuntimeFailureComponent() []byte {
 }
 
 func componentFixture(path ...string) []byte {
-	var callers [1]uintptr
-	runtime.Callers(1, callers[:])
-	frame, _ := runtime.CallersFrames(callers[:]).Next()
-	data, err := files.New(context.Background(), nil, nil).ReadFile(filepath.Join(append([]string{filepath.Dir(frame.File), "..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata"}, path...)...))
+	directory, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	return data
+	name := filepath.Join(append([]string{"internal", "plugins", "pluginexecution", "component", "testdata"}, path...)...)
+	reader := files.New(context.Background(), nil, nil)
+	for {
+		data, err := reader.ReadFile(filepath.Join(directory, name))
+		if err == nil {
+			return data
+		}
+		parent := filepath.Dir(directory)
+		if !errors.Is(err, fs.ErrNotExist) || parent == directory {
+			panic(err)
+		}
+		directory = parent
+	}
 }
 
 func (r *PluginRegistry) OmitInterfaces() {
