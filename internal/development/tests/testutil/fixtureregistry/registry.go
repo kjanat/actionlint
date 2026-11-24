@@ -338,6 +338,13 @@ func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 	r.writeCatalogue(t, r.publisher, versions...)
 }
 
+func (r *PluginRegistry) PublishPlugin(t *testing.T, publisher PluginPublisher, versions ...string) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.writeCatalogue(t, publisher, versions...)
+}
+
 func publisherKey(publisher PluginPublisher) string {
 	return fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "https://token.actions.githubusercontent.com\n%d", publisher.RepositoryID)))
 }
@@ -356,7 +363,7 @@ func (r *PluginRegistry) writeArtifact(t *testing.T, publisher PluginPublisher, 
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
 	primary := component.AnalyzerInterface
 	if interfaces, err := component.ReadInterfaces(wasm); err == nil {
-		if roles, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces}); err == nil {
+		if roles, err := component.Admit(t.Context(), component.ListedInterfaces{Interfaces: interfaces}); err == nil {
 			primary = roles.Exports()[0]
 		}
 	}

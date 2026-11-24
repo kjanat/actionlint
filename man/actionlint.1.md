@@ -63,8 +63,9 @@ actionlint can load each tag.
 
 **plugin install** [*PLUGIN*] [**--version** *TAG|latest*]
 : Add a plugin to the config's **plugins** list and download it. Without a name, the command
-installs every declared plugin. The default version is the highest stable release that this
-actionlint can load. Prereleases need an exact tag.
+installs every declared plugin. The default version is the newest stable release that this
+actionlint can load. A plugin without a stable release gets its newest loadable prerelease. A
+release is loadable when its downloaded component passes the checks that loading runs.
 
 **plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
 : List, update or remove declared plugins, or download declared releases into the cache. Use

@@ -273,8 +273,12 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 }
 
 func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error) {
+	return c.resolve(ctx, name, selector, true)
+}
+
+func (c *Client) resolve(ctx context.Context, name, selector string, download bool) (Pin, error) {
 	if c.base.Scheme == "file" {
-		return c.resolveCandidate(ctx, name, selector)
+		return c.resolveCandidate(ctx, name, selector, download)
 	}
 	if network.Settings(ctx).Offline {
 		if !pluginreference.ValidName(name) || !pluginreference.ValidVersion(selector) || selector == "latest" {
@@ -312,7 +316,7 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 			return Pin{}, err
 		}
 	}
-	pin, err := c.selectRelease(ctx, name, selector, m.Versions, versions, func(v Version) (Pin, error) {
+	pin, err := c.selectRelease(ctx, name, selector, download, m.Versions, versions, func(v Version) (Pin, error) {
 		pin, err := c.resolveVersion(ctx, p, m, v, selector)
 		if err != nil {
 			return Pin{}, err
@@ -331,7 +335,7 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 	return pin, nil
 }
 
-func (c *Client) selectRelease(ctx context.Context, name, selector string, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, error) {
+func (c *Client) selectRelease(ctx context.Context, name, selector string, download bool, published, versions []Version, resolve func(Version) (Pin, error)) (Pin, error) {
 	if selector == "latest" && slices.ContainsFunc(published, func(v Version) bool { return stableRelease(v.Version) }) {
 		versions = slices.DeleteFunc(slices.Clone(versions), func(v Version) bool { return !stableRelease(v.Version) })
 		if len(versions) == 0 {
@@ -360,7 +364,7 @@ func (c *Client) selectRelease(ctx context.Context, name, selector string, publi
 			return Pin{}, err
 		}
 		if selector == "latest" {
-			roles, err := c.checkRelease(ctx, pin, v)
+			roles, err := c.checkRelease(ctx, pin, v, download)
 			if _, ok := errors.AsType[*IncompatibleError](err); ok {
 				incompatible = append(incompatible, err)
 				versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })

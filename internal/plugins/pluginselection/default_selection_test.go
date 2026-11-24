@@ -98,8 +98,56 @@ func TestDefaultPluginWithoutCompatibleReleaseIsSkipped(t *testing.T) {
 	}
 }
 
+func TestDefaultPluginRejectedAtHydrate(t *testing.T) {
+	t.Parallel()
+	const broken = "https://github.com/publisher/engine/releases/download/v2.0.0/plugin.wasm"
+	publisher := fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"shellcheck"}, RepositoryID: 99}
+	for _, older := range []bool{true, false} {
+		t.Run(fmt.Sprintf("older=%t", older), func(t *testing.T) {
+			t.Parallel()
+			registry := fixtureregistry.NewPluginRegistry(t)
+			versions := []string{"v2.0.0"}
+			if older {
+				registry.AddPlugin(t, publisher, "v1.0.0", analyzerComponent)
+				versions = []string{"v1.0.0", "v2.0.0"}
+			}
+			registry.AddPlugin(t, publisher, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			registry.PublishPlugin(t, publisher, versions...)
+			root := t.TempDir()
+			path := filepath.Join(root, "actionlint.yaml")
+			if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			for run := range 2 {
+				registry.ResetRequests()
+				ctx, session := network.WithSession(t.Context(), network.Options{})
+				selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || selected.Releases == nil {
+					t.Fatalf("run %d: selected=%+v error=%v", run, selected, err)
+				}
+				if downloaded := slices.Contains(registry.Requests(), broken); downloaded != (run == 0) {
+					t.Fatalf("run %d downloaded the rejected release=%t: %v", run, downloaded, registry.Requests())
+				}
+				warnings := session.Warnings()
+				if older {
+					if len(selected.Releases.Plugins) != 1 || selected.Releases.Plugins[0].Version != "v1.0.0" || len(selected.Artifacts) != 1 || !slices.Equal(selected.Paths, []string{selected.Releases.Plugins[0].Source()}) || len(selected.SkippedTools) != 0 || len(warnings) != 0 {
+						t.Fatalf("run %d: selected=%+v warnings=%q", run, selected, warnings)
+					}
+					continue
+				}
+				if len(selected.Releases.Plugins) != 0 || len(selected.Paths) != 0 || !slices.Equal(selected.SkippedTools, []string{"shellcheck"}) || len(warnings) != 1 ||
+					!strings.HasPrefix(warnings[0], "Skipping default plugin: shellcheck: "+pluginregistry.ErrNoCompatibleRelease.Error()) || !strings.Contains(warnings[0], "incompatible analyzer contract") {
+					t.Fatalf("run %d: selected=%+v warnings=%q", run, selected, warnings)
+				}
+			}
+		})
+	}
+}
+
 func TestLazyDefaultsFollowComponentExports(t *testing.T) {
 	t.Parallel()
+	const artifact = "https://github.com/publisher/engine/releases/download/v1.0.0/plugin.wasm"
 	for _, tc := range []struct {
 		name    string
 		exports []string
@@ -111,7 +159,7 @@ func TestLazyDefaultsFollowComponentExports(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			metadata := fmt.Appendf(nil, `{"metadata_version":1,"id":"test-engine","name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":"1.0.0","repository":"https://github.com/publisher/engine","transport":"wasm-component","interface":%q,"wit_sha256":%q}`, component.ScriptEngine03Interface, strings.Repeat("0", 64))
+			metadata := fmt.Appendf(nil, `{"metadata_version":1,"id":"test-engine","name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":"1.0.0","repository":"https://github.com/publisher/engine","transport":"wasm-component","interface":%q,"wit_sha256":%q,"rules":[{}]}`, component.ScriptEngine03Interface, strings.Repeat("0", 64))
 			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "test-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v1.0.0", wasmcomponent.Build(nil, tc.exports, nil))
 			root := t.TempDir()
 			path := filepath.Join(root, "actionlint.yaml")
@@ -119,6 +167,13 @@ func TestLazyDefaultsFollowComponentExports(t *testing.T) {
 				t.Fatal(err)
 			}
 			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"ruff"}, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			if !tc.lazy {
+				selected, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
+				if err != nil || !slices.Contains(registry.Requests(), artifact) || !slices.Equal(selected.SkippedTools, []string{"ruff"}) {
+					t.Fatalf("eager default: selected=%+v error=%v requests=%v", selected, err, registry.Requests())
+				}
+				return
+			}
 			offline, _ := network.WithSession(t.Context(), network.Options{Offline: true})
 			for _, ctx := range []context.Context{t.Context(), offline} {
 				selected, err := selection.Resolve(ctx, root, checkrequest.Request{Kind: checkrequest.Repository})
@@ -126,11 +181,8 @@ func TestLazyDefaultsFollowComponentExports(t *testing.T) {
 					t.Fatalf("selected=%+v error=%v", selected, err)
 				}
 				pin := selected.Releases.Plugins[0]
-				if !strings.HasPrefix(pin.Contract, component.ScriptEngine03Interface) {
-					t.Fatalf("contract=%s", pin.Contract)
-				}
-				if _, lazy := selected.LazySources[pin.Source()]; lazy != tc.lazy {
-					t.Fatalf("roles=%+v lazy=%t, want %t", pin.Roles, lazy, tc.lazy)
+				if _, lazy := selected.LazySources[pin.Source()]; !lazy || slices.Contains(registry.Requests(), artifact) {
+					t.Fatalf("roles=%+v lazy=%t requests=%v", pin.Roles, lazy, registry.Requests())
 				}
 			}
 		})

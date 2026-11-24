@@ -127,12 +127,12 @@ func (c *Client) candidateManifest(ctx context.Context, name string) (CatalogPlu
 	return CatalogPlugin{}, candidateManifest{}, fmt.Errorf("plugin %q not found in candidate catalogue", name)
 }
 
-func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (Pin, error) {
+func (c *Client) resolveCandidate(ctx context.Context, name, selector string, download bool) (Pin, error) {
 	p, m, err := c.candidateManifest(ctx, name)
 	if err != nil {
 		return Pin{}, err
 	}
-	return c.selectRelease(ctx, name, selector, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
+	return c.selectRelease(ctx, name, selector, download, m.Versions, m.Versions, func(v Version) (Pin, error) { return c.candidatePin(ctx, p, v, selector) })
 }
 
 func (c *Client) candidatePin(ctx context.Context, p CatalogPlugin, v Version, selector string) (Pin, error) {

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -19,11 +20,10 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	if !pluginreference.ValidName(name) && !pluginreference.ValidAlias(name) || !pluginreference.ValidVersion(selector) {
 		return Pin{}, errors.New("invalid plugin name or version selector")
 	}
-	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
+	path, err := c.selectionPath(name, selector)
 	if err != nil {
 		return Pin{}, err
 	}
-	path := filepath.Join(directory, "selections", selectionKey(name, selector, component.AcceptedInterfacesDigest())+".json")
 	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
 		data, err := readCacheBytes(ctx, path)
 		if err != nil {
@@ -54,7 +54,7 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	if network.Settings(ctx).Offline {
 		return Pin{}, network.Missing(name + "@" + selector)
 	}
-	pin, err := c.Resolve(ctx, name, selector)
+	pin, err := c.resolve(ctx, name, selector, false)
 	if err != nil {
 		return Pin{}, err
 	}
@@ -66,6 +66,72 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 
 func selectionKey(name, selector, accepted string) string {
 	return sha256hex.Digest([]byte(name + "\n" + selector + "\n" + accepted))
+}
+
+func (c *Client) selectionPath(name, selector string) (string, error) {
+	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(directory, "selections", selectionKey(name, selector, component.AcceptedInterfacesDigest())+".json"), nil
+}
+
+type rejectedRelease struct {
+	SHA256 string `json:"sha256"`
+	Reason string `json:"reason"`
+}
+
+func (c *Client) rejectionPath(digest string) (string, error) {
+	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(directory, "rejected", sha256hex.Digest([]byte(digest+"\n"+component.AcceptedInterfacesDigest()))+".json"), nil
+}
+
+func (c *Client) rejection(ctx context.Context, pin Pin) (string, bool, error) {
+	path, err := c.rejectionPath(pin.SHA256)
+	if err != nil {
+		return "", false, err
+	}
+	data, err := readCacheBytes(ctx, path)
+	if err != nil || data == nil {
+		return "", false, err
+	}
+	var record rejectedRelease
+	if err := jsonv2.Unmarshal(data, &record, jsonv2.RejectUnknownMembers(true)); err != nil {
+		return "", false, err
+	}
+	if record.SHA256 != pin.SHA256 {
+		return "", false, errors.New("rejected release record disagrees with its digest")
+	}
+	return record.Reason, true, nil
+}
+
+func Reselect(ctx context.Context, pin Pin, reason error, acquisition dependencycache.Acquisition) (Pin, error) {
+	c, err := New(pin.Registry, acquisition)
+	if err != nil {
+		return Pin{}, err
+	}
+	path, err := c.rejectionPath(pin.SHA256)
+	if err != nil {
+		return Pin{}, err
+	}
+	if err := writeCacheFile(path, rejectedRelease{SHA256: pin.SHA256, Reason: reason.Error()}, false); err != nil {
+		return Pin{}, err
+	}
+	name := pin.Alias
+	if name == "" {
+		name = pin.Name
+	}
+	selection, err := c.selectionPath(name, pin.Selector)
+	if err != nil {
+		return Pin{}, err
+	}
+	if err := os.Remove(selection); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Pin{}, err
+	}
+	return c.ResolveCached(ctx, name, pin.Selector)
 }
 
 // Lookup reuses a previously verified registry resolution without network access.
@@ -156,7 +222,7 @@ func (c *Client) LookupCandidate(ctx context.Context, name, version, digest stri
 		return Pin{}, err
 	}
 	if !exists {
-		pin, err = c.resolveCandidate(ctx, name, version)
+		pin, err = c.resolveCandidate(ctx, name, version, true)
 		if err != nil {
 			return Pin{}, fmt.Errorf("candidate %s@%s is not cached; restore its matching local staging artifact or run actionlint plugin update: %w", name, version, err)
 		}

@@ -21,7 +21,7 @@ func TestReadInterfaces(t *testing.T) {
 	if err != nil || !slices.Equal(interfaces.Imports, []string{"wasi:cli/environment@0.2.0"}) || !slices.Equal(interfaces.Exports, []string{AnalyzerInterface}) {
 		t.Fatalf("interfaces=%+v error=%v", interfaces, err)
 	}
-	if _, err := Admit(ListedInterfaces{Interfaces: interfaces}); err != nil {
+	if _, err := Admit(t.Context(), ListedInterfaces{Interfaces: interfaces}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ReadInterfaces(append(data, 0xff)); err == nil || !strings.Contains(err.Error(), "validate component contract") {
@@ -40,7 +40,7 @@ func TestAdmitDecidesImports(t *testing.T) {
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{AnalyzerInterface}}, "repository objects require the reference-resolver role"},
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{ReferenceResolverInterface}}, ""},
 	} {
-		_, err := Admit(ListedInterfaces{Interfaces: tc.interfaces})
+		_, err := Admit(t.Context(), ListedInterfaces{Interfaces: tc.interfaces})
 		if tc.want == "" && err != nil || tc.want != "" && (err == nil || err.Error() != tc.want) {
 			t.Errorf("%+v: error=%v, want %q", tc.interfaces, err, tc.want)
 		}
@@ -63,17 +63,17 @@ func TestAcceptedInterfacesDigest(t *testing.T) {
 func TestAdmitReturnsExactRoles(t *testing.T) {
 	t.Parallel()
 	all := []string{AnalyzerInterface, ToolIntegrationInterface, ReferenceResolverInterface, RunnerInterface, ScriptEngine03Interface, TemplateEffects03Interface}
-	roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: all}})
+	roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: all}})
 	want := Roles{Analyzer: AnalyzerInterface, ToolIntegration: ToolIntegrationInterface, ReferenceResolver: ReferenceResolverInterface, Runner: RunnerInterface, ScriptEngine: ScriptEngine03Interface, TemplateEffects: TemplateEffects03Interface}
 	if err != nil || roles != want || !slices.Equal(roles.Exports(), all) {
 		t.Fatalf("roles=%+v error=%v", roles, err)
 	}
 	for _, runner := range []string{RunnerInterface, Runner03Interface} {
-		if roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{runner}}}); err != nil || roles != (Roles{Runner: runner}) {
+		if roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: []string{runner}}}); err != nil || roles != (Roles{Runner: runner}) {
 			t.Fatalf("%s: roles=%+v error=%v", runner, roles, err)
 		}
 	}
-	if roles, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{"kjanat:actionlint/runner-provider@0.4.0"}}}); err == nil || roles != (Roles{}) {
+	if roles, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: []string{"kjanat:actionlint/runner-provider@0.4.0"}}}); err == nil || roles != (Roles{}) {
 		t.Fatalf("unsupported runner: roles=%+v error=%v", roles, err)
 	}
 }
@@ -134,7 +134,7 @@ func TestLoadRejectsMetadataForAnotherInterfaceVersion(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("error=%v, want %q", err, want)
 	}
-	if _, err := Admit(ListedInterfaces{Interfaces: Interfaces{Exports: []string{Runner03Interface}}, Metadata: []byte(olderRunnerMetadata)}); err == nil || err.Error() != want {
+	if _, err := Admit(t.Context(), ListedInterfaces{Interfaces: Interfaces{Exports: []string{Runner03Interface}}, Metadata: []byte(olderRunnerMetadata)}); err == nil || err.Error() != want {
 		t.Fatalf("listed interfaces: error=%v, want %q", err, want)
 	}
 }
@@ -156,7 +156,7 @@ func TestAdmitMatchesLoad(t *testing.T) {
 		if err := os.WriteFile(path, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		roles, checked := Admit(ComponentBytes(data))
+		roles, checked := Admit(t.Context(), ComponentBytes(data))
 		plugin, loaded := LoadComponentPlugin(t.Context(), path, Options{})
 		if loaded == nil {
 			if err := plugin.Close(t.Context()); err != nil {

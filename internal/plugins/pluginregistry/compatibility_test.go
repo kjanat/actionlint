@@ -123,22 +123,40 @@ func TestLatestWithoutCompatibleRelease(t *testing.T) {
 
 func TestLatestChecksComponentTypes(t *testing.T) {
 	t.Parallel()
-	r := fixtureregistry.NewPluginRegistry(t)
-	r.OmitInterfaces()
-	r.Add(t, "v1.0.0", analyzerComponent)
-	r.Add(t, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
-	client := registryClient(t, r)
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
-	if err != nil || pin.Version != "v1.0.0" {
-		t.Fatalf("latest=%+v error=%v", pin, err)
-	}
-	exact, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = pluginregistry.Sync(t.Context(), pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{exact}}, fixtureAcquisition(r))
-	if _, ok := errors.AsType[*pluginregistry.IncompatibleError](err); !ok || !strings.Contains(err.Error(), "incompatible analyzer contract") {
-		t.Fatalf("sync accepted an analyzer without its functions: %v", err)
+	for _, listed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("listed=%t", listed), func(t *testing.T) {
+			t.Parallel()
+			r := fixtureregistry.NewPluginRegistry(t)
+			if !listed {
+				r.OmitInterfaces()
+			}
+			r.Add(t, "v1.0.0", analyzerComponent)
+			r.Add(t, "v2.0.0", wasmcomponent.Build(nil, []string{component.AnalyzerInterface}, nil))
+			client := registryClient(t, r)
+			pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+			if err != nil || pin.Version != "v1.0.0" || !slices.Contains(r.Requests(), artifactURL("v2.0.0")) {
+				t.Fatalf("latest=%+v error=%v", pin, err)
+			}
+			exact, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = pluginregistry.Sync(t.Context(), pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{exact}}, fixtureAcquisition(r))
+			if _, ok := errors.AsType[*pluginregistry.IncompatibleError](err); !ok || !strings.Contains(err.Error(), "incompatible analyzer contract") {
+				t.Fatalf("sync accepted an analyzer without its functions: %v", err)
+			}
+			versions, err := client.ListVersions(t.Context(), fixtureregistry.FixturePluginName)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := pluginregistry.SupportUnknown
+			if listed {
+				want = pluginregistry.SupportIncompatible
+			}
+			if got := hostSupport(versions); len(got) != 2 || got[1].Status != want || listed && !strings.HasPrefix(got[1].Reason, "incompatible analyzer contract") {
+				t.Fatalf("host support=%+v", got)
+			}
+		})
 	}
 }
 
@@ -290,6 +308,12 @@ func TestListVersionsReportsRecordFailures(t *testing.T) {
 	r.DeleteFile(r.RecordURL("v1.0.0"))
 	if versions, err := registryClient(t, r).ListVersions(t.Context(), fixtureregistry.FixturePluginName); err == nil || !strings.Contains(err.Error(), "HTTP 404") {
 		t.Fatalf("versions=%+v error=%v", versions, err)
+	}
+	r = fixtureregistry.NewPluginRegistry(t)
+	r.Add(t, "v1.0.0", analyzerComponent)
+	r.DeleteFile(artifactURL("v1.0.0"))
+	if versions, err := registryClient(t, r).ListVersions(t.Context(), fixtureregistry.FixturePluginName); err == nil || !strings.Contains(err.Error(), "HTTP 404") || errors.As(err, new(*pluginregistry.IncompatibleError)) {
+		t.Fatalf("missing artifact: versions=%+v error=%v", versions, err)
 	}
 }
 

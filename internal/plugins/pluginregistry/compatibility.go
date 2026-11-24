@@ -62,8 +62,7 @@ func (c *Client) ListVersions(ctx context.Context, name string) ([]ListedVersion
 	listed := make([]ListedVersion, len(versions))
 	for i, v := range versions {
 		listed[i] = ListedVersion{Version: v, Host: HostSupport{Status: SupportUnknown}}
-		interfaces, ok := v.interfaces()
-		if !ok {
+		if _, ok := v.interfaces(); !ok {
 			continue
 		}
 		pin, err := resolve(v)
@@ -71,19 +70,35 @@ func (c *Client) ListVersions(ctx context.Context, name string) ([]ListedVersion
 			return nil, err
 		}
 		listed[i].Host = HostSupport{Status: SupportCompatible}
-		if _, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces, Metadata: []byte(pin.Metadata)}); err != nil {
-			listed[i].Host = HostSupport{Status: SupportIncompatible, Reason: err.Error()}
+		_, err = c.checkRelease(ctx, pin, v, true)
+		if incompatible, ok := errors.AsType[*IncompatibleError](err); ok {
+			listed[i].Host = HostSupport{Status: SupportIncompatible, Reason: incompatible.Err.Error()}
+		} else if err != nil {
+			return nil, err
 		}
 	}
 	return listed, nil
 }
 
-func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) (component.Roles, error) {
+func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version, download bool) (component.Roles, error) {
 	if pin.Kind != artifacts.Component {
 		return component.Roles{}, nil
 	}
+	reason, rejected, err := c.rejection(ctx, pin)
+	if err != nil {
+		return component.Roles{}, err
+	}
+	if rejected {
+		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: errors.New(reason)}
+	}
+	var listed component.Roles
 	if interfaces, ok := v.interfaces(); ok {
-		return admit(pin, component.ListedInterfaces{Interfaces: interfaces, Metadata: []byte(pin.Metadata)})
+		if listed, err = admit(ctx, pin, component.ListedInterfaces{Interfaces: interfaces, Metadata: []byte(pin.Metadata)}); err != nil {
+			return component.Roles{}, err
+		}
+	}
+	if !download {
+		return listed, nil
 	}
 	options := pluginacquisition.ArtifactOptions(c.StatusOptions.Acquisition)
 	options.Network = c.StatusOptions.Network
@@ -99,18 +114,18 @@ func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) (componen
 	if err := pin.Verify(artifact.Info); err != nil {
 		return component.Roles{}, fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 	}
-	return checkArtifact(pin, artifact)
+	return checkArtifact(ctx, pin, artifact)
 }
 
-func checkArtifact(pin Pin, artifact *artifacts.Artifact) (component.Roles, error) {
+func checkArtifact(ctx context.Context, pin Pin, artifact *artifacts.Artifact) (component.Roles, error) {
 	if pin.Kind != artifacts.Component {
 		return component.Roles{}, nil
 	}
-	return admit(pin, component.ComponentBytes(artifact.Bytes))
+	return admit(ctx, pin, component.ComponentBytes(artifact.Bytes))
 }
 
-func admit(pin Pin, evidence component.Evidence) (component.Roles, error) {
-	roles, err := component.Admit(evidence)
+func admit(ctx context.Context, pin Pin, evidence component.Evidence) (component.Roles, error) {
+	roles, err := component.Admit(ctx, evidence)
 	if err != nil {
 		return component.Roles{}, &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
 	}

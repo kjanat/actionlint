@@ -193,7 +193,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces}); err == nil || !strings.Contains(err.Error(), want) {
+		if _, err := component.Admit(t.Context(), component.ListedInterfaces{Interfaces: interfaces}); err == nil || !strings.Contains(err.Error(), want) {
 			t.Fatalf("%s: selection verdict %v, want %q", name, err, want)
 		}
 	}
@@ -205,7 +205,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := component.Admit(component.ListedInterfaces{Interfaces: interfaces}); err != nil || !slices.Contains(interfaces.Exports, component.AnalyzerInterface) || !slices.Contains(interfaces.Imports, component.InvocationContextInterface) {
+	if _, err := component.Admit(t.Context(), component.ListedInterfaces{Interfaces: interfaces}); err != nil || !slices.Contains(interfaces.Exports, component.AnalyzerInterface) || !slices.Contains(interfaces.Imports, component.InvocationContextInterface) {
 		t.Fatalf("loadable plugin interfaces=%+v verdict=%v", interfaces, err)
 	}
 	if _, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "missing.wasm"), component.Options{}); !errors.Is(err, os.ErrNotExist) {

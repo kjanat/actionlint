@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -36,6 +37,7 @@ type deferredScriptEngine struct {
 	failure     error
 	retryAfter  time.Time
 	reserved    rule.Names
+	skipped     bool
 	closed      bool
 }
 
@@ -77,7 +79,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if b.closed {
 		return nil, errors.New("default script engine is closed")
 	}
-	if b.backend != nil || b.failure != nil {
+	if b.backend != nil || b.failure != nil || b.skipped {
 		return b.backend, b.failure
 	}
 	defer func() {
@@ -97,6 +99,11 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if err := b.pin.Verify(artifact.Info); err != nil {
 		return nil, err
 	}
+	if b.pin.Kind == artifacts.Component {
+		if _, rejected := component.Admit(ctx, component.ComponentBytes(artifact.Bytes)); rejected != nil {
+			return nil, b.skip(ctx, rejected)
+		}
+	}
 	engine, err := b.load(ctx, artifact)
 	if err != nil {
 		return nil, err
@@ -106,6 +113,19 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	}
 	b.backend = engine
 	return engine, nil
+}
+
+func (b *deferredScriptEngine) skip(ctx context.Context, reason error) error {
+	_, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
+	if err != nil && !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) {
+		return err
+	}
+	if err == nil {
+		err = &pluginregistry.IncompatibleError{Name: b.pin.Name, Version: b.pin.Version, Err: reason}
+	}
+	network.Warn(ctx, "Skipping default plugin: "+err.Error())
+	b.skipped = true
+	return nil
 }
 
 func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time) error {
@@ -157,7 +177,7 @@ func (b *deferredScriptEngine) ScriptDescriptor() scriptengine.Descriptor {
 
 func (b *deferredScriptEngine) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	engine, err := b.get(ctx)
-	if err != nil {
+	if err != nil || engine == nil {
 		return nil, err
 	}
 	return engine.Check(ctx, request)
@@ -165,7 +185,7 @@ func (b *deferredScriptEngine) Check(ctx context.Context, request scriptengine.R
 
 func (b *deferredScriptEngine) ValidateConfig(ctx context.Context, config json.RawMessage) error {
 	engine, err := b.get(ctx)
-	if err != nil {
+	if err != nil || engine == nil {
 		return err
 	}
 	return engine.ValidateConfig(ctx, config)

@@ -2,6 +2,8 @@ package component
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -11,7 +13,10 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
 )
 
@@ -38,13 +43,14 @@ func (r Roles) ScriptOnly() bool {
 }
 
 type admission struct {
-	roles    extensionRoleSet
-	required importRequirements
-	metadata []byte
+	roles       extensionRoleSet
+	required    importRequirements
+	invocations []commands.Definition
+	script      *declaredScript
 }
 
 type Evidence interface {
-	admit() (admission, error)
+	admit(ctx context.Context) (admission, error)
 }
 
 type ComponentBytes []byte
@@ -54,38 +60,52 @@ type ListedInterfaces struct {
 	Metadata   []byte
 }
 
-func Admit(evidence Evidence) (Roles, error) {
-	admitted, err := evidence.admit()
+func Admit(ctx context.Context, evidence Evidence) (Roles, error) {
+	admitted, err := evidence.admit(ctx)
 	if err != nil {
 		return Roles{}, err
 	}
 	return admitted.roles.names(), nil
 }
 
-func (listed ListedInterfaces) admit() (admission, error) {
+func (listed ListedInterfaces) admit(context.Context) (admission, error) {
 	return decide(listed.Interfaces, listed.Metadata)
 }
 
-func (data ComponentBytes) admit() (admission, error) {
-	kind, metadata, err := artifacts.Sniff(data)
+func (data ComponentBytes) admit(ctx context.Context) (admission, error) {
+	limits, err := Options{}.limits()
 	if err != nil {
 		return admission{}, err
 	}
+	engine := sharedComponentCompilation.newEngine(ctx, limits)
+	admitted, _, err := checkComponent(ctx, engine, data)
+	return admitted, errors.Join(err, engine.Close(context.WithoutCancel(ctx)))
+}
+
+func checkComponent(ctx context.Context, engine *wacogo.Engine, data []byte) (admission, *wacogo.Component, error) {
+	kind, metadata, err := artifacts.Sniff(data)
+	if err != nil {
+		return admission{}, nil, err
+	}
 	if kind != artifacts.Component {
-		return admission{}, errors.New("plugin requires a WebAssembly component")
+		return admission{}, nil, errors.New("plugin requires a WebAssembly component")
 	}
 	interfaces, componentType, err := parseInterfaces(data)
 	if err != nil {
-		return admission{}, err
+		return admission{}, nil, err
 	}
 	admitted, err := decide(interfaces, metadata)
 	if err != nil {
-		return admission{}, err
+		return admission{}, nil, err
 	}
 	if err := checkRoleTypes(componentType, admitted.roles); err != nil {
-		return admission{}, err
+		return admission{}, nil, err
 	}
-	return admitted, nil
+	compiled, err := sharedComponentCompilation.load(ctx, engine, data)
+	if err != nil {
+		return admission{}, nil, err
+	}
+	return admitted, compiled, nil
 }
 
 func decide(interfaces Interfaces, metadata []byte) (admission, error) {
@@ -96,7 +116,36 @@ func decide(interfaces Interfaces, metadata []byte) (admission, error) {
 	if err := checkDeclaredInterface(metadata, roles.names()); err != nil {
 		return admission{}, err
 	}
-	return admission{roles: roles, required: required, metadata: metadata}, nil
+	admitted := admission{roles: roles, required: required}
+	if roles.analyzer {
+		var declared struct {
+			Definitions []commands.Definition `json:"invocation_definitions"`
+		}
+		if len(metadata) != 0 {
+			if err := json.Unmarshal(metadata, &declared); err != nil {
+				return admission{}, err
+			}
+		}
+		if _, err := commands.New(declared.Definitions); err != nil {
+			return admission{}, err
+		}
+		admitted.invocations = declared.Definitions
+	}
+	if roles.script != nil {
+		contract := ""
+		if roles.templateEffects != nil {
+			contract = scriptengine.TemplateEffectsContract
+		}
+		if err := verifyTemplateMetadata(metadata, contract); err != nil {
+			return admission{}, err
+		}
+		if len(metadata) != 0 {
+			if admitted.script, err = readDeclaredScript(metadata, roles.script.interfaceName()); err != nil {
+				return admission{}, err
+			}
+		}
+	}
+	return admitted, nil
 }
 
 func (r extensionRoleSet) names() Roles {
