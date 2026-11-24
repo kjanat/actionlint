@@ -18,7 +18,6 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -27,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
@@ -477,8 +477,10 @@ func RuntimeFailureComponent() []byte {
 }
 
 func componentFixture(path ...string) []byte {
-	_, source, _, _ := runtime.Caller(0)
-	data, err := os.ReadFile(filepath.Join(append([]string{filepath.Dir(source), "..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata"}, path...)...))
+	var callers [1]uintptr
+	runtime.Callers(1, callers[:])
+	frame, _ := runtime.CallersFrames(callers[:]).Next()
+	data, err := files.New(context.Background(), nil, nil).ReadFile(filepath.Join(append([]string{filepath.Dir(frame.File), "..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata"}, path...)...))
 	if err != nil {
 		panic(err)
 	}
