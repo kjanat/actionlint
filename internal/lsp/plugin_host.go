@@ -129,7 +129,7 @@ func (s *editorEngines) close(ctx context.Context) error {
 	return err
 }
 
-// Hide Close so per-analysis cleanup cannot close a session-owned engine.
+// These types wrap engines, and editorPluginHost.close closes those engines.
 type (
 	borrowedEditorEngine  struct{ scriptengine.Backend }
 	describedEditorEngine struct {

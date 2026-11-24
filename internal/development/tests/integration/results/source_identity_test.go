@@ -42,7 +42,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 	}
 	for i, script := range input.Scripts {
 		if script.Reference.Node == "" || script.Reference.Node != input.Mappings[i].Reference.Node || script.Reference.Document != input.Reference.Document {
-			t.Fatalf("owning identity lost: script=%+v mapping=%+v", script.Reference, input.Mappings[i].Reference)
+			t.Fatalf("script and mapping node IDs differ: script=%+v mapping=%+v", script.Reference, input.Mappings[i].Reference)
 		}
 	}
 	if input.Scripts[0].Reference.Node == input.Scripts[1].Reference.Node || input.Mappings[0].Scope == input.Mappings[1].Scope {

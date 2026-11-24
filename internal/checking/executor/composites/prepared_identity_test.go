@@ -146,7 +146,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	graph := result.Batch.CallGraph
 	call, exists := graph.Call(fact.Occurrence.Owner)
 	if !exists {
-		t.Fatal("top-level owning call absent")
+		t.Fatal("graph has no call for the script owner")
 	}
 	w, exists := f.root.WorkflowView()
 	if !exists {
@@ -348,7 +348,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 	}
 	owner, exists := graph.Call(graph.Scripts()[0].Owner)
 	if !exists || owner.Uses() != "$/inner" || owner.Depth() != 2 {
-		t.Fatal("nested script lost its owning call")
+		t.Fatal("nested script owner: want call $/inner at depth 2")
 	}
 	projection, exists := result.Batch.Fact(0, false)
 	if !exists {

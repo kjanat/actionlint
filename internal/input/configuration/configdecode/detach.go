@@ -168,12 +168,12 @@ func DetachSnapshot[T any](value T) (T, error) {
 	return copied, nil
 }
 
-// DetachPublicFields leaves private state for the owner to restore.
+// DetachPublicFields shares unexported fields with value, and the caller copies them.
 func DetachPublicFields[T any](value T) (T, error) {
 	var zero T
 	v := reflect.ValueOf(value)
 	if v.Kind() != reflect.Struct {
-		return zero, errors.New("configuration owner must be a struct")
+		return zero, errors.New("configuration copy requires a struct")
 	}
 	out := reflect.New(v.Type()).Elem()
 	out.Set(v)

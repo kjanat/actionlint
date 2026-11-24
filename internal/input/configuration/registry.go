@@ -71,7 +71,6 @@ func (ruleSet RuleSet) WithDefaults(descriptor rule.Descriptor) rule.Descriptor 
 	return descriptor
 }
 
-// Rules returns declarations with caller-owned metadata slices.
 func (ruleSet RuleSet) Rules() []rule.Declaration {
 	result := make([]rule.Declaration, len(ruleSet.entries))
 	for i, entry := range ruleSet.entries {

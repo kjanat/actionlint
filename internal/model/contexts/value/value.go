@@ -1,4 +1,4 @@
-// Package value owns immutable workflow semantic values without depending on workflow syntax trees.
+// Package value defines immutable workflow semantic values.
 package value
 
 import (
@@ -136,7 +136,6 @@ func (v Value) ScalarString() (string, bool) {
 	return "", false
 }
 
-// StringAlternatives never parses a known value as a template again, and the caller owns the returned slice.
 func (v Value) StringAlternatives() ([]string, bool) {
 	if text, known := v.ScalarString(); known {
 		return []string{text}, true

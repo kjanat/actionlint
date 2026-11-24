@@ -1,5 +1,4 @@
-// Package actionmeta owns action-manifest syntax, source positions, schema validation,
-// expression availability and runtime metadata.
+// Package actionmeta parses action manifests and provides their source positions, schema validation, expression availability and runtime metadata.
 package actionmeta
 
 import (

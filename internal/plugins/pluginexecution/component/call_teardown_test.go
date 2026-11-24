@@ -107,7 +107,7 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 		t.Fatalf("cleanup incomplete: runtime=%v host=%v world=%v output=%v memory=%d", p.engine != nil, teardown.host != nil, teardown.world != nil, teardown.output != nil, p.memory.used)
 	}
 	if teardown.guest != nil || teardown.annotations != nil || teardown.stdin != nil {
-		t.Fatal("cleanup left call-owned instances")
+		t.Fatal("cleanup left guest, annotations or stdin instances")
 	}
 	if _, err := compiled.Instantiate(t.Context()); err == nil {
 		t.Fatal("failed guest cleanup left the runtime usable")

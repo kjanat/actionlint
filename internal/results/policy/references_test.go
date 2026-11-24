@@ -23,11 +23,11 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	bound := workflows.Bind("ci.yml", string(content), workflow, false, "")
 	job, present := bound.Workflow().Job("test")
 	if !present {
-		t.Fatal("owned job unavailable")
+		t.Fatal("job test unavailable")
 	}
 	origin := slices.Collect(job.Steps())[1].IgnoreOrigin("test")
 	if origin.StepPosition == nil {
-		t.Fatal("owned suppression position unavailable")
+		t.Fatal("second step has no suppression position")
 	}
 	refs := facts.Index("ci.yml", content, workflow, false)
 	firstRef := refs.Positions[[2]int{first.Pos.Line, first.Pos.Column}]
@@ -89,6 +89,6 @@ func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
 	alias := &finding.Finding{Path: "entry-alias.yml"}
 	InferReferences([]*finding.Finding{foreign, alias}, "entry.yml", map[string]facts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")
 	if foreign.Reference != nil || alias.Reference == nil || *alias.Reference != references.Document {
-		t.Fatalf("path ownership inference changed: foreign=%+v alias=%+v", foreign.Reference, alias.Reference)
+		t.Fatalf("InferReferences: foreign=%+v alias=%+v, want nil and the entry document", foreign.Reference, alias.Reference)
 	}
 }

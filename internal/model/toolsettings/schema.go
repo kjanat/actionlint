@@ -1,5 +1,4 @@
 // Package toolsettings describes the settings a tool provider accepts under tools.<name>.
-// It imports no actionlint package, which keeps configuration decoding independent of the plugin layer.
 package toolsettings
 
 import (

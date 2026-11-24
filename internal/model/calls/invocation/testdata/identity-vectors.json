@@ -1,7 +1,7 @@
 {
   "status": "contract_vectors_independently_recomputed_and_extended",
-  "algorithm": "actionlint:invocation:v1; exact UTF-8 length-prefixed encoding is specified in ownership-model.md",
-  "provenance": "Expected IDs computed with Python hashlib from the written contract, independently of the Go production owner. Original five cases were also recomputed by a separate Go standard-library verifier.",
+  "algorithm": "actionlint:invocation:v1; exact UTF-8 length-prefixed encoding is implemented in internal/model/calls/invocation/graph.go",
+  "provenance": "Expected IDs computed with Python hashlib from the written contract, independently of the Go implementation in graph.go. Original five cases were also recomputed by a separate Go standard-library verifier.",
   "cases": [
     {
       "name": "repeated-nested-calls",

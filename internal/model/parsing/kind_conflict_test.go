@@ -93,7 +93,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			if earlierView.Present() {
 				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
-					t.Fatal("quarantined view retained semantic ownership")
+					t.Fatal("registry still resolves the quarantined view")
 				}
 				if err := previous.ValidateStep(earlierView); err == nil {
 					t.Fatal("quarantined step reference remained available")

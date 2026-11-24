@@ -30,6 +30,6 @@ jobs:
 		}
 	}
 	if project.RootDir() != "." {
-		t.Fatalf("caller-owned project was mutated: %q", project.RootDir())
+		t.Fatalf("analysis changed project.RootDir to %q", project.RootDir())
 	}
 }

@@ -1,4 +1,4 @@
-// Package capturefixture supplies result-owned source captures to tests.
+// Package capturefixture builds capture stores for tests.
 package capturefixture
 
 import (

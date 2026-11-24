@@ -257,14 +257,14 @@
         { "flag": "--add-ignore", "reason": "ruff non-diagnostic modes are not supported" },
         { "short_letter": "h", "reason": "ruff non-diagnostic modes are not supported" },
         { "short_letter": "w", "reason": "ruff non-diagnostic modes are not supported" },
-        { "flag": "--isolated", "reason": "integration-owned option; remove it from extra arguments" },
-        { "flag": "--ignore-noqa", "reason": "integration-owned option; remove it from extra arguments" },
-        { "flag": "--no-fix", "reason": "integration-owned option; remove it from extra arguments" },
-        { "flag": "--no-cache", "reason": "integration-owned option; remove it from extra arguments" },
-        { "short_letter": "n", "reason": "integration-owned option --no-cache; remove it from extra arguments" },
-        { "flag": "--target-version", "reason": "integration-owned option; remove it from extra arguments" },
-        { "flag": "--stdin-filename", "reason": "integration-owned option; remove it from extra arguments" },
-        { "flag": "--output-format", "reason": "integration-owned option; remove it from extra arguments" }
+        { "flag": "--isolated", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "flag": "--ignore-noqa", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "flag": "--no-fix", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "flag": "--no-cache", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "short_letter": "n", "reason": "actionlint sets ruff option --no-cache; remove it from extra arguments" },
+        { "flag": "--target-version", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "flag": "--stdin-filename", "reason": "actionlint sets this ruff option; remove it from extra arguments" },
+        { "flag": "--output-format", "reason": "actionlint sets this ruff option; remove it from extra arguments" }
       ]
     },
     "concurrency": "pool"

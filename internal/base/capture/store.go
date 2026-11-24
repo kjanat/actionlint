@@ -1,4 +1,4 @@
-// Package capture owns immutable source captures for one analysis result.
+// Package capture stores immutable source captures for one analysis result.
 package capture
 
 import (
@@ -171,7 +171,7 @@ func validatePath(path string) error {
 	return nil
 }
 
-// startWork and finishWork require s.mu or exclusive constructor ownership.
+// startWork and finishWork require s.mu.
 func (s *Store) startWork() {
 	if s.active == 0 {
 		s.idle = make(chan struct{})

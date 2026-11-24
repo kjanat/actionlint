@@ -1,4 +1,4 @@
-// Package ruleconfig owns rule-setting syntax, independent of the analyzer and CLI.
+// Package ruleconfig decodes and encodes rule levels, presets, settings and groups.
 package ruleconfig
 
 import (

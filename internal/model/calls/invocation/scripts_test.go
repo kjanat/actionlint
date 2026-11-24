@@ -152,7 +152,7 @@ func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
 	script, exists := g.Script(id)
 	owner, hasOwner := g.Call(script.Owner)
 	if !exists || !hasOwner || owner.ID() != call.ID() || owner.Outcome.Kind() != invocation.OutcomeInterrupted || !g.Incomplete() {
-		t.Fatal("interruption lost the script's owning call")
+		t.Fatal("interrupted graph lost the script's call")
 	}
 }
 

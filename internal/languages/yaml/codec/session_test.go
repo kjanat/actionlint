@@ -163,7 +163,7 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 
 	root, parseErr := codec.ParseYAML(data)
 	if parseErr != nil {
-		t.Fatalf("parse owned graph: %v", parseErr)
+		t.Fatalf("codec.ParseYAML: %v", parseErr)
 	}
 	items := mappingValue(root, "items")
 	anchor := mappingValue(root, "payload")

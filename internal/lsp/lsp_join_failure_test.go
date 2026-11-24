@@ -67,7 +67,7 @@ func TestEditorFailedCaptureJoinReturnsWithoutPublishingSources(t *testing.T) {
 		t.Fatalf("failed capture leaked coordinates or hid its join failure: publication=%+v logs=%v", publication, logs)
 	}
 	// firstEditorPublication has completed shutdown and joined Serve's workers.
-	// The failed capture remains pending, and this test owns it until cleanup.
+	// The capture read stays blocked until t.Cleanup closes release.
 	select {
 	case <-readerFinished:
 		t.Fatal("transport proof did not retain pending capture work")

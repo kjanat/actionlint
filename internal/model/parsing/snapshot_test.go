@@ -83,7 +83,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 			right := steps[1].Reference()
 			err = snapshot.ValidateStep(steps[1])
 			if err != nil || left.Node == right.Node {
-				t.Fatalf("alias ownership collapsed: first=%+v second=%+v error=%v", left, right, err)
+				t.Fatalf("aliased steps share a node or fail validation: first=%+v second=%+v error=%v", left, right, err)
 			}
 			steps[0] = workflows.BoundStep{}
 			copiedSteps := snapshotActionSteps(t, again)

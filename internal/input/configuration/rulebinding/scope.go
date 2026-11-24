@@ -22,7 +22,6 @@ type Rule struct {
 	optionsErr error
 }
 
-// Options returns caller-owned options, and explicit registration options take precedence.
 func (r *Rule) Options(explicit json.RawMessage) (json.RawMessage, error) {
 	if len(explicit) != 0 {
 		return slices.Clone(explicit), nil

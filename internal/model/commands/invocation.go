@@ -90,7 +90,6 @@ type Invocation struct {
 	Issues       []Issue         `json:"issues,omitempty"`
 }
 
-// Registry owns copies of provider definitions. Analysis never modifies them.
 type Registry struct{ definitions []Definition }
 
 type registryKey struct{}

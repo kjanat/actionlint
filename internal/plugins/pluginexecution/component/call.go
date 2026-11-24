@@ -48,8 +48,7 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 	}
 }
 
-// callScope owns every instance created for a single invocation.
-// Each acquisition is recorded before another allocation can fail.
+// finish and discardImports close every instance stored in callScope. Store each instance before the next allocation.
 type callScope struct {
 	host         *host.ComponentInstance
 	world        *wasi.World
@@ -122,7 +121,6 @@ func (c *callScope) prepareImports(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// The call owns each acquired import before the next allocation can fail.
 	c.host, c.output = hostInstance, output
 	c.world, err = wasi.NewWorld(ctx, p.engine, &wasi.Config{
 		Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output,

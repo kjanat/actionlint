@@ -72,7 +72,7 @@ func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 
 	spec := e.Uses.Text()
 	if _, hosted := callreferences.ParseRepositoryURL(spec); hosted {
-		// vendor-lock-in owns URL-form references independently of metadata checks.
+		// The vendor-lock-in rule reports URL-form references.
 		return nil
 	}
 

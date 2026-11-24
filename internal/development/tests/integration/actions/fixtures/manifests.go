@@ -1,4 +1,4 @@
-// Package fixtures supplies captured remote manifests owned by the action integration suite.
+// Package fixtures embeds captured remote action manifests for the action integration tests.
 package fixtures
 
 import "embed"

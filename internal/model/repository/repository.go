@@ -52,13 +52,11 @@ func UnavailablePermissions(reason availability.Unavailability) Permissions {
 	return Permissions{missing: reason}
 }
 
-// Names owns a case-insensitive set of names in their original spelling.
 type Names struct {
 	values  []string
 	missing availability.Unavailability
 }
 
-// NewNames rejects blank and duplicate names and owns a copy of the input.
 func NewNames(values ...string) (Names, error) {
 	seen := make(map[string]bool, len(values))
 	for _, value := range values {
@@ -74,7 +72,6 @@ func NewNames(values ...string) (Names, error) {
 	return Names{values: append([]string{}, values...)}, nil
 }
 
-// Values returns an owned list, including a non-nil list for an empty set.
 func (n Names) Values() []string {
 	if n.values == nil {
 		return nil

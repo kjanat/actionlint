@@ -43,6 +43,6 @@ func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
 	close(start)
 	done.Wait()
 	if cfg.Policy.DisallowSuppressions != policy || cfg.Overrides[0].Lint != override {
-		t.Fatal("binding replaced caller-owned configuration fields")
+		t.Fatal("binding replaced cfg.Policy.DisallowSuppressions or cfg.Overrides[0].Lint")
 	}
 }

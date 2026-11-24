@@ -328,7 +328,6 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		case <-timer.C:
 		}
 	}
-	// The analysis owns its buffers until it returns, even if it ignores cancellation.
 	if result == nil {
 		result = &lintResult{}
 	}

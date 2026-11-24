@@ -213,7 +213,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	if explicit.checks.Load() != 3 || explicit.closes.Load() != 0 {
-		t.Fatalf("caller-owned backend checks=%d closes=%d", explicit.checks.Load(), explicit.closes.Load())
+		t.Fatalf("explicit backend checks=%d closes=%d, want 3 and 0", explicit.checks.Load(), explicit.closes.Load())
 	}
 }
 

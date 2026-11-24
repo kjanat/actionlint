@@ -15,7 +15,6 @@ type Script struct {
 	Input       string
 }
 
-// AddScript registers a declaration while its owner is the current traversal body.
 func (b *Builder) AddScript(context Context, declaration sourcetext.Reference, kind ScriptKind, input string) (ID, error) {
 	if !b.Owns(context) {
 		return "", ErrForeignContext

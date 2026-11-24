@@ -84,7 +84,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 				return
 			}
 			if loads != 1 || !slices.Equal(recorded, []string{indexPath}) || prepared.RuleInputs.ExecutableIndex != snapshot || input.ExecutableIndex != nil {
-				t.Fatalf("preparation lost snapshot ownership: loads=%d recorded=%v", loads, recorded)
+				t.Fatalf("executable index snapshot misplaced: loads=%d recorded=%v", loads, recorded)
 			}
 			native.NewVisitor(prepared.RuleInputs)
 			if loads != 1 {

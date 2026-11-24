@@ -88,8 +88,8 @@ jobs:
 	}{
 		{name: "inline exception", caller: caller + " # actionlint:ignore cache-operation -- intentionally skip save\n", callee: save},
 		{name: "disabled policy", caller: caller, callee: save, config: "policy: {cache-operation: false}"},
-		{name: "explicit callee mode owns diagnostic", caller: caller, callee: "cache-mode: read\n" + save, kind: "cache-operation", file: "callee.yaml", fragment: "effective cache-mode"},
-		{name: "escalation owns diagnostic", caller: caller, callee: "cache-mode: write\n" + save, kind: "workflow-call", file: "caller.yaml", fragment: "requests cache-mode"},
+		{name: "explicit callee mode reports in callee", caller: caller, callee: "cache-mode: read\n" + save, kind: "cache-operation", file: "callee.yaml", fragment: "effective cache-mode"},
+		{name: "escalation reports in caller", caller: caller, callee: "cache-mode: write\n" + save, kind: "workflow-call", file: "caller.yaml", fragment: "requests cache-mode"},
 		{name: "nested inherited mode", caller: caller, callee: `on: workflow_call
 jobs:
   nested:
@@ -310,7 +310,7 @@ permissions: {}
 						case wantUnused && finding.Rule == "unused-suppression" && finding.UnusedSuppressionRule == "cache-operation" && filepath.Base(finding.Path) == suppressed:
 							wantUnused = false
 						default:
-							t.Fatalf("diagnostic outside its owning call: %v", finding)
+							t.Fatalf("unexpected diagnostic: %v", finding)
 						}
 					}
 				}

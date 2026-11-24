@@ -1,4 +1,4 @@
-// Package checking coordinates input selection, rule execution and runtime ownership.
+// Package checking selects inputs, runs rules and analyzers, and returns a report.Analysis.
 package checking
 
 import (

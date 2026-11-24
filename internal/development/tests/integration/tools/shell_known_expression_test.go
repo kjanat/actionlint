@@ -31,7 +31,7 @@ func TestKnownShellExpressions(t *testing.T) {
 		{"default converted scalar", "ubuntu-latest", `${{ fromJSON('{"shell":42}') }}`, "", `shell name "42" is invalid`, 6, 12},
 		{"default expression text stays data", "ubuntu-latest", `${{ fromJSON('{"shell":"${{ secrets.SHELL }}"}') }}`, "", `shell name "${{ secrets.SHELL }}" is invalid`, 6, 12},
 		{"default unknown", "ubuntu-latest", `${{ fromJSON(vars.DEFAULTS) }}`, "", "", 0, 0},
-		{"default invalid shape owned by expression", "ubuntu-latest", `${{ fromJSON('{"shell":[]}') }}`, "", "", 0, 0},
+		{"default invalid shape reported by expression rule", "ubuntu-latest", `${{ fromJSON('{"shell":[]}') }}`, "", "", 0, 0},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,7 +68,7 @@ jobs:
 				if len(found) != 0 {
 					t.Fatalf("unexpected shell diagnostics: %v", found)
 				}
-				if tc.name == "default invalid shape owned by expression" && (len(errors) != 1 || errors[0].Rule != "expression") {
+				if tc.name == "default invalid shape reported by expression rule" && (len(errors) != 1 || errors[0].Rule != "expression") {
 					t.Fatalf("expected exactly one expression diagnostic, got %v", errors)
 				}
 				return

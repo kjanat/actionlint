@@ -2,8 +2,6 @@ package contract
 
 import "fmt"
 
-// Detached gives one adapter owned settings and input data. Explicit runtime
-// capabilities remain shared for the duration of the invocation.
 func (c Context) Detached() (Context, error) {
 	var err error
 	c.Config, err = c.Config.Detached()

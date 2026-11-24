@@ -17,12 +17,12 @@ func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
 			legacyRepository := RepositoryReference(spec, &position)
 			ownedRepository := RepositoryReferenceValue(spec, position, true)
 			if !reflect.DeepEqual(legacyRepository, ownedRepository) {
-				t.Fatalf("repository findings differ: legacy=%v owned=%v", legacyRepository, ownedRepository)
+				t.Fatalf("repository findings differ: legacy=%v value=%v", legacyRepository, ownedRepository)
 			}
 			legacyDocker := DockerReference(spec, &position)
 			ownedDocker := DockerReferenceValue(spec, position, true)
 			if !reflect.DeepEqual(legacyDocker, ownedDocker) {
-				t.Fatalf("Docker findings differ: legacy=%v owned=%v", legacyDocker, ownedDocker)
+				t.Fatalf("Docker findings differ: legacy=%v value=%v", legacyDocker, ownedDocker)
 			}
 			wantInvalid := false
 			switch {

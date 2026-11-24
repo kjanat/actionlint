@@ -80,7 +80,7 @@ func TestRawTagObjectPreservesRequestAndTerminalCommit(t *testing.T) {
 	}
 	clear(content)
 	if manifest.Selection().Object() != object || manifest.Identity().Commit() != commit || manifest.Selection().Request().Ref() != object || !strings.HasPrefix(manifest.Content(), "name: example") {
-		t.Fatal("request, object, content or ownership was lost")
+		t.Fatal("manifest lost its request, object or content after the caller cleared content")
 	}
 }
 

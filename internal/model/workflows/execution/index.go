@@ -17,7 +17,6 @@ type IndexSnapshot struct {
 	err      error
 }
 
-// NewIndexSnapshot takes ownership of modes, which must not change afterwards.
 func NewIndexSnapshot(path string, modes map[string]string, err error) *IndexSnapshot {
 	return &IndexSnapshot{modes: modes, path: path, err: err}
 }

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// BoundDocument owns its tree, and callers must not modify the tree after Bind.
+// BoundDocument indexes steps and references at Bind. Changes to the tree after Bind leave those indexes stale.
 type BoundDocument struct {
 	text       string
 	using      string

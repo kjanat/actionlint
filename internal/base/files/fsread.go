@@ -58,8 +58,7 @@ func (r *Reader) Mapped(name func(path string) string) *Reader {
 	return &Reader{root: r.root, ctx: r.ctx, contents: r.contents, exists: r.exists, filesystem: r.filesystem, record: func(path string) { r.record(name(path)) }}
 }
 
-// NewRooted reads paths relative to root and rejects paths outside it. The caller
-// owns root and must keep it open while the reader is in use.
+// NewRooted reads paths relative to root and rejects paths outside it.
 func NewRooted(ctx context.Context, root *os.Root, record func(string)) *Reader {
 	reader := New(ctx, root.ReadFile, record)
 	reader.root = root

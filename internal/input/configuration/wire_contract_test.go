@@ -15,7 +15,7 @@ func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
 	t.Parallel()
 	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*PolicyConfig]()} {
 		if _, exists := typ.MethodByName("UnmarshalYAML"); exists {
-			t.Fatalf("%s owns decoding instead of its wire adapter", typ)
+			t.Fatalf("%s defines UnmarshalYAML", typ)
 		}
 	}
 	for field := range reflect.TypeFor[Config]().Fields() {

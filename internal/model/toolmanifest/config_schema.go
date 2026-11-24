@@ -37,7 +37,7 @@ func validateConfigShorthands(m Manifest) error {
 	}
 	for _, key := range slices.Sorted(maps.Keys(m.ConfigShorthands)) {
 		if slices.Contains(hostConfigKeys, key) {
-			return fmt.Errorf("config_shorthands: %q is a host-owned key", key)
+			return fmt.Errorf("config_shorthands: actionlint reserves the key %q", key)
 		}
 		schema := m.ConfigSchema
 		for _, property := range m.ConfigShorthands[key].Path {

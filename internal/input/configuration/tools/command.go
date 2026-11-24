@@ -1,4 +1,4 @@
-// Package tools owns external-tool invocation settings.
+// Package tools defines process and Wasm backend settings for external tools.
 package tools
 
 import (

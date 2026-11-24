@@ -1,4 +1,3 @@
-// Command owned-copies generates type-checked ownership copies.
 package main
 
 import (
@@ -311,13 +310,13 @@ func (g *generator) mutable(t types.Type, active map[types.Type]bool) (bool, err
 				return false, fmt.Errorf("field %s: %w", field.Name(), err)
 			}
 			if changed && !field.Exported() && field.Pkg() != g.pkg {
-				return false, fmt.Errorf("mutable unexported field %s requires an explicit ownership contract", field.Name())
+				return false, fmt.Errorf("mutable unexported field %s from another package requires a clone:\"shared\" tag", field.Name())
 			}
 			found = found || changed
 		}
 		return found, nil
 	default:
-		return false, fmt.Errorf("unsupported ownership type %s", typeKey(t))
+		return false, fmt.Errorf("unsupported type %s", typeKey(t))
 	}
 }
 

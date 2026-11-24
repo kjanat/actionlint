@@ -103,7 +103,7 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 	graph := publish(t, first)
 	stored, exists := graph.Context(left.ID())
 	if !exists || stored != leftContext || !graph.Owns(leftContext) || graph.Owns(rightContext) || graph.Owns(invocation.Context{}) {
-		t.Fatal("publication changed context ownership")
+		t.Fatal("published graph changed Context or Owns results")
 	}
 	facts.Background = false
 	projected, ok := stored.Facts()

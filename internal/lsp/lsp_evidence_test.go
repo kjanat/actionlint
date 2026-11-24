@@ -195,11 +195,11 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	}
 	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
-		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
+		t.Fatalf("case alias lost related locations or fixes: %+v %v", analysis, err)
 	}
 	for _, fix := range analysis.Diagnostics[0].Fixes {
 		if len(fix.Edits) != 1 || fix.Edits[0].Path != path || len(fix.Revisions) != 1 || fix.Revisions[path] != analysis.Sources[path].Revision.Digest() {
-			t.Fatalf("case alias lost fix ownership: %+v", fix)
+			t.Fatalf("case alias fix has the wrong path or revision: %+v", fix)
 		}
 	}
 }

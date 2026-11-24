@@ -138,7 +138,7 @@ jobs:
 			for _, script := range result.Batch.Scripts {
 				registered, exists := graph.Script(script.Occurrence)
 				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Context.ID() {
-					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
+					t.Fatalf("script occurrence differs from the graph's script record: %+v", script)
 				}
 			}
 			root, _ := f.root.WorkflowView()

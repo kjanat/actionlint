@@ -29,7 +29,6 @@ func originSelector(s *definition.String) string {
 	return s.Value
 }
 
-// IgnoreOrigin returns a new value owned by the caller on each call.
 func (j BoundJob) IgnoreOrigin() *IgnoreOrigin {
 	if !j.Present() {
 		return &IgnoreOrigin{}
@@ -41,7 +40,6 @@ func (j BoundJob) IgnoreOrigin() *IgnoreOrigin {
 	return origin
 }
 
-// IgnoreOrigin returns a new value owned by the caller on each call.
 func (s BoundStep) IgnoreOrigin(job string) *IgnoreOrigin {
 	if !s.Present() {
 		return &IgnoreOrigin{Job: job}

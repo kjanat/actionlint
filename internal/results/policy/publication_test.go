@@ -62,7 +62,7 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 	}
 	content[0] = 'X'
 	if string(result.Diagnostics[0].Source.Content) != "entry token\n" {
-		t.Fatal("publication retained caller-owned entry bytes")
+		t.Fatal("publication reflects a later write to the caller's content")
 	}
 	result.Diagnostics[0].Source.Content[1] = 'Y'
 	if content[1] != 'n' {
@@ -104,7 +104,7 @@ func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.
 	}
 	first := &result.Diagnostics[0].Source.Content[0]
 	if first == &content[0] {
-		t.Fatal("publication shares caller-owned bytes")
+		t.Fatal("publication shares the caller's content array")
 	}
 	for _, reported := range result.Diagnostics {
 		if len(reported.Source.Content) != 65536 || &reported.Source.Content[0] != first {

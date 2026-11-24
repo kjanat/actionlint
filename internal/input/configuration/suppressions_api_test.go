@@ -66,7 +66,7 @@ func TestSuppressionsPolicyConstruction(t *testing.T) {
 				returned := p.Rules()
 				returned[0] = "expression"
 				if !slices.Equal(p.Rules(), parsed.Rules()) {
-					t.Fatal("caller-owned slice changed policy state")
+					t.Fatal("editing a Rules slice changed the policy")
 				}
 			}
 		}

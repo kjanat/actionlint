@@ -94,7 +94,7 @@ func TestRunOneDetachesAnalyzerDiagnostics(t *testing.T) {
 	got[0].Fixes[0].Revisions["file"] = "changed"
 	got[0].Fixes[0].Edits[0].Replacement = "changed"
 	if retained[0].Reference.Document != "original" || retained[0].Lifecycle.Policies[0].ID != "original" || retained[0].Fixes[0].Revisions["file"] != "original" || retained[0].Fixes[0].Edits[0].Replacement != "original" {
-		t.Fatalf("published diagnostic mutated analyzer-owned data: %+v", retained[0])
+		t.Fatalf("editing a returned diagnostic changed the analyzer's diagnostic: %+v", retained[0])
 	}
 }
 
@@ -347,7 +347,7 @@ func TestRunOneClonesSharedReturnedFindings(t *testing.T) {
 	close(start)
 	group.Wait()
 	if !reflect.DeepEqual(shared, []results.Diagnostic{{Message: "cached"}}) {
-		t.Fatalf("RunOne mutated analyzer-owned findings: %+v", shared)
+		t.Fatalf("RunOne changed the analyzer's cached diagnostics: %+v", shared)
 	}
 }
 

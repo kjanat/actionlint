@@ -1,4 +1,4 @@
-// Package codec converts YAML sources and Go values through an owned syntax graph.
+// Package codec parses YAML into Node trees and encodes Go values as Node trees and YAML.
 package codec
 
 import (

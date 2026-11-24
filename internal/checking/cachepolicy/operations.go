@@ -81,7 +81,6 @@ func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec
 				}
 			}
 		}
-		// An explicit intermediate mode owns its downstream operation diagnostics.
 		if job.Uses != "" && !own.Present() {
 			r.checkCallOperations(pos, job.SourceUses, mode, checked)
 		}

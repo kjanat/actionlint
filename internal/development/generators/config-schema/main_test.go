@@ -458,7 +458,7 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The schema formatter owns whitespace and object key ordering.
+	// TestGeneratedSchemaFormatting checks whitespace and key order.
 	var gotDocument, wantDocument any
 	if err := json.Unmarshal(got, &gotDocument); err != nil {
 		t.Fatal(err)

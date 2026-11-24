@@ -50,7 +50,7 @@ var data = sync.OnceValue(func() catalogue {
 	return c
 })
 
-// PayloadVariants uses upstream names, and the workflow adapter owns Actions aliases.
+// PayloadVariants takes webhook event names, and callers map pull_request_target to pull_request.
 func PayloadVariants(event string) (map[string]int, bool) {
 	variants, ok := data().Events[event]
 	return maps.Clone(variants), ok

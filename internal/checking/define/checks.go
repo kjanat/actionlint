@@ -29,7 +29,6 @@ type checksVisitor struct {
 	rules  configuration.RuleSet
 }
 
-// Workflow entry steps use the ordinary visitor instead of invocationChecksVisitor.
 type invocationChecksVisitor struct {
 	*checksVisitor
 	contexts []invocation.Context

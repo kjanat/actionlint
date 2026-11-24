@@ -2257,7 +2257,7 @@ func TestContextReplacementDispatchInputs(t *testing.T) {
 		}
 		if original, ok := github.ty.Object(); ok {
 			if _, ok := objectPath(t, original.Type(), "event").Property("inputs"); ok {
-				t.Fatal("caller-owned github context was modified")
+				t.Fatal("checker added event.inputs to the caller's github context type")
 			}
 			copied := objectPath(t, checker.vars["github"], "event", "inputs")
 			if enabled, _ := copied.Property("enabled"); enabled.Kind() != exprtypes.KindString {

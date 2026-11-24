@@ -267,7 +267,7 @@ func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 	}
 	metadata.Examples[0].Description = "mutated example"
 	if renderer.rules.sorted()[0].Examples[0].Description != "original example" {
-		t.Fatal("renderer changed caller-owned metadata")
+		t.Fatal("renderer reflects edits to the caller's rule metadata")
 	}
 	var output bytes.Buffer
 	related := results.Related{Message: "previous declaration", Path: "other workflow.yml", Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 2, Column: 7}}

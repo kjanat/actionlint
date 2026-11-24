@@ -21,8 +21,7 @@ type argInputs struct {
 	programFile string
 }
 
-// Placeholders are whole arguments and are never evaluated. A value always
-// becomes exactly the arguments of its placeholder.
+// Placeholders are whole arguments and are never evaluated.
 func renderArgs(templates []string, in argInputs) ([]string, error) {
 	var args []string
 	for _, template := range templates {

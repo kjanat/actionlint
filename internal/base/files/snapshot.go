@@ -96,7 +96,6 @@ func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *
 	return newSnapshot(ctx, root, reader, budget), nil
 }
 
-// NewSnapshotAt leaves parent owned by the caller.
 func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Reader, budget *SnapshotBudget) (*BoundedFS, error) {
 	root, err := parent.OpenRoot(name)
 	if err != nil {

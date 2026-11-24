@@ -37,7 +37,7 @@ func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {
 				t.Fatal("structural address did not follow the move")
 			}
 			if tc.name == "parallel" && (before[2].Node != after[3].Node || before[3].Node != after[2].Node) {
-				t.Fatal("parallel children lost their owning identity")
+				t.Fatal("parallel children changed node IDs across the swap")
 			}
 		})
 	}
@@ -74,10 +74,10 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 			refs := facts.Index("ci.yml", content, workflow, false)
 			left, right := refs.Steps[first], refs.Steps[second]
 			if left.Node == "" || right.Node == "" || left.Node == right.Node {
-				t.Fatalf("aliased calls lost their owners: first=%+v second=%+v", left, right)
+				t.Fatalf("aliased calls share a node or lack one: first=%+v second=%+v", left, right)
 			}
 			if left.Address != `jobs["build"].steps[0]` || right.Address != test.secondAddress {
-				t.Fatalf("owning addresses = %q, %q", left.Address, right.Address)
+				t.Fatalf("addresses = %q, %q", left.Address, right.Address)
 			}
 			repeated := facts.Index("ci.yml", content, workflow, false)
 			if repeated.Steps[first] != left || repeated.Steps[second] != right {

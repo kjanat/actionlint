@@ -446,7 +446,7 @@ func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
 		t.Fatal("configuration snapshot executed caller callbacks")
 	}
 	if owned == base || owned.TLSClientConfig == base.TLSClientConfig || owned.HTTP2 == base.HTTP2 || owned.Protocols == base.Protocols {
-		t.Fatal("owned transport retained mutable configuration containers")
+		t.Fatal("ownedTransport shares configuration containers with base")
 	}
 	if owned.TLSClientConfig.RootCAs != roots || owned.TLSClientConfig.ClientSessionCache != sessions || !bytes.Equal(owned.TLSClientConfig.Certificates[0].Certificate[0], []byte{1, 2, 3}) {
 		t.Fatal("TLS trust, client certificate or session settings changed")
@@ -477,7 +477,7 @@ func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
 	owned.HTTP2.MaxReadFrameSize = 32768
 	owned.Protocols.SetHTTP2(false)
 	if base.TLSClientConfig.ServerName != "caller-config" || base.ProxyConnectHeader.Get("X-Fixture") != "original" || base.HTTP2.MaxReadFrameSize != 65536 || !base.Protocols.HTTP2() {
-		t.Fatal("owned settings mutated caller configuration")
+		t.Fatal("edits to the copied transport changed base")
 	}
 }
 
@@ -531,6 +531,6 @@ func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
 		_ = response.Body.Close()
 	}
 	if err != nil || response == nil || response.StatusCode != http.StatusOK {
-		t.Fatalf("owned pinned executor failed: %v", err)
+		t.Fatalf("pinned round trip failed: %v", err)
 	}
 }

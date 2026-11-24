@@ -224,7 +224,7 @@ permissions: {}
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 			status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
-			if status == 0 || !strings.Contains(stdout.String()+stderr.String(), "integration-owned option") {
+			if status == 0 || !strings.Contains(stdout.String()+stderr.String(), "actionlint sets this ruff option") {
 				t.Errorf("integration flag not rejected: flags=%s status=%d, stdout=%s, stderr=%s", flags, status, &stdout, &stderr)
 			}
 		}

@@ -36,7 +36,6 @@ func VisitWithOrigin(pass Pass, origin *workflows.IgnoreOrigin, hasIgnores bool,
 		if item.Source.Content == nil && item.IgnoreOrigin == nil {
 			item.IgnoreOrigin = origin
 		} else if item.Source.Content != nil && item.IgnoreOrigin != nil {
-			// Each invocation owns its origin; shared metadata never stores caller state.
 			inner := *item.IgnoreOrigin
 			inner.Job = origin.Job
 			item.IgnoreOrigin = &inner

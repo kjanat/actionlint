@@ -9,7 +9,7 @@ import (
 
 func (c *MetadataCache) SetRemote(remote *Remote) { c.remote = remote }
 
-// SetSources installs the result-owned source capture before any cache lookups.
+// SetSources must be called before the first cache lookup.
 func (c *MetadataCache) SetSources(ctx context.Context, captures *capture.Store, workingDir string) {
 	c.ctx, c.captures = ctx, captures
 	c.sourceRoot = c.root

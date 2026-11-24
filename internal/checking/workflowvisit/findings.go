@@ -2,7 +2,6 @@ package workflowvisit
 
 import "actionlint.kjanat.dev/v2/internal/results/finding"
 
-// Findings takes ownership of reported findings and gives readers detached copies.
 type Findings struct {
 	items []*finding.Finding
 }

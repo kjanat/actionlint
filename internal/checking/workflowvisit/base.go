@@ -16,8 +16,6 @@ func NewBase(name, desc string) Base {
 	return Base{name: name, description: desc}
 }
 
-// Report records findings produced outside the positional helpers and takes
-// ownership of them. A finding that names no rule is attributed to this one.
 func (r *Base) Report(findings ...*finding.Finding) {
 	for _, finding := range findings {
 		if finding != nil && finding.Rule == "" {

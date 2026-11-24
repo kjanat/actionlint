@@ -98,7 +98,7 @@ func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
 	defer stop()
 	joinErr := initialization.Join(joinCtx)
 	if _, ok := errors.AsType[*JoinError](joinErr); !ok || !errors.Is(joinErr, context.DeadlineExceeded) || !initialization.Pending() {
-		t.Fatalf("blocked join lost pending ownership: %v", joinErr)
+		t.Fatalf("blocked Join = %v, want a pending JoinError wrapping DeadlineExceeded", joinErr)
 	}
 	joinedFailure := errors.Join(result.err, joinErr)
 	classified, ok := errors.AsType[*InitError](joinedFailure)
@@ -115,7 +115,7 @@ func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
 		t.Fatal("released metadata did not finish")
 	}
 	if !initialization.Pending() || resolving.Load() != 0 {
-		t.Fatalf("completed metadata lost unjoined ownership: pending=%t resolving=%d", initialization.Pending(), resolving.Load())
+		t.Fatalf("metadata finished before Join: pending=%t resolving=%d, want true and 0", initialization.Pending(), resolving.Load())
 	}
 	joined, done := context.WithTimeout(t.Context(), time.Second)
 	defer done()

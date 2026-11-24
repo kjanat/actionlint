@@ -346,7 +346,6 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	// The repository recheck is an observation and does not prove uninterrupted ownership.
 	afterID, afterName, missing, err := g.repository(ctx, ref)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)

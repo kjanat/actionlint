@@ -84,7 +84,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 	processes *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *reusableworkflows.MetadataCache, usedRules *[]rule.Descriptor,
 ) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
-		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
+		return nil, nil, nil, errors.New("analysis requires source captures and snapshots")
 	}
 	content := captured.Bytes()
 	if err := s.captures.Verify(captured, content); err != nil {
@@ -266,7 +266,6 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	process := processes.Fork()
 	var skippedMu sync.Mutex
 	skipped := make(map[string]bool)
-	// Adapter construction can fail before the composition service takes ownership.
 	joined := false
 	join := func() error { joined = true; return process.Finish() }
 	defer func() {

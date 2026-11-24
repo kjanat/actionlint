@@ -96,7 +96,7 @@ func (rule *Visitor) exprError(err *typecheck.Error, base sourcetext.Position) {
 
 func (rule *Visitor) exprFinding(err *typecheck.Error, base sourcetext.Position, level severity.Severity) {
 	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
-		return // Metadata validation owns composite syntax, context and call errors.
+		return // actioncheck reports the other expression errors in composite actions.
 	}
 	kind := err.Rule
 	if kind == "" {

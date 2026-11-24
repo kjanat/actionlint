@@ -49,7 +49,6 @@ func TestSettingCanonicalLevels(t *testing.T) {
 	}
 }
 
-// editingOptions mutates the values it receives to exercise ownership.
 type editingOptions struct{ name string }
 
 func (o *editingOptions) DecodeConfig(value any) error {

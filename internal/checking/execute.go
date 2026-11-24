@@ -176,7 +176,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 func runWithSourceCaptureConstructor(ctx context.Context, request analysisRequest, log io.Writer, level LogLevel, newCaptures sourceCaptureConstructor) (result *analysisResult, resultErr error) {
 	request.ExecutionEnvironment = request.captureDate(time.Now)
 	if request.Processes == nil {
-		return nil, errors.New("analysis requires an application-owned process pool")
+		return nil, errors.New("analysis requires a process pool")
 	}
 	if request.Checks == nil {
 		return nil, errors.New("analysis requires registered checks")

@@ -106,7 +106,7 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, 
 
 type Decision struct{ Suppress, Report bool }
 
-// Evaluation callers check invocation and source ownership before calling Suppresses.
+// Evaluation matches rule names and line ranges in Suppresses. Callers check that the finding comes from the directives' document and invocation.
 type Evaluation struct {
 	ranges map[string][]sourcetext.LineRange
 	names  rule.Names

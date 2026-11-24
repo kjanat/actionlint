@@ -10,7 +10,7 @@ import (
 
 var (
 	ErrInvalidFacts   = errors.New("invocation: invalid call facts")
-	ErrForeignContext = errors.New("invocation: context is not owned by this graph")
+	ErrForeignContext = errors.New("invocation: context is absent from this graph")
 )
 
 type Facts struct {

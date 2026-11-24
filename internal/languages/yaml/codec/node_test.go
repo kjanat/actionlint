@@ -59,7 +59,7 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 		t.Errorf("base/copy visits=%d child visits=%d want 2 each", visits, children)
 	}
 	if reflect.TypeFor[Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/languages/yaml/codec" {
-		t.Fatal("tree is not owned by codec")
+		t.Fatal("Node is declared outside package codec")
 	}
 }
 

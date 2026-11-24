@@ -71,7 +71,6 @@ func scalarCollectionIndent(node *codec.Node, lines []string) int {
 	return indent
 }
 
-// ScriptSource returns an owned mapping.
 func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 	if n == nil || n.Kind != 0 && n.Kind != codec.ScalarNode {
 		return nil
