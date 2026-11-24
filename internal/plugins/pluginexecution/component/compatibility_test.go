@@ -36,13 +36,55 @@ func TestAdmitDecidesImports(t *testing.T) {
 		want       string
 	}{
 		{Interfaces{Imports: []string{HostInterface, "wasi:io/streams@0.2.0"}, Exports: []string{AnalyzerInterface}}, ""},
-		{Interfaces{Imports: []string{"kjanat:actionlint/host@9.0.0"}, Exports: []string{AnalyzerInterface}}, "plugin imports kjanat:actionlint/host@9.0.0; this host provides " + HostInterface},
+		{Interfaces{Imports: []string{"kjanat:actionlint/host@9.0.0"}, Exports: []string{AnalyzerInterface}}, "unprovided interface: plugin imports kjanat:actionlint/host@9.0.0; this host provides " + HostInterface},
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{AnalyzerInterface}}, "repository objects require the reference-resolver role"},
 		{Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{ReferenceResolverInterface}}, ""},
 	} {
 		_, err := Admit(t.Context(), ListedInterfaces{Interfaces: tc.interfaces})
 		if tc.want == "" && err != nil || tc.want != "" && (err == nil || err.Error() != tc.want) {
 			t.Errorf("%+v: error=%v, want %q", tc.interfaces, err, tc.want)
+		}
+	}
+}
+
+func TestAdmitMarksUnprovidedInterfaces(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name       string
+		interfaces Interfaces
+		metadata   string
+		unprovided bool
+	}{
+		{name: "runner version", interfaces: Interfaces{Exports: []string{"kjanat:actionlint/runner-provider@0.4.0"}}, unprovided: true},
+		{name: "script-engine version", interfaces: Interfaces{Exports: []string{"kjanat:actionlint/script-engine@0.1.0"}}, unprovided: true},
+		{name: "template-effects version", interfaces: Interfaces{Exports: []string{ScriptEngine03Interface, "kjanat:actionlint/template-effects@0.4.0"}}, unprovided: true},
+		{name: "analyzer version", interfaces: Interfaces{Exports: []string{"kjanat:actionlint/analyzer@0.1.0"}}, unprovided: true},
+		{name: "secondary tool-integration version", interfaces: Interfaces{Exports: []string{AnalyzerInterface, "kjanat:actionlint/tool-integration@0.1.0"}}, unprovided: true},
+		{name: "host import version", interfaces: Interfaces{Imports: []string{"kjanat:actionlint/host@9.0.0"}, Exports: []string{AnalyzerInterface}}, unprovided: true},
+		{name: "retired import", interfaces: Interfaces{Imports: []string{"kjanat:actionlint/prepared-scripts@0.2.0"}, Exports: []string{AnalyzerInterface}}, unprovided: true},
+		{name: "ungranted wasi import", interfaces: Interfaces{Imports: []string{"wasi:sockets/tcp-create-socket@0.2.9"}, Exports: []string{AnalyzerInterface}}, unprovided: true},
+		{name: "unknown export only", interfaces: Interfaces{Exports: []string{"example:future/analyzer@2.0.0"}}, unprovided: true},
+		{name: "no exports", interfaces: Interfaces{}, unprovided: true},
+		{name: "two script-engine versions", interfaces: Interfaces{Exports: []string{ScriptEngineInterface, ScriptEngine03Interface}}},
+		{name: "tool integration only", interfaces: Interfaces{Exports: []string{ToolIntegrationInterface}}},
+		{name: "template effects only", interfaces: Interfaces{Exports: []string{TemplateEffects03Interface}}},
+		{name: "tool integration without analyzer", interfaces: Interfaces{Exports: []string{RunnerInterface, ToolIntegrationInterface}}},
+		{name: "template effects of another engine", interfaces: Interfaces{Exports: []string{ScriptEngineInterface, TemplateEffects03Interface}}},
+		{name: "repository objects outside the resolver", interfaces: Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{AnalyzerInterface}}},
+		{name: "declared interface not exported", interfaces: Interfaces{Exports: []string{AnalyzerInterface}}, metadata: `{"interface":"kjanat:actionlint/analyzer@0.3.0"}`},
+	} {
+		_, err := Admit(t.Context(), ListedInterfaces{Interfaces: tc.interfaces, Metadata: []byte(tc.metadata)})
+		if err == nil || errors.Is(err, ErrUnprovidedInterface) != tc.unprovided {
+			t.Errorf("%s: error=%v, want unprovided=%t", tc.name, err, tc.unprovided)
+		}
+	}
+	for data, unprovided := range map[string]bool{
+		string(wasmcomponent.Build([]string{"kjanat:actionlint/prepared-scripts@0.2.0"}, []string{AnalyzerInterface}, nil)): true,
+		string(wasmcomponent.Build(nil, []string{AnalyzerInterface}, nil)):                                                  false,
+	} {
+		_, err := Admit(t.Context(), ComponentBytes(data))
+		if _, admission := errors.AsType[*AdmissionError](err); !admission || errors.Is(err, ErrUnprovidedInterface) != unprovided {
+			t.Errorf("component bytes: error=%v, want unprovided=%t", err, unprovided)
 		}
 	}
 }

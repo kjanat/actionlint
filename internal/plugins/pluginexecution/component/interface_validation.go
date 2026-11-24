@@ -50,6 +50,8 @@ type admission struct {
 	script      *declaredScript
 }
 
+var ErrUnprovidedInterface = errors.New("unprovided interface")
+
 type AdmissionError struct {
 	Err error
 }

@@ -282,7 +282,7 @@ func TestListVersionsAdmitsListedInterfaces(t *testing.T) {
 		{Status: pluginregistry.SupportCompatible},
 		{Status: pluginregistry.SupportCompatible},
 		{Status: pluginregistry.SupportIncompatible, Reason: "plugin metadata declares " + component.RunnerInterface + "; the component exports " + component.Runner03Interface},
-		{Status: pluginregistry.SupportIncompatible, Reason: "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports " + component.AnalyzerInterface},
+		{Status: pluginregistry.SupportIncompatible, Reason: "unprovided interface: plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports " + component.AnalyzerInterface},
 	}
 	if got := hostSupport(versions); !slices.Equal(got, want) {
 		t.Fatalf("host support=%+v, want %+v", got, want)
