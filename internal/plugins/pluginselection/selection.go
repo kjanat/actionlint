@@ -293,7 +293,7 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *instal
 	if s.lazyDefaults && project.DefaultPlugins {
 		selected.LazySources = map[string]pluginregistry.Pin{}
 		for _, pin := range releases.Plugins {
-			if pin.Metadata != "" && (pin.Kind == artifacts.Core || pin.Kind == artifacts.Component && pin.Roles.ScriptOnly()) {
+			if pin.Deferrable() {
 				selected.LazySources[pin.Source()] = pin
 			}
 		}

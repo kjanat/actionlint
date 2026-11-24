@@ -153,6 +153,10 @@ type Pin struct {
 
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
 
+func (p Pin) Deferrable() bool {
+	return p.Metadata != "" && (p.Kind == artifacts.Core || p.Kind == artifacts.Component && p.Roles.ScriptOnly())
+}
+
 func (p Pin) Source() string {
 	if pluginreference.IsOCI(p.URL) {
 		return p.URL

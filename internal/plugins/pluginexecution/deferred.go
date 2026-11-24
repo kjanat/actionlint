@@ -38,32 +38,35 @@ type deferredScriptEngine struct {
 	retryAfter  time.Time
 	reserved    rule.Names
 	skipped     bool
+	next        *pluginregistry.Pin
 	closed      bool
 }
 
 func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition dependencycache.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
-	var descriptor scriptengine.Descriptor
-	if pin.Kind == artifacts.Component {
-		var err error
-		descriptor, err = component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		metadata, err := module.ReadMetadata([]byte(pin.Metadata))
-		if err != nil {
-			return nil, err
-		}
-		descriptor = metadata.ScriptDescriptor()
-		for _, operation := range metadata.Interfaces["check"] {
-			if operation.Version == 3 {
-				descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
-				descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
-				break
-			}
-		}
+	descriptor, err := deferredDescriptor(pin, reserved)
+	if err != nil {
+		return nil, err
 	}
 	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition, reserved: reserved}, nil
+}
+
+func deferredDescriptor(pin pluginregistry.Pin, reserved rule.Names) (scriptengine.Descriptor, error) {
+	if pin.Kind == artifacts.Component {
+		return component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
+	}
+	metadata, err := module.ReadMetadata([]byte(pin.Metadata))
+	if err != nil {
+		return scriptengine.Descriptor{}, err
+	}
+	descriptor := metadata.ScriptDescriptor()
+	for _, operation := range metadata.Interfaces["check"] {
+		if operation.Version == 3 {
+			descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
+			descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
+			break
+		}
+	}
+	return descriptor, nil
 }
 
 func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend, err error) {
@@ -120,12 +123,13 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 }
 
 func (b *deferredScriptEngine) skip(ctx context.Context, reason *component.AdmissionError) error {
-	_, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
-	if err != nil && !errors.Is(err, pluginregistry.ErrNoCompatibleRelease) {
-		return err
-	}
-	if err == nil {
+	next, err := pluginregistry.Reselect(ctx, b.pin, reason, b.acquisition)
+	switch {
+	case err == nil:
+		b.next = &next
 		err = &pluginregistry.IncompatibleError{Name: b.pin.Name, Version: b.pin.Version, Err: reason}
+	case !errors.Is(err, pluginregistry.ErrNoCompatibleRelease):
+		return err
 	}
 	network.Warn(ctx, "Skipping default plugin: "+err.Error())
 	b.skipped = true
@@ -145,6 +149,19 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 	if b.failure != nil && !now.Before(b.retryAfter) {
 		b.failure = nil
 		b.retryAfter = time.Time{}
+	}
+	if b.next != nil {
+		next := *b.next
+		b.next = nil
+		if !next.Deferrable() {
+			return nil
+		}
+		descriptor, err := deferredDescriptor(next, b.reserved)
+		if err != nil {
+			network.Warn(ctx, "Skipping default plugin: "+err.Error())
+			return nil
+		}
+		b.pin, b.descriptor, b.skipped = next, descriptor, false
 	}
 	return nil
 }
