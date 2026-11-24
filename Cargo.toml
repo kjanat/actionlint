@@ -16,6 +16,9 @@ edition = "2024"
 [workspace.dependencies]
 wit-bindgen = "0.63"
 
+[profile.release]
+codegen-units = 1
+
 [profile.wasm]
 inherits      = "release"
 opt-level     = "s"

@@ -156,6 +156,9 @@ vars    = {
   packager     = "",
   fixture_root = "internal/plugins/pluginexecution/component/testdata/plugins"
 }
+env     = {
+  CARGO_ENCODED_RUSTFLAGS = "--remap-path-prefix={{ exec(command='rustc --print sysroot') | trim }}/lib/rustlib/src/rust=/rustc/{{ exec(command='rustc -vV') | split(pat='commit-hash: ') | last | split(pat='\n') | first | trim }}\u001f--remap-path-prefix={{ env.CARGO_HOME | default(value=env.HOME ~ '/.cargo') }}=/cargo"
+}
 sources = [
   "Cargo.{toml,lock}",
   "rust-toolchain.toml",
