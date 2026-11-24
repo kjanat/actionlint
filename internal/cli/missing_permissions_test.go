@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -45,7 +46,7 @@ func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
 			}
 			source.WriteString("jobs:\n")
 			for i, permissions := range tc.jobPermissions {
-				source.WriteString("  " + []string{"build", "test"}[i] + ":\n")
+				fmt.Fprintf(&source, "  %s:\n", []string{"build", "test"}[i])
 				if permissions {
 					source.WriteString("    permissions: {}\n")
 				}

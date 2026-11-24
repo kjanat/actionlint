@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -37,11 +38,11 @@ func writeTree(t *testing.T, files map[string]string) string {
 
 func goMod(module, deps string, requires ...string) string {
 	var b strings.Builder
-	b.WriteString("module " + module + "\n\ngo 1.22\n")
+	fmt.Fprintf(&b, "module %s\n\ngo 1.22\n", module)
 	for _, require := range requires {
 		path, _, _ := strings.Cut(require, " ")
-		b.WriteString("\nrequire " + require + "\n")
-		b.WriteString("replace " + path + " => " + deps + "/" + strings.TrimPrefix(path, "example.com/") + "\n")
+		fmt.Fprintf(&b, "\nrequire %s\n", require)
+		fmt.Fprintf(&b, "replace %s => %s/%s\n", path, deps, strings.TrimPrefix(path, "example.com/"))
 	}
 	return b.String()
 }
