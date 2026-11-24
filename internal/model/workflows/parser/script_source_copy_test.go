@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
+func TestScriptSourceReturnsCopies(t *testing.T) {
 	t.Parallel()
 	const input = "script: &script echo $HI # anchor\nrun: *script # first\nnext: *script # second\n"
 	root, err := codec.ParseYAML([]byte(input))

@@ -46,7 +46,7 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 	}
 }
 
-func TestForeignSelectsTheFindingsOwnSource(t *testing.T) {
+func TestForeignPrefersFindingSourceOverSnapshot(t *testing.T) {
 	t.Parallel()
 	workflow := []byte("workflow")
 	for _, tc := range []struct {

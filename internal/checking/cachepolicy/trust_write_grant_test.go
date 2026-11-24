@@ -27,20 +27,20 @@ func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	mode.Kind = definition.CacheModeNone
 	hook.Value = "push"
 	job.If = &definition.String{Value: "false"}
-	ownedJob, exists := view.Job("build")
+	buildJob, exists := view.Job("build")
 	if !exists {
 		t.Fatal("published job missing")
 	}
-	findings := trust.CheckWrites(ownedJob)
+	findings := trust.CheckWrites(buildJob)
 	if len(findings) != 1 || findings[0].Start.Line != 2 || !strings.Contains(findings[0].Message, `"pull_request_target"`) {
 		t.Fatalf("published write grant changed with decoder model: %v", findings)
 	}
-	if repeated := trust.CheckWrites(ownedJob); !reflect.DeepEqual(findings, repeated) {
+	if repeated := trust.CheckWrites(buildJob); !reflect.DeepEqual(findings, repeated) {
 		t.Fatalf("repeated inspection changed the prepared result: first=%v repeated=%v", findings, repeated)
 	}
 }
 
-func TestSharedWriteGrantHasStableSourceOrderOwnership(t *testing.T) {
+func TestSharedWriteGrantReportedOnFirstJobInSourceOrder(t *testing.T) {
 	t.Parallel()
 	const source = `on: [pull_request_target, issue_comment]
 cache-mode: write

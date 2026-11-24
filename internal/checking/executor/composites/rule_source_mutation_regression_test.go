@@ -56,7 +56,7 @@ var (
 	_ workflowvisit.InvocationParticipant = (*sourceMutationRule)(nil)
 )
 
-func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
+func TestRuleMutatingDefaultShellDoesNotChangeCollectedShell(t *testing.T) {
 	t.Parallel()
 	for _, level := range []string{"workflow", "job"} {
 		t.Run(level, func(t *testing.T) {

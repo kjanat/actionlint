@@ -63,7 +63,7 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 	}
 }
 
-func TestCommandOwnsItsArgumentsAndEnvironment(t *testing.T) {
+func TestCommandCopiesArgsAndEnvAndRejectsInvalid(t *testing.T) {
 	t.Parallel()
 	args, env := []string{"--isolated"}, map[string]string{"MODE": "strict"}
 	command, err := NewCommand("ruff", args, env)

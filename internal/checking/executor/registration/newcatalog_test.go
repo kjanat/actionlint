@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-func TestNativeCatalogOwnsDeclarationsAndOrder(t *testing.T) {
+func TestNativeDeclarationsMatchAllAndReturnCopies(t *testing.T) {
 	t.Parallel()
 	declarations := Declarations()
 	if len(declarations) == 0 {

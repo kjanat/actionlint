@@ -185,7 +185,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 	}
 }
 
-func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
+func TestConfiguredBackendClosedAndCallerBackendLeftOpen(t *testing.T) {
 	t.Parallel()
 	root, paths, _ := configuredEngineFixture(t)
 	cfgSource := "tools:\n  shellcheck:\n    backend:\n      wasm: {path: shellcheck.wasm}\n"

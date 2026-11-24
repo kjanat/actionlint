@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestOwnedGraphAndNestedDecode(t *testing.T) {
+func TestCodecGraphKeepsAliasIdentityAndNestedDecode(t *testing.T) {
 	t.Parallel()
 	root, err := ParseYAML([]byte("base: &a {value: null}\ncopy: *a\n"))
 	if err != nil {

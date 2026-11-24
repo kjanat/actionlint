@@ -34,7 +34,7 @@ func TestAtomicMembersAfterNullRetainsReset(t *testing.T) {
 	}
 }
 
-func TestCompilePlanFromOwningFields(t *testing.T) {
+func TestCompilePlanReadsMergeTags(t *testing.T) {
 	t.Parallel()
 	type policy struct {
 		ID string `yaml:"id"`

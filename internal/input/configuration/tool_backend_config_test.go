@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 )
 
-func TestToolBackendsAreValidatedAndOwned(t *testing.T) {
+func TestToolBackendConfigCopiesSourceAndRejectsInvalid(t *testing.T) {
 	t.Parallel()
 	source := []byte(`tools:
   ruff:

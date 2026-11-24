@@ -37,14 +37,14 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			owner := newRuleConfigurations(config, root, configuration.Presets{}, ConfigurationRules())
-			entry, err := owner.workflow(filepath.Join(root, "ci.yml"))
+			configurations := newRuleConfigurations(config, root, configuration.Presets{}, ConfigurationRules())
+			entry, err := configurations.workflow(filepath.Join(root, "ci.yml"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			owner.bindEntry(filepath.Join(root, "ci.yml"), entry)
+			configurations.bindEntry(filepath.Join(root, "ci.yml"), entry)
 			for path, want := range map[string]string{"first": test.first, "second": "error"} {
-				parent, err := owner.bindSource(filepath.Join(root, path, "action.yml"))
+				parent, err := configurations.bindSource(filepath.Join(root, path, "action.yml"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -78,20 +78,20 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 	}
 }
 
-func TestSourceBindingOwnerCachesLogicalAddresses(t *testing.T) {
+func TestBindSourceReusesBindingPerAddress(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	owner := newRuleConfigurations(nil, root, configuration.Presets{}, ConfigurationRules())
-	owner.bindEntry("ci.yml", nil)
-	first, err := owner.bindSource("action.yml")
+	configurations := newRuleConfigurations(nil, root, configuration.Presets{}, ConfigurationRules())
+	configurations.bindEntry("ci.yml", nil)
+	first, err := configurations.bindSource("action.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := owner.bindSource("action.yml")
+	again, err := configurations.bindSource("action.yml")
 	if err != nil || again != first {
 		t.Fatalf("same logical address was rebound: %v", err)
 	}
-	alias, err := owner.bindSource("./action.yml")
+	alias, err := configurations.bindSource("./action.yml")
 	if err != nil || alias == first {
 		t.Fatalf("different logical addresses shared policy identity: %v", err)
 	}

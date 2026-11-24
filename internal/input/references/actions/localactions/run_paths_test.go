@@ -73,7 +73,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 	}
 }
 
-func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
+func TestWindowsCheckoutPathMatchesCaseInsensitively(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - uses: ./REPO/child\n")
 	parsed := parsing.Workflow(content)

@@ -164,7 +164,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 	}
 }
 
-func TestCompositePropertyFindingsHaveOneOwner(t *testing.T) {
+func TestCompositeUnknownPropertyReportedOncePerField(t *testing.T) {
 	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")

@@ -188,7 +188,7 @@ func (a partialTool) Analyze(_ context.Context, batch scriptanalysis.Batch) ([]c
 	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: sourcetext.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
 }
 
-func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
+func TestScriptAdaptersKeepSiteAndIgnoreOriginOnPartialResults(t *testing.T) {
 	t.Parallel()
 	graph, collection := scriptanalysis.BatchFixture(t, false)
 	batch, err := scriptanalysis.NewBatch(graph, collection)

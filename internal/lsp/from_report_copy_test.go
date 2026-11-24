@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-func TestEditorDiagnosticsOwnTheirReportData(t *testing.T) {
+func TestFromReportCopiesAnalysisData(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")

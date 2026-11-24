@@ -28,7 +28,7 @@ func writeReviewFixture(t *testing.T, root, path, content string) {
 	}
 }
 
-func TestActionMetadataFailureHasOneOwningRule(t *testing.T) {
+func TestBrokenActionMetadataReportsOneSyntaxCheck(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeReviewFixture(t, root, "broken/action.yml", "runs: [")
@@ -59,7 +59,7 @@ func (b *reviewShellcheckBackend) Check(context.Context, scriptengine.Request) (
 	return nil, nil
 }
 
-func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
+func TestNestedCompositeHonorsInnerShellcheckOverride(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	writeReviewFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo inner\n")

@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
-func TestDefinitionOwnsCallSiteFacts(t *testing.T) {
+func TestNewDefinitionCopiesMetadataAndNameSlices(t *testing.T) {
 	t.Parallel()
 	metadata, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: test\ninputs:\n  token: {required: true}\noutputs:\n  result: {description: result}\nruns: {using: node24, main: index.js}\n"))
 	if err != nil {

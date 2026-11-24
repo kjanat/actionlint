@@ -97,7 +97,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	}
 }
 
-func TestShellcheckSourcesAreValidatedAndOwned(t *testing.T) {
+func TestShellcheckConfigCopiesSourceAndRejectsInvalidSettings(t *testing.T) {
 	t.Parallel()
 	for _, settings := range []string{"'./.shellcheckrc'", "{disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}"} {
 		source := []byte("tools: {shellcheck: {config: " + settings + "}}")

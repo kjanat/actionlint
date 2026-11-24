@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
+func TestInferReferencesPrefersExplicitStepOverIgnoreOrigin(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
 	workflow, parseErrors := parser.ParseWorkflow(content)
@@ -82,7 +82,7 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 	}
 }
 
-func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
+func TestInferReferencesSkipsUnrelatedPaths(t *testing.T) {
 	t.Parallel()
 	references := facts.References{Document: sourcetext.Reference{Document: "entry", Revision: "revision", Node: "document"}}
 	foreign := &finding.Finding{Path: "unrelated.sh"}

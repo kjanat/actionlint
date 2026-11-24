@@ -91,7 +91,7 @@ func TestAnalysisCaptureInitializationFailureReturnsNoResult(t *testing.T) {
 	}
 }
 
-// capture.TestNewCancelledMetadataWaitRetainsJoinOwnership exercises the real InitError behavior.
+// capture.TestNewCancelledDuringMetadataReturnsJoinableInitError exercises the real InitError behavior.
 type blockedAnalysisInitError struct {
 	cause  error
 	joined atomic.Bool

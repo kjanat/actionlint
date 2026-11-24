@@ -92,7 +92,7 @@ func TestCompositeActionInputScriptSourceLocations(t *testing.T) {
 	}
 }
 
-func TestCompositeActionInputMappingValidationOwnership(t *testing.T) {
+func TestMalformedCompositeInputMappingReportedOnce(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, mapping string }{
 		{"whole string", "${{ 'not-a-map' }}"},

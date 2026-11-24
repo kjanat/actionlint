@@ -369,7 +369,7 @@ func TestFailuresAndCancellation(t *testing.T) {
 	}
 }
 
-func TestOwnedTransportRejectsCustomTLSAndProtocolHandlersBeforeDial(t *testing.T) {
+func TestTransportCopyRejectsCustomTLSBeforeDial(t *testing.T) {
 	t.Parallel()
 	for _, kind := range []string{"TLS dialer", "protocol handler"} {
 		t.Run(kind, func(t *testing.T) {
@@ -402,7 +402,7 @@ func TestOwnedTransportRejectsCustomTLSAndProtocolHandlersBeforeDial(t *testing.
 	}
 }
 
-func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
+func TestTransportCopyKeepsSettingsWithoutSharing(t *testing.T) {
 	t.Parallel()
 	proxyURL, err := url.Parse("http://operator:credential@proxy.example:8080")
 	if err != nil {
@@ -438,50 +438,50 @@ func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
 		HTTP2:             &http.HTTP2Config{MaxReadFrameSize: 65536},
 		Protocols:         protocols,
 	}
-	owned, err := ownedTransport(base)
+	copied, err := ownedTransport(base)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if callbacks != 0 {
 		t.Fatal("configuration snapshot executed caller callbacks")
 	}
-	if owned == base || owned.TLSClientConfig == base.TLSClientConfig || owned.HTTP2 == base.HTTP2 || owned.Protocols == base.Protocols {
+	if copied == base || copied.TLSClientConfig == base.TLSClientConfig || copied.HTTP2 == base.HTTP2 || copied.Protocols == base.Protocols {
 		t.Fatal("ownedTransport shares configuration containers with base")
 	}
-	if owned.TLSClientConfig.RootCAs != roots || owned.TLSClientConfig.ClientSessionCache != sessions || !bytes.Equal(owned.TLSClientConfig.Certificates[0].Certificate[0], []byte{1, 2, 3}) {
+	if copied.TLSClientConfig.RootCAs != roots || copied.TLSClientConfig.ClientSessionCache != sessions || !bytes.Equal(copied.TLSClientConfig.Certificates[0].Certificate[0], []byte{1, 2, 3}) {
 		t.Fatal("TLS trust, client certificate or session settings changed")
 	}
 	request := requestFor(t, "https://cdn.example/plugin")
-	selectedProxy, err := owned.Proxy(request)
+	selectedProxy, err := copied.Proxy(request)
 	if err != nil || selectedProxy != proxyURL {
 		t.Fatalf("proxy policy changed: %v %v", selectedProxy, err)
 	}
-	if err := owned.OnProxyConnectResponse(t.Context(), proxyURL, request, &http.Response{}); err != nil {
+	if err := copied.OnProxyConnectResponse(t.Context(), proxyURL, request, &http.Response{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := owned.TLSClientConfig.VerifyConnection(tls.ConnectionState{}); err != nil {
+	if err := copied.TLSClientConfig.VerifyConnection(tls.ConnectionState{}); err != nil {
 		t.Fatal(err)
 	}
-	headers, err := owned.GetProxyConnectHeader(t.Context(), proxyURL, "8.8.8.8:443")
+	headers, err := copied.GetProxyConnectHeader(t.Context(), proxyURL, "8.8.8.8:443")
 	if err != nil || headers.Get("X-Dynamic") != "preserved" || callbacks != 4 {
 		t.Fatalf("supported proxy/TLS callbacks changed: %v %v callbacks=%d", headers, err, callbacks)
 	}
-	if owned.TLSHandshakeTimeout != 3*time.Second || owned.ResponseHeaderTimeout != 4*time.Second || owned.ExpectContinueTimeout != 5*time.Second || owned.IdleConnTimeout != 6*time.Second || !owned.DisableCompression {
+	if copied.TLSHandshakeTimeout != 3*time.Second || copied.ResponseHeaderTimeout != 4*time.Second || copied.ExpectContinueTimeout != 5*time.Second || copied.IdleConnTimeout != 6*time.Second || !copied.DisableCompression {
 		t.Fatal("timeouts or compression policy changed")
 	}
-	if owned.MaxIdleConns != 7 || owned.MaxIdleConnsPerHost != 8 || owned.MaxConnsPerHost != 9 || owned.MaxResponseHeaderBytes != 1024 || owned.WriteBufferSize != 2048 || owned.ReadBufferSize != 4096 {
+	if copied.MaxIdleConns != 7 || copied.MaxIdleConnsPerHost != 8 || copied.MaxConnsPerHost != 9 || copied.MaxResponseHeaderBytes != 1024 || copied.WriteBufferSize != 2048 || copied.ReadBufferSize != 4096 {
 		t.Fatal("connection, header or buffer limits changed")
 	}
-	owned.TLSClientConfig.ServerName = "owned-config"
-	owned.ProxyConnectHeader.Set("X-Fixture", "owned")
-	owned.HTTP2.MaxReadFrameSize = 32768
-	owned.Protocols.SetHTTP2(false)
+	copied.TLSClientConfig.ServerName = "owned-config"
+	copied.ProxyConnectHeader.Set("X-Fixture", "owned")
+	copied.HTTP2.MaxReadFrameSize = 32768
+	copied.Protocols.SetHTTP2(false)
 	if base.TLSClientConfig.ServerName != "caller-config" || base.ProxyConnectHeader.Get("X-Fixture") != "original" || base.HTTP2.MaxReadFrameSize != 65536 || !base.Protocols.HTTP2() {
 		t.Fatal("edits to the copied transport changed base")
 	}
 }
 
-func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
+func TestTransportCopyKeepsHTTP2Choice(t *testing.T) {
 	debug := os.Getenv("GODEBUG")
 	if debug != "" {
 		debug += ","
@@ -495,18 +495,18 @@ func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
 	if len(native.TLSNextProto) == 0 {
 		t.Fatal("native HTTP/2 initialization did not install its callbacks")
 	}
-	owned, err := ownedTransport(native)
-	if err != nil || owned.TLSNextProto != nil || !owned.ForceAttemptHTTP2 {
+	copied, err := ownedTransport(native)
+	if err != nil || copied.TLSNextProto != nil || !copied.ForceAttemptHTTP2 {
 		t.Fatalf("native HTTP/2 configuration rejected or disabled: %v", err)
 	}
 	disabled := &http.Transport{ForceAttemptHTTP2: true, TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{}}
-	owned, err = ownedTransport(disabled)
-	if err != nil || owned.TLSNextProto == nil || len(owned.TLSNextProto) != 0 {
+	copied, err = ownedTransport(disabled)
+	if err != nil || copied.TLSNextProto == nil || len(copied.TLSNextProto) != 0 {
 		t.Fatalf("explicit HTTP/2 disable was lost: %v", err)
 	}
 }
 
-func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
+func TestTransportCopyIgnoresRegisteredProtocol(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "cdn.example" {

@@ -44,7 +44,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 	}
 }
 
-func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
+func TestMetadataCoercionReportsCoercionRule(t *testing.T) {
 	t.Parallel()
 	const expression = "${{ format('{0}', startsWith(true, 'TR')) }}"
 	for _, tc := range []struct{ name, source string }{

@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-func TestConfigurationPublicationOwnsSnapshots(t *testing.T) {
+func TestConfigurationReportMutationDoesNotReachLaterSelections(t *testing.T) {
 	t.Parallel()
 	for _, empty := range []bool{false, true} {
 		for _, overlay := range []bool{false, true} {

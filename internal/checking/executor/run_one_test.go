@@ -25,7 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
+func TestRunOneCopiesInputsFillsDefaultsAndReturnsPartialError(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("incomplete")
 	options := json.RawMessage(`{"mode":"safe"}`)
@@ -248,7 +248,7 @@ func (a *descriptorCountingAnalyzer) AnalyzeDocument(ctx context.Context, input 
 	return a.run(ctx, input)
 }
 
-func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
+func TestPreparedRegistrationSnapshotsMetadataAndRejectsMismatch(t *testing.T) {
 	t.Parallel()
 	options := json.RawMessage(`{"mode":"safe"}`)
 	available := []rule.InputKind{rule.Source, rule.Mappings}

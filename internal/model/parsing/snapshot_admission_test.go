@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
+func TestSnapshotDocumentRejectsMismatchedBytesAndUnparsedDocument(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n")
 	document := Workflow(content)
@@ -23,7 +23,7 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 	}
 }
 
-func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
+func TestActionSnapshotIgnoresLaterMetadataMutation(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: original\ndescription: test\nruns:\n  using: composite\n  steps:\n    - &shared\n      shell: bash\n      run: echo original\n    - *shared\n")
 	metadata, err := actionmeta.ParseActionMetadata("action.yml", content)
@@ -64,7 +64,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	}
 }
 
-func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
+func TestSourceIndexReturnsCopyIncludingAnonymousStep(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	document := Workflow(content)
@@ -85,7 +85,7 @@ func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 	}
 }
 
-func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
+func TestSnapshotsRejectForeignAndZeroSteps(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	first, second := Workflow(content), Workflow(content)
@@ -119,7 +119,7 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	}
 }
 
-func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
+func TestRegistryAcceptsOnlyStepsItBound(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow(content)
@@ -191,7 +191,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	}
 }
 
-func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
+func TestCompositeStepWithoutShellStaysActionCall(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: broken\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo missing shell\n")
 	document := Action("action.yml", content)
@@ -214,7 +214,7 @@ func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
 	}
 }
 
-func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
+func TestSnapshotAdmitsFailedAndEmptyParses(t *testing.T) {
 	t.Parallel()
 	for _, content := range []string{"", "null\n", "[unterminated", "jobs: !!unknown {}\n"} {
 		for _, action := range []bool{false, true} {
@@ -241,7 +241,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 	}
 }
 
-func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
+func TestActionSnapshotKeepsRecoveredStep(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: recovered\ndescription: test\ninputs:\n  value:\n    required: [invalid]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo recovered\n")
 	metadata, parseErr := actionmeta.ParseActionMetadata("action.yml", content)

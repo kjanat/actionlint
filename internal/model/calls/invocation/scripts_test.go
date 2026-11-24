@@ -58,7 +58,7 @@ func TestScriptBudgetRetainsFirstBoundaryAndStopsCalls(t *testing.T) {
 	}
 }
 
-func TestScriptBudgetIsSharedAcrossOwners(t *testing.T) {
+func TestScriptBudgetCountsAcrossAllCalls(t *testing.T) {
 	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 2
@@ -136,7 +136,7 @@ func TestCallBudgetRemainsCauseOfRejectedScript(t *testing.T) {
 	}
 }
 
-func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
+func TestInterruptKeepsScriptAndDeclaringCall(t *testing.T) {
 	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	call := begin(t, b, b.RootID(), reference("entry", "call"))
@@ -205,7 +205,7 @@ func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
 	}
 }
 
-func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
+func TestAddScriptAcceptsOnlyCurrentBodyDeclarations(t *testing.T) {
 	t.Parallel()
 	entry := sourcetext.Reference{Document: "workflow.yml", Revision: "workflow-revision", Node: "root"}
 	declaration := entry

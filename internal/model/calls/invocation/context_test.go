@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
-func TestInterruptPreservesOwnedContext(t *testing.T) {
+func TestInterruptReturnsActiveContextAcceptedByGraph(t *testing.T) {
 	t.Parallel()
 	for _, state := range []string{"entry", "pending", "expanded"} {
 		t.Run(state, func(t *testing.T) {

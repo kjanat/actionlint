@@ -14,27 +14,27 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-type ownedBackend struct {
+type countingBackend struct {
 	closeErr, checkErr error
 	cancel             context.CancelFunc
 	closed             int
 	closeContextError  error
 }
 
-func (b *ownedBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
+func (b *countingBackend) Check(context.Context, scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	if b.cancel != nil {
 		b.cancel()
 	}
 	return nil, b.checkErr
 }
 
-func (b *ownedBackend) Close(ctx context.Context) error {
+func (b *countingBackend) Close(ctx context.Context) error {
 	b.closed++
 	b.closeContextError = ctx.Err()
 	return b.closeErr
 }
 
-func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
+func TestCheckClosesLoadedEngineOnce(t *testing.T) {
 	t.Parallel()
 	checkFailure := errors.New("checker failed")
 	closeFailure := errors.New("cleanup failed")
@@ -58,7 +58,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 			}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			backend := &ownedBackend{checkErr: tc.checkErr, closeErr: tc.closeErr}
+			backend := &countingBackend{checkErr: tc.checkErr, closeErr: tc.closeErr}
 			if tc.cancel {
 				backend.cancel = cancel
 			}

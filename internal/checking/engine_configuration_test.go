@@ -35,7 +35,7 @@ func (e *configurationEngine) Check(context.Context, scriptengine.Request) ([]sc
 	return nil, nil
 }
 
-func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
+func TestSelectedEngineValidatesToolSettings(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, settings string

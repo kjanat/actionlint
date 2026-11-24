@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
-func TestResolutionPlanOwnsProviderInputsAndAnswers(t *testing.T) {
+func TestResolutionPlanCopiesRequestsDescriptorAndAnswers(t *testing.T) {
 	t.Parallel()
 	workflow := runnerWorkflow(t, "{group: build, labels: queue}")
 	descriptor := runnerapi.Descriptor{Name: "queues", Targets: []string{"custom"}}

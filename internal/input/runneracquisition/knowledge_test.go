@@ -258,7 +258,7 @@ func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 	}
 }
 
-func TestKnowledgeReadersOwnTheirValues(t *testing.T) {
+func TestKnowledgeReadersReturnCopies(t *testing.T) {
 	t.Parallel()
 	w := runnerWorkflow(t, "ubuntu-lates")
 	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")

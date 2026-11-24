@@ -2,7 +2,7 @@ package rule
 
 import "testing"
 
-func TestDescriptorCloneOwnsInputRequirements(t *testing.T) {
+func TestDescriptorCloneCopiesRequiredInputs(t *testing.T) {
 	t.Parallel()
 	original := Descriptor{Name: "example", RequiredInputs: []InputKind{Scripts, Invocations}}
 	cloned := original.Clone()

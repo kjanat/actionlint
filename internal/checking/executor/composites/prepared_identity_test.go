@@ -160,7 +160,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	}
 }
 
-func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
+func TestPreparedBatchRoutesScriptsByDeclaringCall(t *testing.T) {
 	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}, {uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",

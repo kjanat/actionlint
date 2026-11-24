@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
+func TestConcurrentResolveRulesCopiesPolicyAndOverrideLint(t *testing.T) {
 	t.Parallel()
 	rules, err := NewRuleSet([]rule.Declaration{{Name: "example", Aliases: []rule.Alias{{Name: "old-example"}}, Category: "correctness", Maturity: "stable", Recommended: true}})
 	if err != nil {

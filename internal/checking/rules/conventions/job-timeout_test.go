@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
+func TestJobTimeoutChecksCopyBounds(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps: [{run: echo ok}]\n"
 	parsed, errs := parser.ParseWorkflow([]byte(source))

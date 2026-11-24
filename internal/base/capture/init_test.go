@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
+func TestNewCancelledDuringMetadataReturnsJoinableInitError(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	first, later := filepath.Join(root, "first.yml"), filepath.Join(root, "later.yml")

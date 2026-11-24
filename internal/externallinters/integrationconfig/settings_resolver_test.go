@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
+func TestResolveValidatesSchemaExpandsPathsAndAppliesTransform(t *testing.T) {
 	t.Parallel()
 	transform, err := integrationconfig.New(toolmanifest.Manifest{
 		ConfigSchema:           json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"search":{"type":"array","items":{"type":"string"}},"pattern":{"type":"string"},"limit":{"type":"integer","minimum":7}},"required":["limit"]}`),

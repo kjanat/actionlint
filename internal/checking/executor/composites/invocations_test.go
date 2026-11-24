@@ -92,7 +92,7 @@ func (f *invocationFixture) actionSnapshot(t *testing.T, spec string) parsing.So
 	return snapshot
 }
 
-func TestComposedInvocationChainsFollowStructuralOwners(t *testing.T) {
+func TestComposedChainsGiveOneScriptPerInvocation(t *testing.T) {
 	t.Parallel()
 	workflow := `on: push
 jobs:

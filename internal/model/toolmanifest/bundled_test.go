@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-func TestBundledReturnsCallerOwnedManifests(t *testing.T) {
+func TestBundledReturnsFreshCopies(t *testing.T) {
 	t.Parallel()
 	edited, err := toolmanifest.Bundled()
 	if err != nil {

@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-func TestCheckoutPlacementOwnsValuesAndImmutableLinks(t *testing.T) {
+func TestCheckoutPlacementIgnoresInputAndDetailsMutation(t *testing.T) {
 	t.Parallel()
 	input := execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "parent"}, CaseInsensitive: true}
 	parent := execution.NewCheckoutPlacement(input, execution.CheckoutPlacement{})

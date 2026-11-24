@@ -224,7 +224,7 @@ permissions: {}
 	}
 }
 
-func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
+func TestCacheOperationReportedAtNarrowestCeilingFile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, ancestor, intermediate, owner string
