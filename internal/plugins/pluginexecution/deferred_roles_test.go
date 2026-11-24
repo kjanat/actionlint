@@ -1,12 +1,11 @@
 package pluginexecution
 
 import (
-	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestDeferredEngineRequiresScriptOnlyRoles(t *testing.T) {
@@ -25,27 +24,15 @@ func TestDeferredEngineRequiresScriptOnlyRoles(t *testing.T) {
 			t.Errorf("%+v.ScriptOnly() = %t", tc.roles, got)
 		}
 	}
-	engine := &deferredScriptEngine{pin: pluginregistry.Pin{Kind: artifacts.Component}}
-	for path, want := range map[string]string{
-		"component/testdata/plugins/script-engine.wasm": "",
-		"component/testdata/plugins/no-sudo.wasm":       "default script component exports roles not declared by its script-only metadata",
-	} {
-		artifact, err := artifacts.Resolve(t.Context(), path, artifacts.Options{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		backend, err := engine.load(t.Context(), artifact)
-		if want == "" {
-			if err != nil {
-				t.Fatalf("%s: %v", path, err)
-			}
-			if err := backend.Close(t.Context()); err != nil {
-				t.Fatal(err)
-			}
-			continue
-		}
-		if err == nil || !strings.Contains(err.Error(), want) {
-			t.Fatalf("%s: error=%v, want %q", path, err, want)
-		}
+}
+
+func TestDeferredEngineRejectsUndeclaredRolesFromBytes(t *testing.T) {
+	t.Parallel()
+	fixture := newDeferredReselection(t, fixtureregistry.AnalyzerComponent())
+	ctx, session := network.WithSession(t.Context(), network.Options{})
+	checkSkipped(ctx, t, fixture.engine, session, "exports roles not declared by its script-only metadata")
+	next, err := fixture.client.ResolveCached(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || next.Version != "v1.0.0" {
+		t.Fatalf("next run: selection=%+v error=%v", next, err)
 	}
 }

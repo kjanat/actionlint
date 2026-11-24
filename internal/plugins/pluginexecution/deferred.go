@@ -103,12 +103,15 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 		return nil, err
 	}
 	if b.pin.Kind == artifacts.Component {
-		_, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
+		roles, err := component.Admit(ctx, component.ComponentBytes(artifact.Bytes))
 		if rejected, ok := errors.AsType[*component.AdmissionError](err); ok {
 			return nil, b.skip(ctx, rejected)
 		}
 		if err != nil {
 			return nil, err
+		}
+		if !roles.ScriptOnly() {
+			return nil, b.skip(ctx, &component.AdmissionError{Err: errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles")})
 		}
 	}
 	engine, err := b.load(ctx, artifact)
@@ -170,14 +173,7 @@ func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Art
 	if b.pin.Kind == artifacts.Core {
 		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(b.acquisition)})
 	}
-	engine, err := component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
-	if err != nil {
-		return nil, err
-	}
-	if !engine.Roles().ScriptOnly() {
-		return nil, errors.Join(errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles"), engine.Close(context.WithoutCancel(ctx)))
-	}
-	return engine, nil
+	return component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
 }
 
 func sameScriptDescriptor(left, right scriptengine.Descriptor) bool {
