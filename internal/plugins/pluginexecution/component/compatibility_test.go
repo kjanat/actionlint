@@ -66,6 +66,8 @@ func TestAdmitMarksUnprovidedInterfaces(t *testing.T) {
 		{name: "unknown export only", interfaces: Interfaces{Exports: []string{"example:future/analyzer@2.0.0"}}, unprovided: true},
 		{name: "no exports", interfaces: Interfaces{}, unprovided: true},
 		{name: "two script-engine versions", interfaces: Interfaces{Exports: []string{ScriptEngineInterface, ScriptEngine03Interface}}},
+		{name: "tool integration only", interfaces: Interfaces{Exports: []string{ToolIntegrationInterface}}},
+		{name: "template effects only", interfaces: Interfaces{Exports: []string{TemplateEffects03Interface}}},
 		{name: "tool integration without analyzer", interfaces: Interfaces{Exports: []string{RunnerInterface, ToolIntegrationInterface}}},
 		{name: "template effects of another engine", interfaces: Interfaces{Exports: []string{ScriptEngineInterface, TemplateEffects03Interface}}},
 		{name: "repository objects outside the resolver", interfaces: Interfaces{Imports: []string{RepositoryObjectsInterface}, Exports: []string{AnalyzerInterface}}},

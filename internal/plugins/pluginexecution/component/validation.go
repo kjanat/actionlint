@@ -70,9 +70,6 @@ func negotiate(interfaces Interfaces) (extensionRoleSet, importRequirements, err
 			*candidate.role = true
 		}
 	}
-	if !roles.analyzer && roles.runner == nil && roles.script == nil && !roles.referenceResolver {
-		return roles, importRequirements{}, fmt.Errorf("%w: plugin does not export %s, %s, %s or %s", ErrUnprovidedInterface, AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
-	}
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, importRequirements{}, errors.New("tool integration requires analyzer interface")
 	}
@@ -81,6 +78,9 @@ func negotiate(interfaces Interfaces) (extensionRoleSet, importRequirements, err
 			return script.templateEffects() == roles.templateEffects
 		})
 		return roles, importRequirements{}, fmt.Errorf("%s requires %s", roles.templateEffects.interfaceName(), scriptEngineProtocols[paired].interfaceName())
+	}
+	if !roles.analyzer && roles.runner == nil && roles.script == nil && !roles.referenceResolver {
+		return roles, importRequirements{}, fmt.Errorf("%w: plugin does not export %s, %s, %s or %s", ErrUnprovidedInterface, AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
 	}
 	required, err := validateImports(interfaces.Imports)
 	if err != nil {
