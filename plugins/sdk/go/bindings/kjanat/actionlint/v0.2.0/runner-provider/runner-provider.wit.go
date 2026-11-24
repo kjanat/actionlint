@@ -7,7 +7,7 @@
 package runnerprovider
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // Term represents the variant "kjanat:actionlint/runner-provider@0.2.0#term".

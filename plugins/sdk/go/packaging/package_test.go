@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 var componentHeader = []byte{0, 'a', 's', 'm', 13, 0, 1, 0}
