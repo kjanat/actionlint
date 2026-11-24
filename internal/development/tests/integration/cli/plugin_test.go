@@ -164,15 +164,17 @@ func TestRealShellcheckComponentConfiguration(t *testing.T) {
 	}{
 		{"{}", "SC2086", 1},
 		{"{disable: [SC2086]}", "", 0},
-		{"{shel: sh}", "unknown field", 3},
+		{"{shel: sh}", "additional properties 'shel' not allowed", 3},
 	} {
-		content := "lint: {rules: {preset: none, plugins: {shellcheck-rs: {level: error, options: " + tc.options + "}}}}\n"
+		content := "lint: {rules: {preset: none, correctness: {shellcheck: error}}}\ntools: {shellcheck: {config: " + tc.options + "}}\n"
 		if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		got := testRunCommand(workflow, "check", "--config="+config, "--plugin="+module, "-")
-		if got.Status != tc.status || !strings.Contains(got.Stdout+got.Stderr, tc.want) || tc.status == 0 && got.Stdout != "" {
-			t.Fatalf("options=%s: %+v", tc.options, got)
+		var stdout, stderr bytes.Buffer
+		cmd := cli.Command{Stdin: strings.NewReader(workflow), Stdout: &stdout, Stderr: &stderr}
+		status := cmd.Main([]string{"actionlint", "check", "--no-tool=ruff", "--no-color", "--summary=false", "--config=" + config, "--plugin=" + module, "-"})
+		if status != tc.status || !strings.Contains(stdout.String()+stderr.String(), tc.want) || tc.status == 0 && stdout.Len() != 0 {
+			t.Fatalf("options=%s: exit=%d stdout=%s stderr=%s", tc.options, status, &stdout, &stderr)
 		}
 	}
 }

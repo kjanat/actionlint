@@ -401,7 +401,7 @@ jobs:
     name: Example providers with real scanners
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env: { MISE_ENABLE_TOOLS: "bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
     steps:
       - *ActCheckNocred
       - *GoGomod
@@ -415,7 +415,7 @@ jobs:
           monorepo: false,
           add_shims_to_path: false,
         }
-        env: { MISE_ENABLE_TOOLS: "bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "node,bun,uv,yamllint,zizmor,grype,syft,grant,poutine,runner-guard,npm:runner-run" }
       - name: Install PSScriptAnalyzer
         shell: pwsh
         run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
@@ -442,6 +442,25 @@ jobs:
         env: { ACTIONLINT_REGISTRY_TEST: "1", ACTIONLINT_PLUGIN_TEST_MODE: "local" }
         run: bun --cwd plugins/examples/external-linters test;
           bun --cwd plugins/examples/psscriptanalyzer test
+      - name: Download the published Ruff and ShellCheck plugins
+        run: |
+          directory="${RUNNER_TEMP}/published"
+          mkdir -p "${directory}"
+          curl --fail --silent --show-error --location --output "${directory}/ruff.wasm" \
+            https://github.com/kjanat/actionlint-plugin-ruff/releases/download/v0.4.0/plugin.wasm
+          curl --fail --silent --show-error --location --output "${directory}/shellcheck.wasm" \
+            https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.3.1/plugin.wasm
+          printf '%s  %s\n' \
+            f191de7ecc7c004dd5a6edbb25fd31dd68cb56fe22516dfbc3dd3a0a1d6a2a7c "${directory}/ruff.wasm" \
+            6c5ec0746a001b468283442ee7ddcacf5fa31bafc0ebe91ed2b4c9f05e71af31 "${directory}/shellcheck.wasm" \
+            | sha256sum --check
+      - name: Test the plugin SDK and the published Ruff and ShellCheck plugins
+        env: {
+          ACTIONLINT_TEST_PLUGIN_SDK: "1",
+          ACTIONLINT_TEST_RUFF_WASM: "${{ runner.temp }}/published/ruff.wasm",
+          ACTIONLINT_TEST_SHELLCHECK_WASM: "${{ runner.temp }}/published/shellcheck.wasm",
+        }
+        run: go test -count=1 -v -run 'TestTypeScript|TestReal' ./internal/development/tests/integration/plugins ./internal/development/tests/integration/cli
   docker:
     needs: [changes, checks]
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
