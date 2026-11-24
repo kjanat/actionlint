@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -297,7 +298,24 @@ func cacheFile(ctx context.Context, path string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := os.Rename(f.Name(), path); err != nil {
+	return install(ctx, f.Name(), path, data)
+}
+
+func install(ctx context.Context, temporary, path string, data []byte) error {
+	// Windows cannot replace a file while a handle to it is open.
+	linkErr := os.Link(temporary, path)
+	if linkErr == nil {
+		return nil
+	}
+	if errors.Is(linkErr, fs.ErrExist) {
+		if existing, err := readFile(ctx, path, int64(len(data))); err == nil && bytes.Equal(existing, data) {
+			return nil
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := os.Rename(temporary, path); err != nil {
 		// Concurrent writers can publish the same artifact. Accept identical bytes.
 		existing, readErr := readFile(ctx, path, int64(len(data)))
 		if ctxErr := ctx.Err(); ctxErr != nil {

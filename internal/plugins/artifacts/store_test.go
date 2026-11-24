@@ -88,6 +88,26 @@ func TestPublishRepairsCorruptArtifacts(t *testing.T) {
 	}
 }
 
+func TestRepublishingIdenticalBytesKeepsTheCachedFile(t *testing.T) {
+	t.Parallel()
+	data := []byte("published once")
+	path := filepath.Join(t.TempDir(), digestOf(data))
+	if err := cacheFile(t.Context(), path, data); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cacheFile(t.Context(), path, data); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatalf("republishing identical bytes replaced the cached file: error=%v", err)
+	}
+}
+
 func TestPublishArtifactInLongCachePath(t *testing.T) {
 	t.Parallel()
 	store := Store{Dir: filepath.Join(t.TempDir(), strings.Repeat("a", 150), strings.Repeat("b", 150))}
