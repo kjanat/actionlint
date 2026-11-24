@@ -145,7 +145,7 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 		t.Fatal("changed nested support contract accepted")
 	}
 	for _, names := range [][]string{{RunnerInterface}, {Runner03Interface}, {RunnerInterface, Runner03Interface}, {"kjanat:actionlint/runner-provider@0.4.0"}} {
-		roles, err := extensionRoles(names)
+		roles, err := CheckInterfaces(Interfaces{Exports: names})
 		switch {
 		case len(names) > 1:
 			if err == nil || !strings.Contains(err.Error(), "export one runner-provider version") {
@@ -155,7 +155,7 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "this host supports") {
 				t.Fatalf("unknown runner version accepted: %+v %v", roles, err)
 			}
-		case err != nil || roles.runner.interfaceName() != names[0]:
+		case err != nil || roles != (Roles{Runner: names[0]}):
 			t.Fatalf("runner version negotiation failed: %+v %v", roles, err)
 		}
 	}

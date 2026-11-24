@@ -32,31 +32,31 @@ type extensionRoleSet struct {
 	templateEffects   *templateEffectsProtocol
 }
 
-// extensionRoles negotiates the roles a component exports. A component
+// negotiate derives roles from the exports and checks the imports. A component
 // exports one script-engine version and at most one template-effects
 // version, the one of the same package, whose check replaces the engine's.
-func extensionRoles(exports []string) (extensionRoleSet, error) {
+func negotiate(interfaces Interfaces) (extensionRoleSet, importRequirements, error) {
 	var roles extensionRoleSet
 	supported := []struct {
 		name string
 		role *bool
 	}{{AnalyzerInterface, &roles.analyzer}, {ToolIntegrationInterface, &roles.toolIntegration}, {ReferenceResolverInterface, &roles.referenceResolver}}
-	for _, export := range exports {
+	for _, export := range interfaces.Exports {
 		if sameFamily(export, RunnerInterface) {
 			if err := negotiateVersion(export, runnerProtocols, &roles.runner, "runner-provider"); err != nil {
-				return roles, err
+				return roles, importRequirements{}, err
 			}
 			continue
 		}
 		if sameFamily(export, ScriptEngineInterface) {
 			if err := negotiateVersion(export, scriptEngineProtocols, &roles.script, "script-engine"); err != nil {
-				return roles, err
+				return roles, importRequirements{}, err
 			}
 			continue
 		}
 		if sameFamily(export, TemplateEffectsInterface) {
 			if err := negotiateVersion(export, templateEffectsProtocols, &roles.templateEffects, "template-effects"); err != nil {
-				return roles, err
+				return roles, importRequirements{}, err
 			}
 			continue
 		}
@@ -65,24 +65,31 @@ func extensionRoles(exports []string) (extensionRoleSet, error) {
 				continue
 			}
 			if export != candidate.name {
-				return roles, fmt.Errorf("plugin exports %s; this host supports %s", export, candidate.name)
+				return roles, importRequirements{}, fmt.Errorf("plugin exports %s; this host supports %s", export, candidate.name)
 			}
 			*candidate.role = true
 		}
 	}
 	if !roles.analyzer && roles.runner == nil && roles.script == nil && !roles.referenceResolver {
-		return roles, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
+		return roles, importRequirements{}, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(interfaceNames(scriptEngineProtocols), " or "), ReferenceResolverInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {
-		return roles, errors.New("tool integration requires analyzer interface")
+		return roles, importRequirements{}, errors.New("tool integration requires analyzer interface")
 	}
 	if roles.templateEffects != nil && (roles.script == nil || roles.script.templateEffects() != roles.templateEffects) {
 		paired := slices.IndexFunc(scriptEngineProtocols, func(script scriptEngineProtocol) bool {
 			return script.templateEffects() == roles.templateEffects
 		})
-		return roles, fmt.Errorf("%s requires %s", roles.templateEffects.interfaceName(), scriptEngineProtocols[paired].interfaceName())
+		return roles, importRequirements{}, fmt.Errorf("%s requires %s", roles.templateEffects.interfaceName(), scriptEngineProtocols[paired].interfaceName())
 	}
-	return roles, nil
+	required, err := validateImports(interfaces.Imports)
+	if err != nil {
+		return roles, required, err
+	}
+	if required.repositoryObjects && !roles.referenceResolver {
+		return roles, required, errors.New("repository objects require the reference-resolver role")
+	}
+	return roles, required, nil
 }
 
 func sameFamily(name, known string) bool {

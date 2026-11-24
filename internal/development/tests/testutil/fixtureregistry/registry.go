@@ -351,8 +351,14 @@ func (r *PluginRegistry) writeArtifact(t *testing.T, publisher PluginPublisher, 
 		t.Fatalf("registry fixture artifact: %v", err)
 	}
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
-	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","wit_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, fixtureWITSHA256)
-	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureWITSHA256
+	primary := component.AnalyzerInterface
+	if interfaces, err := component.ReadInterfaces(wasm); err == nil {
+		if roles, err := component.CheckInterfaces(interfaces); err == nil {
+			primary = roles.Exports()[0]
+		}
+	}
+	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":%q,"wit_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, primary, fixtureWITSHA256)
+	kind, contract := "component", primary+"#sha256="+fixtureWITSHA256
 	if format == artifacts.Core {
 		kind, contract = "core", "wasm-core-json/1"
 		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-core-json","abi_version":1}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name)

@@ -41,7 +41,7 @@ func (v Version) HostSupport() HostSupport {
 	if !ok {
 		return HostSupport{Status: SupportUnknown}
 	}
-	if err := component.CheckInterfaces(interfaces); err != nil {
+	if _, err := component.CheckInterfaces(interfaces); err != nil {
 		return HostSupport{Status: SupportIncompatible, Reason: err.Error()}
 	}
 	return HostSupport{Status: SupportCompatible}
@@ -52,7 +52,7 @@ func (c *Client) checkRelease(ctx context.Context, pin Pin, v Version) error {
 		return nil
 	}
 	if interfaces, ok := v.interfaces(); ok {
-		if err := component.CheckInterfaces(interfaces); err != nil {
+		if _, err := component.CheckInterfaces(interfaces); err != nil {
 			return &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}
 		}
 		return nil
@@ -75,7 +75,7 @@ func checkArtifact(pin Pin, artifact *artifacts.Artifact) error {
 	}
 	interfaces, err := component.ReadInterfaces(artifact.Bytes)
 	if err == nil {
-		err = component.CheckInterfaces(interfaces)
+		_, err = component.CheckInterfaces(interfaces)
 	}
 	if err != nil {
 		return &IncompatibleError{Name: pin.Name, Version: pin.Version, Err: err}

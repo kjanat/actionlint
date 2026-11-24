@@ -2,6 +2,7 @@ package component
 
 import (
 	"bytes"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -18,24 +19,64 @@ type Interfaces struct {
 	Exports []string `json:"exports"`
 }
 
-func CheckInterfaces(interfaces Interfaces) error {
-	_, _, err := negotiate(interfaces)
-	return err
+type Roles struct {
+	Analyzer          string `json:"analyzer,omitempty"`
+	ToolIntegration   string `json:"tool_integration,omitempty"`
+	ReferenceResolver string `json:"reference_resolver,omitempty"`
+	Runner            string `json:"runner,omitempty"`
+	ScriptEngine      string `json:"script_engine,omitempty"`
+	TemplateEffects   string `json:"template_effects,omitempty"`
 }
 
-func negotiate(interfaces Interfaces) (extensionRoleSet, importRequirements, error) {
-	roles, err := extensionRoles(interfaces.Exports)
+func (r Roles) Exports() []string {
+	return slices.DeleteFunc([]string{r.Analyzer, r.ToolIntegration, r.ReferenceResolver, r.Runner, r.ScriptEngine, r.TemplateEffects}, func(name string) bool { return name == "" })
+}
+
+func CheckInterfaces(interfaces Interfaces) (Roles, error) {
+	roles, _, err := negotiate(interfaces)
 	if err != nil {
-		return roles, importRequirements{}, err
+		return Roles{}, err
 	}
-	required, err := validateImports(interfaces.Imports)
-	if err != nil {
-		return roles, required, err
+	return roles.names(), nil
+}
+
+func (r extensionRoleSet) names() Roles {
+	var roles Roles
+	if r.analyzer {
+		roles.Analyzer = AnalyzerInterface
 	}
-	if required.repositoryObjects && !roles.referenceResolver {
-		return roles, required, errors.New("repository objects require the reference-resolver role")
+	if r.toolIntegration {
+		roles.ToolIntegration = ToolIntegrationInterface
 	}
-	return roles, required, nil
+	if r.referenceResolver {
+		roles.ReferenceResolver = ReferenceResolverInterface
+	}
+	if r.runner != nil {
+		roles.Runner = r.runner.interfaceName()
+	}
+	if r.script != nil {
+		roles.ScriptEngine = r.script.interfaceName()
+	}
+	if r.templateEffects != nil {
+		roles.TemplateEffects = r.templateEffects.interfaceName()
+	}
+	return roles
+}
+
+func checkDeclaredInterface(metadata []byte, roles Roles) error {
+	if len(metadata) == 0 {
+		return nil
+	}
+	var declared struct {
+		Interface string `json:"interface"`
+	}
+	if err := jsonv2.Unmarshal(metadata, &declared); err != nil {
+		return fmt.Errorf("plugin metadata: %w", err)
+	}
+	if declared.Interface == "" || slices.Contains(roles.Exports(), declared.Interface) {
+		return nil
+	}
+	return fmt.Errorf("plugin metadata declares %s; the component exports %s", declared.Interface, strings.Join(roles.Exports(), ", "))
 }
 
 func ReadInterfaces(data []byte) (Interfaces, error) {

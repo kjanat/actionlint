@@ -253,11 +253,11 @@ func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
 
 func TestReferenceResolverRoleAndImports(t *testing.T) {
 	t.Parallel()
-	roles, err := extensionRoles([]string{ReferenceResolverInterface})
-	if err != nil || !roles.referenceResolver {
+	roles, err := CheckInterfaces(Interfaces{Exports: []string{ReferenceResolverInterface}})
+	if err != nil || roles != (Roles{ReferenceResolver: ReferenceResolverInterface}) {
 		t.Fatalf("roles=%+v error=%v", roles, err)
 	}
-	if _, err := extensionRoles([]string{"kjanat:actionlint-resolver/reference-resolver@2.0.0"}); err == nil {
+	if _, err := CheckInterfaces(Interfaces{Exports: []string{"kjanat:actionlint-resolver/reference-resolver@2.0.0"}}); err == nil {
 		t.Fatal("accepted unsupported resolver version")
 	}
 	if _, err := ReadInterfaces(wasmcomponent.Build(nil, []string{AnalyzerInterface}, []string{ReferenceResolverInterface})); err == nil || !strings.Contains(err.Error(), "must be an interface instance") {

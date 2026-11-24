@@ -88,20 +88,20 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := extensionRoles(tc.exports); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := CheckInterfaces(Interfaces{Exports: tc.exports}); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
 	}
 	for _, version := range []string{ScriptEngineInterface, ScriptEngine03Interface} {
-		roles, err := extensionRoles(instance(version))
-		if err != nil || roles.script.interfaceName() != version || roles.templateEffects != nil {
+		roles, err := CheckInterfaces(Interfaces{Exports: instance(version)})
+		if err != nil || roles != (Roles{ScriptEngine: version}) {
 			t.Fatalf("%s: roles=%+v err=%v", version, roles, err)
 		}
 	}
 	for script, template := range map[string]string{ScriptEngineInterface: TemplateEffectsInterface, ScriptEngine03Interface: TemplateEffects03Interface} {
-		roles, err := extensionRoles(instance(script, template))
-		if err != nil || roles.script.interfaceName() != script || roles.templateEffects.interfaceName() != template {
+		roles, err := CheckInterfaces(Interfaces{Exports: instance(script, template)})
+		if err != nil || roles != (Roles{ScriptEngine: script, TemplateEffects: template}) {
 			t.Fatalf("%s with %s: roles=%+v err=%v", script, template, roles, err)
 		}
 	}

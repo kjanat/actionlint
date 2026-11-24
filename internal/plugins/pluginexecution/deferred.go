@@ -133,10 +133,14 @@ func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Art
 	if err != nil {
 		return nil, err
 	}
-	if !engine.HasScriptEngine() || engine.HasAnalyzer() || engine.HasRunnerProvider() || engine.HasReferenceResolver() {
+	if !scriptOnly(engine.Roles()) {
 		return nil, errors.Join(errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles"), engine.Close(context.WithoutCancel(ctx)))
 	}
 	return engine, nil
+}
+
+func scriptOnly(roles component.Roles) bool {
+	return roles.ScriptEngine != "" && roles == component.Roles{ScriptEngine: roles.ScriptEngine, TemplateEffects: roles.TemplateEffects}
 }
 
 func sameScriptDescriptor(left, right scriptengine.Descriptor) bool {

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -86,7 +87,7 @@ func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
 		{"metadata plugin", candidateRecordPath, `"id":"no-sudo"`, `"id":"other"`},
 		{"metadata version", candidateRecordPath, `"metadata_version":1`, `"metadata_version":2`},
 		{"metadata transport", candidateRecordPath, `"transport":"wasm-component"`, `"transport":"wasm-core-json"`},
-		{"metadata contract", candidateRecordPath, `"interface":"kjanat:actionlint/analyzer@0.1.0"`, `"interface":"other:plugin/analyzer@0.1.0"`},
+		{"metadata contract", candidateRecordPath, `"interface":"` + component.AnalyzerInterface + `"`, `"interface":"other:plugin/analyzer@0.1.0"`},
 		{"unknown record field", candidateRecordPath, `"source":"candidate"`, `"source":"candidate","owner_id":42`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

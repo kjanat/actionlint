@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -109,7 +110,7 @@ func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", analyzerComponent)
 	url := r.RecordURL("v1.0.0")
-	data := bytes.ReplaceAll(r.File(url), []byte("kjanat:actionlint/analyzer@0.1.0"), []byte("vendor:future/analyzer@9.0.0"))
+	data := bytes.ReplaceAll(r.File(url), []byte(component.AnalyzerInterface), []byte("vendor:future/analyzer@9.0.0"))
 	data = bytes.Replace(data, []byte(`"metadata_version":1`), []byte(`"metadata_version":1,"abi_version":{"vendor":"extension"}`), 1)
 	r.SetFile(url, data)
 	if _, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {

@@ -74,9 +74,13 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
+	if err := checkDeclaredInterface(staticMetadata, roles.names()); err != nil {
+		return err
+	}
 	if err := checkRoleTypes(componentType, roles); err != nil {
 		return err
 	}
+	p.roles = roles.names()
 	p.component = component
 	p.referenceResolver = roles.referenceResolver
 	if required.repositoryObjects {
