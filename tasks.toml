@@ -110,12 +110,46 @@ env = { ANALYSIS_MERGE_CHECK = "1" }
 
 ["lint:gopls"]
 # Only gopls runs the fmtappendf and writestring analyzers.
-run = '''
+run         = '''
 diagnostics="$(git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go' | xargs -0 gopls check -severity=hint)"
 if [ -n "$diagnostics" ]; then
   printf '%s\n' "$diagnostics" >&2
   exit 1
 fi
+'''
+run_windows = '''
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+$paths = git grep -z -L -E '^// Code generated .* DO NOT EDIT\.$' -- '*.go'
+if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
+if (-not $paths) { exit 0 }
+$files = $paths.Split([char]0, [StringSplitOptions]::RemoveEmptyEntries)
+
+function Invoke-GoplsCheck($batch) {
+  $diagnostics = gopls check -severity=hint @batch
+  $status = $LASTEXITCODE
+  if ($diagnostics) {
+    [Console]::Error.WriteLine(($diagnostics -join [Environment]::NewLine))
+    exit 1
+  }
+  if ($status -ne 0) { exit $status }
+}
+
+# Leave room for the executable and flags within Windows' command-line limit.
+$batch = [Collections.Generic.List[string]]::new()
+$length = 0
+foreach ($file in $files) {
+  $file = "./$file"
+  $argumentLength = $file.Length + 3
+  if ($length + $argumentLength -gt 30000) {
+    Invoke-GoplsCheck $batch
+    $batch.Clear()
+    $length = 0
+  }
+  $batch.Add($file)
+  $length += $argumentLength
+}
+if ($batch.Count) { Invoke-GoplsCheck $batch }
 '''
 
 ["lint"]
