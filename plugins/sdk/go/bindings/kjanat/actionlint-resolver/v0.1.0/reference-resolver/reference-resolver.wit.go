@@ -4,7 +4,7 @@
 package referenceresolver
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // Kind represents the enum "kjanat:actionlint-resolver/reference-resolver@0.1.0#kind".

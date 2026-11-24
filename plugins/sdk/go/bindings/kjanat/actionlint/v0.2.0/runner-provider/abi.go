@@ -3,7 +3,7 @@
 package runnerprovider
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 func lift_Snapshot(f0 *uint8, f1 uint32, f2 *uint8, f3 uint32, f4 *uint8, f5, f6, f7 uint32) (v Snapshot) {
