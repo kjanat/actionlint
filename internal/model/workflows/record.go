@@ -45,9 +45,9 @@ func (b *BoundDocument) Step(reference sourcetext.Reference) (BoundStep, bool) {
 	return BoundStep{step, b}, true
 }
 
-func (b *BoundDocument) Owns(step BoundStep) bool          { return step.Present() && b == step.owner }
-func (b *BoundDocument) OwnsWorkflow(w BoundWorkflow) bool { return w.Present() && b == w.owner }
-func (b *BoundDocument) OwnsJob(job BoundJob) bool         { return job.Present() && b == job.owner }
+func (b *BoundDocument) HasStep(step BoundStep) bool      { return step.Present() && b == step.document }
+func (b *BoundDocument) HasWorkflow(w BoundWorkflow) bool { return w.Present() && b == w.document }
+func (b *BoundDocument) HasJob(job BoundJob) bool         { return job.Present() && b == job.document }
 
 // SourceIndex returns the zero index for a nil BoundDocument.
 func (b *BoundDocument) SourceIndex() facts.SourceIndex {
@@ -61,7 +61,7 @@ func (b *BoundDocument) ActionBody() ActionBody { return ActionBody{workflow: b.
 
 type BoundWorkflow struct {
 	*definition.Workflow
-	owner *BoundDocument
+	document *BoundDocument
 }
 
 func (w BoundWorkflow) Present() bool { return w.Workflow != nil }
@@ -74,7 +74,7 @@ func (w BoundWorkflow) Job(key string) (BoundJob, bool) {
 	if !ok || job == nil {
 		return BoundJob{}, false
 	}
-	return BoundJob{job, w.owner, key}, true
+	return BoundJob{job, w.document, key}, true
 }
 
 // Jobs keys jobs by lowercase ID.
@@ -84,7 +84,7 @@ func (w BoundWorkflow) Jobs() iter.Seq2[string, BoundJob] {
 			return
 		}
 		for key, job := range w.Workflow.Jobs {
-			if job != nil && !yield(key, BoundJob{job, w.owner, key}) {
+			if job != nil && !yield(key, BoundJob{job, w.document, key}) {
 				return
 			}
 		}
@@ -102,8 +102,8 @@ func (w BoundWorkflow) ScalarSource(s *definition.String) *definition.ScriptSour
 
 type BoundJob struct {
 	*definition.Job
-	owner *BoundDocument
-	key   string
+	document *BoundDocument
+	key      string
 }
 
 func (j BoundJob) Present() bool { return j.Job != nil }
@@ -111,21 +111,21 @@ func (j BoundJob) Present() bool { return j.Job != nil }
 func (j BoundJob) Key() string { return j.key }
 
 func (j BoundJob) Reference() sourcetext.Reference {
-	if !j.Present() || j.owner == nil {
+	if !j.Present() || j.document == nil {
 		return sourcetext.Reference{}
 	}
-	return j.owner.references.Jobs[j.Key()]
+	return j.document.references.Jobs[j.Key()]
 }
 
-func (j BoundJob) Workflow() BoundWorkflow { return j.owner.Workflow() }
+func (j BoundJob) Workflow() BoundWorkflow { return j.document.Workflow() }
 
-func (j BoundJob) Steps() iter.Seq[BoundStep] { return boundSteps(j.owner, j.stepNodes()) }
+func (j BoundJob) Steps() iter.Seq[BoundStep] { return boundSteps(j.document, j.stepNodes()) }
 
 // AllSteps yields each parallel group before the steps inside it.
 func (j BoundJob) AllSteps() iter.Seq[BoundStep] {
 	return func(yield func(BoundStep) bool) {
 		for step := range definition.AllSteps(j.stepNodes()) {
-			if !yield(BoundStep{step, j.owner}) {
+			if !yield(BoundStep{step, j.document}) {
 				return
 			}
 		}
@@ -139,10 +139,10 @@ func (j BoundJob) stepNodes() []*definition.Step {
 	return j.Job.Steps
 }
 
-func boundSteps(owner *BoundDocument, nodes []*definition.Step) iter.Seq[BoundStep] {
+func boundSteps(document *BoundDocument, nodes []*definition.Step) iter.Seq[BoundStep] {
 	return func(yield func(BoundStep) bool) {
 		for _, step := range nodes {
-			if step != nil && !yield(BoundStep{step, owner}) {
+			if step != nil && !yield(BoundStep{step, document}) {
 				return
 			}
 		}
@@ -151,49 +151,49 @@ func boundSteps(owner *BoundDocument, nodes []*definition.Step) iter.Seq[BoundSt
 
 type BoundStep struct {
 	*definition.Step
-	owner *BoundDocument
+	document *BoundDocument
 }
 
 func (s BoundStep) Present() bool { return s.Step != nil }
 
 func (s BoundStep) Reference() sourcetext.Reference {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return sourcetext.Reference{}
 	}
-	return s.owner.references.Steps[s.Step]
+	return s.document.references.Steps[s.Step]
 }
 
 func (s BoundStep) SourceReference() sourcetext.Reference {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return sourcetext.Reference{}
 	}
-	return s.owner.Reference()
+	return s.document.Reference()
 }
 
 func (s BoundStep) ContentText() string {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return ""
 	}
-	return s.owner.text
+	return s.document.text
 }
 
 func (s BoundStep) DeclaringJob() string {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return ""
 	}
-	return s.owner.references.StepJobs[s.Step]
+	return s.document.references.StepJobs[s.Step]
 }
 
 // Job returns an absent Job for composite metadata.
 func (s BoundStep) Job() BoundJob {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return BoundJob{}
 	}
-	job, _ := s.owner.Workflow().Job(s.DeclaringJob())
+	job, _ := s.document.Workflow().Job(s.DeclaringJob())
 	return job
 }
 
-func (s BoundStep) Workflow() BoundWorkflow { return s.owner.Workflow() }
+func (s BoundStep) Workflow() BoundWorkflow { return s.document.Workflow() }
 
 func (s BoundStep) Condition() value.Value {
 	if !s.Present() {
@@ -242,7 +242,7 @@ func (s BoundStep) ParallelSteps() (iter.Seq[BoundStep], bool) {
 	if !ok || parallel == nil {
 		return nil, false
 	}
-	return boundSteps(s.owner, parallel.Steps), true
+	return boundSteps(s.document, parallel.Steps), true
 }
 
 type ActionBody struct{ workflow BoundWorkflow }
@@ -250,10 +250,10 @@ type ActionBody struct{ workflow BoundWorkflow }
 func (a ActionBody) Present() bool           { return a.workflow.Present() }
 func (a ActionBody) Workflow() BoundWorkflow { return a.workflow }
 func (a ActionBody) Using() string {
-	if a.workflow.owner == nil {
+	if a.workflow.document == nil {
 		return ""
 	}
-	return a.workflow.owner.using
+	return a.workflow.document.using
 }
 
 func (a ActionBody) Steps() iter.Seq[BoundStep] {

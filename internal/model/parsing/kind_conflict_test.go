@@ -92,7 +92,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal("registry retained a live document after conflict")
 			}
 			if earlierView.Present() {
-				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
+				if _, ok := registry.Declaration(earlierReference); ok || registry.Admits(earlierView) {
 					t.Fatal("registry still resolves the quarantined view")
 				}
 				if err := previous.ValidateStep(earlierView); err == nil {

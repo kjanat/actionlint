@@ -58,7 +58,7 @@ func (c *Resolver) BeginJob(workflowEnv mappings.Mapping, workflowShell value.Va
 	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(workflows.DefaultsRun(job.Defaults)), workflowShell, runnerShell)
 }
 
-// ForkComposite callers check context with their invocation.Builder's Owns first, and call JoinComposite after traversal, including failed traversal.
+// ForkComposite callers check context with their invocation.Builder's Issued method first, and call JoinComposite after traversal, including failed traversal.
 func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) {
 	if c == nil || !context.Valid() {
 		return nil, ErrInvalidCompositeContext

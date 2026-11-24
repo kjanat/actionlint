@@ -97,7 +97,7 @@ func (b *Builder) Context(id ID) (Context, bool) {
 	return b.records[i].call.Context, true
 }
 
-func (b *Builder) Owns(context Context) bool {
+func (b *Builder) Issued(context Context) bool {
 	stored, exists := b.Context(context.ID())
 	return exists && stored == context
 }
@@ -110,7 +110,7 @@ func (g Graph) Context(id ID) (Context, bool) {
 	return call.Context, exists
 }
 
-func (g Graph) Owns(context Context) bool {
+func (g Graph) Issued(context Context) bool {
 	stored, exists := g.Context(context.ID())
 	return exists && stored == context
 }

@@ -419,7 +419,7 @@ func (b *Builder) Begin(parentContext Context, site sourcetext.Reference, facts 
 	if b.interrupted {
 		return Ticket{}, ErrInterrupted
 	}
-	if !b.Owns(parentContext) {
+	if !b.Issued(parentContext) {
 		return Ticket{}, ErrForeignContext
 	}
 	parent := parentContext.ID()
@@ -482,7 +482,7 @@ func (b *Builder) add(r record) {
 // Resolve returns the stored outcome. Descend into the call only when the
 // result is expanded.
 func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
-	if !b.Owns(context) {
+	if !b.Issued(context) {
 		return Outcome{}, ErrForeignContext
 	}
 	id := context.ID()
@@ -544,7 +544,7 @@ func (b *Builder) activeOwner(parent ID, target sourcetext.Reference) (ID, sourc
 
 // Close requires every child to be final. Closing an interrupted call is a no-op.
 func (b *Builder) Close(context Context) error {
-	if !b.Owns(context) {
+	if !b.Issued(context) {
 		return ErrForeignContext
 	}
 	id := context.ID()

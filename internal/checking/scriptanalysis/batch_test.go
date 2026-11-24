@@ -408,7 +408,7 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 			t.Fatalf("canonical declaration %q is missing", unit.Reference)
 		}
 		entry, present := registry.Lookup(declaration.SourceReference())
-		if !present || declaration.Reference() != unit.Reference || !registry.Owns(declaration) {
+		if !present || declaration.Reference() != unit.Reference || !registry.Admits(declaration) {
 			t.Fatal("registry declaration lost its source binding")
 		}
 		if err := entry.ValidateStep(declaration); err != nil {

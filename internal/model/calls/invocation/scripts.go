@@ -16,7 +16,7 @@ type Script struct {
 }
 
 func (b *Builder) AddScript(context Context, declaration sourcetext.Reference, kind ScriptKind, input string) (ID, error) {
-	if !b.Owns(context) {
+	if !b.Issued(context) {
 		return "", ErrForeignContext
 	}
 	owner := context.ID()

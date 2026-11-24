@@ -107,7 +107,7 @@ func TestSnapshotsRejectForeignAndZeroSteps(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflows.BoundStep{}) {
+	if snapshots.Admits(foreignStep) || snapshots.Admits(workflows.BoundStep{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
 	if err := bound.ValidateStep(workflows.BoundStep{}); err == nil {
@@ -140,10 +140,10 @@ func TestRegistryAcceptsOnlyStepsItBound(t *testing.T) {
 	if !firstOK || !secondOK || firstCanonical != firstCursor || secondCanonical != secondCursor {
 		t.Fatal("registry declaration lookup did not return its canonical handle")
 	}
-	if !firstRegistry.Owns(firstCursor) || !secondRegistry.Owns(secondCursor) {
+	if !firstRegistry.Admits(firstCursor) || !secondRegistry.Admits(secondCursor) {
 		t.Fatal("registry rejected its own canonical handle")
 	}
-	if firstCursor == secondCursor || firstRegistry.Owns(secondCursor) || secondRegistry.Owns(firstCursor) {
+	if firstCursor == secondCursor || firstRegistry.Admits(secondCursor) || secondRegistry.Admits(firstCursor) {
 		t.Fatal("registry accepted another binding's handle for the same record and identity")
 	}
 }
@@ -186,7 +186,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	}
 	view := snapshotJobSteps(t, canonical, "build")[0]
 	declaration, ok := snapshots.Declaration(view.Reference())
-	if !ok || declaration != view || !snapshots.Owns(view) {
+	if !ok || declaration != view || !snapshots.Admits(view) {
 		t.Fatal("concurrent bind did not preserve canonical bound handle identity")
 	}
 }

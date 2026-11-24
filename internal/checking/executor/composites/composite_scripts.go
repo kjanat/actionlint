@@ -145,13 +145,13 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows
 }
 
 func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted parsing.SourceSnapshot, address string, callContext invocation.Context, parents []workflowvisit.InvocationParticipant) (err error) {
-	if !analysis.invocations.Owns(callContext) {
+	if !analysis.invocations.Issued(callContext) {
 		return invocation.ErrForeignContext
 	}
 	if analysis.sourceSnapshots == nil {
 		return errors.New("action source registry is unavailable")
 	}
-	if !analysis.sourceSnapshots.OwnsSnapshot(admitted) {
+	if !analysis.sourceSnapshots.AdmitsSnapshot(admitted) {
 		return errors.New("action source snapshot belongs to a different registry")
 	}
 	snapshot, err := analysis.sourceSnapshots.Action(admitted.Capture(), meta)

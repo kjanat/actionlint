@@ -184,7 +184,7 @@ func NewBatch(graph invocation.Graph, collection Collection) (Batch, error) {
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
-	if !graph.Owns(scope.Context) {
+	if !graph.Issued(scope.Context) {
 		return fmt.Errorf("%w: foreign invocation context", ErrInvalidBatch)
 	}
 	paths := scope.Paths

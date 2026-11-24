@@ -28,7 +28,7 @@ func TestInterruptReturnsActiveContextAcceptedByGraph(t *testing.T) {
 				}
 			}
 			got, err := b.Interrupt(invocation.ReasonCanceled, "cancelled")
-			if err != nil || got != want || !b.Owns(got) {
+			if err != nil || got != want || !b.Issued(got) {
 				t.Fatalf("interruption lost context: got=%v want=%v error=%v", got.ID(), want.ID(), err)
 			}
 			if state != "entry" {
@@ -41,7 +41,7 @@ func TestInterruptReturnsActiveContextAcceptedByGraph(t *testing.T) {
 			}
 			graph := publish(t, b)
 			stored, exists := graph.Context(got.ID())
-			if !exists || stored != want || !graph.Owns(got) {
+			if !exists || stored != want || !graph.Issued(got) {
 				t.Fatal("publication lost interrupted handle")
 			}
 			if state == "entry" {
@@ -63,7 +63,7 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 	t.Parallel()
 	first := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	second := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
-	if first.RootID() != second.RootID() || first.Owns(second.RootContext()) || first.Owns(invocation.Context{}) {
+	if first.RootID() != second.RootID() || first.Issued(second.RootContext()) || first.Issued(invocation.Context{}) {
 		t.Fatal("entry handle escaped its owner")
 	}
 	facts := invocation.Facts{Uses: "./child", HasUses: true, Condition: invocation.ConditionEnabled, Step: sourcetext.Position{Line: 3, Column: 7}, Background: true}
@@ -84,7 +84,7 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 	}
 	leftContext, _ := left.Context()
 	rightContext, _ := right.Context()
-	if left.ID() != right.ID() || leftContext == rightContext || first.Owns(rightContext) {
+	if left.ID() != right.ID() || leftContext == rightContext || first.Issued(rightContext) {
 		t.Fatal("equal stable IDs collapsed owner handles")
 	}
 	outcome, err := invocation.Opaque(invocation.ReasonNonComposite, "test")
@@ -102,8 +102,8 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 	}
 	graph := publish(t, first)
 	stored, exists := graph.Context(left.ID())
-	if !exists || stored != leftContext || !graph.Owns(leftContext) || graph.Owns(rightContext) || graph.Owns(invocation.Context{}) {
-		t.Fatal("published graph changed Context or Owns results")
+	if !exists || stored != leftContext || !graph.Issued(leftContext) || graph.Issued(rightContext) || graph.Issued(invocation.Context{}) {
+		t.Fatal("published graph changed Context or Issued results")
 	}
 	facts.Background = false
 	projected, ok := stored.Facts()

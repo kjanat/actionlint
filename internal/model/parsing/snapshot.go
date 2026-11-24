@@ -119,7 +119,7 @@ func (s *SourceSnapshots) LookupDocument(identity string) (SourceSnapshot, bool)
 	return SourceSnapshot{admitted}, true
 }
 
-func (s *SourceSnapshots) OwnsSnapshot(snapshot SourceSnapshot) bool {
+func (s *SourceSnapshots) AdmitsSnapshot(snapshot SourceSnapshot) bool {
 	return s != nil && snapshot.admission != nil && snapshot.admission.registry == s
 }
 
@@ -292,14 +292,14 @@ func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflows.BoundStep) bool {
+func (s *SourceSnapshots) Admits(step workflows.BoundStep) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
 	s.mu.Lock()
 	admitted := s.documents[step.SourceReference().Document]
 	s.mu.Unlock()
-	return admitted != nil && admitted.verify() == nil && admitted.bound.Owns(step)
+	return admitted != nil && admitted.verify() == nil && admitted.bound.HasStep(step)
 }
 
 // BoundDocument returns nil once the capture is quarantined.
@@ -315,7 +315,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflows.BoundWorkflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if s.admission.action || !s.admission.bound.OwnsWorkflow(view) {
+	if s.admission.action || !s.admission.bound.HasWorkflow(view) {
 		return errors.New("workflow does not belong to source snapshot")
 	}
 	return nil
@@ -325,7 +325,7 @@ func (s SourceSnapshot) ValidateJob(view workflows.BoundJob) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if !s.admission.bound.OwnsJob(view) {
+	if !s.admission.bound.HasJob(view) {
 		return errors.New("job does not belong to source snapshot")
 	}
 	return nil
@@ -335,7 +335,7 @@ func (s SourceSnapshot) ValidateStep(view workflows.BoundStep) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if !s.admission.bound.Owns(view) {
+	if !s.admission.bound.HasStep(view) {
 		return errors.New("step does not belong to source snapshot")
 	}
 	return nil
