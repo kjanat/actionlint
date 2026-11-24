@@ -373,8 +373,9 @@ jobs:
         run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
         run: mise run --force plugins
-      - name: Test the C example through the CLI
-        run: mise run test:example:no-sudo
+      - name: Test the C example through the CLI and match its committed fixture
+        run: mise run test:example:no-sudo;
+          git diff --exit-code -- internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm
       - name: Install PSScriptAnalyzer for the PowerShell example
         shell: pwsh
         run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
