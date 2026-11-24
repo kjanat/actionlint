@@ -16,8 +16,6 @@ func callFinding(pos sourcetext.Position, format string, args ...any) results.Di
 	return results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: pos}
 }
 
-// CheckArguments validates required and supplied inputs and secrets against
-// reusable workflow metadata.
 func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if call == nil || call.Uses == nil || m == nil {
@@ -27,7 +25,6 @@ func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.
 	report := func(pos sourcetext.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
-	// Validate inputs
 	for _, i := range m.Inputs.MissingRequired(func(id string) bool { _, ok := call.Inputs[id]; return ok }) {
 		report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value)
 	}
@@ -37,7 +34,6 @@ func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.
 		}
 	}
 
-	// Validate secrets
 	if !call.InheritSecrets {
 		for _, s := range m.Secrets.MissingRequired(func(id string) bool { _, ok := call.Secrets[id]; return ok }) {
 			report(callPosition(u), "secret %q is required by %q reusable workflow", s.Name, u.Value)
@@ -52,8 +48,6 @@ func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.
 	return findings
 }
 
-// declaredNote lists the names a reusable workflow declares for kind, which is
-// "input" or "secret", after a call supplies an undeclared one.
 func declaredNote(kind string, names []string) string {
 	switch len(names) {
 	case 0:
@@ -65,8 +59,7 @@ func declaredNote(kind string, names []string) string {
 	}
 }
 
-// CheckPermissions compares every callee job's requirements with the explicit
-// caller grant. Conditions do not weaken this contract: GitHub validates it before execution.
+// CheckPermissions ignores conditions, and GitHub validates the grant before execution.
 func CheckPermissions(call *definition.WorkflowCall, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if call == nil || call.Uses == nil || m == nil || granted.Kind != calls.PermissionsDeclared {

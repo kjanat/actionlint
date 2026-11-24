@@ -12,8 +12,6 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// indicator underlines the finding's range in its excerpt line, from the start
-// column to the excerpt's inclusive end column.
 func indicator(f results.PublishedDiagnostic) string {
 	line, column := f.Excerpt.Line, f.Start.Column
 	if column <= 0 {
@@ -37,7 +35,6 @@ func indicator(f results.PublishedDiagnostic) string {
 	return fmt.Sprintf("%s^%s", strings.Repeat(" ", runewidth.StringWidth(line[:start])), strings.Repeat("~", width))
 }
 
-// TemplateFieldsOf prepares the finding for a custom Go template.
 func TemplateFieldsOf(f results.PublishedDiagnostic) *TemplateFields {
 	d := f.Diagnostic
 	snippet := ""
@@ -55,8 +52,6 @@ func TemplateFieldsOf(f results.PublishedDiagnostic) *TemplateFields {
 	}
 }
 
-// PrettyPrint writes the location, message, rule and the finding's excerpt
-// line with its range indicated.
 func PrettyPrint(w io.Writer, f results.PublishedDiagnostic) {
 	prettyPrint(w, f, false)
 }

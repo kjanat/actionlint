@@ -36,7 +36,7 @@ type compositeBranch struct {
 	before  resolverState
 }
 
-// state requires c.mu or exclusive traversal ownership.
+// state requires c.mu.
 func (c *Resolver) state() resolverState {
 	return resolverState{
 		checkout: c.checkout, platform: c.platform, caseInsensitive: c.caseInsensitive,
@@ -45,7 +45,6 @@ func (c *Resolver) state() resolverState {
 	}
 }
 
-// BeginJob resets checkout and persistent environment assumptions for a new job.
 func (c *Resolver) BeginJob(workflowEnv mappings.Mapping, workflowShell value.Value, job workflows.BoundJob) {
 	c.setCheckout(execution.Directory{})
 	knowledge := c.runners.Job(job)
@@ -59,14 +58,12 @@ func (c *Resolver) BeginJob(workflowEnv mappings.Mapping, workflowShell value.Va
 	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(workflows.DefaultsRun(job.Defaults)), workflowShell, runnerShell)
 }
 
-// ForkComposite creates an isolated traversal frame. The caller must verify
-// graph ownership of context and join the child even when traversal fails.
-// Only one child may be open per parent; a child may fork its own nested child.
+// ForkComposite callers check context with their invocation.Builder's Issued method first, and call JoinComposite after traversal, including failed traversal.
 func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) {
 	if c == nil || !context.Valid() {
 		return nil, ErrInvalidCompositeContext
 	}
-	owner := c.documentOwner()
+	shared := c.sharedDocuments()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.retired {
@@ -77,7 +74,7 @@ func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) 
 	}
 	before := c.state()
 	child := &Resolver{
-		runners: c.runners, base: c.base, sourceMappings: c.sourceMappings, documents: owner,
+		runners: c.runners, base: c.base, sourceMappings: c.sourceMappings, documents: shared,
 		checkout: before.checkout, platform: before.platform, caseInsensitive: before.caseInsensitive,
 		checkoutEnvUnknown: before.checkoutEnvUnknown, persistentEnvUnknown: before.persistentEnvUnknown,
 		shellEnvUnknown: before.shellEnvUnknown,

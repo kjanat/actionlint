@@ -27,7 +27,7 @@ func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapsho
 	if analysis.sourceSnapshots == nil {
 		return errors.New("entry source registry is unavailable")
 	}
-	if !analysis.sourceSnapshots.OwnsSnapshot(snapshot) {
+	if !analysis.sourceSnapshots.HasSnapshot(snapshot) {
 		return errors.New("entry source snapshot belongs to a different registry")
 	}
 	graph, err := invocation.NewBuilder(kind, snapshot.Reference(), analysis.budget)
@@ -115,7 +115,7 @@ func (analysis *compositeAnalyzer) resolveAction(action *definition.ExecAction) 
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
 	var snapshot parsing.SourceSnapshot
 	if hasSource {
-		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), parsing.Document{Provenance: sourceDocument.Provenance()})
+		admitted, err := analysis.sourceSnapshots.Admit(sourceDocument.Capture(), sourceDocument.Parsed())
 		if err != nil {
 			return nil, sourceDocument.Address(), invocation.Outcome{}, err
 		}

@@ -49,7 +49,6 @@ func TestRuntimeLifecycle(t *testing.T) {
 	if runtimes["node20"].RemovalDate != "September 23rd, 2026" {
 		t.Fatal("lost upstream removal date")
 	}
-	// A future runtime is discovered without changing the generator's version list.
 	for _, path := range runtimeSourcePaths[:2] {
 		sources[path] = append(sources[path], []byte(`string.Equals(usingToken.Value, "node26", StringComparison.OrdinalIgnoreCase)`)...)
 	}
@@ -61,7 +60,6 @@ func TestRuntimeLifecycle(t *testing.T) {
 	if r, ok := runtimes["node26"]; !ok || r.Removed || r.Deprecated {
 		t.Fatalf("future runtime not recognized: %#v", runtimes)
 	}
-	// Passing a calendar deadline alone must not invent a binary removal.
 	sources[runtimeSourcePaths[3]] = bytes.ReplaceAll(sources[runtimeSourcePaths[3]], []byte("2026"), []byte("2000"))
 	runtimes, err = collectRuntimes(sources)
 	if err != nil || runtimes["node20"].Removed {
@@ -283,8 +281,6 @@ func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
 func TestRuntimeMigrationClassCanBeAbsent(t *testing.T) {
 	t.Parallel()
 	sources := testRuntimeSources()
-	// No migration is active. Absence of a migration class supplies no
-	// deprecation evidence; it does not imply that packaged runtimes are gone.
 	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {\n}\n}\n")
 	runtimes, err := collectRuntimeLifecycle(sources)
 	if err != nil {

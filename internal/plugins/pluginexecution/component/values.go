@@ -19,7 +19,7 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-// WIT enum order comes from the generated canonical contract, not a second table.
+// The generated canonical contract is the only source of WIT enum order.
 var inputKinds = func() []rule.InputKind {
 	facts := make([]rule.InputKind, len(canonical_input_kind))
 	for i, name := range canonical_input_kind {
@@ -78,8 +78,6 @@ func lowerInputKinds(facts []rule.InputKind) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-// lowerSpans lowers byte-offset spans of text to the WIT span records, which
-// address one text line by line and character columns.
 func lowerSpans(text string, spans []sourcemap.Span) []wacogo.Val {
 	lineSpans := sourcemap.LineSpans(text, spans)
 	values := make([]wacogo.Val, 0, len(lineSpans))
@@ -253,8 +251,7 @@ func liftDescriptor(v wacogo.Val) (checkinputs.Descriptor, error) {
 		return checkinputs.Descriptor{}, err
 	}
 	descriptor := checkinputs.Descriptor{Descriptor: rule.
-		// The versioned analyzer ABI includes fix-availability. Ignore that legacy
-		// claim: only the fixes on a diagnostic describe edits this host can offer.
+		// The analyzer ABI fix-availability claim is ignored; only the fixes on a diagnostic describe edits.
 		Descriptor{Name: name}, SupportsActions: true}
 
 	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL} {
@@ -420,7 +417,6 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 	if err != nil {
 		return results.Diagnostic{}, err
 	}
-	// Preserve guest severity for manifest mapping; hostSeverities normalizes other analyzers.
 	d.Severity = severity.Severity(level)
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err
@@ -440,8 +436,6 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 	return d, nil
 }
 
-// hostSeverities replaces host severity spellings, such as "note", with the
-// severity they name. Other text is kept.
 func hostSeverities(diagnostics []results.Diagnostic) {
 	for i := range diagnostics {
 		if parsed, known := severity.Parse(string(diagnostics[i].Severity)); known {

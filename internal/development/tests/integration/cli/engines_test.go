@@ -23,7 +23,6 @@ func writeEngineConfig(t *testing.T, module string) string {
 	return path
 }
 
-// The repository backend applies to the default Ruff selection, so these runs omit --ruff.
 func runWithDefaultRuff(input string, args ...string) commandTranscript {
 	return runWithDefaultRuffAndAcquisition(dependencycache.Acquisition{}, input, args...)
 }

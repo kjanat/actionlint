@@ -18,7 +18,6 @@ func workflowSnapshot(t *testing.T, content []byte, document parsing.Document) p
 	return snapshot
 }
 
-// registeredWorkflowSnapshot also returns the registry that admitted the snapshot.
 func registeredWorkflowSnapshot(t *testing.T, content []byte, document parsing.Document) (*parsing.SourceSnapshots, parsing.SourceSnapshot) {
 	t.Helper()
 	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))

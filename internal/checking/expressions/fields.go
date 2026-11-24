@@ -25,10 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-// checkOneExpression checks a value that must be exactly one ${{ }}
-// expression. ok is false when s is absent or the expression has errors.
 func (rule *Visitor) checkOneExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
-	// checkString is not available since it checks types for embedding values into a string
 	if s == nil {
 		return exprtypes.AnyType(), false
 	}
@@ -39,7 +36,7 @@ func (rule *Visitor) checkOneExpression(s *definition.String, what, workflowKey 
 		if !ok {
 			return exprtypes.AnyType(), false
 		}
-		// This case should be unreachable since only one ${{ }} is included is checked by parser
+		// The parser already rejects values without exactly one ${{ }}.
 		rule.Errorf(scalarPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
 		return exprtypes.AnyType(), false
 	}
@@ -50,8 +47,6 @@ func (rule *Visitor) checkOneExpression(s *definition.String, what, workflowKey 
 	return ts[0].ty, true
 }
 
-// checkObjectTy reports ty unless it is an object or any, and returns whether
-// it is one of those.
 func (rule *Visitor) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindObject || k == exprtypes.KindAny {
 		return true
@@ -60,8 +55,6 @@ func (rule *Visitor) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, 
 	return false
 }
 
-// checkArrayTy reports ty unless it is an array or any, and returns whether
-// it is one of those.
 func (rule *Visitor) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindArray || k == exprtypes.KindAny {
 		return true
@@ -70,8 +63,6 @@ func (rule *Visitor) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, w
 	return false
 }
 
-// checkNumberTy reports ty unless it is a number or any, and returns whether
-// it is one of those.
 func (rule *Visitor) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindNumber || k == exprtypes.KindAny {
 		return true
@@ -80,15 +71,11 @@ func (rule *Visitor) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, 
 	return false
 }
 
-// checkObjectExpression checks a single expression that must be an object.
-// ok is false when the expression has errors or another type.
 func (rule *Visitor) checkObjectExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkObjectTy(ty, scalarPosition(s), what)
 }
 
-// checkArrayExpression checks a single expression that must be an array.
-// ok is false when the expression has errors or another type.
 func (rule *Visitor) checkArrayExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkArrayTy(ty, scalarPosition(s), what)
@@ -348,19 +335,7 @@ func (rule *Visitor) checkIfCondition(str *definition.String, workflowKey string
 	}
 
 	// Conditions can omit ${{ }}, including expressions with operators.
-	// Quote a condition beginning with ! to prevent YAML from treating it as a tag.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepsif
-	//
-	// - run: echo 'run'
-	//   if: '!false'
-	// - run: echo 'not run'
-	//   if: '!true'
-	// - run: echo 'run'
-	//   if: false || true
-	// - run: echo 'run'
-	//   if: true && true
-	// - run: echo 'not run'
-	//   if: true && false
 
 	restore := rule.scopeExpressionSource(str.Value, scalarPosition(str))
 	defer restore()

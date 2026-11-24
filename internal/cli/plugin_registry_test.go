@@ -161,7 +161,6 @@ func TestRegistryCLI(t *testing.T) {
 		t.Fatal("stale catalogue downgraded pin")
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "v1.9.0")
-	// A cold host needs the trusted registry record; a warm host then runs offline.
 	catalogue := r.File(fixtureregistry.FixtureRegistryURL + "index.json")
 	acquisition.UserCacheDir = t.TempDir()
 	r.DeleteFile(fixtureregistry.FixtureRegistryURL + "index.json")
@@ -210,7 +209,6 @@ func TestRegistryManifestInstallAndMissingConfiguration(t *testing.T) {
 	if len(r.Requests()) != requests {
 		t.Fatal("undeclared cache entries triggered registry requests")
 	}
-	// Environment selection must target the same project for management as checking.
 	t.Setenv("ACTIONLINT_CONFIG", "custom.yaml")
 	pluginCommandTest(t, acquisition, 0, "plugin", "list")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "true")
@@ -263,8 +261,6 @@ func TestRequestedPlugin(t *testing.T) {
 func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
 	acquisition := dependencycache.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
-	// Valid container/metadata, but no analyzer or provider exports. Runtime
-	// loading must fail; installation must succeed without starting a guest.
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Chdir(t.TempDir())
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")

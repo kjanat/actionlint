@@ -8,8 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// IgnoreSelectors matches exact rule names, diagnostic codes, or rule/code pairs.
-// A bare diagnostic code matches that code from any rule.
+// IgnoreSelectors matches a bare diagnostic code from any rule.
 type IgnoreSelectors struct {
 	selectors []string
 }

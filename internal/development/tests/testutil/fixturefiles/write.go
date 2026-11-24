@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// Write joins root and name, creates parent directories, writes content and returns the file path.
 func Write(tb testing.TB, root, name, content string) string {
 	tb.Helper()
 	path := filepath.Join(root, filepath.FromSlash(name))
@@ -20,7 +19,6 @@ func Write(tb testing.TB, root, name, content string) string {
 	return path
 }
 
-// WriteText writes content to an existing directory with owner-only file permissions.
 func WriteText(tb testing.TB, path, content string) {
 	tb.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {

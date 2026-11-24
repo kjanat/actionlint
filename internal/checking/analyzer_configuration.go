@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// configureAnalyzers applies presets and per-rule settings to explicit registrations.
 // Library registration options take precedence over repository options.
 func configureAnalyzers(scope *rulebinding.Scope, registrations []results.AnalyzerRegistration) ([]results.AnalyzerRegistration, error) {
 	selected := make([]results.AnalyzerRegistration, 0, len(registrations))

@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-// ExpressionSources maps expressions and conditions in a document to their
-// physical scalar positions, including composite action metadata.
 func (p *Parser) ExpressionSources(root *codec.Node) map[sourcetext.Position]*definition.ScriptSource {
 	sources := make(map[sourcetext.Position]*definition.ScriptSource)
 	seen := make(map[*codec.Node]bool)

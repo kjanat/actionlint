@@ -17,7 +17,6 @@ func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
 	ast, _ := parser.ParseWorkflow([]byte(src))
 	w := workflows.Bind("test", src, ast, false, "").Workflow()
-	// Direct check calls need the rule name attached to their findings.
 	named := func(name string, findings []reporting.StepFinding) []reporting.StepFinding {
 		for i := range findings {
 			findings[i].Rule = name

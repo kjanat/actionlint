@@ -12,7 +12,6 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-// wireSpan is a lifted WIT span record.
 type wireSpan struct {
 	line, start, end      int
 	document, documentEnd sourcetext.Position
@@ -72,9 +71,6 @@ func wirePosition(spans []wireSpan, line, column int, exclusive bool) (sourcetex
 	return sourcetext.Position{}, false
 }
 
-// TestLoweredScriptSpansMatchSourceLookup checks that every text position maps
-// to the same YAML position through the parser's byte spans, the declaration
-// handed to rules, and the line spans guests receive.
 func TestLoweredScriptSpansMatchSourceLookup(t *testing.T) {
 	t.Parallel()
 	for name, run := range map[string]string{

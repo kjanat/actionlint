@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	// ABIVersion is the core module ABI this host implements.
 	ABIVersion uint32 = 1
 	// DefaultMemoryPages bounds linear memory and reserved tables per instance.
 	DefaultMemoryPages    uint32 = 4096
@@ -48,9 +47,7 @@ var requiredExports = map[string]struct{ params, results []api.ValueType }{
 	"metadata":        {nil, []api.ValueType{api.ValueTypeI64}},
 }
 
-// Options configures a loaded engine. Zero values select the defaults.
 type Options struct {
-	// Artifact configures URI resolution and verified download caching.
 	Artifact artifacts.Options
 	// Limits requests the guest's resource bounds; zero values select
 	// guestlimits.DefaultTimeout and DefaultMemoryPages.
@@ -59,13 +56,11 @@ type Options struct {
 	CacheDir string
 }
 
-// Interface is one advertised operation version and the export that implements it.
 type Interface struct {
 	Version int    `json:"version"`
 	Export  string `json:"export"`
 }
 
-// Metadata is the discovery object an engine returns from its metadata export.
 type Metadata struct {
 	Rules            []rule.Descriptor      `json:"rules"`
 	MetadataVersion  int                    `json:"metadata_version"`
@@ -81,7 +76,6 @@ type Metadata struct {
 	TemplateContract string                 `json:"template_contract,omitempty"`
 }
 
-// EngineVersion identifies the linked analysis engine.
 type EngineVersion struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -104,15 +98,11 @@ type Capabilities struct {
 	MaxInputBytes    int                            `json:"max_input_bytes"`
 }
 
-// Engine is a loaded core module. It implements scriptengine.Backend and
-// scriptengine.ConfigValidator, pools at most four instances across concurrent
-// calls and discards an instance after a trap or an exceeded limit.
 type Engine struct {
-	path     string
-	limits   guestlimits.Limits
-	metadata Metadata
-	check    string
-	// checkVersion is the negotiated check operation version: 1, 2 or 3.
+	path         string
+	limits       guestlimits.Limits
+	metadata     Metadata
+	check        string
 	checkVersion int
 	validate     string
 	maxInput     int
@@ -143,7 +133,6 @@ func LoadModuleEngine(ctx context.Context, path string, options Options) (*Engin
 	return loadArtifact(ctx, artifact, limits, options)
 }
 
-// LoadArtifact loads a resolved snapshot without reading its source again.
 func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Options) (*Engine, error) {
 	limits, err := options.limits()
 	if err != nil {
@@ -152,7 +141,6 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 	return loadArtifact(ctx, artifact, limits, options)
 }
 
-// limits validates resource policy before artifact resolution or runtime creation.
 func (o Options) limits() (guestlimits.Limits, error) {
 	limits, err := o.Resolve(DefaultMemoryPages)
 	if err != nil {
@@ -190,9 +178,6 @@ func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits gues
 	if err != nil {
 		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}
-	// Reserve the complete table maxima before allocating any instance. Wasm's
-	// own table maxima then bound growth; every pooled instance has this same
-	// reduced linear-memory limit.
 	tablePages := uint32((tableBytes + (1 << 16) - 1) >> 16)
 	config := wazero.NewRuntimeConfig().WithCloseOnContextDone(true).WithMemoryLimitPages(limits.MemoryPages - tablePages)
 	var cache wazero.CompilationCache
@@ -211,7 +196,6 @@ func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits gues
 }
 
 func (e *Engine) load(ctx context.Context, data, staticMetadata []byte) error {
-	// Native compilation can take longer than one guest call on a cold cache.
 	compileCtx, compileCancel := context.WithTimeout(ctx, defaultCompileTimeout)
 	defer compileCancel()
 	if err := compileCtx.Err(); err != nil {
@@ -300,7 +284,6 @@ func typeNames(types []api.ValueType) string {
 	return "[" + strings.Join(names, ", ") + "]"
 }
 
-// ReadMetadata validates script routing before a core engine is downloaded.
 func ReadMetadata(raw []byte) (Metadata, error) {
 	var metadata Metadata
 	if err := jsonv2.Unmarshal(raw, &metadata); err != nil {
@@ -325,7 +308,6 @@ func ReadMetadata(raw []byte) (Metadata, error) {
 		return Metadata{}, errors.New("template-aware engines must declare shell or action-input routes")
 	}
 	for i, shell := range metadata.Capabilities.ScriptShells {
-		// Legacy core metadata accepted executable casing and Windows suffixes.
 		metadata.Capabilities.ScriptShells[i] = strings.TrimSuffix(strings.ToLower(shell), ".exe")
 	}
 	if metadata.Interfaces == nil {
@@ -348,8 +330,6 @@ func (e *Engine) negotiate(raw []byte) error {
 		return err
 	}
 	exports := e.compiled.ExportedFunctions()
-	// resolve returns the export of the first supported version in the
-	// host's preference order.
 	resolve := func(operation string, versions ...int) (string, int, error) {
 		for _, version := range versions {
 			for _, candidate := range metadata.Interfaces[operation] {
@@ -368,8 +348,6 @@ func (e *Engine) negotiate(raw []byte) error {
 		}
 		return "", 0, nil
 	}
-	// Check 3 carries template effects when the engine declares a template
-	// contract, as check 2 does; otherwise it extends check 1.
 	checkVersions := []int{3, 1}
 	if metadata.TemplateContract != "" {
 		checkVersions = []int{3, 2}
@@ -395,16 +373,12 @@ func (e *Engine) negotiate(raw []byte) error {
 	return nil
 }
 
-// CheckVersion returns the negotiated check operation version.
 func (e *Engine) CheckVersion() int { return e.checkVersion }
 
-// Path returns the module file the engine was loaded from.
 func (e *Engine) Path() string { return e.path }
 
-// Limits returns the resource bounds for this engine.
 func (e *Engine) Limits() guestlimits.Limits { return e.limits }
 
-// Metadata returns the engine's discovery object.
 func (e *Engine) Metadata() Metadata {
 	metadata := e.metadata
 	metadata.Rules = slices.Clone(metadata.Rules)
@@ -421,8 +395,6 @@ func (e *Engine) Metadata() Metadata {
 	return metadata
 }
 
-// ScriptDescriptor exposes negotiated capabilities to every host entrypoint.
-// Fixes, reported sources and resources are capabilities of check 3 only.
 func (e *Engine) ScriptDescriptor() scriptengine.Descriptor {
 	descriptor := e.Metadata().ScriptDescriptor()
 	if e.checkVersion == 3 {
@@ -454,16 +426,12 @@ type response struct {
 	Errors      []string                  `json:"errors"`
 }
 
-// checkRequest is the check 1 and check 2 request.
 type checkRequest struct {
 	Source   string          `json:"source"`
 	Filename string          `json:"filename"`
 	Config   json.RawMessage `json:"config,omitempty"`
 }
 
-// checkRequest3 is the check 3 request. Directory is sent only to engines
-// that request the directory resource; it names the host directory and
-// grants no access, since core modules import nothing.
 type checkRequest3 struct {
 	Source    string          `json:"source"`
 	Filename  string          `json:"filename"`
@@ -472,7 +440,6 @@ type checkRequest3 struct {
 	Directory string          `json:"directory,omitempty"`
 }
 
-// encodeRequest encodes request for the negotiated check version.
 func (e *Engine) encodeRequest(request scriptengine.Request) ([]byte, error) {
 	if e.checkVersion != 3 {
 		return json.Marshal(checkRequest{Source: request.Source, Filename: request.Filename, Config: request.Config})
@@ -485,8 +452,6 @@ func (e *Engine) encodeRequest(request scriptengine.Request) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-// requestDirectory is the directory a check 3 request carries: the
-// request's own when the engine requested the directory resource, else "".
 func (e *Engine) requestDirectory(request scriptengine.Request) string {
 	if e.checkVersion != 3 || !slices.Contains(e.metadata.Capabilities.Resources, checkinputs.ToolDirectory) {
 		return ""
@@ -494,7 +459,6 @@ func (e *Engine) requestDirectory(request scriptengine.Request) string {
 	return request.Directory
 }
 
-// Check sends one snippet request and returns its diagnostics.
 func (e *Engine) Check(ctx context.Context, request scriptengine.Request) ([]scriptengine.Diagnostic, error) {
 	body, err := e.encodeRequest(request)
 	if err != nil {
@@ -518,8 +482,6 @@ func (e *Engine) Check(ctx context.Context, request scriptengine.Request) ([]scr
 			finding.TemplateEffect = ""
 		}
 		if e.checkVersion != 3 {
-			// Checks 1 and 2 define neither member; an engine sending them
-			// is read as before they existed.
 			finding.Source, finding.Fixes = "", nil
 		} else if problem := e.checkFindings3(finding, e.requestDirectory(request)); problem != "" {
 			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d %s", e.name(), i, problem))
@@ -534,11 +496,6 @@ func (e *Engine) Check(ctx context.Context, request scriptengine.Request) ([]scr
 	return valid, err
 }
 
-// checkFindings3 reports why a check 3 diagnostic uses a capability the
-// engine did not declare or carries an invalid reported source, or "".
-// Directory is the one the request carried. A reported source must be a
-// relative path below it: the host reads that file to show the finding, and
-// a core module, which reads no files, must not choose any other.
 func (e *Engine) checkFindings3(finding scriptengine.Diagnostic, directory string) string {
 	capabilities := e.metadata.Capabilities
 	if finding.Source != "" {
@@ -691,7 +648,7 @@ func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 		return instance, nil
 	}
 	// Instantiation can execute guest start functions. Never hold the pool lock
-	// while guest code runs, so another call can cancel or close the runtime.
+	// while guest code runs. Another call can cancel or close the runtime.
 	runtime, compiled := e.runtime, e.compiled
 	e.mu.Unlock()
 	instance, err := runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName(""))
@@ -702,7 +659,7 @@ func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 }
 
 // release returns instance to the idle pool, or closes it when the engine has
-// closed. Cleanup keeps ctx values but must finish even after cancellation.
+// closed.
 func (e *Engine) release(ctx context.Context, instance api.Module) {
 	e.mu.Lock()
 	if e.closed {
@@ -714,7 +671,6 @@ func (e *Engine) release(ctx context.Context, instance api.Module) {
 	e.mu.Unlock()
 }
 
-// Close releases every instance and the runtime. The engine cannot be used afterwards.
 func (e *Engine) Close(ctx context.Context) error {
 	e.mu.Lock()
 	if e.closed {

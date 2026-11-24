@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
-// configOrigins assigns source locations after inheritance and Action overrides.
 func configOrigins(value any, prefix string, origins map[string]configreport.Origin, inputs map[string]document.Location) error {
 	selected, found := inputs[prefix]
 	if found {
@@ -63,7 +62,6 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 	}
 }
 
-// EffectiveValues serializes the configuration schema after resolving defaults.
 func (ruleSet RuleSet) EffectiveValues(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
 	resolved.Tools = maps.Clone(cfg.Tools)
@@ -84,7 +82,6 @@ func (ruleSet RuleSet) EffectiveValues(cfg *Config) (map[string]any, error) {
 	return members(value), nil
 }
 
-// CopyConfig preserves regexp matching mode and detaches each expression.
 func (pats IgnorePatterns) CopyConfig() (any, error) {
 	if pats == nil {
 		return IgnorePatterns(nil), nil
@@ -101,7 +98,6 @@ func (pats IgnorePatterns) CopyConfig() (any, error) {
 	return next, nil
 }
 
-// EncodeConfig serializes regular expressions as pattern strings.
 func (pats IgnorePatterns) EncodeConfig() (any, error) {
 	values := make([]string, len(pats))
 	for i, pattern := range pats {
@@ -110,7 +106,6 @@ func (pats IgnorePatterns) EncodeConfig() (any, error) {
 	return values, nil
 }
 
-// EncodeConfig emits false or the enabled policy's timeout bounds.
 func (p *JobTimeoutPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil
@@ -125,7 +120,6 @@ func (p *JobTimeoutPolicy) EncodeConfig() (any, error) {
 	return bounds, nil
 }
 
-// EncodeConfig emits false or the enabled policy's declaration scope.
 func (p *PermissionsPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil
@@ -133,7 +127,6 @@ func (p *PermissionsPolicy) EncodeConfig() (any, error) {
 	return map[string]string{"scope": p.Scope()}, nil
 }
 
-// EncodeConfig emits false or the enabled policy's rule selection and reporting mode.
 func (p *SuppressionsPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil

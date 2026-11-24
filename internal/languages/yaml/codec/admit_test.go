@@ -115,7 +115,7 @@ func TestAdmissionFailuresAlwaysCarryRejectionType(t *testing.T) {
 	}
 }
 
-func TestAdmissionShortcutMatchesOwnedPolicy(t *testing.T) {
+func TestRequiresAdmissionAgreesWithAliasLimit(t *testing.T) {
 	t.Parallel()
 	root, err := ParseYAML([]byte("value: text\n"))
 	if err != nil {

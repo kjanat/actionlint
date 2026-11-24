@@ -1,4 +1,3 @@
-/** Rejected syntax stays in test data and runs through isolated probe workflows. */
 export type Check = { name: string; expression: string };
 export type Group = 'literals' | 'from-json' | 'coercion' | 'typed-inputs' | 'decisions';
 type Common = { id: string; group: Group };
@@ -136,8 +135,7 @@ for (const [id, value] of payloads) {
 	});
 }
 
-// Compare the same input string through loose coercion and fromJSON. Keep the
-// coercion checks in one workflow: all syntax is valid and none invokes a parser.
+// Keep the coercion checks in one workflow.
 const coercions: Check[] = [];
 for (const raw of ['0x1F', '017', '0o17', 'Infinity', 'NaN', '31', '', ' ', '+1', '.5', '1.', '0123', '1e309']) {
 	for (

@@ -11,27 +11,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// DefaultPluginOptions selects registry defaults for tools without an explicit
-// native command. Configured backends and disabled tools take precedence.
 type DefaultPluginOptions struct {
 	RuleSet configuration.RuleSet
-	// Tools lists the bundled tool ids that run their default command in
-	// this invocation. Each may receive a default plugin declaration; ids
-	// the invocation selected or disabled explicitly are left out.
+	// Tools leaves out ids the invocation selects or disables explicitly.
 	Tools    []string
 	Warning  func(string)
 	Overlays []configuration.Overlay
-	// Rules supplies already inspected plugin descriptors. Missing descriptors
-	// are read from local or cached provider manifests, never by executing guests.
+	// Missing Rules descriptors are read from local or cached provider manifests without executing guests.
 	Rules       []rule.Descriptor
 	Acquisition dependencycache.Acquisition
 }
 
-// DefaultReferences supplies the v2 defaults only when plugins was omitted.
-// An explicit empty list is a durable opt-out, including through inheritance.
-// It declares, in bundled directory order, the registry plugin named after
-// each bundled tool in options.Tools that configuration leaves enabled and
-// on its default backend.
+// DefaultReferences supplies defaults only when plugins was omitted, and an explicit empty list opts out through inheritance too.
 func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) ([]pluginreference.Reference, error) {
 	if cfg.Plugins != nil {
 		return slices.Clone(cfg.Plugins), nil
@@ -65,9 +56,6 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 	return refs, nil
 }
 
-// SourceFollowingNotes warns, for each default registry plugin in refs that
-// replaces a bundled tool reporting findings in files its scripts source,
-// that the isolated plugin stops following those files.
 func SourceFollowingNotes(refs []pluginreference.Reference) ([]string, error) {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {

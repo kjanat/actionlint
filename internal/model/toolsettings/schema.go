@@ -1,8 +1,4 @@
-// Package toolsettings describes the settings a tool provider accepts under
-// tools.<name>: the JSON schema for tools.<name>.config, the shorthand keys
-// that set one of its properties, and whether a configuration file path is
-// accepted. It imports no actionlint package, so configuration decoding can
-// validate tool settings without depending on the plugin layer.
+// Package toolsettings describes the settings a tool provider accepts under tools.<name>.
 package toolsettings
 
 import (
@@ -17,23 +13,19 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 )
 
-// location identifies every schema while it compiles. The address is never
-// fetched.
+// location is never fetched.
 const location = "https://actionlint.invalid/provider-config.json"
 
-// Schema validates tools.<name>.config values for one provider.
 type Schema struct {
 	schema *jsonschema.Schema
 }
 
-// Failure records the path and reason for a rejected value.
 type Failure struct {
 	Path        string
 	Message     string
 	UnknownKeys []string
 }
 
-// ValidationError lists validation failures with their configuration paths.
 type ValidationError struct{ Failures []Failure }
 
 func (e *ValidationError) Error() string {
@@ -48,9 +40,7 @@ func (e *ValidationError) Error() string {
 	return strings.Join(problems, "; ")
 }
 
-// Compile compiles a configuration schema. Schemas must bundle their
-// definitions: every external reference is refused, so compiling never reads
-// files or the network.
+// Compile requires bundled definitions and refuses every external reference.
 func Compile(document []byte) (*Schema, error) {
 	var value any
 	if err := jsonv2.Unmarshal(document, &value); err != nil {
@@ -68,8 +58,6 @@ func Compile(document []byte) (*Schema, error) {
 	return &Schema{schema: schema}, nil
 }
 
-// Validate checks one JSON document against the schema. The error names each
-// failing location within the document, never the schema's internal address.
 func (s *Schema) Validate(document []byte) error {
 	value, err := jsonschema.UnmarshalJSON(bytes.NewReader(document))
 	if err != nil {
@@ -79,7 +67,6 @@ func (s *Schema) Validate(document []byte) error {
 	if err == nil {
 		return nil
 	}
-	// The validator's error contains schema objects. Return only its paths and messages.
 	invalid, ok := errors.AsType[*jsonschema.ValidationError](err)
 	if !ok {
 		return errors.New(err.Error())
@@ -115,7 +102,6 @@ func (s *Schema) Validate(document []byte) error {
 	return result
 }
 
-// refuseLoader refuses every external reference.
 type refuseLoader struct{}
 
 func (refuseLoader) Load(url string) (any, error) {

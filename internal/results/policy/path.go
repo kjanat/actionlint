@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/displaypath"
 )
 
-// RelativePath normalizes diagnostic paths relative to the invocation directory.
 func RelativePath(directory, source string) string {
 	if !filepath.IsAbs(source) {
 		return source

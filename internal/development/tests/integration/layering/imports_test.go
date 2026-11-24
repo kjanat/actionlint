@@ -12,34 +12,12 @@ import (
 
 const module = "actionlint.kjanat.dev/v2/internal/"
 
-// lowerLayers orders the layers below internal/externallinters from lowest to
-// highest. Each may depend only on the layers before it:
-//
-//   - internal/base holds source text, byte captures, filesystem reads and
-//     digests, which every other layer shares.
-//   - internal/languages parses and evaluates the expression and YAML
-//     languages that documents are written in.
-//   - internal/model describes workflows, actions, rules and tool manifests
-//     in those languages.
-//   - internal/integrations reaches external services: HTTP and Git access,
-//     network policy and accounting, host processes and the dependency cache.
-//   - internal/input reads configuration, local files and remote metadata
-//     into the model, through those integrations.
-//   - internal/results defines findings, the analyzers that produce them and
-//     the policies and reports that publish them.
+// lowerLayers runs from lowest to highest, and each layer may depend only on the layers before it.
 var lowerLayers = []string{"base", "languages", "model", "integrations", "input", "results"}
 
-// upperLayers are the layers above lowerLayers. internal/externallinters
-// prepares scripts for external linters and runs them as host processes;
-// built-in tools and tool provider plugins share it. Plugin hosting in
-// internal/plugins and rule execution in internal/checking build on those
-// layers and never on each other. internal/assembly loads the selected plugins
-// and wires them into checking. Rendering in internal/output and the entry
-// points in internal/cli and internal/lsp sit on top.
+// In upperLayers, internal/plugins and internal/checking must not depend on each other.
 var upperLayers = []string{"externallinters", "checking", "plugins", "assembly", "output", "cli", "lsp"}
 
-// higherLayers lists, for each layer, the layers its production code must not
-// depend on, directly or through any other package.
 var higherLayers = func() map[string][]string {
 	layers := map[string][]string{
 		"externallinters": {"checking", "plugins", "assembly", "output", "cli", "lsp"},
@@ -54,12 +32,7 @@ var higherLayers = func() map[string][]string {
 	return layers
 }()
 
-// TestLowerLayersDoNotDependOnHigherLayers keeps rule identity, tool
-// settings, plugin references, the checker contract and other shared
-// declarations below the checks and plugin hosts that use them, and keeps
-// plugin hosting and rule execution independent of each other. Tests may
-// still import higher layers to exercise a lower package through the engine,
-// so only production imports are followed.
+// TestLowerLayersDoNotDependOnHigherLayers follows production imports only.
 func TestLowerLayersDoNotDependOnHigherLayers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("lists every internal package and its dependencies")
@@ -143,10 +116,6 @@ func TestHigherLayerDependenciesFollowTransitiveImports(t *testing.T) {
 	}
 }
 
-// higherLayerDependencies reports each package of loaded in a lower layer
-// that reaches a package of a higher layer through production imports. It
-// names the first higher-layer package on each import path and the lower
-// packages the path passes through, and stops following the path there.
 func higherLayerDependencies(loaded []*packages.Package) []string {
 	var violations []string
 	for _, pkg := range loaded {
@@ -157,8 +126,6 @@ func higherLayerDependencies(loaded []*packages.Package) []string {
 		if len(forbidden) == 0 {
 			continue
 		}
-		// via records the importer through which each package was first
-		// reached, so a violation can name the path that leads to it.
 		via := map[string]string{pkg.PkgPath: ""}
 		queue := []*packages.Package{pkg}
 		for len(queue) > 0 {
@@ -183,8 +150,6 @@ func higherLayerDependencies(loaded []*packages.Package) []string {
 	return violations
 }
 
-// describeDependency names how root reaches target, listing the packages
-// between them in import order.
 func describeDependency(root, target string, via map[string]string) string {
 	var between []string
 	for importer := via[target]; importer != root; importer = via[importer] {
@@ -198,8 +163,6 @@ func describeDependency(root, target string, via map[string]string) string {
 	return description
 }
 
-// layerOf returns the first path element below internal/, or "" for a
-// package outside this module's internal tree.
 func layerOf(path string) string {
 	relative, found := strings.CutPrefix(path, module)
 	if !found {

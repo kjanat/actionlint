@@ -1,7 +1,6 @@
 package typecheck
 
-// findingKind binds a production site to a configurable rule and a stable code.
-// Wording, source location and execution backend do not determine identity.
+// findingKind identity ignores wording, source location and execution backend.
 type findingKind struct{ rule, code string }
 
 var (

@@ -1,50 +1,23 @@
 # Environment variables
 
-The CLI reads the variables below as defaults. Explicit flags take precedence,
-including `false`, empty values, and legacy spellings such as `-config-file`.
-Settings apply to both root invocations and the `check` command.
+Explicit flags win, including `false` and empty values.
 
-Only settings used by the selected operation are read. Help, version, rules and
-completion do not load configuration or initialize external linters. `config init`
-always creates the repository config and ignores environment config selection.
-
-Boolean values accept `true`/`false`, `1`/`0`, `t`/`f`, and their Go-supported case
-variants. An empty boolean value means false. Empty enum values use the default.
-Invalid relevant environment settings produce an invocation error (exit 2).
-Invalid configuration file contents still produce an operational error (exit 3).
+An empty boolean means false. An invalid value exits with status 2.
 
 ## Configuration and input
 
-`ACTIONLINT_STRICT` (`--strict`) enables stable `correctness`, `security` and
-`suspicious` rules, with configured group and rule exceptions. It does not enable
-additional `conventions` rules or nursery rules.
-`ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules unless an
-individual rule or group disables them. You can also enable a nursery rule with an
-explicit rule setting, without this flag. Setting this variable to false disables
-nursery rules, including individually enabled rules. Both variables accept booleans.
-When unset, they add no CLI preset. They apply only to checks.
-See [rule presets](usage.md) for scope and precedence.
+| Variable                    | Equivalent flag        | Value                                                                           |
+| --------------------------- | ---------------------- | ------------------------------------------------------------------------------- |
+| `ACTIONLINT_CONFIG`         | `--config`             | Configuration file path. Empty restores repository discovery.                   |
+| `ACTIONLINT_NO_CONFIG`      | `--no-config`          | Skip configuration loading.                                                     |
+| `ACTIONLINT_CONFIG_ORIGIN`  | `config show --origin` | Show the source of each setting.                                                |
+| `ACTIONLINT_STDIN_FILENAME` | `--stdin-filename`     | Filename for stdin diagnostics. Default: `<stdin>`.                             |
+| `ACTIONLINT_IGNORE_REGEX`   | `--ignore-regex`       | JSON array of message regexes, such as `["SC2086"]`.                            |
+| `ACTIONLINT_STRICT`         | `--strict`             | Enable stable `correctness`, `security` and `suspicious` rules.                 |
+| `ACTIONLINT_EXPERIMENTAL`   | `--experimental`       | Enable nursery rules. False disables them, including individually enabled ones. |
 
-| Variable                    | Equivalent flag               | Value                                                                                                       |
-| --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `ACTIONLINT_CONFIG`         | `--config` / `--config-file`  | A configuration file path. Empty restores repository discovery.                                             |
-| `ACTIONLINT_NO_CONFIG`      | `--no-config`                 | Skip configuration loading. Default: false.                                                                 |
-| `ACTIONLINT_CONFIG_ORIGIN`  | `config show --origin`        | Include the source of each config setting. Default: false.                                                  |
-| `ACTIONLINT_STDIN_FILENAME` | `--stdin-filename`            | Filename for stdin diagnostics and project detection. Default: `<stdin>`.                                   |
-| `ACTIONLINT_IGNORE_REGEX`   | `--ignore-regex` / `--ignore` | JSON array of message-filter regexes, such as `["unknown label", "SC2086"]`. Empty or `[]` adds no filters. |
-
-Any explicit config-selection flag overrides both `ACTIONLINT_CONFIG` and
-`ACTIONLINT_NO_CONFIG`. Without flags, setting a nonempty config path alongside
-`ACTIONLINT_NO_CONFIG=true` is an error. Relative paths use the current directory.
-Environment selection works for checks, `doctor`, and config inspection commands.
-
-Configure policy settings, runner labels, allowed secrets and variables in the
-selected file; see [Configuration](config.md). `config show --origin` reports the
-origins of values inside the selected file.
-
-Explicit `--ignore` or `--ignore-regex` options replace the environment's entire
-filter list. Repeated explicit options still accumulate as before. These filters
-match diagnostic messages.
+A config flag overrides both config variables. A nonempty `ACTIONLINT_CONFIG` together with
+`ACTIONLINT_NO_CONFIG=true` is an error.
 
 ```powershell
 $env:ACTIONLINT_CONFIG = 'C:\Projects\shared-config\actionlint.yaml'
@@ -55,94 +28,52 @@ actionlint config show --origin
 
 ## Output and logging
 
-| Variable                   | Equivalent flag                  | Value                                                                                                    |
-| -------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `ACTIONLINT_OUTPUT_FORMAT` | `--output-format` / `-o`         | `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, or `github`. Checks only; default: pretty. |
-| `ACTIONLINT_JSON`          | `--json`                         | JSON diagnostics or command metadata. Default: false.                                                    |
-| `ACTIONLINT_JSON_PRETTY`   | `--json-pretty`                  | Use installed `jq` for terminal JSON. Default: true.                                                     |
-| `ACTIONLINT_TEMPLATE`      | `--template` / `--format` / `-f` | A legacy Go template. Checks only.                                                                       |
-| `ACTIONLINT_TEMPLATE_FILE` | `--template-file`                | A file containing a Go template. Checks only.                                                            |
-| `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                                          |
-| `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                                                  |
-| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries. Default: false.                                                         |
-| `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                                    |
-| `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                                             |
-| `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                                             |
+| Variable                   | Equivalent flag   | Value                                                                                      |
+| -------------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
+| `ACTIONLINT_OUTPUT_FORMAT` | `--output-format` | `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif` or `github`. Default: pretty. |
+| `ACTIONLINT_JSON`          | `--json`          | JSON output.                                                                               |
+| `ACTIONLINT_JSON_PRETTY`   | `--json-pretty`   | Format terminal JSON with `jq`. Default: true.                                             |
+| `ACTIONLINT_TEMPLATE`      | `--template`      | Go template.                                                                               |
+| `ACTIONLINT_TEMPLATE_FILE` | `--template-file` | Go template file.                                                                          |
+| `ACTIONLINT_OUTPUT_FILE`   | `--output-file`   | Report path. Empty or `-` means stdout.                                                    |
+| `ACTIONLINT_LOG_LEVEL`     | `--log-level`     | `none`, `info` or `debug`.                                                                 |
+| `ACTIONLINT_QUIET`         | `--quiet`         | Suppress progress and summaries.                                                           |
+| `ACTIONLINT_SUMMARY`       | `--summary`       | Show the summary. Default: true.                                                           |
+| `ACTIONLINT_COLOR`         | `--color`         | `auto`, `always` or `never`.                                                               |
+| `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`    | `auto`, `always` or `never`.                                                               |
 
-An explicit format, JSON, template, template-file or oneline flag replaces the
-environment's whole format selection. Conflicting environment selections are
-rejected, just like conflicting flags. Format and output destination are separate;
-use `--output-file=-` to override an environment report path.
-Existing report destinations selected by `ACTIONLINT_OUTPUT_FILE` use the same
-interactive confirmation as `--output-file`. Use `--yes` to skip the prompt;
-noninteractive runs and checks reading workflow stdin require explicit confirmation
-with this flag.
-
-Explicit `--log-level`, `--verbose`/`-v`, or `--debug` overrides the environment log
-level. `--quiet=false` and `--summary=false` can disable environment defaults.
-
-### Terminal JSON
-
-When stdout is a TTY and `jq` is on `PATH`, JSON metadata, JSON diagnostics and
-SARIF reports use `jq`'s identity filter (`.`) for indentation and terminal color.
-This includes `--version --json`, `version --json`, `doctor --json`, config/rules/help
-JSON, and `check --json`.
-
-Explicit `--json-pretty` selects JSON when no other format is supplied and
-overrides environment format defaults. Setting `ACTIONLINT_JSON_PRETTY=true`
-only controls formatting and does not select JSON output.
-
-Explicit `--json-pretty` also indents JSON written to pipes and regular files,
-using built-in formatting without color codes or a jq dependency.
-If `jq` is absent, fails, or takes
-more than two seconds, actionlint uses its built-in output. Nothing is installed
-automatically. Cancellation still cancels the command.
+Any explicit format flag replaces the environment's format selection. Use `--output-file=-` to
+override `ACTIONLINT_OUTPUT_FILE`. When that file exists, actionlint asks before it overwrites the
+file. Noninteractive runs and checks of stdin need `--yes`.
 
 ```sh
 actionlint --version --json
 actionlint doctor --json
 actionlint doctor --json --json-pretty=false
-actionlint check --json workflow.yml > findings.json
+actionlint check --json workflow.yml >findings.json
 ```
 
 ### Color and hyperlinks
 
-- [NO_COLOR](https://no-color.org/): a nonempty `NO_COLOR` disables automatic color
-  and overrides `ACTIONLINT_COLOR`. Empty has no effect. Explicit CLI color controls
-  take precedence; the root's `--no-color` still wins when both booleans are true.
-- [NO_HYPERLINKS](https://no-hyperlinks.org/spec): a nonempty `NO_HYPERLINKS` disables
-  links and overrides `ACTIONLINT_HYPERLINKS`. Otherwise, that variable selects the
-  mode. In `auto`, nonempty `FORCE_HYPERLINKS` enables links before terminal detection.
-  Explicit `--hyperlinks` takes precedence over these environment variables.
-- A value of `0` or `false` is nonempty for these convention variables.
-- `GITHUB_ACTIONS=true` enables automatic color in help and text diagnostic logs
-  without requiring a TTY. It does not enable hyperlinks or JSON pretty-printing.
-- `TERM=dumb` disables automatic terminal styling outside GitHub Actions.
-  Hyperlink detection also uses terminal identity/version hints, including
-  `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, `WT_SESSION`, and `VTE_VERSION`.
-  Multiplexer hints (`TMUX`, `STY`, and matching `TERM` values) disable automatic links.
-
-Color and hyperlinks are independent. Links appear in help and doctor paths;
-structured output never receives OSC 8 links. Optional terminal JSON color follows
-the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
+- A nonempty [NO_COLOR](https://no-color.org/) disables automatic color. A nonempty
+  [NO_HYPERLINKS](https://no-hyperlinks.org/spec) disables links. `0` and `false` count as
+  nonempty.
+- A nonempty `FORCE_HYPERLINKS` enables links in `auto` mode.
+- Terminal multiplexers disable automatic links.
 
 ## External linters
 
-Each bundled tool reads three variables named after its ID. Uppercase the ID and
-replace dashes with underscores:
+Each bundled tool reads three variables. Uppercase the tool ID and replace dashes with
+underscores.
 
-| Variable                     | Meaning                                                                                         |
-| ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `ACTIONLINT_TOOL_<ID>_BIN`   | Literal executable name or path. Default: the tool id, such as `shellcheck`. Empty disables it. |
-| `ACTIONLINT_TOOL_<ID>_FLAGS` | Additional command arguments.                                                                   |
-| `ACTIONLINT_TOOL_<ID>_ENV`   | Child environment overrides or forwarded variable names.                                        |
+| Variable                     | Meaning                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `ACTIONLINT_TOOL_<ID>_BIN`   | Executable name or path. Default: the tool ID, such as `shellcheck`. Empty disables the tool. |
+| `ACTIONLINT_TOOL_<ID>_FLAGS` | Extra arguments, as a JSON string array or a shell-style quoted list.                         |
+| `ACTIONLINT_TOOL_<ID>_ENV`   | Child environment overrides.                                                                  |
 
-For example, `ACTIONLINT_TOOL_SHELLCHECK_BIN` and `ACTIONLINT_TOOL_RUFF_FLAGS`.
-
-`_BIN` is a literal executable, so Windows paths containing spaces need no embedded
-quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.
-JSON is useful for empty arguments and paths containing backslashes. There is no
-shell execution, environment expansion, command substitution, piping or redirection.
+actionlint runs no shell and expands no variables. Extra arguments precede actionlint's own. Do
+not pass input files or change the output format.
 
 ```powershell
 $env:ACTIONLINT_TOOL_SHELLCHECK_BIN = 'C:\Program Files\ShellCheck\shellcheck.exe'
@@ -150,34 +81,18 @@ $env:ACTIONLINT_TOOL_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
 actionlint check workflow.yml
 ```
 
-`--tool ID` and `--no-tool ID` replace **all three** environment settings for that
-tool; `--no-tool shellcheck` disables ShellCheck even when its environment settings
-are present. An empty `_BIN` also disables its tool without parsing its `_FLAGS` or
-`_ENV`.
+`--tool ID` and `--no-tool ID` replace all three variables for that tool.
 
-Extra arguments precede actionlint's required arguments. Do not supply input files
-or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON.
-ShellCheck also reads `SHELLCHECK_OPTS`.
-
-`_ENV` accepts a JSON object with string values, or a quoted list of `NAME=value`
-entries and variable names. JSON `null` means forward the current value. A bare
-name also forwards its current value; absent names stay absent. Empty strings set
-empty values. Names use `[A-Za-z_][A-Za-z0-9_]*`.
+`_ENV` accepts a JSON object or a quoted list of `NAME=value` entries and bare names. JSON
+`null` or a bare name forwards the current value.
 
 ```powershell
 $env:ACTIONLINT_TOOL_SHELLCHECK_ENV = '{"LANG":"C.UTF-8","SHELLCHECK_OPTS":null}'
-# Equivalent argument-list form:
 $env:ACTIONLINT_TOOL_SHELLCHECK_ENV = 'LANG=C.UTF-8 SHELLCHECK_OPTS'
 ```
 
-Child processes inherit the full parent environment, with these entries overriding it.
-Overrides apply only to the selected tool;
-they do not modify actionlint's environment or the other linter. `doctor --json`
-reports the resolved executable and arguments without executing the tools or
-printing environment override values.
+`doctor --json` shows the resolved executable and arguments.
 
 ## Other environment variables
 
-`PATH` locates tools and optional `jq`; Windows also uses `PATHEXT`. Completion
-shell detection uses `SHELL` and the PowerShell fallback `PSModulePath`. See
-[Usage](usage.md) for command behavior and [Configuration](config.md) for policy settings.
+`PATH` locates tools and `jq`.

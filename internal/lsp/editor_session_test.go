@@ -239,7 +239,6 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	if len(session.engines.loaded) != 1 {
 		t.Fatalf("unchanged artifact loaded %d times", len(session.engines.loaded))
 	}
-	// Add a valid unnamed custom section without changing the engine behavior.
 	data = append(data, 0, 2, 0, 0)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)

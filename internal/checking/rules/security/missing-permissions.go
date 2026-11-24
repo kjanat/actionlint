@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// MissingPermissionsRule is the single definition of the missing-permissions rule.
 var MissingPermissionsRule = &define.Rule{
 	Name:         "missing-permissions",
 	Description:  "Report missing token permission declarations",
@@ -21,10 +20,10 @@ var MissingPermissionsRule = &define.Rule{
 	Subcategory:  "permissions",
 	Recommended:  true,
 	DefaultLevel: "error",
-	Explanation:  "Report jobs with no permissions declared on the job or workflow. Set require-at to workflow or every-job to require permissions there. An array requires permissions at every listed location. When require-at is omitted, workflows triggered only by workflow_call are skipped. The workflow-call rule compares the caller's permissions with those requested by the called workflow.",
-	Help:         "Add permissions on the workflow or on every job. If require-at is configured, add permissions at every location it lists. Use permissions: {} to grant none. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.",
+	Explanation:  "Report jobs with no permissions on the job or workflow.",
+	Help:         "Add permissions to the workflow or every job, or to each location that require-at lists. Use permissions: {} to grant none.",
 	Options:      func() any { return &configuration.MissingPermissionsOptions{} },
-	Examples:     []rule.Example{{Description: "This job uses no token permissions.", Before: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", After: "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"}},
+	Examples:     []rule.Example{{Before: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", After: "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"}},
 	Prepare:      preparePermissionRequirements,
 	Checks: func(c define.RuleInputs) define.Checks {
 		return MissingPermissionsChecks(c.RequiredPermissionLocations)

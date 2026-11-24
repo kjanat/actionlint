@@ -1,12 +1,9 @@
-// Package outputformat names the built-in diagnostic representations. The
-// configuration loader validates format names with it, and the output package
-// renders each one.
+// Package outputformat names the built-in diagnostic representations.
 package outputformat
 
 import "slices"
 
-// Format selects a built-in diagnostic representation. An empty value selects
-// output from the template and oneline options.
+// Format is empty when the template and oneline options select the output.
 type Format string
 
 const (
@@ -31,8 +28,6 @@ var names = []string{
 	string(GitHub),
 }
 
-// Names returns the supported output formats in display order.
 func Names() []string { return slices.Clone(names) }
 
-// Valid reports whether name is a supported output format.
 func Valid(name string) bool { return slices.Contains(names, name) }

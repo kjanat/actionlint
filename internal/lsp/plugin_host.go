@@ -17,11 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// An editor session owns compiled plugins, never document or analysis state.
-// Explicit CLI plugins and remote URLs are snapshots until server restart.
-// Configured local artifacts are identified by content; changing their bytes or
-// selecting a different URI loads a new engine. Engines are closed at shutdown
-// because in-flight analyses may use an earlier version.
+// Explicit CLI plugins and remote URLs stay fixed until server restart, changed
+// local artifact bytes load a new engine, and in-flight analyses may use an earlier version.
 type editorPluginHost struct {
 	options checking.Options
 	session *assembly.Session
@@ -56,7 +53,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 	return &editorPluginHost{options: options, session: session, engines: engines, sources: sources}, nil
 }
 
-// Serve waits for every analysis before this releases their shared resources.
+// Serve waits for every analysis before close releases their shared resources.
 func (s *editorPluginHost) close(ctx context.Context) error {
 	return errors.Join(s.session.Close(ctx), s.engines.close(ctx))
 }
@@ -86,7 +83,6 @@ func (s *editorEngines) load(ctx context.Context, source string) (scriptengine.B
 		return nil, err
 	}
 	identity := editorEngineIdentity{source: source}
-	// Cache injected and remote engines by their source string.
 	if backend, ok := s.loaded[identity]; ok {
 		return borrowEditorEngine(backend), nil
 	}
@@ -116,7 +112,6 @@ func (s *editorEngines) load(ctx context.Context, source string) (scriptengine.B
 		backend = engine
 	}
 	if err != nil {
-		// Do not cache a failed load, so a later analysis can retry it.
 		return nil, err
 	}
 	s.loaded[identity] = backend
@@ -134,7 +129,7 @@ func (s *editorEngines) close(ctx context.Context) error {
 	return err
 }
 
-// Hide Close so per-analysis cleanup cannot close a session-owned engine.
+// These types wrap engines, and editorPluginHost.close closes those engines.
 type (
 	borrowedEditorEngine  struct{ scriptengine.Backend }
 	describedEditorEngine struct {

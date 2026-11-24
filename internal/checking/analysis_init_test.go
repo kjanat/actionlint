@@ -91,9 +91,7 @@ func TestAnalysisCaptureInitializationFailureReturnsNoResult(t *testing.T) {
 	}
 }
 
-// blockedAnalysisInitError models the constructor's error lifecycle without
-// exposing a resolver override in capture. Real InitError behavior is exercised
-// by capture.TestNewCancelledMetadataWaitRetainsJoinOwnership.
+// capture.TestNewCancelledDuringMetadataReturnsJoinableInitError exercises the real InitError behavior.
 type blockedAnalysisInitError struct {
 	cause  error
 	joined atomic.Bool

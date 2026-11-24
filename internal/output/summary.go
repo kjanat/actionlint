@@ -23,7 +23,6 @@ func diagnosticLabel(d report.DiagnosticCount) string {
 	return d.Rule + "/" + d.Code
 }
 
-// WriteSummaryDetails writes compact counts without repeating diagnostic messages.
 func WriteSummaryDetails(out io.Writer, s report.CheckSummary) error {
 	if len(s.IncompleteChecks) > 0 {
 		if _, err := fmt.Fprintln(out, "\nIncomplete checks:"); err != nil {

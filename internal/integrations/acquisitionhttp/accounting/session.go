@@ -44,8 +44,7 @@ type (
 	rateLimitLoad struct{ done chan struct{} }
 )
 
-// RequestTracker owns counters and quota estimates for one invocation. Statistics
-// returns a detached copy. Other processes can spend the same server quota between observations.
+// RequestTracker observations miss server quota that other processes spend in between.
 type RequestTracker struct {
 	mu             sync.Mutex
 	groups         map[groupKey]RequestCounts
@@ -55,23 +54,20 @@ type RequestTracker struct {
 	now            func() time.Time
 }
 
-// NewRequestTracker creates an invocation session with no assumed quota information.
 func NewRequestTracker() *RequestTracker {
 	return &RequestTracker{groups: map[groupKey]RequestCounts{}, budgets: map[quotaKey]budget{}, rateLimitLoads: map[credentialKey]*rateLimitLoad{}, backoffs: map[credentialKey]time.Time{}, now: time.Now}
 }
 
-// WithRequestTracker shares accounting and reservations across acquisition clients.
 func WithRequestTracker(ctx context.Context, session *RequestTracker) context.Context {
 	return context.WithValue(ctx, requestTrackerKey{}, session)
 }
 
-// RequestTrackerFromContext returns the supplied session, or nil when the caller supplied none.
+// RequestTrackerFromContext returns nil when the caller supplied no session.
 func RequestTrackerFromContext(ctx context.Context) *RequestTracker {
 	session, _ := ctx.Value(requestTrackerKey{}).(*RequestTracker)
 	return session
 }
 
-// TrackRequests shares an existing invocation session or creates a new one.
 func TrackRequests(ctx context.Context) (context.Context, *RequestTracker) {
 	if session := RequestTrackerFromContext(ctx); session != nil {
 		return ctx, session
@@ -80,7 +76,6 @@ func TrackRequests(ctx context.Context) (context.Context, *RequestTracker) {
 	return WithRequestTracker(ctx, session), session
 }
 
-// WithRequestOptions labels subsequent requests without changing network authority.
 func WithRequestOptions(ctx context.Context, operation RequestOptions) context.Context {
 	return context.WithValue(ctx, requestOptionsKey{}, operation)
 }
@@ -152,10 +147,10 @@ func (s *RequestTracker) admit(request *http.Request) (groupKey, quotaKey, error
 	b := s.budgets[key]
 	now := s.now()
 	reservation, _ := request.Context().Value(quotaReservationKey{}).(*QuotaReservation)
-	owned := uint64(0)
+	fromReservation := uint64(0)
 	protected := b.reserved
 	if reservation != nil && reservation.session == s && reservation.key == key && !reservation.closed {
-		owned = min(cost, reservation.remaining)
+		fromReservation = min(cost, reservation.remaining)
 		protected -= reservation.remaining
 	}
 	err := s.checkBudget(group, key, b, cost, protected, now)
@@ -164,9 +159,9 @@ func (s *RequestTracker) admit(request *http.Request) (groupKey, quotaKey, error
 		stats.QuotaRejections++
 	} else {
 		stats.Attempts++
-		if owned != 0 {
-			reservation.remaining -= owned
-			b.reserved -= owned
+		if fromReservation != 0 {
+			reservation.remaining -= fromReservation
+			b.reserved -= fromReservation
 			s.budgets[key] = b
 		}
 		if b.known && b.reset.After(now) && cost <= b.remaining {
@@ -178,7 +173,7 @@ func (s *RequestTracker) admit(request *http.Request) (groupKey, quotaKey, error
 	return group, key, err
 }
 
-// checkBudget runs under the session lock for both batch checks and requests.
+// checkBudget runs under the session lock.
 func (s *RequestTracker) checkBudget(group groupKey, key quotaKey, b budget, cost, protected uint64, now time.Time) error {
 	switch {
 	case s.backoffs[key.credentialKey].After(now):
@@ -196,8 +191,7 @@ func (s *RequestTracker) checkBudget(group groupKey, key quotaKey, b budget, cos
 	}
 }
 
-// QuotaReservation protects future work in one credential and quota resource scope.
-// Use Context for its requests and Close when the work finishes or is cancelled.
+// QuotaReservation needs Close when the work finishes or is cancelled.
 type QuotaReservation struct {
 	session   *RequestTracker
 	key       quotaKey
@@ -205,12 +199,11 @@ type QuotaReservation struct {
 	closed    bool
 }
 
-// Context authorizes requests to consume this reservation atomically at admission.
 func (r *QuotaReservation) Context(ctx context.Context) context.Context {
 	return context.WithValue(ctx, quotaReservationKey{}, r)
 }
 
-// Close releases unused units. Repeated calls have no effect.
+// Close is idempotent.
 func (r *QuotaReservation) Close() {
 	r.session.mu.Lock()
 	defer r.session.mu.Unlock()
@@ -223,8 +216,6 @@ func (r *QuotaReservation) Close() {
 	}
 }
 
-// ReserveQuota protects known future dependency work from unreserved requests in the
-// same quota pool. Reservation units are not consumed network requests.
 func (s *RequestTracker) ReserveQuota(request *http.Request, units uint64) (*QuotaReservation, error) {
 	if err := validRequest(request); err != nil {
 		return nil, err
@@ -242,7 +233,7 @@ func (s *RequestTracker) ReserveQuota(request *http.Request, units uint64) (*Quo
 	return &QuotaReservation{session: s, key: key, remaining: units}, nil
 }
 
-// Statistics returns detached counters and quota observations in a stable order.
+// Statistics returns detached counters in a stable order.
 func (s *RequestTracker) Statistics() Statistics {
 	s.mu.Lock()
 	defer s.mu.Unlock()

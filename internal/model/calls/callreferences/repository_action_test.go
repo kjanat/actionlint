@@ -2,9 +2,6 @@ package callreferences
 
 import "testing"
 
-// TestParseRepositoryActionFollowsRunner pins the runner's step uses grammar:
-// one "@", path segments split on "/" and "\" with empty segments dropped,
-// and a non-empty owner, repository and ref.
 func TestParseRepositoryActionFollowsRunner(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -38,9 +35,6 @@ func TestParseRepositoryActionFollowsRunner(t *testing.T) {
 	}
 }
 
-// TestClassifyAgreesWithRepositoryActionSyntax keeps the classifier on the
-// runner's grammar for default-host references, while it still leaves paths it
-// cannot identify unknown.
 func TestClassifyAgreesWithRepositoryActionSyntax(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

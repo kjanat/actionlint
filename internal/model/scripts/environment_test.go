@@ -107,7 +107,7 @@ func TestUnknownEnvironmentDeclarationsDoNotInventWindowsSpelling(t *testing.T) 
 	}
 }
 
-func TestEnvironmentAlternativesOwnTheirNames(t *testing.T) {
+func TestEnvironmentAlternativesCopyNames(t *testing.T) {
 	t.Parallel()
 	names := []string{"original"}
 	alternatives := EnvironmentAlternatives("bash", nil, EnvironmentLayer{Scope: EnvironmentStep, Names: names})

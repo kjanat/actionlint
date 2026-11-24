@@ -9,8 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// WriteGCC writes compiler-style diagnostics, one per line, without source
-// excerpts or terminal styling. Information maps to GCC's note severity.
+// WriteGCC maps Information to GCC's note severity.
 func WriteGCC(out io.Writer, diagnostics []results.Diagnostic) error {
 	lineBreaks := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ")
 	for _, finding := range diagnostics {

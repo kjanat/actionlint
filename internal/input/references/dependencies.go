@@ -11,8 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// ResolutionSession acquires dependency targets and validates repository identity
-// across all documents in one analysis. A new analysis needs a new session.
+// ResolutionSession must not be reused across analyses.
 type ResolutionSession struct {
 	provider      Resolver
 	mu            sync.Mutex

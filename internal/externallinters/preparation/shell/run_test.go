@@ -21,11 +21,10 @@ func TestPrepareRunVariables(t *testing.T) {
 	dash := "dash"
 	no := false
 	for _, tc := range []struct {
-		name string
-		run  Run
-		text string
-		vars map[string]string
-		// source is the prepared script.
+		name   string
+		run    Run
+		text   string
+		vars   map[string]string
 		source string
 	}{
 		{

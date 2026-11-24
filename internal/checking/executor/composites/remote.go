@@ -57,7 +57,7 @@ func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *act
 
 var errRemoteMetadataLookupLimit = errors.New("remote action metadata lookup limit exceeded")
 
-func (d remoteDocument) Provenance() parsing.Provenance { return d.document.Provenance }
+func (d remoteDocument) Parsed() *parsing.ParsedSource { return d.document.Parsed }
 
 func (analysis *compositeAnalyzer) reserveRemoteLookup(spec string) (bool, error) {
 	reference, err := actions.ParseReference("github.com", spec)
@@ -130,7 +130,7 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 		if analysis.onRemoteDocument != nil {
 			analysis.onRemoteDocument(captured, parsed)
 		}
-		snapshot, err := analysis.sourceSnapshots.Document(captured, parsed)
+		snapshot, err := analysis.sourceSnapshots.Admit(captured, parsed.Parsed)
 		if err != nil {
 			return nil, address, invocation.Outcome{}, err
 		}

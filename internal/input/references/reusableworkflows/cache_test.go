@@ -116,7 +116,6 @@ func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
 			if !strings.Contains(msg, tc.want) {
 				t.Fatalf("unexpected error. wanted %q but got %q", tc.want, msg)
 			}
-			// Each caller receives the cached failure at its own lookup.
 			m, err := c.LoadWorkflowMetadata(t.Context(), tc.spec)
 			if err == nil || err.Error() != msg {
 				t.Fatal("cached failure changed:", err)
@@ -589,7 +588,6 @@ func TestReusableWorkflowNullCache(t *testing.T) {
 	c := &ASTComparisonCache{MetadataCache: NewMetadataCache("", io.Discard)}
 	e := &definition.WorkflowCallEvent{Inputs: []*definition.WorkflowCallEventInput{}}
 
-	// This should do nothing
 	c.WriteWorkflowCallEvent(filepath.Join("foo", "test.yaml"), e)
 
 	m, err := c.LoadWorkflowMetadata(t.Context(), "./foo/test.yaml")

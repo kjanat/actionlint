@@ -14,7 +14,7 @@ export type Runtime = {
 	execute: (executable: string, args: string[], environment: Environment) => Promise<number>;
 };
 
-// Parse launcher options; analysis options belong to the native Action parser.
+// Analysis options belong to the native Action parser.
 export function toolEnabled(value: string | undefined): boolean | undefined {
 	if (value === undefined || value === '' || value === 'true') return true;
 	if (value === 'false') return false;

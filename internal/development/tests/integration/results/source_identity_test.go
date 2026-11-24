@@ -25,7 +25,7 @@ func (c *identityCapture) AnalyzeDocument(_ context.Context, input checkinputs.A
 	return nil, nil
 }
 
-func TestFactsShareOwningStepIdentity(t *testing.T) {
+func TestStepFactsShareStepNodeReference(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\npermissions: {}\n")
@@ -42,7 +42,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 	}
 	for i, script := range input.Scripts {
 		if script.Reference.Node == "" || script.Reference.Node != input.Mappings[i].Reference.Node || script.Reference.Document != input.Reference.Document {
-			t.Fatalf("owning identity lost: script=%+v mapping=%+v", script.Reference, input.Mappings[i].Reference)
+			t.Fatalf("script and mapping node IDs differ: script=%+v mapping=%+v", script.Reference, input.Mappings[i].Reference)
 		}
 	}
 	if input.Scripts[0].Reference.Node == input.Scripts[1].Reference.Node || input.Mappings[0].Scope == input.Mappings[1].Scope {
@@ -56,7 +56,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 	}
 }
 
-func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
+func TestEnvVarDiagnosticsCarryMappingReference(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\npermissions: {}\n")
@@ -79,7 +79,7 @@ func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 	}
 }
 
-func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
+func TestAliasedRunScriptsKeepDistinctStepReferences(t *testing.T) {
 	t.Parallel()
 	for _, kind := range []string{"workflow", "action"} {
 		t.Run(kind, func(t *testing.T) {

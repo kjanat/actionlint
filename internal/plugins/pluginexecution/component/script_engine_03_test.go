@@ -53,8 +53,6 @@ func TestScriptEngine03ContractCurrent(t *testing.T) {
 	}
 }
 
-// The host negotiates the version a component exports: 0.3.0 engines declare
-// capabilities, 0.2.0 engines keep none.
 func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 	t.Parallel()
 	current := loadScriptFixture03(t)
@@ -108,15 +106,12 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 			t.Fatalf("%s: roles=%+v err=%v", version, roles, err)
 		}
 	}
-	// Each template-effects version pairs with the script engine of its package.
 	for script, template := range map[string]string{ScriptEngineInterface: TemplateEffectsInterface, ScriptEngine03Interface: TemplateEffects03Interface} {
 		roles, err := extensionRoles(instance(script, template))
 		if err != nil || roles.script.interfaceName() != script || roles.templateEffects.interfaceName() != template {
 			t.Fatalf("%s with %s: roles=%+v err=%v", script, template, roles, err)
 		}
 	}
-	// A 0.3.0 component relabeled as 0.2.0 fails the structural check
-	// before any guest code runs.
 	data, err := os.ReadFile(scriptFixture03)
 	if err != nil {
 		t.Fatal(err)
@@ -138,8 +133,6 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	}
 }
 
-// json1Request is a check whose engine decodes a ShellCheck json1 fixture.
-// Its source is wide and long enough for the fixture's positions.
 func json1Request(t *testing.T, name string) (scriptengine.Request, []byte) {
 	t.Helper()
 	stdout, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "bundledproviders", "shellcheck", "testdata", name, "stdout.json"))
@@ -154,9 +147,6 @@ func json1Request(t *testing.T, name string) (scriptengine.Request, []byte) {
 	return scriptengine.Request{Source: source, Filename: "actionlint.sh", Config: config}, stdout
 }
 
-// TestScriptEngine03ProcessParity decodes the same ShellCheck stdout through
-// the bundled process provider and a 0.3.0 component: both routes yield the
-// same diagnostics, fixes and reported sources.
 func TestScriptEngine03ProcessParity(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()
@@ -222,8 +212,6 @@ func TestScriptEngine03Excluded(t *testing.T) {
 	}
 }
 
-// directoryGrant opens directory as the runner's grant would, closed when
-// the test ends.
 func directoryGrant(t *testing.T, directory string) *files.BoundedFS {
 	t.Helper()
 	grant, err := files.NewSnapshot(t.Context(), directory, files.New(t.Context(), nil, nil), nil)
@@ -238,8 +226,6 @@ func directoryGrant(t *testing.T, directory string) *files.BoundedFS {
 	return grant
 }
 
-// The engine reads a file only through the host's directory grant. A
-// directory path alone opens nothing.
 func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture03(t)
@@ -267,7 +253,6 @@ func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	if _, err := p.Check(t.Context(), request); err == nil || !strings.Contains(err.Error(), "no directory was granted") {
 		t.Fatalf("check with a directory path and no grant: %v", err)
 	}
-	// An engine that did not request the resource sees no directory either.
 	p.scriptDescriptor.Resources = nil
 	request.DirectoryFS = grant
 	if _, err := p.Check(t.Context(), request); err == nil || !strings.Contains(err.Error(), "no directory was granted") {
@@ -315,9 +300,6 @@ func TestTemplateEffects03ContractCurrent(t *testing.T) {
 	}
 }
 
-// A template-aware 0.3.0 engine keeps the 0.3.0 capabilities: its
-// template-effects check carries excluded codes and the directory grant, and
-// its findings carry fixes and reported sources besides their effects.
 func TestTemplateEffects03Check(t *testing.T) {
 	t.Parallel()
 	p, err := LoadComponentPlugin(t.Context(), templateFixture03, Options{})

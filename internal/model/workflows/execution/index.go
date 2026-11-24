@@ -7,7 +7,6 @@ import (
 	"unicode"
 )
 
-// IndexSnapshot indexes paths and executable modes supplied by the caller.
 type IndexSnapshot struct {
 	dirsOnce sync.Once
 	foldOnce sync.Once
@@ -18,31 +17,24 @@ type IndexSnapshot struct {
 	err      error
 }
 
-// NewIndexSnapshot indexes the Git modes read from the index file at path, or
-// records why they are unavailable. It takes ownership of modes, which must not
-// change afterwards.
 func NewIndexSnapshot(path string, modes map[string]string, err error) *IndexSnapshot {
 	return &IndexSnapshot{modes: modes, path: path, err: err}
 }
 
-// Mode returns the Git mode of a repository path, or "" when it is not tracked.
+// Mode returns "" when the path is not tracked.
 func (snapshot *IndexSnapshot) Mode(name string) string { return snapshot.modes[name] }
 
-// Path returns the index file consulted for the snapshot.
 func (snapshot *IndexSnapshot) Path() string { return snapshot.path }
 
-// Err reports why the index is unavailable.
 func (snapshot *IndexSnapshot) Err() error { return snapshot.err }
 
-// Modes are immutable after loading. Share the derived directory and folding
-// indexes across all invocations, including those using different checkout paths.
 func (snapshot *IndexSnapshot) prepareDirectories() {
 	snapshot.dirsOnce.Do(func() {
 		snapshot.dirs = make(map[string]struct{})
 		for name := range snapshot.modes {
 			for directory := path.Dir(name); directory != "."; directory = path.Dir(directory) {
 				if _, exists := snapshot.dirs[directory]; exists {
-					break // Its ancestors were added with the first descendant.
+					break
 				}
 				snapshot.dirs[directory] = struct{}{}
 			}
@@ -58,7 +50,7 @@ func (snapshot *IndexSnapshot) prepareFoldedPaths() {
 			key := pathFoldKey(prefix)
 			canonical, exists := snapshot.folded[key]
 			if !ASCIIPath(prefix) || exists && canonical != prefix {
-				snapshot.folded[key] = "" // Ambiguous or unsupported normalization.
+				snapshot.folded[key] = ""
 			} else {
 				snapshot.folded[key] = prefix
 			}
@@ -72,8 +64,7 @@ func (snapshot *IndexSnapshot) prepareFoldedPaths() {
 	})
 }
 
-// CaseFoldedPath resolves ASCII path components against the index before
-// collapsing '..'. Ambiguous case matches return false.
+// CaseFoldedPath resolves path components against the index before collapsing '..' and returns false for ambiguous case matches.
 func (snapshot *IndexSnapshot) CaseFoldedPath(runnerPath, checkout string) (string, bool) {
 	snapshot.prepareFoldedPaths()
 	parts := strings.Split(runnerPath, "/")
@@ -127,8 +118,7 @@ func (snapshot *IndexSnapshot) foldedPrefix(candidate, checkout string) (string,
 	return path.Join(checkout, canonical), true
 }
 
-// Match strings.EqualFold's equivalence classes, including non-ASCII names that
-// fold to ASCII. Such names must still make a matching prefix unknown.
+// pathFoldKey matches strings.EqualFold, so non-ASCII names that fold to ASCII still make a matching prefix unknown.
 func pathFoldKey(value string) string {
 	return strings.Map(func(r rune) rune {
 		canonical := r

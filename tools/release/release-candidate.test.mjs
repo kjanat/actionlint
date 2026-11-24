@@ -285,11 +285,12 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 		}
 		const wheel = `actionlint_kjanat-${version}-py3-none-manylinux_2_17_x86_64.whl`;
 		await writeFile(join(assets, wheel), 'wheel fixture');
-		const manifest = await writeManifest(root, assets, { version, source, candidate }, {
-			GITHUB_REPOSITORY: 'kjanat/actionlint',
-			GITHUB_RUN_ID: '123',
-			GITHUB_RUN_ATTEMPT: '2',
-		});
+		const manifest = await writeManifest(
+			root,
+			assets,
+			{ version, source, candidate },
+			{ GITHUB_REPOSITORY: 'kjanat/actionlint', GITHUB_RUN_ID: '123', GITHUB_RUN_ATTEMPT: '2' },
+		);
 		assert.deepEqual(JSON.parse(await readFile(join(assets, manifestName), 'utf8')), manifest);
 		assert.deepEqual(manifest.assets.find((asset) => asset.name === wheel), {
 			name: wheel,
@@ -538,7 +539,6 @@ test('real signed promotion survives rejected pushes and lost responses without 
 		t.skip('GnuPG with Ed25519 and gpgconf required for isolated signing');
 		return;
 	}
-	// Git for Windows prepends its own tools to PATH; use the keyring's GnuPG executable.
 	const gpgProgram = decodeURIComponent(component).replaceAll('\\', '/');
 	const gpg = spawnSync(gpgProgram, ['--version'], { encoding: 'utf8', timeout: 5_000 });
 	if (gpg.error || gpg.status !== 0 || !gpg.stdout.includes('EDDSA')) {
@@ -617,7 +617,7 @@ test('real signed promotion survives rejected pushes and lost responses without 
 		const candidate = await createReleaseCommit(root, directory, '1.17.1', source);
 		const manifest = { ...exampleManifest(), source, candidate, tree: git(root, 'rev-parse', `${candidate}^{tree}`) };
 		const hook = join(remote, 'hooks', 'update');
-		// Reject only the tag: --atomic must also leave the otherwise accepted branch unchanged.
+		// --atomic must leave the branch unchanged when the hook rejects only the tag.
 		await writeFile(hook, '#!/bin/sh\ncase "$1" in refs/tags/*) exit 1 ;; *) exit 0 ;; esac\n', { mode: 0o755 });
 		git(remote, 'config', 'core.hooksPath', join(remote, 'hooks'));
 		let draft = true;
@@ -691,8 +691,6 @@ test('real signed promotion survives rejected pushes and lost responses without 
 	}
 });
 
-// Execute the workflow's actual Bash gate. These functions replace both external
-// commands; jq evaluates the real selectors against mock paginated API responses.
 const manualNpmCommands = `
 git() { printf '%s\\n' "$MOCK_COMMIT"; }
 gh() {
@@ -746,7 +744,7 @@ const verifiedReleaseRun = {
 	head_branch: 'v1.17.1',
 	head_sha: '2'.repeat(40),
 	status: 'completed',
-	conclusion: 'failure', // npm failed after candidate verification succeeded.
+	conclusion: 'failure',
 };
 const verifiedReleaseJob = { id: 201, name: 'Verify published candidate', status: 'completed', conclusion: 'success' };
 
@@ -780,13 +778,12 @@ for (
 		assert.ok(match, 'manual publishing gate must remain covered');
 		const script = match[1].split(/\r?\n/).map((line) => line.slice(10)).join('\n');
 		// Empty first pages exercise gh's multi-page output for both endpoints.
-		const runPages = [{ workflow_runs: [] }, {
-			workflow_runs: scenario.missingRun ? [] : [{ ...verifiedReleaseRun, ...scenario.run }],
-		}];
+		const runPages = [
+			{ workflow_runs: [] },
+			{ workflow_runs: scenario.missingRun ? [] : [{ ...verifiedReleaseRun, ...scenario.run }] },
+		];
 		const jobPages = {
-			101: [{ jobs: [] }, {
-				jobs: scenario.missingJob ? [] : [{ ...verifiedReleaseJob, ...scenario.job }],
-			}],
+			101: [{ jobs: [] }, { jobs: scenario.missingJob ? [] : [{ ...verifiedReleaseJob, ...scenario.job }] }],
 		};
 		const result = spawnSync('bash', ['--noprofile', '--norc', '-s'], {
 			input: `${manualNpmCommands}\n${script}`,

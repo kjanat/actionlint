@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
-// Detached returns an independent typed configuration without revalidating it.
+// Detached skips revalidation.
 func (cfg *Config) Detached() (*Config, error) {
 	if cfg == nil {
 		return nil, nil

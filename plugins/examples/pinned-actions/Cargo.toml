@@ -4,6 +4,9 @@ version           = "0.1.0"
 edition.workspace = true
 publish           = false
 
+[features]
+package = ["actionlint-extension-api/package"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 name       = "pinned_actions"
@@ -15,6 +18,3 @@ required-features = ["package"]
 
 [dependencies]
 actionlint-extension-api = { path = "../../sdk/rust" }
-
-[features]
-package = ["actionlint-extension-api/package"]

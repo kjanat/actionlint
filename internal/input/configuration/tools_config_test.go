@@ -92,10 +92,6 @@ func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
 	}
 }
 
-// A flat key and the property it sets may both be written: the shorthand's
-// declared precedence keeps flat select and ignore and the configured
-// target-version, as the separate settings did before folding. Ruff's own
-// top-level select stays a native option.
 func TestFlatRuffKeysPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -188,8 +184,6 @@ func TestUnknownToolNames(t *testing.T) {
 		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err == nil || !strings.Contains(err.Error(), "unknown tool") {
 			t.Fatalf("%s: %v", text, err)
 		}
-		// Loading binds names to registered rules of any kind; the composition
-		// layer then binds them to tool providers only.
 		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(text), "pyflakes", "expression")
 		if err != nil {
 			t.Fatalf("registered rule rejected while loading %s: %v", text, err)
@@ -204,7 +198,6 @@ func TestUnknownToolNames(t *testing.T) {
 	if err := configuration.ValidateToolNames(&configuration.Config{Tools: configuration.ToolsConfig{"ruff": {}, "shellcheck": {}}}); err != nil {
 		t.Fatalf("bundled providers need no registration: %v", err)
 	}
-	// Input structure is validated before plugins load; names bind afterwards.
 	overlay, err := checking.ConfigurationRules().ParseOverlayBeforePlugins("tools", []byte("{pyflakes: false}"))
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +220,6 @@ func TestRegisteredToolEntriesAreStructural(t *testing.T) {
 	if module, ok := tool.Backend.Wasm(); !ok || module.Path() != "sql.wasm" || !reflect.DeepEqual(tool.Config.Inline(), map[string]any{"anything": []any{1, 2}}) {
 		t.Fatalf("lost settings: %+v", tool)
 	}
-	// Providers without bundled data have no shorthands to fold.
 	for _, text := range []string{
 		"tools: {lint-sql: {dialect: postgres}}",
 		"tools: {lint-sql: {enabled: 'false'}}",

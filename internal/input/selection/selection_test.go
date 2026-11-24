@@ -53,7 +53,7 @@ func TestMatchNormalizesPatterns(t *testing.T) {
 	}
 }
 
-func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
+func TestNewPathSelectionValidatesAndCopiesPatterns(t *testing.T) {
 	t.Parallel()
 	if _, err := NewPathSelection([]string{"../*"}, nil); err == nil {
 		t.Fatal("accepted escaping include")

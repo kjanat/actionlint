@@ -20,7 +20,7 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 		t.Run(tz.name, func(t *testing.T) {
 			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
-			rule.checkTimezone(ownedString(&definition.String{Value: tz.name, Pos: &sourcetext.Position{Line: 1, Column: 1}}))
+			rule.checkTimezone(stringFixture(&definition.String{Value: tz.name, Pos: &sourcetext.Position{Line: 1, Column: 1}}))
 			if valid := len(rule.Findings) == 0; valid != tz.valid {
 				t.Fatalf("valid=%v, expected %v: %v", valid, tz.valid, rule.Findings)
 			}
@@ -58,6 +58,6 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 	}
 }
 
-func ownedString(value *definition.String) *definition.String {
+func stringFixture(value *definition.String) *definition.String {
 	return value
 }

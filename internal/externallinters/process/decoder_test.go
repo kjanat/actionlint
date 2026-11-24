@@ -121,8 +121,7 @@ func TestSARIFDecodeRuffCapture(t *testing.T) {
 	}
 }
 
-// testdata/edge.sarif is hand-written: rule lookup by index, a finding in a
-// followed file, a suppressed result and a passing result.
+// testdata/edge.sarif is hand-written.
 func TestSARIFDecodeEdges(t *testing.T) {
 	t.Parallel()
 	stdout, err := os.ReadFile("testdata/edge.sarif")
@@ -232,7 +231,6 @@ func TestJQDecodesBothResultShapes(t *testing.T) {
 	}
 }
 
-// A transform sees no ambient environment, even variables the host has.
 func TestJQEnvironmentIsEmpty(t *testing.T) {
 	t.Setenv("ACTIONLINT_JQ_SANDBOX_PROBE", "leaked")
 	for _, expression := range []string{"$ENV", "env"} {

@@ -21,7 +21,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// Complete returns expression property edits against the supplied buffer.
 func Complete(content string, offset int) []Item {
 	if offset < 0 || offset > len(content) {
 		return nil
@@ -88,9 +87,7 @@ func Complete(content string, offset int) []Item {
 	return result
 }
 
-// keyAt finds the workflow field containing the scalar preceding the cursor.
-// Block scalars keep their field path across lines. Sequence indices are omitted
-// because context availability is defined by field paths.
+// Block scalars keep their field path across lines. keyAt omits sequence indices.
 func keyAt(root *codec.Node, content string, offset int) string {
 	before := content[:offset]
 	line := strings.Count(before, "\n") + 1

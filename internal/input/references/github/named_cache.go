@@ -59,7 +59,6 @@ func (g *GitHub) offlineNamed(ctx context.Context, ref actions.Reference, kind s
 	}
 	input, err := files.New(ctx, nil, nil).Open(g.namedCachePath(ref))
 	if errors.Is(err, os.ErrNotExist) {
-		// Without a cached tag or branch resolution, no metadata record is read.
 		accounting.RecordCacheLookup(ctx, "repository-metadata", false)
 		return unavailableFile(availability.Offline()), nil
 	}

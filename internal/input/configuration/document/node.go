@@ -1,6 +1,5 @@
 // Package document reads configuration files into one tree of values and
-// source locations. Decoding, inheritance merging, overlays, migrations and
-// format-preserving edits all use this tree.
+// source locations.
 package document
 
 import (
@@ -21,8 +20,6 @@ type Location struct {
 	Reset      *Location
 }
 
-// Node is one configuration value together with the location of every child.
-// Parse, Load and Capture build nodes; Value and Origins read them back.
 type Node struct {
 	value    any
 	location Location
@@ -31,16 +28,12 @@ type Node struct {
 	list     []*Node
 }
 
-// Path appends an object key to a JSON pointer, escaping "~" and "/".
 func Path(parent, key string) string {
 	return parent + "/" + strings.ReplaceAll(strings.ReplaceAll(key, "~", "~0"), "/", "~1")
 }
 
-// Index appends a list index to a JSON pointer.
 func Index(parent string, i int) string { return Path(parent, strconv.Itoa(i)) }
 
-// Capture builds a node from a value and the locations of its JSON pointers.
-// Pointers without a location produce unlocated nodes.
 func Capture(value any, locations map[string]Location) *Node {
 	return capture(value, locations, "")
 }
@@ -86,7 +79,6 @@ func (n *Node) Value() any {
 	return n.value
 }
 
-// Origins returns the location of every located node by JSON pointer.
 func (n *Node) Origins() map[string]Location {
 	out := map[string]Location{}
 	var visit func(*Node, string)
@@ -108,7 +100,6 @@ func (n *Node) Origins() map[string]Location {
 	return out
 }
 
-// Child returns the member named key, or nil when n is not an object or has no such member.
 func (n *Node) Child(key string) *Node {
 	if n == nil {
 		return nil
@@ -116,7 +107,6 @@ func (n *Node) Child(key string) *Node {
 	return n.object[key]
 }
 
-// setFile records file as the source of every located node.
 func (n *Node) setFile(file string) {
 	if n == nil {
 		return
@@ -235,7 +225,6 @@ func merge(base, patch *Node, plan Plan, path string) *Node {
 	return out
 }
 
-// Prefix returns the locations under a JSON pointer with that prefix removed.
 func Prefix(origins map[string]Location, prefix string) map[string]Location {
 	out := maps.Clone(origins)
 	for k := range out {

@@ -33,30 +33,23 @@ import (
 
 const lintTimeout = 300 * time.Second
 
-// Allow canceled analysis to drain callbacks and hand back its partial result.
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ctx context.Context
-	// connected holds the GitHub service, action metadata provider and
-	// configuration connections that configureEnvironment read from the
-	// environment. runLinter adds the fields of each run to a copy.
-	connected checking.Options
-	// disabledTools lists the tool ids the disable-tools input turned off.
+	ctx           context.Context
+	connected     checking.Options
 	disabledTools []string
-	// processes replaces the default command of the bundled tools it names.
-	// Tests use it to select executables.
-	processes    map[string]*hostprocess.CommandOptions
-	workingDir   string
-	workspaceDir string
-	configFile   string
-	overlays     []configuration.Overlay
-	ignore       []string
-	format       outputFormat
-	sarif        bool
-	files        []string
-	hints        []string
-	acquisition  dependencycache.Acquisition
+	processes     map[string]*hostprocess.CommandOptions
+	workingDir    string
+	workspaceDir  string
+	configFile    string
+	overlays      []configuration.Overlay
+	ignore        []string
+	format        outputFormat
+	sarif         bool
+	files         []string
+	hints         []string
+	acquisition   dependencycache.Acquisition
 }
 
 type lintOutcome struct {
@@ -216,8 +209,6 @@ func runLinter(req *lintRequest) *lintResult {
 	return result
 }
 
-// Rebase SARIF and GitHub reports without changing source metadata or the
-// analysis-relative paths used by persisted diagnostics and other formats.
 func workspaceReportAnalysis(analysis *report.Analysis, workingDir, workspace string) *report.Analysis {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
@@ -229,7 +220,6 @@ func workspaceReportAnalysis(analysis *report.Analysis, workingDir, workspace st
 	return &result
 }
 
-// Rewrite every diagnostic path together, preserving revision-to-edit bindings.
 func diagnosticPaths(finding results.Diagnostic, rewrite func(string) string) results.Diagnostic {
 	finding.Path = rewrite(finding.Path)
 	finding.Related = slices.Clone(finding.Related)
@@ -264,8 +254,6 @@ func reportPath(workingDir, workspace, path string) string {
 	return filepath.ToSlash(absolute)
 }
 
-// configureTools reads the disable-tools input, a list of tool ids separated
-// by newlines or commas.
 func (req *lintRequest) configureTools(env func(string) string) {
 	req.disabledTools = nil
 	for line := range strings.SplitSeq(env("INPUT_DISABLE-TOOLS"), "\n") {
@@ -277,9 +265,6 @@ func (req *lintRequest) configureTools(env func(string) string) {
 	}
 }
 
-// toolSelections selects every bundled tool: disabled when the inputs
-// disabled it, otherwise its default command in the working directory,
-// which is skipped with a warning when it cannot run.
 func (req *lintRequest) toolSelections() registry.ToolSelections {
 	selections := registry.ToolSelections{}
 	for _, id := range registry.IDs() {
@@ -297,7 +282,6 @@ func (req *lintRequest) toolSelections() registry.ToolSelections {
 	return selections
 }
 
-// requestedTools lists the bundled tools the inputs leave enabled.
 func (req *lintRequest) requestedTools() []string {
 	var ids []string
 	for _, id := range registry.IDs() {
@@ -344,7 +328,6 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		case <-timer.C:
 		}
 	}
-	// The analysis owns its buffers until it returns, even if it ignores cancellation.
 	if result == nil {
 		result = &lintResult{}
 	}

@@ -1,5 +1,4 @@
-// Package runnerapi defines snapshot-based runner knowledge independently of a host,
-// workflow parser, or WebAssembly runtime. Providers never emit diagnostics.
+// Package runnerapi defines snapshot-based runner knowledge. Providers never emit diagnostics.
 package runnerapi
 
 import (
@@ -12,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
-// Term distinguishes literal labels from unresolved expressions.
 type (
 	Term       interface{ runnerTerm() }
 	Literal    string
@@ -34,8 +32,6 @@ func (v Expression) MarshalJSON() ([]byte, error) {
 	}{string(v)})
 }
 
-// Constraint carries a host-owned source location; returned rejections must
-// refer to one of the supplied constraints or use (0, 0) for the containing job.
 type Constraint struct {
 	Value    Term
 	Position sourcetext.Position
@@ -64,7 +60,7 @@ const (
 )
 
 // RunnerSnapshot contains runner data supplied explicitly by the host. Content is
-// provider-specific data, never a capability to access files or the network.
+// provider-specific data and grants no capability to access files or the network.
 type RunnerSnapshot struct {
 	Content    string    `json:"content"`
 	Scope      string    `json:"scope"`
@@ -104,9 +100,7 @@ const (
 	Windows   OS = "windows"
 )
 
-// Candidate describes explicit guarantees, not guesses from a label's spelling.
-// Empty shell/architecture and unknown OS convey absent knowledge. False
-// capabilities do not grant the associated execution assumption.
+// Candidate describes explicit guarantees and never guesses from a label's spelling.
 type Candidate struct {
 	Hosting         Hosting
 	Name            string
@@ -118,8 +112,6 @@ type Candidate struct {
 	Ephemeral       bool
 }
 
-// Resolution separates semantic absence, uncertainty and non-applicability.
-// Operational failures are Go errors, independent of these outcomes.
 type (
 	Resolution    interface{ runnerResolution() }
 	Resolved      struct{ Candidates []Candidate }
@@ -151,7 +143,7 @@ type Descriptor struct {
 }
 
 // Provider returns one answer per selector, in request order. It must honor
-// cancellation and support concurrent calls. The host owns its lifetime.
+// cancellation and support concurrent calls.
 type Provider interface {
 	RunnerDescriptor() Descriptor
 	ResolveRunners(context.Context, Request) (Response, error)
@@ -159,12 +151,10 @@ type Provider interface {
 
 type Registration struct {
 	Provider Provider
-	// ImplementationID binds results to the implementation. Wasm loaders set its digest.
+	// Wasm loaders set its digest.
 	ImplementationID string
 }
 
-// Options selects authority explicitly. Empty target/provider selects the
-// built-in GitHub provider; loading a component never changes that selection.
 type Options struct {
 	Service   *services.Service
 	AsOf      lifecycle.Date
@@ -175,8 +165,7 @@ type Options struct {
 	Providers []Registration
 }
 
-// Report binds answers to the selected implementation, configuration and snapshot.
-// Consumers caching dependent findings must include CacheKey in their cache key.
+// Report consumers caching dependent findings must include CacheKey in their cache key.
 type Report struct {
 	Service                                         services.Service
 	AsOf                                            lifecycle.Date

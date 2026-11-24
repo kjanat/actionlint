@@ -2,10 +2,6 @@
 // actionlint. Each directory is one provider: manifest.json and the transform
 // programs the manifest references by sha256 digest. The directory name is the
 // provider's rule name.
-//
-// The package is data only and imports no actionlint package.
-// manifests.Bundled in internal/plugins decodes and validates the manifests
-// once; the rule catalog, configuration and provider registry read them there.
 package bundledproviders
 
 import (
@@ -21,10 +17,8 @@ import (
 //go:embed */manifest.json */*.jq
 var files embed.FS
 
-// FS returns the bundled provider directories.
 func FS() fs.FS { return files }
 
-// Names lists the bundled providers' rule names in directory order.
 func Names() []string {
 	entries, err := files.ReadDir(".")
 	if err != nil {
@@ -39,7 +33,6 @@ func Names() []string {
 	return names
 }
 
-// Manifest returns the unparsed manifest of the provider named name.
 func Manifest(name string) ([]byte, bool) {
 	if !fs.ValidPath(name) || strings.Contains(name, "/") {
 		return nil, false
@@ -55,7 +48,6 @@ func Program(digest string) ([]byte, bool) {
 	return program, ok
 }
 
-// programs indexes every bundled program by content digest.
 var programs = sync.OnceValue(func() map[string][]byte {
 	index := make(map[string][]byte)
 	for _, name := range Names() {

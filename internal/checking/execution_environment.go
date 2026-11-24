@@ -8,8 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
-// ExecutionEnvironment holds invocation-wide execution facts and trusted policy.
-// Repository configuration supplies the source-specific service when preparing a document.
 type ExecutionEnvironment struct {
 	Service           services.Service
 	Runners           runnerapi.Options

@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Tool runs a registered Runner as a script analyzer.
 type Tool struct {
 	Name   string
 	Runner Runner
@@ -38,7 +37,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch scriptanalysis.Batch)
 				finding.Binding = scope.Rule(finding.Rule).ID()
 			}
 			finding.IgnoreOrigin = script.Origin
-			finding.Owner = script.Owner
+			finding.Site = script.Site
 		}
 		out = append(out, finding)
 	}

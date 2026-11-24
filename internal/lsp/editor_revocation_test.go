@@ -85,7 +85,6 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	if len(result.Diagnostics) != 0 || len(registry.Requests()) != requests {
 		t.Fatalf("revoked plugin ran or accessed network: %+v", result)
 	}
-	// Startup must also refuse cached revocation before loading any guest.
 	if next, err := newEditorSources(t.Context(), options, sources); err == nil {
 		if closeErr := next.close(t.Context()); closeErr != nil {
 			t.Error(closeErr)

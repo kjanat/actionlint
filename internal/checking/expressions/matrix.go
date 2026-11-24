@@ -17,8 +17,6 @@ func (rule *Visitor) checkMatrixSourceKey(source *definition.String, evaluated b
 	}
 }
 
-// elementTypes merges the types of array elements in the order they are
-// added.
 type elementTypes struct {
 	ty   exprtypes.Type
 	seen bool
@@ -32,7 +30,6 @@ func (e *elementTypes) add(t exprtypes.Type) {
 	e.ty = e.ty.Merge(t)
 }
 
-// merged returns the merged element type, or any when no element was added.
 func (e *elementTypes) merged() exprtypes.Type {
 	if !e.seen {
 		return exprtypes.AnyType()
@@ -52,8 +49,7 @@ func (rule *Visitor) checkMatrix(m *definition.Matrix, resolution matrix.Resolut
 	if m == nil {
 		return exprtypes.NewEmptyStrictObjectType()
 	}
-	// inferred holds the element type of each row declaration. A missing
-	// position reads as any, which means nothing was inferred.
+	// A missing position reads as any.
 	inferred := map[sourcetext.Position]exprtypes.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
@@ -126,8 +122,6 @@ func (rule *Visitor) checkMatrixCombination(combination *definition.MatrixCombin
 	}
 }
 
-// checkMatrixRow returns the element type of a matrix row, or any when no
-// element has a known type.
 func (rule *Visitor) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
@@ -177,7 +171,6 @@ func (rule *Visitor) checkMatrixCombinationExpression(s *definition.String, sect
 	}
 }
 
-// checkMatrixSequenceItem returns the type of the values a sequence item adds.
 // ok is false when the item is an expression that inserts no values, such as
 // an empty array literal.
 func (rule *Visitor) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {

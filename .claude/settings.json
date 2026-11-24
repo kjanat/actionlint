@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "deny": ["Bash(*python*)"],
+    "defaultMode": "bypassPermissions"
+  }
+}

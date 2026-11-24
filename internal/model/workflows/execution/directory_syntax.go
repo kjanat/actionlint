@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
-// RunnerDirectoryPath interprets runner path syntax before local filesystem operations.
 func RunnerDirectoryPath(path string, platform runners.Platform) (string, bool) {
 	if strings.ContainsRune(path, ':') && (platform != runners.MacOrLinux || runtime.GOOS == "windows") {
 		return "", false
@@ -16,8 +15,7 @@ func RunnerDirectoryPath(path string, platform runners.Platform) (string, bool) 
 	drivePrefix := len(path) >= 2 && path[1] == ':' &&
 		(path[0] >= 'A' && path[0] <= 'Z' || path[0] >= 'a' && path[0] <= 'z')
 	if drivePrefix {
-		// On Unix, a:debug names a relative directory. Preserve that meaning for
-		// downstream checks that reject remote Windows drive paths.
+		// On Unix, a:debug names a relative directory.
 		path = "./" + path
 	}
 	if !strings.Contains(path, `\`) {
@@ -33,7 +31,6 @@ func RunnerDirectoryPath(path string, platform runners.Platform) (string, bool) 
 	return "", false
 }
 
-// LocalDirectoryPath resolves runner paths whose syntax matches the analysis host.
 func LocalDirectoryPath(path string, platform runners.Platform) (string, bool) {
 	if filepath.IsAbs(path) {
 		compatible := platform == runners.Any ||
@@ -44,8 +41,6 @@ func LocalDirectoryPath(path string, platform runners.Platform) (string, bool) {
 		}
 		return filepath.Clean(path), true
 	}
-	// Validate complete paths here; runnerDirectoryPath also normalizes
-	// suffixes appended to resolved contexts, such as github.action_path.
 	if platform == runners.Windows && strings.HasPrefix(path, `\`) {
 		return "", false
 	}

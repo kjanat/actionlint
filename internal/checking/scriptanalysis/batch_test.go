@@ -334,7 +334,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 			_, hasBodyPosition := run.Run.Position()
 			hasKeyPosition := run.RunPos != nil
 			if !isRun || run.Source == nil || !hasBodyPosition || !hasKeyPosition {
-				t.Fatalf("scalar run lacks parser-owned mapping or positions: run=%v body=%v key=%v", isRun, hasBodyPosition, hasKeyPosition)
+				t.Fatalf("scalar run lacks source mapping or positions: run=%v body=%v key=%v", isRun, hasBodyPosition, hasKeyPosition)
 			}
 			continue
 		}
@@ -354,7 +354,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		_, hasNamePosition := input.Name.Position()
 		hasValuePosition := hasPosition(input.Value)
 		if !inputExists || input.Name == nil || input.Value == nil || input.Source == nil || !hasNamePosition || !hasValuePosition {
-			t.Fatalf("scalar input lacks parser-owned mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source != nil)
+			t.Fatalf("scalar input lacks source mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source != nil)
 		}
 	}
 }
@@ -408,11 +408,11 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 			t.Fatalf("canonical declaration %q is missing", unit.Reference)
 		}
 		entry, present := registry.Lookup(declaration.SourceReference())
-		if !present || declaration.Reference() != unit.Reference || !registry.Owns(declaration) {
+		if !present || declaration.Reference() != unit.Reference || !registry.HasStep(declaration) {
 			t.Fatal("registry declaration lost its source binding")
 		}
 		if err := entry.ValidateStep(declaration); err != nil {
-			t.Fatalf("registry declaration is not its canonical owned view: %v", err)
+			t.Fatalf("registry declaration fails ValidateStep: %v", err)
 		}
 		projected := unit
 		if run, isRun := declaration.Run(); isRun {

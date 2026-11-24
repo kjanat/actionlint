@@ -104,7 +104,7 @@ func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
 		t.Fatalf("partial preparation lost findings: %v %v", findings, err)
 	}
 	if input.Dependencies[0].Uses != "original/repo@v1" || input.ResolvedDependencies[0].Commit != "original" {
-		t.Fatal("preparation changed caller-owned facts")
+		t.Fatal("preparation changed input.Dependencies or input.ResolvedDependencies")
 	}
 }
 

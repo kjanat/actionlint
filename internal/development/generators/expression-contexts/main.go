@@ -34,8 +34,6 @@ var (
 	reReplaceholder = regexp.MustCompile("{%[^%]+%}")
 )
 
-// `Node.Text` method was deprecated. This is alternative to it.
-// https://github.com/yuin/goldmark/issues/471
 func textOf(n ast.Node, src []byte) string {
 	var b strings.Builder
 	_ = ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -218,8 +216,6 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 		ctx := split(cs[1])
 		sp := split(cs[2])
 
-		// 'None' means no special function is available. It was added by this commit:
-		// https://github.com/github/docs/commit/ed18f98d128a2720d9a285b1ed48b161e4b9b7ef
 		if len(sp) == 1 && sp[0] == "none" {
 			sp = []string{}
 		}
@@ -286,7 +282,6 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 // See the script for more details: https://github.com/kjanat/actionlint/blob/HEAD/internal/development/generators/expression-contexts/`)
 	writeStringSliceMap(buf, "AllContexts", ctxs)
 
-	// This variable is for unit tests
 	sort.Strings(keys)
 	fmt.Fprintf(buf, "\n// For test\nvar AllWorkflowKeys = %#v\n", keys)
 

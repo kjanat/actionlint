@@ -6,8 +6,7 @@ import (
 	"strings"
 )
 
-// ScriptInput identifies source code supplied to one action input, independently
-// of a runner shell. Action is a lowercase owner/repository and optional
+// ScriptInput Action is a lowercase owner/repository and optional
 // case-sensitive subpath, without a ref.
 type ScriptInput struct {
 	Action   string `json:"action"`
@@ -15,7 +14,6 @@ type ScriptInput struct {
 	Language string `json:"language"`
 }
 
-// ValidateScriptInputs rejects ambiguous or noncanonical routing declarations.
 func ValidateScriptInputs(inputs []ScriptInput) error {
 	if len(inputs) > 256 {
 		return errors.New("script input selectors exceed 256 entries")
@@ -34,7 +32,6 @@ func ValidateScriptInputs(inputs []ScriptInput) error {
 	return nil
 }
 
-// ValidateScriptInput checks one routing declaration without imposing an engine's catalogue limit.
 func ValidateScriptInput(input ScriptInput) error {
 	if len(input.Action) > 4096 || len(input.Input) > 128 || len(input.Language) > 64 {
 		return errors.New("script input selector exceeds action, input or language length limits")

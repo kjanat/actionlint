@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// DeprecatedCommandsRule is the single definition of the deprecated-commands rule.
 var DeprecatedCommandsRule = &define.Rule{
 	Name:            "deprecated-commands",
 	Description:     "Report deprecated set-output, save-state, set-env, and add-path commands",
@@ -26,9 +25,7 @@ var DeprecatedCommandsRule = &define.Rule{
 	Script:          checkDeprecatedCommands,
 }
 
-// checkDeprecatedCommands reports deprecated workflow commands in declared and invoked scripts.
-// It maps each command to its declaring document. A command whose text
-// has no source position is reported at the script start without a range.
+// A command without a source position is reported at the script start without a range.
 func checkDeprecatedCommands(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {

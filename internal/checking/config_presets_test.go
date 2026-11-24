@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-// configRecorder records the prepared configuration supplied to a custom rule.
 type configRecorder struct {
 	workflowvisit.Base
 	config *configuration.Config

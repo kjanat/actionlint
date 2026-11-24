@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// duplicateWorkflowNameFindings returns "file:line:col: message" for each
-// duplicate-workflow-name finding, sorted, with paths relative to root.
 func duplicateWorkflowNameFindings(t *testing.T, root string, diagnostics []results.Diagnostic) []string {
 	t.Helper()
 	var got []string
@@ -60,8 +58,6 @@ func analyzeWorkflowDirectory(t *testing.T, root, config string, paths ...string
 	return results.Diagnostics(result.Diagnostics)
 }
 
-// The shape of kjanat/shellcheck-rs at 646b1a6: two workflows are named
-// "Prepare release" and three "Publish packages".
 func TestDuplicateWorkflowNameRepository(t *testing.T) {
 	t.Parallel()
 	root := tempdir.Physical(t)
@@ -88,7 +84,6 @@ func TestDuplicateWorkflowNameRepository(t *testing.T) {
 		t.Fatalf("findings:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 
-	// Only the checked file is reported; the others on disk supply the names.
 	got = duplicateWorkflowNameFindings(t, root, analyzeWorkflowDirectory(t, root, "", paths[0]))
 	if !slices.Equal(got, want[:1]) {
 		t.Fatalf("single checked file: %v", got)
@@ -143,9 +138,6 @@ func TestDuplicateWorkflowNameCases(t *testing.T) {
 	}
 }
 
-// An editor buffer replaces the file on disk: renaming the open workflow
-// removes the duplicate even before the file is saved, and a single known
-// workflow never duplicates itself.
 func TestDuplicateWorkflowNameInMemorySources(t *testing.T) {
 	t.Parallel()
 	root := tempdir.Physical(t)

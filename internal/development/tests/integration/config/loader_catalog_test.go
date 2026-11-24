@@ -57,7 +57,7 @@ func TestCatalogMetadataIsDetached(t *testing.T) {
 	}
 	last, ok := checking.ConfigurationRules().FindRule("script-injection")
 	if !ok || last.Examples[0].Before != want {
-		t.Fatal("catalog retained caller-owned example storage")
+		t.Fatal("catalog reflects an edit to a returned example")
 	}
 }
 

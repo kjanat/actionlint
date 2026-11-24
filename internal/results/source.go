@@ -2,16 +2,13 @@ package results
 
 import "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 
-// SuppressionOrigin identifies the YAML run declaration, as the Lines of
-// Path, that a suppression comment applies to. An empty Path means the
-// analyzed file itself.
+// SuppressionOrigin Lines locate the YAML run declaration that a suppression
+// comment applies to, and an empty Path means the analyzed file.
 type SuppressionOrigin struct {
 	Path  string
 	Lines sourcetext.LineRange
 }
 
-// DiagnosticSource is the source text a diagnostic is rendered from. It
-// supplies source coordinates without imposing a display format.
 type DiagnosticSource struct {
 	// Content is the file text positions refer to, when that file is not the
 	// linted workflow itself.
@@ -22,6 +19,6 @@ type DiagnosticSource struct {
 	// Unavailable forbids inferring ranges from unverified display text.
 	Unavailable UnavailableSource
 	// Suppression is present only when the resolved policy permits a comment
-	// for this rule. Editors bind its YAML target to a captured revision.
+	// for this rule.
 	Suppression *SuppressionOrigin
 }

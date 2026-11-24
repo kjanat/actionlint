@@ -164,11 +164,13 @@ test('source links canonicalize workspace paths and validate repository names', 
 		assert.ok(text.includes(expectedLink), `Expected ${expectedLink} in summary:\n${text}`);
 		assert.ok(text.includes(`<code>${filename}:6:6</code></a>`));
 		for (
-			const invalid of [{ GITHUB_SHA: '' }, { GITHUB_REPOSITORY: '../repo' }, { GITHUB_REPOSITORY: 'owner/..' }, {
-				GITHUB_REPOSITORY: 'owner/.',
-			}, {
-				GITHUB_SERVER_URL: 'javascript:alert(1)',
-			}]
+			const invalid of [
+				{ GITHUB_SHA: '' },
+				{ GITHUB_REPOSITORY: '../repo' },
+				{ GITHUB_REPOSITORY: 'owner/..' },
+				{ GITHUB_REPOSITORY: 'owner/.' },
+				{ GITHUB_SERVER_URL: 'javascript:alert(1)' },
+			]
 		) {
 			assert.ok(!summary(result, { ...environment, ...invalid }).includes('/blob/'));
 		}
@@ -409,12 +411,15 @@ test('startup failures explain missing config once and retain unrelated errors',
 	);
 	const windowsPath = String.raw`C:\repo\missing.yml`;
 	assert.ok(
-		summary({
-			...failure,
-			error: `could not read config file ${
-				JSON.stringify(windowsPath)
-			}: open ${windowsPath}: The system cannot find the file specified.`,
-		}, { GITHUB_WORKSPACE: String.raw`C:\repo` }).includes('Configuration file not found: missing.yml'),
+		summary(
+			{
+				...failure,
+				error: `could not read config file ${
+					JSON.stringify(windowsPath)
+				}: open ${windowsPath}: The system cannot find the file specified.`,
+			},
+			{ GITHUB_WORKSPACE: String.raw`C:\repo` },
+		).includes('Configuration file not found: missing.yml'),
 	);
 });
 

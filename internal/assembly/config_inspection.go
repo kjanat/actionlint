@@ -22,7 +22,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
-// InspectConfig validates rule names against explicitly selected or project plugins.
 func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition dependencycache.Acquisition) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
@@ -73,10 +72,7 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 	return checking.ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, reader.ReadFile, policy, rules...)
 }
 
-// InstalledProviders returns the tool provider manifests among the plugins
-// that the --plugin flags or the selected configuration name: local manifest
-// files and the manifests of oci:// sources. It runs no plugin and downloads
-// no executable; other plugins are resolved but skipped.
+// InstalledProviders runs no plugin and downloads no executable.
 func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition dependencycache.Acquisition) ([]toolmanifest.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {

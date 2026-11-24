@@ -1,7 +1,6 @@
 package exitcode
 
-// UsageError reports an invalid command, flag or combination of command
-// inputs. A command that fails with it exits with ExitInvalidCommandOption.
+// UsageError makes a command exit with ExitInvalidCommandOption.
 type UsageError struct{ Cause error }
 
 func (e UsageError) Error() string { return e.Cause.Error() }

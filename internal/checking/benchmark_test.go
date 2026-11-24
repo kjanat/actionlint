@@ -35,7 +35,6 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	}
 	format := "{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\\n\\n{{$.Message}}\\n\\n```\\n{{$.Snippet}}\\n```\\n\\n{{end}}"
 
-	// Workflow files for this repository
 	ours := []string{}
 	{
 		d := filepath.Join(root, ".github", "workflows")

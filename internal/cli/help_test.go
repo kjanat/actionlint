@@ -38,8 +38,6 @@ func TestManualDocumentsEveryFlag(t *testing.T) {
 			delete(documented, name)
 		}
 	})
-	// Flags specific to subcommands may also be documented in FLAGS. They
-	// are not part of the root's mandatory set, but are recognized commands.
 	var visit func(*cobra.Command)
 	visit = func(c *cobra.Command) {
 		c.Flags().VisitAll(func(f *pflag.Flag) {

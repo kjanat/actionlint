@@ -2,7 +2,6 @@ package configuration
 
 import "slices"
 
-// containsNull reports whether value or any value nested in it is null.
 func containsNull(value any) bool {
 	if isNull(value) {
 		return true
@@ -15,7 +14,6 @@ func containsNull(value any) bool {
 	return slices.ContainsFunc(elements(value), containsNull)
 }
 
-// hasUnknownRepositoryFacts finds null repository settings at the root or in overrides.
 func hasUnknownRepositoryFacts(node any) bool {
 	if repository := field(node, "repository"); repository != nil && containsNull(repository) {
 		return true

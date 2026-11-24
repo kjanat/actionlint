@@ -3,12 +3,11 @@ import { createHash } from 'node:crypto';
 import type { ImageReference } from '#images';
 import type { DocumentDiagnostic, Severity } from '#index';
 
-/** Stable SHA-256 key for associating an image reference with cached external evidence. */
+/** Return a stable SHA-256 key for an image reference. */
 export function imageKey(reference: string): string {
 	return createHash('sha256').update(reference).digest('hex');
 }
 
-/** Build a document finding whose range covers the complete extracted image reference. */
 export function diagnosticAtImage(
 	filename: string,
 	image: ImageReference,

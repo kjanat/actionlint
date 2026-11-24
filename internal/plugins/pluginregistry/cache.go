@@ -14,8 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// ResolveCached reuses the last verified release selected by a name and version
-// selector. Cache warming refreshes the selection from the registry.
 func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin, error) {
 	if !pluginreference.ValidName(name) && !pluginreference.ValidAlias(name) || !pluginreference.ValidVersion(selector) {
 		return Pin{}, errors.New("invalid plugin name or version selector")
@@ -65,9 +63,7 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	return pin, nil
 }
 
-// Lookup resolves a canonical exact release, reusing a previously verified
-// registry resolution without network access. Floating requests belong to
-// explicit install/update, which call Resolve before writing configuration.
+// Lookup reuses a previously verified registry resolution without network access.
 func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) {
 	if c.base.Scheme == "file" {
 		return Pin{}, errors.New("local candidate lookup requires a configured SHA256 digest; run actionlint plugin install to bind it")
@@ -80,7 +76,7 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 	}
 	pin, exists, err := c.cachedRelease(ctx, name, version)
 	if err != nil {
-		return Pin{}, ownedLookupError(err)
+		return Pin{}, flattenLookupError(err)
 	}
 	if exists {
 		return pin, nil
@@ -89,11 +85,9 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 		return Pin{}, network.Missing(name + "@" + version)
 	}
 	pin, err = c.Resolve(ctx, name, version)
-	return pin, ownedLookupError(err)
+	return pin, flattenLookupError(err)
 }
 
-// A lookup reports immutable failure data rather than exposing an HTTP
-// transport's retained request/error objects. Preserve domain classifications.
 type releaseLookupError struct {
 	message                                  string
 	canceled, deadline, unavailable, offline bool
@@ -104,7 +98,7 @@ func (e releaseLookupError) Is(target error) bool {
 	return e.offline && target == network.ErrOffline || e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded || e.unavailable && target == errReleaseUnavailable
 }
 
-func ownedLookupError(err error) error {
+func flattenLookupError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -145,9 +139,6 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 	return pin, true, nil
 }
 
-// LookupCandidate returns only the previously selected bytes for an exact
-// local candidate digest. An uncached selection may be restored from staging
-// only when the staged artifact still has that digest.
 func (c *Client) LookupCandidate(ctx context.Context, name, version, digest string) (Pin, error) {
 	if c.base.Scheme != "file" || !pluginreference.ValidName(name) || !pluginreference.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
 		return Pin{}, errors.New("candidate lookup requires a local registry, canonical package, exact version, and SHA256 digest")
@@ -172,9 +163,7 @@ func (c *Client) LookupCandidate(ctx context.Context, name, version, digest stri
 	return pin, nil
 }
 
-// RememberCandidate stores verified candidate metadata under an immutable
-// per-digest key. Callers supply the execution cache and a cache-only OCI
-// resolver. It never changes a mutable name/version alias.
+// RememberCandidate never changes a mutable name/version alias.
 func (c *Client) RememberCandidate(ctx context.Context, pin Pin, options artifacts.Options) error {
 	if c.base.Scheme != "file" || pin.Origin != "candidate" || !SameRegistry(pin.Registry, c.base.String()) {
 		return errors.New("candidate pin belongs to another registry")
@@ -253,7 +242,6 @@ func sameRelease(left, right Pin) bool {
 		return false
 	}
 	left.Registry = right.Registry
-	// Alias spelling and selection intent do not change a release's identity.
 	left.Alias, right.Alias = "", ""
 	left.Selector, right.Selector = left.Version, right.Version
 	return left == right

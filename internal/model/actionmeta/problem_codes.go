@@ -1,8 +1,6 @@
 package actionmeta
 
-// ProblemCode identifies a manifest or action-execution problem independently of lint selection.
-// Producers choose it when the problem is detected; messages are never parsed
-// to recover a code.
+// ProblemCode is chosen at detection, and messages are never parsed to recover it.
 type ProblemCode string
 
 const (

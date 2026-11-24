@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
-// PinSource resolves an OCI tag or an unpinned HTTPS artifact to its checksum.
-// Installation saves that checksum so later checks use the same plugin bytes.
 func PinSource(ctx context.Context, source string, acquisition dependencycache.Acquisition) (string, error) {
 	if !pluginreference.IsOCI(source) {
 		u, err := url.Parse(source)

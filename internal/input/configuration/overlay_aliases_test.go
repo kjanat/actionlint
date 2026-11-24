@@ -8,9 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// A plugin rule's alias is unknown when an overlay is parsed before plugins
-// load. Overlaid places both spellings with the final rule set and rejects
-// them when their settings differ, as a bound overlay does.
+// A plugin rule's alias is unknown when an overlay is parsed before plugins load.
 func TestDeferredOverlayRejectsConflictingRuleAliases(t *testing.T) {
 	t.Parallel()
 	beforePlugins, err := configuration.NewRuleSet(nil)

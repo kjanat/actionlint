@@ -7,14 +7,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// RejectedRelatedError counts withheld related locations, never primary diagnostics.
-// The count is fixed at creation; read it with Count.
 type RejectedRelatedError struct {
 	withheld int
 	cause    error
 }
 
-// NewRejectedRelatedError reports withheld related locations; nil when none were withheld.
+// NewRejectedRelatedError returns nil when none were withheld.
 func NewRejectedRelatedError(withheld int) error {
 	if withheld <= 0 {
 		return nil
@@ -34,15 +32,14 @@ func (*RejectedRelatedError) Code() string        { return "admission-rejected" 
 func (e *RejectedRelatedError) Count() int        { return e.withheld }
 func (e *RejectedRelatedError) relatedCount() int { return e.withheld }
 
-// ConsolidateRejectedRelated exposes the complete count across request bridges and sealed
-// admission while retaining every original operational cause for errors.Is/As.
+// ConsolidateRejectedRelated keeps every original cause visible to errors.Is and errors.As.
 func ConsolidateRejectedRelated(prior error, withheld int) error {
 	var count func(error) int
 	count = func(err error) int {
 		if err == nil {
 			return 0
 		}
-		// Aggregate counts already include their causes; do not descend twice.
+		// Aggregate counts already include their causes.
 		if aggregate, ok := err.(interface{ relatedCount() int }); ok {
 			return aggregate.relatedCount()
 		}
@@ -65,8 +62,6 @@ func ConsolidateRejectedRelated(prior error, withheld int) error {
 	return &RejectedRelatedError{withheld: total, cause: prior}
 }
 
-// BindRelated applies only the trusted exact-request-path grant. Explicit bindings are
-// claims for sealed revalidation; mixed or unsupported bindings are rejected.
 func BindRelated(locations []Related, path string, revision sourcetext.Revision, model sourcetext.Coordinates) ([]Related, error) {
 	if locations == nil {
 		return nil, nil
@@ -92,7 +87,6 @@ func BindRelated(locations []Related, path string, revision sourcetext.Revision,
 	return kept, nil
 }
 
-// BindRelatedInDiagnostics retains every primary and reports one exact withheld count.
 func BindRelatedInDiagnostics(findings []Diagnostic, path string, revision sourcetext.Revision, model sourcetext.Coordinates) error {
 	count := 0
 	for i := range findings {

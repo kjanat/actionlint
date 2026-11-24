@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-func TestParserOwnedExpressionSpans(t *testing.T) {
+func TestExpressionSpanCoversExactSource(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ text, want string }{
 		{`fromJSON('{"win":1}')['mac']`, `fromJSON('{"win":1}')['mac']`},

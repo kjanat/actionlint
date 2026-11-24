@@ -7,18 +7,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
-// ShellExecutableName extracts the runner's executable before its first space.
-// It recognizes both path separators and a Windows .exe suffix. A wrapper such
-// as "env bash" identifies env, not the program that wrapper may execute.
+// ShellExecutableName returns env for a wrapper such as "env bash".
 func ShellExecutableName(shell string) string {
 	command, _, _ := strings.Cut(shell, " ")
 	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
 }
 
-// DefaultShell returns the shell supplied by a job container or its runner.
-// Step, job and workflow shell declarations override this default through
-// execution.ResolveShell. An unknown container or empty runner shell produces
-// an unknown value rather than assuming Bash.
+// DefaultShell returns an unknown value with no Bash default for an unknown
+// container or empty runner shell.
 func DefaultShell(container value.Value, runnerShell string) value.Value {
 	if shell := ContainerShell(container); shell.State() != value.Missing {
 		return shell
@@ -29,7 +25,6 @@ func DefaultShell(container value.Value, runnerShell string) value.Value {
 	return value.YAMLScalar(runnerShell, "!!str", value.Origin{})
 }
 
-// ContainerShell resolves the known job container's default shell.
 func ContainerShell(container value.Value) value.Value {
 	if container.State() == value.Missing {
 		return value.Value{}

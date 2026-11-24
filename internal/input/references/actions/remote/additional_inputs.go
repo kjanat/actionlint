@@ -8,18 +8,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
-// allowReviewedAdditionalInputs permits undeclared input names for an identified implementation.
-// The commit and manifest digest must match the reviewed source. A known
-// repository ID must match too; otherwise the repository name must.
 func allowReviewedAdditionalInputs(manifest actions.Manifest, definition actionmeta.Definition) actionmeta.Definition {
 	identity := manifest.Identity()
 	repositoryMatches := strings.EqualFold(identity.Repository(), "octokit/request-action")
 	if id, known := identity.RepositoryID().Value(); known {
 		repositoryMatches = id == 213507602
 	}
-	// This implementation collects every INPUT_* variable and forwards the
-	// parameters beyond route to Octokit; it does not restrict them to inputs
-	// declared in action.yml. The declared route input is still required.
+	// This implementation forwards every INPUT_* variable beyond route to
+	// Octokit. The declared route input is still required.
 	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L14-L26
 	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L61-L73
 	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/action.yml

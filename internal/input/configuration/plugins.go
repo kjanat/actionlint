@@ -14,7 +14,6 @@ import (
 // An empty or null list disables plugins, including inherited declarations.
 type PluginDeclarations []pluginreference.Reference
 
-// DecodeConfig accepts repository strings and explicit catalogue mappings.
 func (p *PluginDeclarations) DecodeConfig(value any) error {
 	if value == nil {
 		*p = PluginDeclarations{}
@@ -83,7 +82,6 @@ func decodePluginDeclaration(value any) (pluginreference.Reference, error) {
 	return pluginreference.New(values["name"], values["version"], values["registry"])
 }
 
-// EncodeConfig emits concise strings unless a custom catalogue is required.
 func (p PluginDeclarations) EncodeConfig() (any, error) {
 	entries := make([]any, 0, len(p))
 	for _, ref := range p {

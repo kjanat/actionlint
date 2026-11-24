@@ -123,7 +123,7 @@ func TestDetachedConfigRejectsUnsupportedDynamicValues(t *testing.T) {
 	}
 }
 
-func TestLintConfigOwnsDecodedSource(t *testing.T) {
+func TestLintConfigDecodeCopiesRawMap(t *testing.T) {
 	t.Parallel()
 	raw := map[string]any{"rules": map[string]any{"disable": []any{"example"}}}
 	var lint LintConfig

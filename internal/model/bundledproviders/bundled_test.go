@@ -41,8 +41,6 @@ func TestBundledManifestsValidate(t *testing.T) {
 	}
 }
 
-// Every program file is referenced by its manifest, so an edited program
-// without an updated digest fails here with the digest to record.
 func TestBundledProgramsAreReferenced(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()
@@ -79,19 +77,11 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 	}
 }
 
-// Golden decoding: testdata/<case>/stdout.json decoded with vars.json must
-// equal diagnostics.json.
-//
-// Provenance: shellcheck/script is ShellCheck 0.11.0 `-f json1 --shell bash
+// shellcheck/script is ShellCheck 0.11.0 `-f json1 --shell bash
 // -e SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043 -`; ruff/lint and
 // ruff/syntax are Ruff 0.17.0 `check --isolated --ignore-noqa --no-fix
 // --no-cache --output-format json --stdin-filename actionlint.py --extension
-// py:python ... -`. shellcheck/sourced and ruff/preview are hand-written:
-// ShellCheck 0.11.0 never reports findings in followed files or a sources
-// list, and Ruff 0.17.0 no longer emits null codes, but the native adapters
-// these manifests replaced accepted both
-// (internal/checking/session/shellcheck_sources_test.go and the Ruff adapter's
-// diagnostic tests).
+// py:python ... -`. shellcheck/sourced and ruff/preview are hand-written.
 func TestBundledGoldenDecode(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()
@@ -198,8 +188,6 @@ func TestRuffConfigTransform(t *testing.T) {
 	}
 }
 
-// outputDecoder builds the decoder a manifest's output declares. Stage 2 owns
-// this mapping in the process transport; the test needs only the jq route.
 func outputDecoder(t *testing.T, manifest toolmanifest.Manifest) process.Decoder {
 	t.Helper()
 	output := manifest.Process.Output

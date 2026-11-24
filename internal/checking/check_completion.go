@@ -31,8 +31,8 @@ func indexCheckInvocations(graph invocation.Graph) checkInvocationIndex {
 	return index
 }
 
-// forSource returns every known call of this source revision. A source-only
-// record is used when resolution stopped before the graph identified a target.
+// forSource uses a source-only record when resolution stopped before the graph
+// identified a target.
 func (index checkInvocationIndex) forSource(ref sourcetext.Reference) []report.CheckInvocation {
 	if contexts := index[checkRevision{ref.Document, ref.Revision}]; len(contexts) != 0 {
 		return contexts
@@ -40,8 +40,6 @@ func (index checkInvocationIndex) forSource(ref sourcetext.Reference) []report.C
 	return []report.CheckInvocation{{}}
 }
 
-// checkCompletion records successful tool checks and incomplete source analyses.
-// Reports and suppression cleanup consume detached records after analysis joins.
 type checkCompletion struct {
 	mu          sync.Mutex
 	incomplete  map[checkOccurrence]bool

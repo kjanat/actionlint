@@ -2,13 +2,12 @@ package buildinfo
 
 import "runtime/debug"
 
-// These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually.
+// GoReleaser sets these variables through ldflags.
 var (
 	ReleaseVersion = ""
 	InstallOrigin  = ""
 )
 
-// InstalledFrom describes how the binary was installed.
 func InstalledFrom() string {
 	if InstallOrigin != "" {
 		return InstallOrigin
@@ -24,7 +23,6 @@ func InstalledFrom() string {
 	return "from source"
 }
 
-// Version returns the release version or Go module build version.
 func Version() string {
 	if ReleaseVersion != "" {
 		return ReleaseVersion

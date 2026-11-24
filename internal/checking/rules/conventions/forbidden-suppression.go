@@ -6,7 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// ForbiddenSuppressionRule is the single definition of the forbidden-suppression rule.
 var ForbiddenSuppressionRule = &define.Rule{
 	Name:        "forbidden-suppression",
 	Aliases:     []rule.Alias{{Name: "disallow-suppressions", Deprecated: true}},
@@ -15,7 +14,7 @@ var ForbiddenSuppressionRule = &define.Rule{
 	Subcategory: "suppressions",
 	LegacyGroup: "policy",
 	Policy:      "disallow-suppressions",
-	Help:        "Remove the suppression and address its finding, or change the repository suppression policy.",
+	Help:        "Remove the suppression and fix its finding, or change the suppression policy.",
 	Scope:       rule.SourceConfiguration,
 	Options:     define.Options[configuration.SuppressionsPolicy](),
 	DeclaredBy:  "suppression policy",

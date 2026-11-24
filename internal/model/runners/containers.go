@@ -15,7 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
-// ContainerLimitation distinguishes an OS restriction from a missing local daemon.
 type ContainerLimitation uint8
 
 const (
@@ -24,8 +23,6 @@ const (
 	ContainerMissingDaemon
 )
 
-// ContainerTarget identifies an execution alternative with a known container
-// limitation. Uncertain or stale provider answers are excluded.
 type ContainerTarget struct {
 	Limitation  ContainerLimitation
 	Runner      string
@@ -34,8 +31,7 @@ type ContainerTarget struct {
 	MatrixKnown bool
 }
 
-// ContainerLimitations uses provider evidence rather than inferring an
-// external provider's capabilities from the spelling of its labels.
+// ContainerLimitations never infers an external provider's capabilities from its label spelling.
 func (k *Knowledge) ContainerLimitations(job workflows.BoundJob) []ContainerTarget {
 	if k == nil || k.report.Target != "github" {
 		return nil
@@ -93,8 +89,7 @@ func (k *Knowledge) ContainerLimitations(job workflows.BoundJob) []ContainerTarg
 	return targets
 }
 
-// LookupExpressionVariable supplies matrix values and the selected runner OS.
-// A provider that cannot establish its OS supplies no runner object.
+// LookupExpressionVariable supplies no runner object when the provider cannot establish its OS.
 func (target ContainerTarget) LookupExpressionVariable(name string) (any, bool) {
 	if name == "runner.os" {
 		var os string
@@ -116,7 +111,6 @@ func (target ContainerTarget) LookupExpressionVariable(name string) (any, bool) 
 	return nil, false
 }
 
-// Evaluate uses only established execution facts, including a complete matrix row.
 func (target ContainerTarget) Evaluate(text string) value.Value {
 	node := syntax.ParseAssignedExpression(text)
 	if node == nil {

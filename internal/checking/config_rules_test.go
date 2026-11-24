@@ -6,9 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// ConfigurationRules falls back to the built-in rules when the embedded
-// provider manifests are invalid, so this test is what keeps such a defect
-// from shipping.
 func TestBundledRuleCatalogLoads(t *testing.T) {
 	t.Parallel()
 	rules, err := LoadConfigurationRules()

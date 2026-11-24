@@ -17,7 +17,7 @@ func (m invocationMetadata) FindMetadata(string) (*actionmeta.Metadata, bool, er
 	return m.metadata, true, nil
 }
 
-func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
+func TestRepeatedCompositeInvocationsResolveOutputsPerInvocation(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "outer/action.yml")

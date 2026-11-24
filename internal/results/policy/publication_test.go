@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
-func TestPublicationDeduplicatesInferredAliasOwnersWithinEntry(t *testing.T) {
+func TestPublicationDeduplicatesInferredAliasReferencesWithinEntry(t *testing.T) {
 	t.Parallel()
 	input := []*finding.Finding{
 		{Rule: "expression-reference", Message: "same anchored expression", Start: sourcetext.Position{Line: 1, Column: 1}, InferredReference: true, Reference: &sourcetext.Reference{Document: "workflow", Revision: "revision", Node: "first invocation"}},
@@ -47,7 +47,7 @@ func TestPublicationRejectsUnpreparedFindings(t *testing.T) {
 	}
 }
 
-func TestPublicationOwnsEntryBytes(t *testing.T) {
+func TestPublicationCopiesEntryContent(t *testing.T) {
 	t.Parallel()
 	content := []byte("entry token\n")
 	input := []*finding.Finding{{Rule: "expression-reference", Message: "finding", Start: sourcetext.Position{Line: 1, Column: 1}}}
@@ -62,7 +62,7 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 	}
 	content[0] = 'X'
 	if string(result.Diagnostics[0].Source.Content) != "entry token\n" {
-		t.Fatal("publication retained caller-owned entry bytes")
+		t.Fatal("publication reflects a later write to the caller's content")
 	}
 	result.Diagnostics[0].Source.Content[1] = 'Y'
 	if content[1] != 'n' {
@@ -86,7 +86,7 @@ func TestPublicationFailureInvalidatesUnusedSuppressionProof(t *testing.T) {
 	}
 }
 
-func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.T) {
+func TestPublicationCopiesForeignSourceOnceForOneHundredFindings(t *testing.T) {
 	t.Parallel()
 	content := bytes.Repeat([]byte("echo ok\n"), 8192)
 	input := make([]*finding.Finding, 100)
@@ -104,7 +104,7 @@ func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.
 	}
 	first := &result.Diagnostics[0].Source.Content[0]
 	if first == &content[0] {
-		t.Fatal("publication shares caller-owned bytes")
+		t.Fatal("publication shares the caller's content array")
 	}
 	for _, reported := range result.Diagnostics {
 		if len(reported.Source.Content) != 65536 || &reported.Source.Content[0] != first {

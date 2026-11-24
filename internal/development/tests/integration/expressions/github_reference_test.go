@@ -111,8 +111,7 @@ permissions: {}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			for _, finding := range testutil.WorkflowDiagnostics(t, tc.source, "") {
-				// The published matrix example interpolates runtime values into a
-				// shell command. That security finding is separate from expression validity.
+				// The published matrix example interpolates runtime values into a shell command.
 				if tc.name == "matrix passed between jobs" && finding.Rule == "script-interpolation" {
 					continue
 				}

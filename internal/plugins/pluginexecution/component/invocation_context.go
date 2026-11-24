@@ -13,7 +13,6 @@ import (
 
 const InvocationContextInterface = invocationcontext.InterfaceName
 
-// MaxInvocationPageSize bounds one calls or scripts page returned to a guest.
 const MaxInvocationPageSize = 256
 
 type (
@@ -22,7 +21,7 @@ type (
 )
 
 // Generated bindings reserve Go errors for transport traps. Query failures
-// belong to the WIT result, so these adapters never return a Go error.
+// belong to the WIT result. These adapters never return a Go error.
 func (invocationContext) Describe(ctx context.Context) (invocationcontext.ResultSummaryString, error) {
 	return describeInvocation(ctx), nil
 }
@@ -88,7 +87,6 @@ func describeInvocation(ctx context.Context) invocationcontext.ResultSummaryStri
 	return invocationcontext.ResultSummaryStringOk{Value: value}
 }
 
-// invocationPage validates guest page bounds and returns the page end.
 func invocationPage(offset, limit uint32, length int) (int, bool) {
 	if uint64(offset) > uint64(length) || limit == 0 || limit > MaxInvocationPageSize {
 		return 0, false

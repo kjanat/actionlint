@@ -521,7 +521,7 @@ func TestExprTypeMergeSimple(t *testing.T) {
 			t.Parallel()
 			in := NullType()
 			if ty == NullType() {
-				in = StringType() // null is compatible with null so use string instead
+				in = StringType()
 			}
 
 			have := ty.Merge(in)

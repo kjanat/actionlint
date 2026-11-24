@@ -18,9 +18,6 @@ type checkRevision struct{ document, revision string }
 
 type checkRule struct{ document, revision, rule string }
 
-// addUnusedSuppressionFixes shares one edit across all unused selectors in a
-// comment. This keeps fix-all transactions disjoint and retains selectors used
-// by another invocation of the same action or workflow.
 func addUnusedSuppressionFixes(files []evaluatedBatch) {
 	type comment struct {
 		document, revision string
@@ -73,9 +70,7 @@ func addUnusedSuppressionFixes(files []evaluatedBatch) {
 	}
 }
 
-// suppressionUses joins usage and incomplete analyses across callers without
-// mixing documents or revisions. Absence of findings proves a selector unused
-// only when every invocation of that source completed the relevant check.
+// Absence of findings proves a selector unused only when every invocation of that source completed the relevant check.
 type suppressionUses struct {
 	seen map[suppressionUse]bool
 }

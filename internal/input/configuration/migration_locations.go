@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
-// migrationInputs associates moved settings with their original source text.
 func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]document.Location) map[string]document.Location {
 	next := maps.Clone(inputs)
 	if next == nil {

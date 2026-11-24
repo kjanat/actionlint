@@ -50,8 +50,6 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 	}
 }
 
-// A matrix whose rows all come from an include expression has properties that
-// are only known at runtime.
 func TestIncludeExpressionMatrixAcceptsAnyProperty(t *testing.T) {
 	t.Parallel()
 	source := `on: {workflow_call: {inputs: {targets: {type: string, required: true}}}}

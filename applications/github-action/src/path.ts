@@ -10,7 +10,7 @@ async function publishBinary(directory: string, name: string, source: string): P
 	await chmod(executable, 0o755);
 }
 
-// Published binaries are invocation-specific job artifacts, never a reusable cache.
+// Published binaries are invocation-specific job artifacts.
 export async function publishActionlint(executable: string, environment: Environment): Promise<void> {
 	environment = normalizeEnvironment(environment);
 	const root = environment.RUNNER_TEMP;

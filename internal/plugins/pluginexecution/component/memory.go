@@ -11,8 +11,6 @@ import (
 
 var errMemoryBudget = errors.New("aggregate plugin memory limit exceeded")
 
-// memoryBudget accounts for live linear memories and reserved table maxima,
-// including repeated and nested core instances.
 // CoreFeaturesV2 excludes shared memory; these buffers may move when they grow.
 type memoryBudget struct {
 	mu          sync.Mutex

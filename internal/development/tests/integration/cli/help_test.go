@@ -65,9 +65,6 @@ func TestRootHelpOverview(t *testing.T) {
 	}
 }
 
-// TestLegacyHelpListsDeprecatedFlags checks that --help-legacy lists every
-// retired flag a bundled manifest declares, since the command line still
-// accepts each one.
 func TestLegacyHelpListsDeprecatedFlags(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	manifests, err := toolmanifest.Bundled()

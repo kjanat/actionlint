@@ -11,10 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// Rule settings are normalized per file with the rule set that loads them,
-// before inheritance merges the files. A configuration loaded with a plugin
-// provider's registration therefore orders its native and plugin spellings
-// by layer.
 func TestRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -72,10 +68,6 @@ func TestRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 	}
 }
 
-// The run's configuration is resolved once, with the final rule set: the load
-// normalizes each file's rule settings, and Overlaid normalizes an overlay
-// parsed before plugins loaded. Selecting a file's settings afterwards
-// returns that resolved value without merging rule settings again.
 func TestConfigurationResolvedOnceWithFinalRules(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()

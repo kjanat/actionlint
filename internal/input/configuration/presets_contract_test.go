@@ -43,7 +43,6 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	t.Parallel()
-	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
 	descriptor := rule.Declaration{Name: "under-development", Category: "correctness", Maturity: "nursery"}
 	for _, tc := range []struct {
 		rules   string

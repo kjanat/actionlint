@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CombineRuleDeclarations combines built-in and plugin declarations and rejects duplicate names.
+// CombineRuleDeclarations rejects duplicate names.
 func CombineRuleDeclarations(additional ...rule.Descriptor) ([]rule.Descriptor, error) {
 	catalog := ListRules()
 	names := map[string]bool{}

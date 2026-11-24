@@ -15,14 +15,12 @@ type Document struct {
 	Text    string `json:"text"`
 }
 
-// Analysis supplies the captured source text used for diagnostic coordinates.
-// Sources and Diagnostics must belong to the same analysis generation.
+// Analysis Sources and Diagnostics must belong to the same analysis generation.
 type Analysis struct {
 	Diagnostics []results.Diagnostic
 	Sources     map[string]Source
 }
 
-// Source pairs captured text with its revision and coordinate model.
 type Source struct {
 	Text        string
 	Revision    sourcetext.Revision

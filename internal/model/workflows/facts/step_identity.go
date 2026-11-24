@@ -9,9 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// stepFingerprint includes the step's structural values, without source positions,
-// quoting, or parser source maps. Length-prefixed fields preserve boundaries;
-// sorted mapping keys make presentation-only changes irrelevant to identity.
+// stepFingerprint excludes source positions, quoting and parser source maps.
 func stepFingerprint(step *definition.Step) string {
 	var b strings.Builder
 	field := func(value string) {

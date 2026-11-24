@@ -54,7 +54,7 @@ type StatusSnapshot struct {
 }
 
 type StatusOptions struct {
-	// Network comes from invocation endpoint selection, never project configuration.
+	// Network comes from invocation endpoint selection and takes nothing from project configuration.
 	Network acquisitionhttp.Grant
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir    string
@@ -175,8 +175,8 @@ func writeCacheFile(path string, value any, immutable bool) (err error) {
 		return err
 	}
 	if immutable {
-		// Publish a complete record atomically without ever replacing one written
-		// by another process. Losing a later snapshot cannot erase revocation.
+		// Publish a complete record atomically and never replace a record from
+		// another process. Losing a later snapshot cannot erase revocation.
 		return os.Link(file.Name(), path)
 	}
 	return os.Rename(file.Name(), path)
@@ -255,14 +255,13 @@ func checkStatus(ctx context.Context, pin Pin, snapshot StatusSnapshot, options 
 		case ReleaseDeprecated:
 			options.warn(statusMessage(pin, status))
 		case ReleaseActive:
-			// Active releases need no warning.
 		}
 	}
 	return nil
 }
 
 // CheckStatuses never contacts the registry. Known revocations block cached
-// bytes; withdrawal does not invalidate a previously selected release.
+// bytes. Withdrawal does not invalidate a previously selected release.
 func (l ResolvedPlugins) CheckStatuses(ctx context.Context, options StatusOptions) error {
 	if err := ctx.Err(); err != nil {
 		return err

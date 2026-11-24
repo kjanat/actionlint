@@ -8,17 +8,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// ID selects workflow-expression replacement in provider manifests for any
-// script language. Inline settings pass through unchanged.
 const ID = "kjanat:actionlint/expression-mask@0.1.0"
 
 // Expressions replaces each ${{ }} template with underscores of the same rune
-// count, keeping its line breaks. Spaces would change the script's syntax,
-// for example `if ${{ contains(xs, s) }}; then`.
-//
-// The expression lexer finds where a template ends, so a `}}` inside a string
-// literal such as ${{ '}}' }} does not end it. A template the lexer rejects
-// ends at its first `}}`; text after a template without one is left as is.
+// count and keeps its line breaks. Spaces would change the script's syntax,
+// for example `if ${{ contains(xs, s) }}; then`. A `}}` inside a string
+// literal such as ${{ '}}' }} does not end the template.
 func Expressions(text string) string {
 	var out strings.Builder
 	for {
@@ -55,8 +50,6 @@ func writeMask(out *strings.Builder, template string) {
 	}
 }
 
-// end returns the byte length of the template body that src starts with,
-// including its closing `}}`.
 func end(src string) (int, bool) {
 	if _, offset, err := syntax.LexExpression(src); err == nil {
 		return offset, true

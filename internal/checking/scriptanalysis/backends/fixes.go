@@ -13,12 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// scriptFix maps an engine's suggested replacements onto the workflow file.
-// Only literal YAML blocks permit direct text edits without changing quoting
-// or folding. Each replacement must stay on one script row the engine saw
-// unchanged: a row preparation generated, or one whose expressions it
-// masked, makes the whole fix unavailable, as do indentation changes and
-// overlapping replacements. A fix may edit several rows.
+// scriptFix edits only literal YAML blocks, where text edits keep quoting and folding.
 func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix scriptengine.Fix) (results.Fix, bool) {
 	if source == nil || !source.Literal || len(fix.Replacements) == 0 {
 		return results.Fix{}, false

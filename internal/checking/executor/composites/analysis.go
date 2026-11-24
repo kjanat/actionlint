@@ -1,5 +1,4 @@
 // Package composites checks workflow and action invocations with prepared rules.
-// It owns nested discovery, script facts and completion, returning stable values.
 package composites
 
 import (
@@ -28,18 +27,15 @@ import (
 )
 
 type Options struct {
-	Bindings        *rulebinding.Scope
-	BindSource      func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
-	Budget          *invocation.Budget
-	SourceSnapshots *parsing.SourceSnapshots
-	Captures        *capture.Store
-	RemoteActions   *remote.Service
-	// OnRemoteActionDocument receives each remote action manifest this
-	// composition captures, with the document parsed from the captured bytes.
+	Bindings               *rulebinding.Scope
+	BindSource             func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
+	Budget                 *invocation.Budget
+	SourceSnapshots        *parsing.SourceSnapshots
+	Captures               *capture.Store
+	RemoteActions          *remote.Service
 	OnRemoteActionDocument func(capture.CapturedDocument, parsing.Document)
-	// PrepareSource acquires only the supplied references before checks observe the source.
-	PrepareSource func(parsing.SourceSnapshot, []string) error
-	Runners       *runners.Knowledge
+	PrepareSource          func(parsing.SourceSnapshot, []string) error
+	Runners                *runners.Knowledge
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
 	// ScriptInputsForScope loads lazily once per immutable config, including nil.
@@ -51,7 +47,6 @@ type Options struct {
 	Paths                execution.Paths
 	Reader               *files.Reader // records reads made while resolving script paths
 
-	// ConfigProvenance is shared by the entry settings and per-file projections.
 	ConfigProvenance configuration.Provenance
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
@@ -60,8 +55,6 @@ type Options struct {
 	Debug                            io.Writer
 }
 
-// Composition is a plain record of one composition run. It holds no invariants of
-// its own; CheckInput validates its batch against the entry snapshot.
 type Composition struct {
 	IncompleteChecks []report.IncompleteCheck
 	Findings         []*finding.Finding
@@ -77,12 +70,10 @@ type Composition struct {
 type SourceDocument interface {
 	Capture() capture.CapturedDocument
 	Content() []byte
-	Provenance() parsing.Provenance
+	Parsed() *parsing.ParsedSource
 }
 
-// Workflow runs one workflow composition with the caller's collaborators.
-// It enters the workflow pass lifecycle; Action never uses this path.
-// Options.Join runs exactly once per call.
+// Workflow runs one workflow composition. Options.Join runs exactly once per call.
 func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if !snapshot.Present() {
@@ -103,8 +94,7 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, er
 	})
 }
 
-// Action runs one standalone action composition with the caller's collaborators.
-// Options.Join runs exactly once per call.
+// Action runs one standalone action composition. Options.Join runs exactly once per call.
 func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptanalysis.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot.Kind() != parsing.KindAction {

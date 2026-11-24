@@ -44,7 +44,6 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 	if result.Sources[actionPath].Text != action {
 		t.Fatalf("dependency snapshot lost: %+v", result.Sources)
 	}
-	// Opening an unsaved, fixed action must override the disk dependency.
 	documents[actionPath] = Document{URI: sourcetext.FileURI(actionPath), Version: 2, Text: "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo fixed\n      shell: bash\n"}
 	result, err = analyzeDocuments(t.Context(), options, documents)
 	if err != nil || len(result.Diagnostics) != 0 {

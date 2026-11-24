@@ -185,7 +185,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 	}
 }
 
-func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
+func TestConfiguredBackendClosedAndCallerBackendLeftOpen(t *testing.T) {
 	t.Parallel()
 	root, paths, _ := configuredEngineFixture(t)
 	cfgSource := "tools:\n  shellcheck:\n    backend:\n      wasm: {path: shellcheck.wasm}\n"
@@ -213,7 +213,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	if explicit.checks.Load() != 3 || explicit.closes.Load() != 0 {
-		t.Fatalf("caller-owned backend checks=%d closes=%d", explicit.checks.Load(), explicit.closes.Load())
+		t.Fatalf("explicit backend checks=%d closes=%d, want 3 and 0", explicit.checks.Load(), explicit.closes.Load())
 	}
 }
 

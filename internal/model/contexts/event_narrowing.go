@@ -65,7 +65,6 @@ func eventGuardValue(node syntax.Node, variant exprtypes.EventVariant) (bool, bo
 			}
 			return left || right, lk && rk
 		case syntax.LogicalOpNodeKindInvalid:
-			// An invalid operator yields no guard.
 		}
 	case *syntax.CompareOpNode:
 		if n.Kind != syntax.CompareOpNodeKindEq && n.Kind != syntax.CompareOpNodeKindNotEq {

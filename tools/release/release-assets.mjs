@@ -1,4 +1,3 @@
-// Preserve GoReleaser outputs between draft preparation and publication.
 import { constants } from 'node:fs';
 import { copyFile, mkdir, readFile, realpath } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -49,7 +48,6 @@ export async function collectAssets(root, directory) {
 		if (typeof artifact.path !== 'string') throw new Error('Missing release asset path');
 		const source = resolve(root, artifact.path);
 		const destination = resolve(directory, artifact.name);
-		// The builder already staged extra_files into the destination.
 		if (source !== destination) await copyFile(await inside(dist, source), destination, constants.COPYFILE_EXCL);
 		if (artifact.type === 'Archive') archives++;
 		if (artifact.type === 'Checksum') checksums++;
@@ -98,7 +96,7 @@ async function wingetGraphQL(token, query, variables, request) {
 	return result.data;
 }
 
-/** Inspect changed files directly; PR titles and search indexing are not authoritative.
+/**
  * @param {string} token @param {typeof fetch} request
  * @returns {Promise<{number: number, url: string}[]>}
  */
@@ -218,9 +216,7 @@ async function wingetAlreadyPublished(token, version, files, request) {
 	return published === files.length;
 }
 
-/** Submit the release's WinGet package files once, after complete duplicate checks.
- * @param {string} directory @param {string} version @param {NodeJS.ProcessEnv} env @param {typeof fetch} request
- */
+/** @param {string} directory @param {string} version @param {NodeJS.ProcessEnv} env @param {typeof fetch} request */
 export async function publishWinget(directory, version, env = process.env, request = fetch) {
 	if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Expected stable MAJOR.MINOR.PATCH version');
 	const token = env.WINGET_TOKEN;
@@ -236,7 +232,6 @@ export async function publishWinget(directory, version, env = process.env, reque
 			await readFile(await inside(directory, join(directory, name))),
 		),
 	})));
-	// Skip versions that Microsoft already has with the same package files.
 	if (await wingetAlreadyPublished(token, version, files, request)) {
 		console.info(`WinGet already has kjanat.actionlint ${version}; no update needed.`);
 		return;
@@ -313,7 +308,6 @@ export async function publishWinget(directory, version, env = process.env, reque
 			const others = submissions.filter(p => p.number !== pull.number);
 			if (others.length) throw new Error(`Concurrent WinGet submission detected: ${others.map(p => p.url).join(', ')}`);
 		} catch (error) {
-			// Independent contributors cannot share our lock. Withdraw ours if the final check detects a race or fails.
 			try {
 				const closed = await github(
 					request,
@@ -355,7 +349,7 @@ export async function publishWinget(directory, version, env = process.env, reque
 	if (submissionError) throw submissionError;
 }
 
-/** Open one actionable failure issue per version; reruns reuse or reopen it.
+/**
  * @param {string} version @param {unknown} error @param {NodeJS.ProcessEnv} env @param {typeof fetch} request
  */
 export async function reportWingetFailure(version, error, env = process.env, request = fetch) {

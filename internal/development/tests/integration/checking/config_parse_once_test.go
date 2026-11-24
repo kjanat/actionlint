@@ -13,10 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
-// The command parses the selected configuration once, for its output settings.
-// Plugin selection and the analysis session reuse those parsed files: after the
-// first load, the files on disk are replaced with invalid YAML, and the check
-// still uses the settings that were parsed first.
 func TestCheckProjectsParsesConfigurationOnce(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.EvalSymlinks(t.TempDir())

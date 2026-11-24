@@ -348,7 +348,7 @@ permissions: {}
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
-	// Without project context (including playground use), no repository scan.
+	// Without project context, including playground use, the check does no repository scan.
 	sources[1].Project = nil
 	result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, sources[1:])
 	if err != nil || len(result.Diagnostics) != 0 {

@@ -19,8 +19,7 @@ type scriptEngineLoad struct {
 	err     error
 }
 
-// ScriptEngines caches module loads. Failed and in-flight loads count toward
-// the four-path session limit.
+// ScriptEngines counts failed and in-flight loads toward the four-path session limit.
 type ScriptEngines struct {
 	mu      sync.Mutex
 	load    func(context.Context, string) (scriptengine.Backend, error)
@@ -31,7 +30,7 @@ type ScriptEngines struct {
 	closed  bool
 }
 
-// NewScriptEngines wraps a loader. A nil loader rejects every configured engine.
+// NewScriptEngines rejects every configured engine when load is nil.
 func NewScriptEngines(load func(context.Context, string) (scriptengine.Backend, error)) *ScriptEngines {
 	return &ScriptEngines{
 		load: load, loaded: map[string]scriptengine.Backend{}, failed: map[string]error{},
@@ -39,8 +38,7 @@ func NewScriptEngines(load func(context.Context, string) (scriptengine.Backend, 
 	}
 }
 
-// LoadModuleBackend returns the engine for a module path, loading it on first use.
-// Loaders for distinct paths may run concurrently.
+// LoadModuleBackend may run loaders for distinct paths concurrently.
 func (s *ScriptEngines) LoadModuleBackend(ctx context.Context, path string) (scriptengine.Backend, error) {
 	if s == nil || s.load == nil {
 		return nil, errors.New("this host has no WebAssembly engine loader")
@@ -142,7 +140,7 @@ func (s *ScriptEngines) finish(ctx context.Context, path string, pending *script
 	return pending.backend, err
 }
 
-// Close releases every loaded engine that can be closed and rejects further loads.
+// Close rejects further loads.
 func (s *ScriptEngines) Close(ctx context.Context) error {
 	if s == nil {
 		return nil

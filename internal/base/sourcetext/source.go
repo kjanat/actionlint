@@ -2,7 +2,6 @@
 // identities, and the Unicode column and LF line helpers they rely on.
 package sourcetext
 
-// Reference separates identity from an address in a particular document revision.
 type Reference struct {
 	Document string `json:"document"`
 	Revision string `json:"revision"`

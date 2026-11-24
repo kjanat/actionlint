@@ -70,8 +70,6 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			if !quarantined {
 				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: probe}}}, []workspace.InputFile{unit})
 			} else {
-				// The existing constructor seam gives the test the real result owner;
-				// the analyzer runs after composition and source verification.
 				var store *capture.Store
 				probe.inspect = func() error {
 					captured, state, err := store.Lookup(metadataPath)
@@ -127,7 +125,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 	}
 }
 
-func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
+func TestMissingParsedDocumentReportsCanonicalResolutionFailure(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	store, _ := capturefixture.NewCapturedSources(t, root)
@@ -136,7 +134,7 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	session := analysisSession{ctx: ctx, captures: store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
 	rejected, err := session.admitSourceDocuments(composites.Composition{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]facts.SourceIndex{})
-	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
+	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "has no parsed document") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
 	if _, state, err := store.Lookup(filepath.Join(root, path)); err != nil || state != capture.Absent {
@@ -144,10 +142,10 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	}
 }
 
-func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *testing.T) {
+func TestMetadataSourceAdmissionRejectsMissingDocumentAndVerifyMismatch(t *testing.T) {
 	t.Parallel()
 	for _, missing := range []bool{false, true} {
-		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parse provenance"}[missing], func(t *testing.T) {
+		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parsed document"}[missing], func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
@@ -168,7 +166,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), correctness.InvalidActionReferenceRule.Base(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(boundApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]

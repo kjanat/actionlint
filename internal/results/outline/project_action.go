@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-// FromAction projects decoded action metadata into a report outline.
 func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Action {
 	outline := Action{Path: path, ParseStatus: "failed", Inputs: []ActionInputOutline{}, Outputs: []ActionOutputOutline{}, Runs: UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {

@@ -67,7 +67,6 @@ func TestPluginDeclarations(t *testing.T) {
 	}
 }
 
-// declarationFields lists the name, version and registry of each declaration.
 func declarationFields(refs configuration.PluginDeclarations) [][3]string {
 	fields := make([][3]string, 0, len(refs))
 	for _, ref := range refs {

@@ -148,14 +148,12 @@ func TestCommandMain(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
 
-	// Create command instance populating stdin/stdout/stderr
 	cmd := cli.Command{
 		Stdin:  os.Stdin,
 		Stdout: &output,
 		Stderr: &output,
 	}
 
-	// Run the command end-to-end. Note that given args should contain program name
 	workflow := filepath.Join("internal", "development", "tests", "integration", "workflow", "testdata", "examples", "main.yaml")
 	status := cmd.Main([]string{"actionlint", "--no-config", "--output-format=text", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "--ignore", "runner-label", workflow})
 

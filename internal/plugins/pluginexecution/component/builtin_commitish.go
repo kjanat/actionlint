@@ -8,13 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// builtinCommitishComponent is the reference resolver shipped with actionlint.
-// builtin_commitish.source.json records the build that produced it.
-//
 //go:embed builtin_commitish.wasm
 var builtinCommitishComponent []byte
 
-// BuiltinCommitishArtifact returns a fresh copy of the bundled reference resolver.
 func BuiltinCommitishArtifact() *artifacts.Artifact {
 	return &artifacts.Artifact{
 		Info: artifacts.ArtifactProvenance{

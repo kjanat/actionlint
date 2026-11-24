@@ -4,10 +4,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// canonical resolves fix paths into the public diagnostic contract. The result
-// shares no storage with the finding: its Reference, Related and Fixes,
-// including each fix's Revisions and Edits, are copies. results.Publish
-// resolves its End and Snippet from the source it is published with.
 func (e *Finding) canonical() results.Diagnostic {
 	d := e.Diagnostic.Clone()
 	switch {
@@ -30,9 +26,8 @@ func (e *Finding) canonical() results.Diagnostic {
 	return d
 }
 
-// Publish publishes the canonical diagnostic with the text its positions refer
-// to: the finding's own Source when it is Foreign to snapshot, otherwise
-// snapshot. The published source carries no suppression target.
+// Publish uses the finding's own Source when the finding is Foreign to
+// snapshot, and snapshot otherwise.
 func (e *Finding) Publish(snapshot []byte) results.PublishedDiagnostic {
 	source := e.Source
 	source.Suppression = nil
@@ -42,5 +37,4 @@ func (e *Finding) Publish(snapshot []byte) results.PublishedDiagnostic {
 	return results.Publish(e.canonical(), source)
 }
 
-// FromDiagnostic attaches analysis provenance without translating the results.
 func FromDiagnostic(d results.Diagnostic) *Finding { return &Finding{Diagnostic: d} }

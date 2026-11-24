@@ -12,18 +12,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/files"
 )
 
-// Discovery selects workflow and action files from the filesystem.
 type Discovery struct {
 	QueryGit GitQuery
 	NoIgnore bool
 	// Repositories enters nested repositories, applying their own Git rules.
-	Repositories bool
-	// SkipDirectory lets the caller prune an already searched directory.
+	Repositories  bool
 	SkipDirectory func(string) bool
 }
 
-// IsWorkflow identifies a YAML file below a .github/workflows directory.
-// Explicit files need not use this location; directory discovery does.
 func IsWorkflow(path string) bool {
 	if !isYAML(filepath.Base(path)) {
 		return false
@@ -38,7 +34,6 @@ func IsWorkflow(path string) bool {
 	}
 }
 
-// DocumentFile applies discovery and Git-ignore policy to one glob match.
 func DocumentFile(ctx context.Context, path string, reader *files.Reader, options Discovery) (bool, error) {
 	if !isManifest(filepath.Base(path)) && !IsWorkflow(path) {
 		return false, nil
@@ -93,9 +88,7 @@ func documentGitFilter(ctx context.Context, path string, reader *files.Reader, o
 	return gitFilterWithQuery(ctx, path, reader, options.QueryGit)
 }
 
-// Documents discovers action manifests and conventional workflows. Git metadata
-// and directory symlinks are never traversed. A nested repository starts its own
-// ignore scope, after the parent's ignore rules permit entering that directory.
+// Documents skips Git metadata and directory symlinks.
 func Documents(ctx context.Context, root string, reader *files.Reader, options Discovery) ([]string, error) {
 	physical, err := reader.Filesystem().EvalSymlinks(root)
 	if err != nil {

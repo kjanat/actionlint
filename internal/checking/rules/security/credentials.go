@@ -12,15 +12,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-// CredentialsRule is the single definition of the credentials rule.
 var CredentialsRule = &define.Rule{
 	Name:        "credentials",
 	Description: "Detect hardcoded passwords in job and service containers",
 	Category:    "security",
 	Subcategory: "credentials",
 	Recommended: true,
-	Help:        "Store the credential as a secret and reference it through the secrets context.",
-	Examples: []rule.Example{rule.WorkflowExample("Read container credentials from a secret.",
+	Help:        "Store the password as a secret and use the secrets context.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		"    container:\n      image: ubuntu:latest\n      credentials:\n        username: user\n        password: plaintext\n",
 		"    container:\n      image: ubuntu:latest\n      credentials:\n        username: user\n        password: ${{ secrets.REGISTRY_PASSWORD }}\n")},
 	Checks: define.Fixed(define.Checks{Job: Credentials}),
@@ -28,7 +27,6 @@ var CredentialsRule = &define.Rule{
 
 type credentialsCheck struct{ reporting.Collector }
 
-// Credentials checks container passwords in a complete job declaration.
 func Credentials(n workflows.BoundJob) []reporting.StepFinding {
 	rule := &credentialsCheck{}
 
@@ -100,7 +98,6 @@ func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos
 
 func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *sourcetext.Position) {
 	// Known strings are data, including expression delimiters inside JSON.
-	// Invalid value types are reported by expression validation.
 	switch value := value.(type) {
 	case string:
 		if value == "" {

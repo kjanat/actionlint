@@ -38,8 +38,6 @@ func TestMetadataAdmissionPreservesEmptyAndRecursiveErrors(t *testing.T) {
 	}
 }
 
-// The workflow parser's alias admission decides which callee declarations
-// load, so declarations reached through an alias load like literal ones.
 func TestMetadataAdmitsAliasedDeclarationsLikeLiteralOnes(t *testing.T) {
 	t.Parallel()
 	var definitions strings.Builder

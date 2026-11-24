@@ -82,7 +82,7 @@ func TestStdoutStreamReferenceRecorded(t *testing.T) {
 	}
 }
 
-// Live comparison is opt-in so normal tests do not require Bash or a WSL setup.
+// Live comparison is opt-in.
 func TestStdoutStreamReferenceLive(t *testing.T) {
 	t.Parallel()
 	bash := os.Getenv("ACTIONLINT_BASH_REFERENCE")

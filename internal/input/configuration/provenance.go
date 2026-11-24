@@ -19,6 +19,6 @@ func (p Provenance) Path() string { return p.path }
 // Sources returns a detached list of contributing sources, bases first.
 func (p Provenance) Sources() []string { return slices.Clone(p.files) }
 
-// Digests returns the lowercase hexadecimal SHA-256 digest of each source's
-// content as it was loaded, keyed by its normalized address.
+// Digests maps each source's normalized address to the lowercase hexadecimal
+// SHA-256 digest of its content as loaded.
 func (p Provenance) Digests() map[string]string { return maps.Clone(p.digests) }

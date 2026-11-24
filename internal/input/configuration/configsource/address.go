@@ -11,14 +11,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/endpoint"
 )
 
-// IsRemoteAddress reports whether name uses the HTTPS configuration source scheme.
-// Normalize must still validate the complete address before it is read.
+// IsRemoteAddress leaves validation to NormalizeAddress.
 func IsRemoteAddress(name string) bool {
 	return strings.HasPrefix(strings.ToLower(name), "https:")
 }
 
-// NormalizeAddress validates an HTTPS address or returns an absolute local filename.
-// Queries belong to remote identity; fragments and credentials are forbidden.
+// NormalizeAddress keeps queries as part of a remote address's identity.
 func NormalizeAddress(name string) (string, error) {
 	if strings.TrimSpace(name) == "" || strings.ContainsRune(name, 0) {
 		return "", errors.New("config source requires a nonempty address without NUL")
@@ -44,8 +42,7 @@ func NormalizeAddress(name string) (string, error) {
 	return filepath.Abs(name)
 }
 
-// ResolveAddress interprets a dependency relative to its declaring source. Remote
-// sources resolve URL references; they cannot reach local filesystem addresses.
+// ResolveAddress never lets a remote source reach a local filesystem address.
 func ResolveAddress(origin, reference string) (string, error) {
 	if strings.TrimSpace(reference) == "" || strings.ContainsRune(reference, 0) {
 		return "", errors.New("extends requires a nonempty source address without NUL")
@@ -86,8 +83,7 @@ func hasScheme(name string) bool {
 	return strings.Contains(name, ":") && filepath.VolumeName(name) == ""
 }
 
-// DisplayAddress returns name for logs and reports. A remote address loses its
-// query, which may carry a credential. Other names are returned unchanged.
+// DisplayAddress drops a remote address's query, which may carry a credential.
 func DisplayAddress(name string) string {
 	if !IsRemoteAddress(name) {
 		return name
@@ -96,7 +92,6 @@ func DisplayAddress(name string) string {
 	return display
 }
 
-// AddressExtension selects a remote format from the URL path, independently of queries.
 func AddressExtension(name string) string {
 	if IsRemoteAddress(name) {
 		if u, err := url.Parse(name); err == nil {

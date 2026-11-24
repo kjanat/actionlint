@@ -12,16 +12,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// TemplateFields holds all fields to format one finding with a Go template.
 type TemplateFields struct {
-	// Message is the diagnostic message.
 	Message string `json:"message"`
 	// Filepath is a canonical relative file path. This is empty when input was read from stdin.
 	Filepath string `json:"filepath,omitempty"`
-	// Line is the line number of the diagnostic position.
-	Line int `json:"line"`
-	// Column is the column number of the diagnostic position.
-	Column int `json:"column"`
+	Line     int    `json:"line"`
+	Column   int    `json:"column"`
 	// Kind is the name of the rule that reported the diagnostic.
 	Kind string `json:"kind"`
 	// Code is the native diagnostic identifier, when supplied by the check.
@@ -77,15 +73,13 @@ func (s *ruleSet) lookup(name string) *rule.Descriptor {
 	return s.rules[name]
 }
 
-// Formatter renders TemplateFields with a user-supplied Go template.
 type Formatter struct {
 	temp  *template.Template
 	rules *ruleSet
 }
 
 // NewFormatter parses a template containing at least one {{ }} placeholder.
-// Escaped characters such as \n are unescaped. getVersion and allKinds read the
-// supplied version and initial rules; RegisterRule adds rules later.
+// Escaped characters such as \n are unescaped.
 func NewFormatter(format string, version func() string, rules []rule.Descriptor) (*Formatter, error) {
 	return newFormatter(format, version, newRuleSet(rules))
 }
@@ -119,7 +113,6 @@ func newFormatter(format string, version func() string, known *ruleSet) (*Format
 	return &Formatter{t, known}, nil
 }
 
-// Print formats the template fields and writes the result to out.
 func (f *Formatter) Print(out io.Writer, t []*TemplateFields) error {
 	if err := f.temp.Execute(out, t); err != nil {
 		return fmt.Errorf("could not format error messages: %w", err)
@@ -127,7 +120,7 @@ func (f *Formatter) Print(out io.Writer, t []*TemplateFields) error {
 	return nil
 }
 
-// RegisterRule makes a rule visible to allKinds. It is safe to call concurrently.
+// RegisterRule is safe to call concurrently.
 func (f *Formatter) RegisterRule(descriptor rule.Descriptor) {
 	f.rules.register(descriptor)
 }

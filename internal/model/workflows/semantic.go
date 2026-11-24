@@ -55,13 +55,10 @@ func boolean(node *definition.Bool) value.Value {
 	return value.YAMLScalar(strconv.FormatBool(node.Value), definition.YamlTagBool, origin(node.Pos, false))
 }
 
-// Bool decodes a boolean field.
 func Bool(node *definition.Bool) value.Value { return boolean(node) }
 
-// Environment resolves an env mapping, including insertions.
 func Environment(node *definition.Env) mappings.Mapping { return resolvedEnvironment(node) }
 
-// ResolvedInputs resolves an action step's with: mapping, including insertions.
 func ResolvedInputs(node *definition.ExecAction) mappings.Mapping {
 	if node == nil {
 		return mappings.Mapping{}
@@ -69,7 +66,6 @@ func ResolvedInputs(node *definition.ExecAction) mappings.Mapping {
 	return mappings.Resolve(actionInputs(node))
 }
 
-// MatrixResolution resolves a strategy's matrix.
 func MatrixResolution(node *definition.Strategy) matrix.Resolution {
 	if node == nil {
 		return matrix.Resolution{}
@@ -77,7 +73,6 @@ func MatrixResolution(node *definition.Strategy) matrix.Resolution {
 	return matrix.Resolve(node)
 }
 
-// MatrixMapping resolves a matrix's keys as a mapping.
 func MatrixMapping(node *definition.Matrix) mappings.Mapping {
 	if node == nil {
 		return mappings.Mapping{}
@@ -85,10 +80,8 @@ func MatrixMapping(node *definition.Matrix) mappings.Mapping {
 	return mappings.Resolve(matrixMappingInputs(node))
 }
 
-// RunnerSelection decodes runs-on.
 func RunnerSelection(node *definition.Runner) value.Value { return runnerSelection(node) }
 
-// DefaultsRun decodes defaults.run.
 func DefaultsRun(defaults *definition.Defaults) value.Value {
 	if defaults == nil {
 		return value.Value{}
@@ -96,7 +89,6 @@ func DefaultsRun(defaults *definition.Defaults) value.Value {
 	return defaultsRunValue(defaults.Run)
 }
 
-// Container decodes a job or service container.
 func Container(node *definition.Container) value.Value {
 	if node == nil {
 		return value.Value{}
@@ -314,8 +306,6 @@ func matrixMappingInputs(node *definition.Matrix) *mappings.DeclaredMapping {
 	return inputs
 }
 
-// Scalar decodes a scalar as a YAML value or template.
 func Scalar(node *definition.String) value.Value { return scalar(node) }
 
-// Condition decodes a scalar as an if condition.
 func Condition(node *definition.String) value.Value { return condition(node) }

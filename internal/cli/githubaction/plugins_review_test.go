@@ -60,8 +60,6 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 	}
 	for _, tc := range []struct{ name, other, shell, source, code string }{
 		{"ruff", "shellcheck", "python", "missing", "F821"},
-		// A shebang stays before generated ShellCheck directives, keeping the
-		// single-line echo fixture's diagnostic on an original source line.
 		{"shellcheck", "ruff", "bash", "#!/bin/bash missing", "SC21"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -76,7 +74,6 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.name == "shellcheck" {
-				// Supply the SC-prefixed diagnostic required by the ShellCheck bridge.
 				if bytes.Count(artifact, []byte("F821")) != 1 {
 					t.Fatal("echo fixture must contain exactly one diagnostic code")
 				}
@@ -99,7 +96,6 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				".git": "", ".github/actionlint.yaml": config,
 				".github/workflows/ci.yml": workflow,
 			})
-			// Neither backend may fall back to an installed native executable.
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{
 				"GITHUB_WORKSPACE": root, "INPUT_FORMAT": "json",

@@ -85,9 +85,6 @@ func toolRegistrations(names ...string) []contract.Registration {
 	return registrations
 }
 
-// A tool's status follows the documents it completed: a path override can
-// enable it where the base configuration disables it, and one incomplete
-// check does not hide the work it finished elsewhere.
 func TestProviderStatusesFollowParticipation(t *testing.T) {
 	t.Parallel()
 	disabled := map[string]any{"tools": map[string]any{

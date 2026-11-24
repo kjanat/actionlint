@@ -11,16 +11,7 @@ export interface ImageReference {
 }
 
 /**
- * Extract static OCI references from workflow containers/services, docker actions, and action images.
  * Dynamic expressions, aliases, malformed YAML, and unsupported references throw descriptive errors.
- * @example
- * ```ts
- * import { diagnosticAtImage, imageReferences } from '@kjanat-actionlint/plugin-sdk/images';
- * const images = imageReferences(request.source, request.kind);
- * const diagnostics = images.map((image) => diagnosticAtImage(
- *   request.filename, image, 'image-policy', `Review ${image.value}`, 'warning',
- * ));
- * ```
  */
 export function imageReferences(source: string, kind: 'workflow' | 'action'): ImageReference[] {
 	const lineCounter = new LineCounter();

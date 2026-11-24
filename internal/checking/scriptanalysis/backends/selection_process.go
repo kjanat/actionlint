@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
-// RequireProcessOptIn rejects repository-selected executables without host authorization.
 func RequireProcessOptIn(name, requested string, explicit *hostprocess.CommandOptions, cfg *configuration.Config, allowed bool) error {
 	if !allowed && processCommand(name, requested, explicit, cfg) != nil {
 		return fmt.Errorf("tools.%s.backend.process requires host opt-in; use --allow-config-processes for trusted repository configuration", name)
@@ -31,7 +30,7 @@ func processCommand(name, requested string, explicit *hostprocess.CommandOptions
 	return &command
 }
 
-// ProcessOptions applies repository backend settings unless the caller made an explicit choice.
+// ProcessOptions ignores repository backend settings when the caller made an explicit choice.
 func ProcessOptions(name, requested string, explicit *hostprocess.CommandOptions, cfg *configuration.Config, cwd string) *hostprocess.CommandOptions {
 	command := processCommand(name, requested, explicit, cfg)
 	if command == nil {

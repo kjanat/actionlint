@@ -25,8 +25,7 @@ var (
 	completionRoot   = regexp.MustCompile(`(?i)[a-z_][a-z0-9_-]*$`)
 )
 
-// completeExpression suggests names from the checker's scope for unfinished dot/bracket
-// access. The offset and returned edit positions count UTF-8 bytes.
+// The offset and returned edit positions count UTF-8 bytes.
 func completeExpression(sema *typecheck.Checker, source string, offset int) []Item {
 	if offset < 0 || offset > len(source) {
 		return nil
@@ -37,7 +36,6 @@ func completeExpression(sema *typecheck.Checker, source string, offset int) []It
 	bracket := false
 	var properties map[string]exprtypes.Type
 	if match := completionAccess.FindStringSubmatchIndex(before); match != nil {
-		// Do not complete text inside an expression string literal.
 		if inExpressionString(before[:match[0]]) {
 			return nil
 		}
@@ -72,7 +70,6 @@ func completeExpression(sema *typecheck.Checker, source string, offset int) []It
 		if inExpressionString(before[:start]) {
 			return nil
 		}
-		// A complete receiver or unsupported index does not request root names.
 		prior := strings.TrimSpace(before[:start])
 		if prior != "" && !strings.ContainsAny(prior[len(prior)-1:], "(&|!,<>=") {
 			return nil

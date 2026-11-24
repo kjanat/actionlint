@@ -24,8 +24,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
-// Project edits exact plugin declarations in configuration.
-// Resolved registry metadata is stored only in the user cache.
 type Project struct {
 	Manifest      *plugins.File
 	Releases      pluginregistry.ResolvedPlugins
@@ -36,7 +34,6 @@ type Project struct {
 	DefaultPlugins bool
 }
 
-// DirectSources lists artifacts whose URL and digest are pinned in configuration.
 func (p *Project) DirectSources() []string {
 	var sources []string
 	for _, ref := range p.Manifest.References {
@@ -89,8 +86,6 @@ func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition d
 	return &Project{Manifest: manifest, Releases: pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}, StatusOptions: pluginregistry.StatusOptions{Acquisition: acquisition}}, nil
 }
 
-// SelectedPlugins resolves the releases refs declare without changing
-// configuration. Direct sources are skipped.
 func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Reference) (pluginregistry.ResolvedPlugins, error) {
 	selected := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}
 	for _, ref := range refs {
@@ -127,8 +122,6 @@ func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Re
 	return selected, selected.Validate()
 }
 
-// Resolve acquires missing dependencies and refreshes the specified declarations.
-// Existing immutable identity checks still apply to every replacement.
 func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Reference) error {
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	clients := make([]*pluginregistry.Client, 0, len(refs))
@@ -146,7 +139,6 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 				return err
 			}
 			if pulled.Info.Kind == artifacts.ProviderManifest {
-				// Refuse an unusable provider before saving its declaration.
 				if err := toolproviders.ValidateProviderArtifact(ctx, pulled, options); err != nil {
 					return err
 				}
@@ -233,8 +225,6 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 	return nil
 }
 
-// Configured releases retain publisher, immutable-version and downgrade checks.
-// Authority evidence comes from cached or acquired registry records.
 func (p *Project) checkConfiguredRelease(ctx context.Context, pin pluginregistry.Pin, ref pluginreference.Reference) error {
 	for _, configured := range p.Manifest.References {
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
@@ -250,7 +240,7 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin pluginregistry
 			previous, err = client.LookupCandidate(ctx, configured.Name(), configured.Version(), configured.CandidateDigest())
 		case strings.HasPrefix(configured.Registry(), "file:"):
 			// A new candidate declaration has no previous release evidence to
-			// compare. Its bytes are verified during installation and then pinned.
+			// compare.
 			continue
 		default:
 			previous, err = client.Lookup(ctx, configured.Name(), configured.Version())
@@ -267,7 +257,6 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin pluginregistry
 }
 
 // ResolvedDeclarations replaces selectors with exact release versions.
-// Registry and cache records supply publisher identities and checksums.
 func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreference.Reference) ([]pluginreference.Reference, error) {
 	resolved := make([]pluginreference.Reference, 0, len(refs))
 	for _, ref := range refs {

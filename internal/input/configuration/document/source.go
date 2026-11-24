@@ -15,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// parsedSource collects a decoded value and the positions of its keys and
-// values while one file is parsed. Parse turns it into a Node.
 type parsedSource struct {
 	file   string
 	value  any
@@ -29,8 +27,7 @@ func newParsedSource(file string) *parsedSource {
 	return &parsedSource{file: file, keys: map[string]sourcetext.Position{"": start}, values: map[string]sourcetext.Position{"": start}}
 }
 
-// node locates every pointer that has a value position. Key positions without
-// a value, such as the intermediate keys of a dotted TOML key, are dropped.
+// node drops key positions without a value, such as the intermediate keys of a dotted TOML key.
 func (p *parsedSource) node() *Node {
 	locations := make(map[string]Location, len(p.values))
 	for pointer, value := range p.values {
@@ -40,7 +37,6 @@ func (p *parsedSource) node() *Node {
 	return Capture(p.value, locations)
 }
 
-// normalize keeps the same scalar and container types across formats.
 func normalize(v any) (any, error) {
 	switch x := v.(type) {
 	case nil, string, bool, json.Number:

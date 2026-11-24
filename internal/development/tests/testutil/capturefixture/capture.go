@@ -1,4 +1,4 @@
-// Package capturefixture supplies result-owned source captures to tests.
+// Package capturefixture builds capture stores for tests.
 package capturefixture
 
 import (
@@ -15,9 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// CapturedSources supplies a test filesystem to one immutable capture owner.
-// Relative fixture names resolve against the explicitly supplied absolute base.
-// Updating fixture bytes never changes an already captured revision.
 type CapturedSources struct {
 	store   *capture.Store
 	base    string
@@ -26,10 +23,7 @@ type CapturedSources struct {
 	content map[string][]byte
 }
 
-// NewCapturedSources returns a capture store and the fixture that feeds it.
-// The store reads bytes passed to Capture first and the filesystem otherwise.
-// The fixture's Capture method uses that store through a private field.
-// The store is closed when the test ends.
+// NewCapturedSources closes the store when the test ends.
 func NewCapturedSources(tb testing.TB, base string, overlays ...capture.Overlay) (*capture.Store, *CapturedSources) {
 	tb.Helper()
 	if !filepath.IsAbs(base) {
@@ -55,7 +49,6 @@ func NewCapturedSources(tb testing.TB, base string, overlays ...capture.Overlay)
 	return store, fixture
 }
 
-// CurrentDir returns the absolute working directory for relative-path fixtures.
 func CurrentDir(tb testing.TB) string {
 	tb.Helper()
 	base, err := os.Getwd()
@@ -91,7 +84,6 @@ func (f *CapturedSources) Capture(path string, content []byte, coordinates sourc
 	return snapshot, nil
 }
 
-// CloseCaptures joins fixture IO without inheriting the test's cleanup cancellation.
 func CloseCaptures(tb testing.TB, store *capture.Store) {
 	tb.Helper()
 	// Cleanup uses the test context values without inheriting its cancellation.

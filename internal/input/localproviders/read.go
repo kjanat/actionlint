@@ -1,5 +1,5 @@
-// Package localproviders reads tool provider manifests that a configuration
-// names by a local path, together with the transform programs beside them.
+// Package localproviders reads tool provider manifests, together with the
+// transform programs beside them.
 package localproviders
 
 import (
@@ -14,10 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// Read reads a process provider manifest from path and the transform
-// programs it references. A local manifest runs its entry as found on PATH,
-// so it declares no artifacts; transforms it names by digest are the *.jq
-// files beside it with that content.
 func Read(reader *files.Reader, path string) (toolmanifest.Manifest, toolmanifest.Programs, error) {
 	data, err := reader.ReadFile(path)
 	if err != nil {
@@ -74,5 +70,4 @@ func Read(reader *files.Reader, path string) (toolmanifest.Manifest, toolmanifes
 	return manifest, resolve, nil
 }
 
-// errMissingProgram reports a transform digest no file beside the manifest has.
 var errMissingProgram = errors.New("no .jq file beside the manifest has the transform digest")

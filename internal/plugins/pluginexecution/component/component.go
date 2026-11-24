@@ -22,17 +22,13 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// AnalyzerInterface identifies the document analyzer role.
 const AnalyzerInterface = canonicalAnalyzerInterface
 
-// HostInterface is the interface the host implements for plugins.
 const HostInterface = host.InterfaceName
 
-// SourceAnnotationsInterface provides optional, source-local YAML comments.
 const SourceAnnotationsInterface = sourceannotations.InterfaceName
 
-// Plugin is a loaded component. It implements results.Analyzer. Calls are
-// serialized; each analysis runs in a fresh instance.
+// Plugin serializes calls, and each analysis runs in a fresh instance.
 type Plugin struct {
 	reservedRules rule.Names
 	// A non-nil descriptor identifies a validated, available role.
@@ -41,12 +37,9 @@ type Plugin struct {
 	scriptDescriptor   *scriptengine.Descriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
-	// runner is the negotiated runner-provider version, nil without the
-	// role. Runner calls go through it.
-	runner runnerProtocol
-	// script is the negotiated script-engine version, nil without the role.
-	// Script calls go through it; with the template-effects role, its
-	// paired template-effects version's check replaces the engine's.
+	runner             runnerProtocol
+	// With the template-effects role, the paired template-effects check
+	// replaces the script engine's check.
 	script scriptEngineProtocol
 
 	digest string
@@ -68,16 +61,12 @@ type Plugin struct {
 	memory *memoryBudget
 }
 
-// ArtifactDigest returns the digest of the loaded snapshot.
 func (p *Plugin) ArtifactDigest() string { return p.digest }
 
-// Path returns the component file the plugin was loaded from.
 func (p *Plugin) Path() string { return p.path }
 
-// Limits returns the resource bounds for this plugin.
 func (p *Plugin) Limits() guestlimits.Limits { return p.limits }
 
-// Close releases the runtime. The plugin cannot be used afterwards.
 func (p *Plugin) Close(ctx context.Context) error {
 	if err := p.gate.Acquire(ctx, 1); err != nil {
 		return err

@@ -26,7 +26,7 @@ func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
+			ty := rule.checkMatrix(boundMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrix.Resolve(workflow.Jobs["test"].Strategy))
 			if !ty.IsLoose() || ty.Len() != 1 {
 				t.Fatalf("want open object with only the known axis, got %v", ty)
 			}
@@ -49,7 +49,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 			}
 			rule := newTestChecker()
 			for _, job := range workflow.Jobs {
-				ty := rule.checkMatrix(ownedMatrixFixture(job.Strategy.Matrix), matrix.Resolve(job.Strategy))
+				ty := rule.checkMatrix(boundMatrixFixture(job.Strategy.Matrix), matrix.Resolve(job.Strategy))
 				if _, ok := ty.Property("os"); !ty.IsStrict() || ty.Len() != 1 || !ok {
 					t.Fatalf("known key lost or object loosened: %v", ty)
 				}

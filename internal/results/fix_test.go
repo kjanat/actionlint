@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/applicability"
 )
 
-func TestFixCloneOwnsEditsAndRevisions(t *testing.T) {
+func TestFixCloneDoesNotAliasEditsAndRevisions(t *testing.T) {
 	t.Parallel()
 	original := Fix{
 		Applicability: applicability.Safe,

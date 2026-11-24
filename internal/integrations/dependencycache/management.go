@@ -157,7 +157,6 @@ func removeUnchanged(root *os.Root, entry Entry) error {
 	if err := root.Remove(entry.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	// Empty parent directories may be removed, but the cache root stays in place.
 	for parent := path.Dir(entry.Path); parent != "."; parent = path.Dir(parent) {
 		err := root.Remove(parent)
 		if errors.Is(err, syscall.ENOTEMPTY) || errors.Is(err, os.ErrExist) {

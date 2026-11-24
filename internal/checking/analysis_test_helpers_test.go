@@ -46,9 +46,6 @@ jobs:
 permissions: {}
 `
 
-// capturedWorkflowCache is a workflow metadata cache reading from captures.
-// checkWithCaches analyzes with the same registry and store, so the cache and
-// the analysis see one capture of each document.
 type capturedWorkflowCache struct {
 	*reusableworkflows.MetadataCache
 	registry  *parsing.SourceSnapshots
@@ -67,7 +64,6 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 	return &capturedWorkflowCache{MetadataCache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
-// checkWithCaches checks one prepared source against explicitly shared dependency caches.
 func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source workspace.InputFile, proc *hostprocess.ProcessPool, actions *localactions.ManifestCache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
@@ -123,7 +119,6 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 	return publication.Findings[0], errors.Join(err, publishErr)
 }
 
-// readFixtureSources reads snapshots for tests that supply their own project and config.
 func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.InputFile {
 	tb.Helper()
 	if cfg == nil && project != nil {
@@ -146,7 +141,6 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 	return sources
 }
 
-// testChecks registers analyzers and tools as Check registers them.
 func testChecks(tb testing.TB, analyzers []results.AnalyzerRegistration, tools []contract.Registration) *registeredChecks {
 	tb.Helper()
 	checks, err := registerChecks(analyzers, tools)
@@ -156,9 +150,6 @@ func testChecks(tb testing.TB, analyzers []results.AnalyzerRegistration, tools [
 	return checks
 }
 
-// runTestAnalysis supplies the process pool and the registered checks that
-// production callers must own. A request without checks registers none. It
-// invokes application analysis without input selection or rendering.
 func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
 	if request.Checks == nil {
 		checks, err := registerChecks(nil, nil)
@@ -174,8 +165,6 @@ func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisRes
 	return runAnalysis(ctx, request)
 }
 
-// testFindings exposes traversal findings for assertions about their provenance.
-// Selection, rendering and invocation ownership are tested through their own APIs.
 func testFindings(result *analysisResult, err error) ([]*finding.Finding, error) {
 	if err != nil {
 		return nil, err
@@ -207,7 +196,6 @@ func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*finding.F
 	return errs
 }
 
-// publishTestDiagnostics supplies prepared settings for admission-only fixtures.
 func publishTestDiagnostics(tb testing.TB, result *analysisResult) {
 	tb.Helper()
 	for i := range result.files {

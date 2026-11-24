@@ -541,7 +541,7 @@ async function writeCache(complete: boolean = state.cacheComplete): Promise<void
 		});
 		db.close();
 	} catch {
-		// Caching is an optimization. Reading the feed must keep working without it.
+		// Reading the feed must keep working without the cache.
 	}
 }
 
@@ -662,8 +662,7 @@ async function maybeLoadNearBottom() {
 	if (!loaded) return;
 	await nextFrame();
 
-	// If one page still leaves us at the bottom, continue. This also intentionally
-	// crosses pages that contain only cached overlap after feed pagination shifted.
+	// Continuing also crosses pages that hold only cached overlap after feed pagination shifted.
 	const nextRemaining = el.items.scrollHeight - el.items.scrollTop
 		- el.items.clientHeight;
 	if (!state.cacheComplete && nextRemaining <= 120) {
@@ -714,10 +713,7 @@ async function loadAllHistory() {
 
 			const [firstPage] = feedPages;
 			if (firstPage) {
-				overlayItems({
-					...firstPage,
-					items: feedPages.flatMap(feed => feed.items),
-				}, { preserveArticle: true });
+				overlayItems({ ...firstPage, items: feedPages.flatMap(feed => feed.items) }, { preserveArticle: true });
 			}
 		}
 
@@ -791,8 +787,6 @@ async function refreshLatest() {
 
 		void writeCache(state.cacheComplete);
 
-		// Try to load enough older history for the list to scroll. If cached content fills
-		// the list, this resolves without another request.
 		void ensureScrollable();
 	} catch (error) {
 		const detail = error instanceof Error

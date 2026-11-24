@@ -14,8 +14,6 @@ import (
 
 var updateGolden = flag.Bool("update", false, "rewrite testdata/catalog.golden.json")
 
-// catalogEntry is the observable shape of one native rule: its declaration
-// and which execution hooks its registration supplies.
 type catalogEntry struct {
 	Descriptor      rule.Descriptor `json:"descriptor"`
 	SupportsActions bool            `json:"supports_actions"`
@@ -59,8 +57,6 @@ func catalogSnapshot(t *testing.T) []catalogEntry {
 	return out
 }
 
-// TestCatalogMatchesGolden pins every native declaration and its execution
-// shape so that restructuring how rules are defined cannot change them.
 func TestCatalogMatchesGolden(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join("testdata", "catalog.golden.json")

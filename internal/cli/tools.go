@@ -15,18 +15,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// deprecatedToolFlag is one use of a deprecated flag whose value is ignored,
-// as declared in a bundled provider manifest.
 type deprecatedToolFlag struct {
 	id    string
 	flag  toolmanifest.DeprecatedFlag
 	value string
 }
 
-// externalToolFlags registers tool selection and native execution flags.
-// It also registers, hidden, each flag listed in the deprecated_flags field
-// of a bundled provider manifest. Using one of those records a deprecation
-// warning.
 func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	c := &a.inv.Check
 	f.Var(toolListValue{&c.ToolFlags}, "tool", "Run the tool `ID[=COMMAND]` with its default command or COMMAND; ID=false disables it (repeatable)")
@@ -58,8 +52,6 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	}
 }
 
-// deprecatedFlagHelp returns one --help-legacy line for each retired flag
-// listed in the deprecated_flags field of a bundled provider manifest.
 func deprecatedFlagHelp() string {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {
@@ -96,7 +88,6 @@ func (v toolListValue) Set(value string) error {
 
 func (toolListValue) Type() string { return "stringArray" }
 
-// noToolValue is --no-tool ID. It appends ID=false to the --tool values.
 type noToolValue struct{ target *[]string }
 
 func (v noToolValue) String() string { return "" }
@@ -111,9 +102,6 @@ func (v noToolValue) Set(id string) error {
 
 func (noToolValue) Type() string { return "stringArray" }
 
-// deprecatedFlagValue is a flag listed in the deprecated_flags field of a
-// bundled provider manifest. A command flag appends ID=VALUE to the --tool
-// values; an ignored-value flag is recorded for defaultSelection.
 type deprecatedFlagValue struct {
 	id    string
 	flag  toolmanifest.DeprecatedFlag
@@ -138,8 +126,6 @@ func (v deprecatedFlagValue) Set(value string) error {
 
 func (deprecatedFlagValue) Type() string { return "string" }
 
-// disablesTool reports whether a --tool command or deprecated flag value
-// turns the tool off: an empty value or false.
 func disablesTool(value string) bool {
 	return value == "" || strings.EqualFold(value, "false")
 }
@@ -214,20 +200,12 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	return resolved, nil
 }
 
-// resolvedTools is how resolveTools selects the external tools.
 type resolvedTools struct {
-	// tools selects every bundled tool.
-	tools registry.ToolSelections
-	// disabled lists the tool ids the flags disabled.
+	tools    registry.ToolSelections
 	disabled []string
-	// named lists the tool ids --tool and --no-tool named.
-	named []string
+	named    []string
 }
 
-// defaultSelection returns the selection of the bundled tool id when no flag
-// or environment variable selected it: its default command, changed by the
-// last deprecated flag with an ignored value used for id. It also reports
-// whether that flag disabled the tool.
 func defaultSelection(id string, used []deprecatedToolFlag) (backends.ToolSelection, bool) {
 	selection := backends.ToolSelection{Command: id, Process: &hostprocess.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {

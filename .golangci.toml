@@ -62,7 +62,7 @@ forbid        = [
   { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through files.Reader" },
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through files.Reader" },
   { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/base/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
-  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
+  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only package invocation creates occurrence IDs" },
 ]
 
 # A file can match several rules' file patterns. Every such rule applies.
@@ -80,13 +80,13 @@ deny  = [{ pkg = "github.com/kjanat/go-yaml/v4", desc = "parser types stay behin
 [linters.settings.depguard.rules.invocation]
 files = ["**/internal/model/calls/invocation/*.go", "!$test"]
 deny  = [
-  { pkg = "os", desc = "the invocation owner has no host capabilities" },
-  { pkg = "io", desc = "the invocation owner has no host capabilities" },
-  { pkg = "net", desc = "the invocation owner has no host capabilities" },
-  { pkg = "syscall", desc = "the invocation owner has no host capabilities" },
-  { pkg = "unsafe", desc = "the invocation owner has no host capabilities" },
-  { pkg = "crypto/rand", desc = "the invocation owner has no host capabilities" },
-  { pkg = "math/rand", desc = "the invocation owner has no host capabilities" },
+  { pkg = "os", desc = "package invocation derives every result from its arguments" },
+  { pkg = "io", desc = "package invocation derives every result from its arguments" },
+  { pkg = "net", desc = "package invocation derives every result from its arguments" },
+  { pkg = "syscall", desc = "package invocation derives every result from its arguments" },
+  { pkg = "unsafe", desc = "package invocation derives every result from its arguments" },
+  { pkg = "crypto/rand", desc = "package invocation derives every result from its arguments" },
+  { pkg = "math/rand", desc = "package invocation derives every result from its arguments" },
 ]
 
 [linters.settings.depguard.rules.tool-providers]

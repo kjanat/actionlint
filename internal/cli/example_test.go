@@ -9,10 +9,8 @@ import (
 )
 
 func ExampleCommand() {
-	// Write command output to this buffer
 	var output bytes.Buffer
 
-	// Create command instance populating stdin/stdout/stderr
 	cmd := cli.Command{
 		Stdin: strings.NewReader(`on: push
 jobs:
@@ -26,7 +24,7 @@ permissions: {}
 		Stderr: &output,
 	}
 
-	// Run the command end-to-end. Note that given args should contain program name
+	// args must start with the program name.
 	status := cmd.Main([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "-"})
 
 	fmt.Println("Exited with status", status)

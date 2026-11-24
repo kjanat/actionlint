@@ -7,8 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// CheckSummary counts selected inputs and admitted, unsuppressed diagnostics,
-// and identifies checks that could not finish.
 type CheckSummary struct {
 	IncompleteChecks   []IncompleteCheck  `json:"incomplete_checks,omitempty"`
 	Files              int                `json:"files"`
@@ -20,13 +18,11 @@ type CheckSummary struct {
 	ByDiagnostic       []DiagnosticCount  `json:"by_diagnostic,omitempty"`
 }
 
-// FileFindingCount counts findings at their displayed source path.
 type FileFindingCount struct {
 	Path  string `json:"path"`
 	Count int    `json:"count"`
 }
 
-// DiagnosticCount counts findings for one rule and optional diagnostic code.
 type DiagnosticCount struct {
 	Origin results.DiagnosticOrigin `json:"origin,omitempty"`
 	Rule   string                   `json:"rule"`
@@ -34,8 +30,6 @@ type DiagnosticCount struct {
 	Count  int                      `json:"count"`
 }
 
-// NewCheckSummary groups findings and copies incomplete-check records. A finding
-// can point into a referenced action or script rather than a selected file.
 func NewCheckSummary(analysis Analysis) CheckSummary {
 	summary := CheckSummary{Files: analysis.FileCount, Findings: len(analysis.Diagnostics), IncompleteChecks: slices.Clone(analysis.IncompleteChecks)}
 	byFile := make(map[string]int)

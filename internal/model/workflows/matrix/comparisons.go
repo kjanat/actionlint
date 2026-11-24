@@ -2,7 +2,6 @@ package matrix
 
 import "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-// ValueHasUnknownParts reports dynamic or invalid values, including nested members.
 func ValueHasUnknownParts(v value.Value) bool { return dynamic(v) }
 
 func dynamic(v value.Value) bool {
@@ -26,7 +25,7 @@ func dynamic(v value.Value) bool {
 	return false
 }
 
-// EqualDeclaredValues compares declaration values without applying matrix-filter coercions.
+// EqualDeclaredValues applies no matrix-filter coercions.
 func EqualDeclaredValues(left, right value.Value) bool {
 	if left.State() == value.Dynamic || right.State() == value.Dynamic {
 		return left.State() == value.Dynamic && right.State() == value.Dynamic && left.Source() == right.Source()
@@ -59,7 +58,6 @@ func EqualDeclaredValues(left, right value.Value) bool {
 	return left.Equal(right)
 }
 
-// FilterMayCompareDifferentTypes reports known scalar type differences and unknown operands that may require loose filter conversion.
 func FilterMayCompareDifferentTypes(axis, filter value.Value) bool {
 	if !filter.Known() {
 		return false

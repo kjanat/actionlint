@@ -10,7 +10,7 @@ function contained(root: string, path: string): boolean {
 	return child !== '' && child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child);
 }
 
-// Context is optional. Read only regular workspace files, with a fixed byte limit.
+// Read only regular workspace files, up to a fixed byte limit.
 export async function sourceContexts(
 	result: ActionResult,
 	environment: Environment,
@@ -57,7 +57,7 @@ export async function sourceContexts(
 			) continue;
 			if (lines[diagnostic.start.line - 1] !== undefined) contexts.set(diagnostic, lines);
 		} catch {
-			// Source reads are optional; diagnostics already include snippets.
+			// Source reads are optional.
 		}
 	}
 	return contexts;

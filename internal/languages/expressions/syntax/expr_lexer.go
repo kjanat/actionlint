@@ -10,53 +10,31 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// TokenKind identifies the kind of a token.
 type TokenKind int
 
 const (
-	// TokenKindUnknown is the zero value for an unknown token.
 	TokenKindUnknown TokenKind = iota
-	// TokenKindEnd marks the closing '}}' delimiter.
 	TokenKindEnd
-	// TokenKindIdent identifies an identifier.
 	TokenKindIdent
-	// TokenKindString identifies a string literal.
 	TokenKindString
-	// TokenKindInt identifies an integer literal, including hexadecimal integers.
+	// TokenKindInt includes hexadecimal integers.
 	TokenKindInt
-	// TokenKindFloat identifies a floating-point literal.
 	TokenKindFloat
-	// TokenKindLeftParen is a Token for '('.
 	TokenKindLeftParen
-	// TokenKindRightParen is a Token for ')'.
 	TokenKindRightParen
-	// TokenKindLeftBracket is a Token for '['.
 	TokenKindLeftBracket
-	// TokenKindRightBracket is a Token for ']'.
 	TokenKindRightBracket
-	// TokenKindDot is a Token for '.'.
 	TokenKindDot
-	// TokenKindNot is a Token for '!'.
 	TokenKindNot
-	// TokenKindLess is a Token for '<'.
 	TokenKindLess
-	// TokenKindLessEq is a Token for '<='.
 	TokenKindLessEq
-	// TokenKindGreater is a Token for '>'.
 	TokenKindGreater
-	// TokenKindGreaterEq is a Token for '>='.
 	TokenKindGreaterEq
-	// TokenKindEq is a Token for '=='.
 	TokenKindEq
-	// TokenKindNotEq is a Token for '!='.
 	TokenKindNotEq
-	// TokenKindAnd is a Token for '&&'.
 	TokenKindAnd
-	// TokenKindOr is a Token for '||'.
 	TokenKindOr
-	// TokenKindStar is a Token for '*'.
 	TokenKindStar
-	// TokenKindComma is a Token for ','.
 	TokenKindComma
 )
 
@@ -111,16 +89,10 @@ func (t TokenKind) String() string {
 	}
 }
 
-// Token is a token from expression syntax. For the language reference, see
-// https://docs.github.com/en/actions/learn-github-actions/expressions
 type Token struct {
-	// Kind identifies the token's kind.
-	Kind TokenKind
-	// Value is the token's source text.
-	Value string
-	// Offset is the byte offset where the token starts.
-	Offset int
-	// Position is where the token starts in the expression.
+	Kind     TokenKind
+	Value    string
+	Offset   int
 	Position sourcetext.Position
 }
 
@@ -155,8 +127,6 @@ const (
 	expectedAllChars   = expectedAlphaChars + ", " + expectedDigitChars + ", " + expectedPunctChars
 )
 
-// Lexer is a struct to lex expression syntax. To know the syntax, see
-// https://docs.github.com/en/actions/learn-github-actions/expressions
 type Lexer struct {
 	src    string
 	scan   scanner.Scanner
@@ -164,7 +134,6 @@ type Lexer struct {
 	start  scanner.Position
 }
 
-// NewLexer makes new Lexer instance.
 func NewLexer(src string) *Lexer {
 	l := &Lexer{
 		src: src,
@@ -267,8 +236,6 @@ func (lex *Lexer) unexpectedEOF() *Token {
 
 func (lex *Lexer) lexIdent() *Token {
 	for {
-		// a-z, A-Z, 0-9, - or _
-		// https://docs.github.com/en/actions/learn-github-actions/contexts
 		if r := lex.eat(); !isAlnum(r) && r != '_' && r != '-' {
 			return lex.token(TokenKindIdent)
 		}
@@ -276,10 +243,9 @@ func (lex *Lexer) lexIdent() *Token {
 }
 
 func (lex *Lexer) lexNum() *Token {
-	// The official document says number literals are 'Any number format supported by JSON' but actually
-	// hex numbers starting with 0x are supported.
+	// GitHub Actions accepts 0x hex literals although its documentation allows JSON number formats only.
 
-	r := lex.scan.Peek() // precond: r is digit or '-'
+	r := lex.scan.Peek() // r is a digit or '-'
 
 	if r == '-' {
 		r = lex.eat()
@@ -292,7 +258,6 @@ func (lex *Lexer) lexNum() *Token {
 			return lex.lexHexInt()
 		}
 	} else {
-		// r is 1..9
 		if !isNum(r) {
 			return lex.unexpected(r, "integer part of number", expectedDigitChars)
 		}
@@ -367,7 +332,7 @@ func (lex *Lexer) lexHexInt() *Token {
 		}
 	}
 
-	// Note: GitHub Actions does not support exponent part like 0x1f2p-a8
+	// GitHub Actions rejects hex exponents such as 0x1f2p-a8.
 
 	if isAlnum(r) {
 		s := lex.src[lex.start.Offset:lex.scan.Pos().Offset]
@@ -378,7 +343,6 @@ func (lex *Lexer) lexHexInt() *Token {
 }
 
 func (lex *Lexer) lexString() *Token {
-	// precond: current char is '
 	for {
 		switch lex.eat() {
 		case '\'':
@@ -397,7 +361,6 @@ func (lex *Lexer) lexEnd() *Token {
 		return lex.unexpected(r, "end marker }}", "'}'")
 	}
 	lex.scan.Next()
-	// }} is an end marker of interpolation
 	return lex.token(TokenKindEnd)
 }
 
@@ -457,9 +420,6 @@ func (lex *Lexer) lexChar(k TokenKind) *Token {
 	return lex.token(k)
 }
 
-// Next lexes Next Token to lex input incrementally. Lexer must be initialized with Init() method
-// before the first call of this method. This method is stateful. Lexer advances Offset by lexing
-// Token. To get the Offset, use Offset() method.
 func (lex *Lexer) Next() *Token {
 	lex.skipWhite()
 
@@ -468,8 +428,6 @@ func (lex *Lexer) Next() *Token {
 		return lex.unexpectedEOF()
 	}
 
-	// Ident starts with a-z or A-Z or _
-	// https://docs.github.com/en/actions/learn-github-actions/contexts
 	if isAlpha(r) || r == '_' {
 		return lex.lexIdent()
 	}
@@ -514,19 +472,16 @@ func (lex *Lexer) Next() *Token {
 	}
 }
 
-// Offset returns the current Offset (scanning position).
 func (lex *Lexer) Offset() int {
 	return lex.scan.Pos().Offset
 }
 
-// Err returns an error while lexing. When multiple errors occur, the first one is returned.
+// Err returns the first lexing error.
 func (lex *Lexer) Err() *SyntaxError {
 	return lex.lexErr.detached()
 }
 
-// LexExpression lexes the given String as expression syntax. The parameter must contain '}}' which
-// represents end of expression. Otherwise this function will report an error that it encountered
-// unexpected EOF.
+// LexExpression reports an unexpected EOF error when src lacks the closing '}}'.
 func LexExpression(src string) ([]*Token, int, *SyntaxError) {
 	l := NewLexer(src)
 	ts := []*Token{}

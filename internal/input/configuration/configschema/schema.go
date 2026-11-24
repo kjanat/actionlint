@@ -1,10 +1,4 @@
-// Package configschema builds the configuration JSON schema that
-// "actionlint config schema" prints. It starts from the generated
-// actionlint.schema.json, inlines the schema files it references so the
-// printed document stands alone, and adds a tools.<name> entry for each tool
-// provider that plugins install. The generated file describes only the
-// bundled providers, because installed ones are not known when it is
-// generated.
+// Package configschema builds the configuration JSON schema that "actionlint config schema" prints.
 package configschema
 
 import (
@@ -24,24 +18,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// RootFile is the name of the generated configuration schema that Document
-// reads first.
 const RootFile = "actionlint.schema.json"
 
-// ReadFunc returns the schema file with the slash-separated name, such as
-// RootFile or a file it references. actionlint.Schema is one.
+// ReadFunc returns the schema file with the slash-separated name.
 type ReadFunc func(name string) ([]byte, error)
 
-// object is a decoded JSON object.
 type object = map[string]any
 
-// Document returns the configuration schema that read returns for RootFile,
-// with every relative $ref replaced by the file it names and a
-// tools.<rule.name> entry for each provider. The entry validates
-// tools.<name>.config with the provider's config_schema and
-// process.config_schema, and accepts a configuration file path only when the
-// provider reads configuration files. Installed providers replace bundled
-// entries with the same rule name.
+// Document replaces a bundled tools entry with the installed provider of the same rule name.
 func Document(read ReadFunc, providers []toolsettings.Provider) ([]byte, error) {
 	root, err := readObject(read, RootFile)
 	if err != nil {
@@ -74,8 +58,6 @@ func Document(read ReadFunc, providers []toolsettings.Provider) ([]byte, error) 
 	return append(data, '\n'), nil
 }
 
-// addPluginRules specializes the shape-valid unknown rule entries generated
-// for each semantic category with every installed provider's option schema.
 func addPluginRules(root object, providers []toolsettings.Provider) error {
 	categories := ruleCategoryMaps(root)
 	if len(categories) == 0 {
@@ -182,8 +164,6 @@ func addPluginRules(root object, providers []toolsettings.Provider) error {
 	return nil
 }
 
-// ruleCategoryMaps returns each category's object mapping under lint.rules,
-// including the corresponding mapping under overrides.
 func ruleCategoryMaps(value any) map[string][]object {
 	result := make(map[string][]object)
 	for _, category := range rule.Categories() {
@@ -245,7 +225,6 @@ func objectMapping(value any) object {
 	return nil
 }
 
-// readObject decodes the JSON object in file name. Numbers keep their text.
 func readObject(read ReadFunc, name string) (object, error) {
 	data, err := read(name)
 	if err != nil {
@@ -254,7 +233,6 @@ func readObject(read ReadFunc, name string) (object, error) {
 	return decodeObject(data, name)
 }
 
-// decodeObject decodes data, a JSON object read from source.
 func decodeObject(data []byte, source string) (object, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
@@ -268,10 +246,7 @@ func decodeObject(data []byte, source string) (object, error) {
 	return value, nil
 }
 
-// inline replaces every $ref in value that names a file, relative to
-// directory, with that file's schema. A node {"$ref": F, ...} becomes
-// {..., "allOf": [..., <F>]}, which validates the same instances. visiting
-// lists the files being inlined, to refuse a reference cycle.
+// A node {"$ref": F, ...} becomes {..., "allOf": [..., <F>]}, which validates the same instances.
 func inline(read ReadFunc, directory string, value any, visiting []string) error {
 	switch node := value.(type) {
 	case object:
@@ -309,19 +284,12 @@ func inline(read ReadFunc, directory string, value any, visiting []string) error
 	return nil
 }
 
-// embedded removes the keys that only a schema's root may carry, so the
-// schema can sit inside another document.
 func embedded(schema object) {
 	for _, key := range []string{"$schema", "$id", "$comment"} {
 		delete(schema, key)
 	}
 }
 
-// toolMaps returns the object schemas of every tools mapping in the
-// configuration schema: the top-level one and the one in each override. A
-// tools mapping is the object alternative of a "tools" property that lists
-// its entries under properties and describes unknown names with
-// additionalProperties. The search does not descend into a mapping it found.
 func toolMaps(value any) []object {
 	var found []object
 	var walk func(any)
@@ -355,7 +323,6 @@ func toolMaps(value any) []object {
 	return found
 }
 
-// toolsMapping returns the object alternative of a tools property schema.
 func toolsMapping(value any) (object, bool) {
 	property, ok := value.(object)
 	if !ok {
@@ -376,8 +343,6 @@ func toolsMapping(value any) (object, bool) {
 	return nil, false
 }
 
-// addTools adds an entry for each provider to the tools mapping, built from
-// the mapping's schema for unknown names.
 func addTools(tools object, providers []toolsettings.Provider, settings map[string]object) error {
 	entries, _ := tools["properties"].(object)
 	unknown, _ := tools["additionalProperties"].(object)
@@ -392,9 +357,6 @@ func addTools(tools object, providers []toolsettings.Provider, settings map[stri
 	return nil
 }
 
-// toolEntry returns the tools.<name> schema of provider: a copy of the
-// schema for unknown names whose config property validates the provider's
-// settings.
 func toolEntry(unknown object, provider toolsettings.Provider, settings object) (object, error) {
 	copied, err := deepCopy(unknown)
 	if err != nil {
@@ -439,8 +401,6 @@ func toolEntry(unknown object, provider toolsettings.Provider, settings object) 
 	return nil, errors.New("the schema for unknown tools has no mapping alternative")
 }
 
-// addToolSettings places each provider schema in a single resource shared by
-// the root tools mapping and every override.
 func addToolSettings(root object, providers []toolsettings.Provider) (map[string]object, error) {
 	definitions, _ := root["$defs"].(object)
 	if definitions == nil {
@@ -458,7 +418,6 @@ func addToolSettings(root object, providers []toolsettings.Provider) (map[string
 	return result, nil
 }
 
-// settingsSchema combines a provider's common and process settings schemas.
 func settingsSchema(definitions object, provider toolsettings.Provider) (object, error) {
 	documents := []json.RawMessage{provider.Settings.Schema, provider.ProcessSchema}
 	settings := object{"type": "object", "additionalProperties": true}
@@ -506,7 +465,6 @@ func toolSettingsDefinition(name string, index int) string {
 	return fmt.Sprintf("plugin-tool-config-%s-%d", base64.RawURLEncoding.EncodeToString([]byte(name)), index)
 }
 
-// deepCopy returns a copy of value that shares no storage with it.
 func deepCopy(value object) (object, error) {
 	data, err := json.Marshal(value)
 	if err != nil {

@@ -2,10 +2,7 @@ package value
 
 import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
-// TypeWithFallback derives a type from known values. Unknown values use inferred;
-// unknown object properties and array elements use its corresponding child type.
-// Pass AnyType when no type was inferred. This does not change evaluation state
-// or establish that a dynamic or invalid value can be evaluated successfully.
+// TypeWithFallback expects AnyType when no type was inferred.
 func (v Value) TypeWithFallback(inferred exprtypes.Type) exprtypes.Type {
 	if !v.Known() {
 		return inferred

@@ -11,18 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// Reasons a selected plugin or tool provider did not take part in an analysis.
 const (
 	inactiveDisabledTool   = "disabled by --no-tool or disable-tools"
 	inactiveDisabledConfig = "disabled in configuration"
 	inactiveNoCheck        = "completed no check"
 )
 
-// providerStatuses lists the plugins sources selected and the tool providers
-// tools registers, with the reason each inactive one did not take part.
-// A tool took part when its rule completed for at least one linted document;
-// path overrides can enable it where the base configuration disables it.
-// Incomplete lists every reason its incomplete checks gave.
+// A tool took part when its rule completed for at least one linted document,
+// and path overrides can enable it where the base configuration disables it.
 func providerStatuses(sources pluginselection.Sources, tools []contract.Registration, result *report.Analysis) []report.ProviderStatus {
 	var statuses []report.ProviderStatus
 	pinned := map[string]bool{}
@@ -68,7 +64,6 @@ func providerStatuses(sources pluginselection.Sources, tools []contract.Registra
 		case slices.Contains(sources.DisabledTools, registration.Name):
 			status.Inactive = inactiveDisabledTool
 		case completed[registration.Name] != 0:
-			// It took part.
 		case toolDisabledInConfigurations(registration.Name, result.Configurations):
 			status.Inactive = inactiveDisabledConfig
 		case len(status.Incomplete) != 0:
@@ -88,8 +83,7 @@ func providerStatuses(sources pluginselection.Sources, tools []contract.Registra
 	return statuses
 }
 
-// toolDisabledInConfigurations reports whether every selected configuration
-// sets tools.<name>.enabled to false. It is false without configurations.
+// toolDisabledInConfigurations is false without configurations.
 func toolDisabledInConfigurations(name string, configurations []configreport.Report) bool {
 	if len(configurations) == 0 {
 		return false

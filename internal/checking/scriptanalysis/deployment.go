@@ -23,7 +23,7 @@ func NewDeployment(snapshots *parsing.SourceSnapshots, snapshot parsing.SourceSn
 	if !snapshot.Present() || address == "" || displayPath == "" {
 		return Deployment{}, fmt.Errorf("%w: action deployment needs a source and path", ErrInvalidBatch)
 	}
-	if !snapshots.OwnsSnapshot(snapshot) {
+	if !snapshots.HasSnapshot(snapshot) {
 		return Deployment{}, fmt.Errorf("%w: action deployment source belongs to a different registry", ErrInvalidBatch)
 	}
 	captured, err := snapshots.Capture(address)

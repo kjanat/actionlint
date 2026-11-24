@@ -1,14 +1,11 @@
-// Package fixtures supplies captured remote manifests owned by the action integration suite.
+// Package fixtures embeds captured remote action manifests for the action integration tests.
 package fixtures
 
 import "embed"
 
-// Manifests contains provenance headers and action metadata captured from remote repositories.
-//
 //go:embed testdata/remote-actions/*.yml
 var Manifests embed.FS
 
-// ReadManifest reads a captured manifest and its provenance header by fixture filename.
 func ReadManifest(name string) ([]byte, error) {
 	return Manifests.ReadFile("testdata/remote-actions/" + name)
 }

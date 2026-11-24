@@ -18,16 +18,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// engineConfig is engine configuration after the manifest's transform. Value
-// holds decoded JSON with exact numbers, or nil when nothing is configured.
 // Vars override preparation variables; a nil value drops the variable.
 type engineConfig struct {
 	value any
 	vars  map[string]*string
 }
 
-// decodeConfig decodes configuration JSON keeping numbers exact. Empty input
-// is no configuration.
 func decodeConfig(data []byte) (any, error) {
 	if len(bytes.TrimSpace(data)) == 0 {
 		return nil, nil
@@ -44,9 +40,6 @@ func decodeConfig(data []byte) (any, error) {
 	return value, nil
 }
 
-// processConfigProgram runs a process manifest's config.transform program. It
-// maps the configuration to {"config": ..., "vars": {...}} and sees the argument
-// variables as $vars.
 type processConfigProgram struct{ program *jq.Program }
 
 func (t *processConfigProgram) apply(ctx context.Context, config any, vars map[string]string) (engineConfig, error) {
@@ -116,10 +109,8 @@ func checkForbidden(name string, config any, forbidden []string) error {
 	return nil
 }
 
-// TOMLPairs renders configuration JSON as repeated option arguments, each one
-// top-level key set to an inline TOML value: option, `"key" = value`. Keys
-// are sorted and null values skipped. Every value is one literal argument, so
-// configuration never becomes a command-line option of its own.
+// TOMLPairs renders configuration JSON as repeated option arguments. Every value is one literal
+// argument, and configuration never becomes a command-line option of its own.
 func TOMLPairs(option string, config json.RawMessage) ([]string, error) {
 	value, err := decodeConfig(config)
 	if err != nil {
@@ -154,8 +145,6 @@ func tomlPairs(option string, config any) ([]string, error) {
 	return args, nil
 }
 
-// inlineTOML encodes one literal TOML value. It never constructs shell source
-// or a filename.
 func inlineTOML(value any) (string, error) {
 	switch value := value.(type) {
 	case map[string]any:
@@ -193,8 +182,6 @@ func inlineTOML(value any) (string, error) {
 	}
 }
 
-// tomlValue converts decoded JSON to values go-toml encodes, dropping null
-// object members, which TOML cannot express.
 func tomlValue(value any) (any, error) {
 	switch value := value.(type) {
 	case json.Number:
@@ -233,7 +220,6 @@ func tomlValue(value any) (any, error) {
 	}
 }
 
-// configDocument encodes configuration for a configuration file.
 func configDocument(render toolmanifest.Render, config any) ([]byte, error) {
 	switch render {
 	case toolmanifest.RenderJSONFile:
@@ -260,8 +246,6 @@ func configDocument(render toolmanifest.Render, config any) ([]byte, error) {
 	}
 }
 
-// writeConfigFile writes a configuration document to a private temporary
-// file and returns its path and a function removing it.
 func writeConfigFile(render toolmanifest.Render, config any) (string, func(), error) {
 	document, err := configDocument(render, config)
 	if err != nil {

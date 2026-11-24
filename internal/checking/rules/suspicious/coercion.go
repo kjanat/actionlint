@@ -12,24 +12,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CoercionRule is the single definition of the coercion rule.
 var CoercionRule = &define.Rule{
 	Name:            "coercion",
 	Aliases:         []rule.Alias{{Name: "suspicious-coercion", Deprecated: true}},
 	Description:     "Warn about surprising string and comparison coercions",
 	Category:        "suspicious",
 	Subcategory:     "expressions",
-	Explanation:     "Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with a type other than null, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity. Equality with null is a presence check and is allowed.",
-	Help:            "Check the intended argument or operand type. Use a string literal when text is intended, or compare values of the intended types. This rule offers no automatic edit because the intended value is unknown.",
-	Examples:        []rule.Example{rule.WorkflowExample("Use the boolean value directly when checking branch protection.", "    if: startsWith(github.ref_protected, 'true')\n", "    if: github.ref_protected\n")},
+	Help:            "Use a string literal for text, or compare values of the intended types.",
+	Examples:        []rule.Example{rule.WorkflowExample("Test the boolean directly.", "    if: startsWith(github.ref_protected, 'true')\n", "    if: github.ref_protected\n")},
 	SupportsActions: true,
 	Scope:           rule.CompositeConfiguration,
 	DefaultLevel:    "warn",
 	DeclaredBy:      "expression",
 }
 
-// SuspiciousCoercion reports accepted conversions that can hide mistaken operand types.
-// Calls use the checker's selected signature and demand; this rule does not evaluate them.
+// SuspiciousCoercion takes call signatures from the checker and evaluates no call.
 func SuspiciousCoercion(root syntax.Node, types typecheck.InferredTypes, calls typecheck.CheckedCalls) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
@@ -63,8 +60,6 @@ func SuspiciousCoercion(root syntax.Node, types typecheck.InferredTypes, calls t
 	return findings
 }
 
-// suspiciousComparison identifies supported comparisons whose conversion can hide
-// a mistaken operand. Unknown types provide no evidence for this warning.
 func suspiciousComparison(op syntax.CompareOpNodeKind, left, right exprtypes.Type) bool {
 	l, r := left.Kind(), right.Kind()
 	if l == exprtypes.KindAny || r == exprtypes.KindAny {

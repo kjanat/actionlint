@@ -38,7 +38,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// compositionSession owns the graph and accumulated results shared by invocations.
 type compositionSession struct {
 	bindSource             func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
 	scriptInputs           []checkinputs.ScriptInput
@@ -70,8 +69,6 @@ type compositionSession struct {
 	interrupted      bool
 }
 
-// compositeAnalyzer is one traversal frame. Child calls share session results,
-// but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
 	*compositionSession
 	bindings                          *rulebinding.Scope
@@ -208,7 +205,6 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) err
 	return nil
 }
 
-// visitJobPass attributes what a pass reports while visiting a job to that job.
 func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.BoundJob, visit func() error) error {
 	return workflowvisit.VisitWithOrigin(pass, job.IgnoreOrigin(), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }

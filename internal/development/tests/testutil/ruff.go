@@ -9,11 +9,7 @@ import (
 	"testing"
 )
 
-// RuffDiscoveryRequested reports whether this process should act as the
-// fake Ruff of RuffDiscoveryHelper: ACTIONLINT_TEST_RUFF_DISCOVERY is 1, or
-// the executable is named ruff. Tool providers run with a scrubbed
-// environment, so a copy of a test binary found on PATH as ruff sees no
-// test variables.
+// RuffDiscoveryRequested also matches an executable named ruff, which tool providers run with a scrubbed environment.
 func RuffDiscoveryRequested() bool {
 	if os.Getenv("ACTIONLINT_TEST_RUFF_DISCOVERY") == "1" {
 		return true
@@ -22,11 +18,6 @@ func RuffDiscoveryRequested() bool {
 	return err == nil && strings.TrimSuffix(strings.ToLower(filepath.Base(executable)), ".exe") == "ruff"
 }
 
-// RuffDiscoveryHelper acts as Ruff for discovery tests. It appends its
-// command line to the file ACTIONLINT_TEST_RUFF_CALLS names, answers
-// --version with ACTIONLINT_TEST_RUFF_VERSION and checks scripts only as
-// Ruff 0.17.0. Without ACTIONLINT_TEST_RUFF_CALLS it uses the files "calls"
-// and "version" beside its executable instead; see RuffDiscoveryFixture.
 func RuffDiscoveryHelper() int {
 	calls, version := os.Getenv("ACTIONLINT_TEST_RUFF_CALLS"), os.Getenv("ACTIONLINT_TEST_RUFF_VERSION")
 	if calls == "" {
@@ -65,8 +56,6 @@ func RuffDiscoveryHelper() int {
 	return 0
 }
 
-// RuffDiscoveryFixture sets the version the fake Ruff in directory reports
-// and clears its recorded calls. It returns the path of the calls file.
 func RuffDiscoveryFixture(t *testing.T, directory, version string) string {
 	t.Helper()
 	calls := filepath.Join(directory, "calls")

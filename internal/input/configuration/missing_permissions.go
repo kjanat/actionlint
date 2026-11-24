@@ -58,7 +58,7 @@ func (locations *PermissionLocationList) DecodeConfig(value any) error {
 }
 
 type MissingPermissionsOptions struct {
-	RequireAt PermissionLocationList `yaml:"require-at,omitempty" jsonschema:"description=Require permissions at every listed location. Omit require-at to accept permissions on the workflow or on every job. Set the rule to off to disable it."`
+	RequireAt PermissionLocationList `yaml:"require-at,omitempty" jsonschema:"description=Require permissions at every listed location. When require-at is omitted the rule accepts permissions on the workflow or on every job."`
 }
 
 func (options *MissingPermissionsOptions) DecodeConfig(value any) error {
@@ -74,8 +74,7 @@ func (options *MissingPermissionsOptions) DecodeConfig(value any) error {
 	return nil
 }
 
-// Locations returns nil when require-at is omitted. The check then accepts
-// permissions on the workflow or on every job.
+// Locations returns nil when require-at is omitted.
 func (options MissingPermissionsOptions) Locations() []PermissionLocation {
 	return slices.Clone(options.RequireAt)
 }

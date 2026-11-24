@@ -12,8 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// SourcePlanInput supplies source, interpreter facts and integration settings to
-// a SourcePlanner. EnvironmentStartup declares names without values.
+// SourcePlanInput carries EnvironmentStartup names without values.
 type SourcePlanInput struct {
 	Source             string                             `json:"source"`
 	Language           string                             `json:"language"`
@@ -27,8 +26,8 @@ type SourcePlanInput struct {
 	Input              bool                               `json:"input"`
 }
 
-// SourcePlan adds generated text to a script and supplies the tool's options.
-// Source is never rewritten by a transform, so the host can map every row.
+// SourcePlan adds generated text to a script. A transform leaves Source
+// unchanged, and the host can map every row.
 type SourcePlan struct {
 	Prefix    string            `json:"source_prefix,omitempty"`
 	Startup   string            `json:"startup,omitempty"`
@@ -38,8 +37,6 @@ type SourcePlan struct {
 	Skip      string            `json:"skip,omitempty"`
 }
 
-// SourcePlanner runs a manifest's preparation_transform program, which plans
-// the generated text and tool options added to a script.
 type SourcePlanner struct{ program *jq.Program }
 
 // NewSourcePlanner compiles spec. A nil spec yields a nil planner, whose Plan
@@ -59,8 +56,6 @@ func NewSourcePlanner(spec *toolmanifest.Transform, programs toolmanifest.Progra
 	return &SourcePlanner{program: program}, nil
 }
 
-// Plan returns an integration's preparation plan. Without a program it inserts
-// the supplied comments and startup text, and passes the supplied options on.
 func (t *SourcePlanner) Plan(ctx context.Context, input SourcePlanInput) (SourcePlan, error) {
 	if err := ctx.Err(); err != nil {
 		return SourcePlan{}, err

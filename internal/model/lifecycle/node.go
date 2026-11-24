@@ -42,7 +42,6 @@ func readNodeReleases() map[string]nodeRelease {
 var nodeSelector = regexp.MustCompile(`^v?(0|[1-9][0-9]*)(?:\.(?:[xX*]|(?:0|[1-9][0-9]*)(?:\.(?:[xX*]|0|[1-9][0-9]*))?))?$`)
 
 // NodeLifecycle returns support evidence only for selectors confined to one known major.
-// Unresolved aliases, prereleases and ranges do not establish a selected release line.
 func NodeLifecycle(selector string, asOf Date, service services.Service) (Evidence, string, bool) {
 	match := nodeSelector.FindStringSubmatch(selector)
 	if match == nil || asOf.IsZero() || match[1] == "0" {

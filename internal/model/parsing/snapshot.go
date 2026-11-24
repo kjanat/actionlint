@@ -13,18 +13,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// SourceSnapshot is a read-only handle to the declarations of one admitted
-// source revision. Over the workflows.BoundDocument it holds, it adds the captured
-// bytes, the document kind and the owning registry, and it withholds the
-// declarations once the capture store quarantines those bytes. Copies share
-// one admission record, which callers cannot reach or overwrite. The zero
-// SourceSnapshot is absent: Present reports false, Kind reports KindUnknown,
-// BoundDocument returns nil and every validation fails.
+// SourceSnapshot withholds its declarations once the capture store quarantines its bytes.
+// Every validation fails on the zero SourceSnapshot.
 type SourceSnapshot struct{ admission *admission }
 
-// admission binds immutable declarations to their admitted source revision.
-// bind fills every field before the registry publishes it; nothing writes it
-// afterwards.
+// bind fills every admission field before the registry publishes it, and nothing writes it afterwards.
 type admission struct {
 	registry *SourceSnapshots
 	captured capture.CapturedDocument
@@ -32,8 +25,7 @@ type admission struct {
 	bound    *workflows.BoundDocument
 }
 
-// Present reports whether s came from a registry. A present snapshot can still
-// fail verification after its capture is quarantined.
+// Present stays true after the capture is quarantined.
 func (s SourceSnapshot) Present() bool { return s.admission != nil }
 
 func (s SourceSnapshot) Reference() sourcetext.Reference {
@@ -57,8 +49,6 @@ func (s SourceSnapshot) Capture() capture.CapturedDocument {
 	return s.admission.captured
 }
 
-// Identity and byte access remain available for diagnostics after quarantine;
-// semantic access requires the capture to remain admitted by its owner.
 func (s SourceSnapshot) verify() error {
 	if s.admission == nil {
 		return errors.New("source snapshot is unavailable")
@@ -73,15 +63,13 @@ func (a *admission) verify() error {
 	return a.registry.store.VerifyHandle(a.captured)
 }
 
-// SourceSnapshots owns one declaration revision per document in an analysis.
+// SourceSnapshots cannot admit documents when it is the zero value.
 type SourceSnapshots struct {
 	store     *capture.Store
 	mu        sync.Mutex
 	documents map[string]*admission
 }
 
-// NewSourceSnapshots binds the declaration registry to one result's byte owner.
-// The zero registry cannot admit documents.
 func NewSourceSnapshots(store *capture.Store) (*SourceSnapshots, error) {
 	if store == nil {
 		return nil, errors.New("source declarations require a capture store")
@@ -89,7 +77,7 @@ func NewSourceSnapshots(store *capture.Store) (*SourceSnapshots, error) {
 	return &SourceSnapshots{store: store}, nil
 }
 
-// Capture looks up already-captured bytes without canonicalizing or reading.
+// Capture neither canonicalizes path nor reads files.
 func (s *SourceSnapshots) Capture(path string) (capture.CapturedDocument, error) {
 	if s == nil || s.store == nil {
 		return capture.CapturedDocument{}, errors.New("source declarations require a capture store")
@@ -118,8 +106,6 @@ func (s *SourceSnapshots) Lookup(reference sourcetext.Reference) (SourceSnapshot
 	return SourceSnapshot{admitted}, true
 }
 
-// LookupDocument finds the one canonical revision already admitted for identity.
-// Reference-based callers still use Lookup to validate every reference field.
 func (s *SourceSnapshots) LookupDocument(identity string) (SourceSnapshot, bool) {
 	if s == nil || identity == "" {
 		return SourceSnapshot{}, false
@@ -133,9 +119,7 @@ func (s *SourceSnapshots) LookupDocument(identity string) (SourceSnapshot, bool)
 	return SourceSnapshot{admitted}, true
 }
 
-// OwnsSnapshot reports whether this registry admitted snapshot. Snapshots do
-// not expose their registry: holding a snapshot grants no admission rights.
-func (s *SourceSnapshots) OwnsSnapshot(snapshot SourceSnapshot) bool {
+func (s *SourceSnapshots) HasSnapshot(snapshot SourceSnapshot) bool {
 	return s != nil && snapshot.admission != nil && snapshot.admission.registry == s
 }
 
@@ -156,26 +140,23 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 	return previous, nil
 }
 
-// Document returns canonical declarations for this source revision.
-// Repeated decodes share the existing immutable binding.
-func (s *SourceSnapshots) Document(captured capture.CapturedDocument, document Document) (SourceSnapshot, error) {
-	provenance := document.Provenance
-	if !provenance.parsed {
-		return SourceSnapshot{}, errors.New("source document has no parse provenance")
+func (s *SourceSnapshots) Admit(captured capture.CapturedDocument, parsed *ParsedSource) (SourceSnapshot, error) {
+	if parsed == nil {
+		return SourceSnapshot{}, errors.New("source document was not parsed")
 	}
-	if err := s.verify(captured, []byte(provenance.text)); err != nil {
+	if err := s.verify(captured, []byte(parsed.text)); err != nil {
 		return SourceSnapshot{}, err
 	}
-	return s.bind(captured, provenance)
+	return s.bind(captured, parsed)
 }
 
 func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
 	if metadata == nil {
 		return SourceSnapshot{}, errors.New("action metadata is unavailable")
 	}
-	text, parsed := metadata.OriginalSource()
+	text, parsed := metadata.Text()
 	if !parsed {
-		return SourceSnapshot{}, errors.New("action source has no parse provenance")
+		return SourceSnapshot{}, errors.New("action metadata was not parsed")
 	}
 	if err := s.verify(captured, []byte(text)); err != nil {
 		return SourceSnapshot{}, err
@@ -190,15 +171,13 @@ func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *ac
 	if previous != nil {
 		return SourceSnapshot{previous}, nil
 	}
-	// Reparse only the private original text. Mutable metadata is a lookup view,
-	// never declaration provenance. Parsing and publication happen outside mu.
-	// Schema errors preserve recovered declarations; resource rejection prevents expansion.
+	// Reparse only the private original text, outside mu.
 	recovered, parseErr := actionmeta.ParseActionMetadata(metadata.Path(), []byte(text))
 	var traversal *definition.Workflow
 	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
-		traversal = actionFacts(recovered)
+		traversal = actionFacts(recovered, text)
 	}
-	return s.bind(captured, Provenance{parsed: true, text: text, workflow: traversal, action: true, using: recovered.Runs.Using})
+	return s.bind(captured, &ParsedSource{text: text, workflow: traversal, action: true, using: recovered.Runs.Using})
 }
 
 func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []byte) error {
@@ -214,12 +193,12 @@ func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []by
 	return nil
 }
 
-func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Provenance) (SourceSnapshot, error) {
-	if err := s.verify(captured, []byte(provenance.text)); err != nil {
+func (s *SourceSnapshots) bind(captured capture.CapturedDocument, parsed *ParsedSource) (SourceSnapshot, error) {
+	if err := s.verify(captured, []byte(parsed.text)); err != nil {
 		return SourceSnapshot{}, err
 	}
 	document, revision := captured.Revision().Document(), captured.Revision().Digest()
-	action := provenance.action
+	action := parsed.action
 	s.mu.Lock()
 	previous, err := s.storedLocked(document, revision, action)
 	s.mu.Unlock()
@@ -229,7 +208,7 @@ func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Pro
 	if previous != nil {
 		return SourceSnapshot{previous}, nil
 	}
-	bound := provenance.bind(document)
+	bound := parsed.bind(document)
 	references := bound.SourceIndex()
 	admitted := &admission{registry: s, captured: captured, bound: bound, action: action}
 	seen := make(map[sourcetext.Reference]struct{}, len(references.Steps))
@@ -255,7 +234,6 @@ func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Pro
 	return SourceSnapshot{admitted}, nil
 }
 
-// DocumentKind identifies the document language: a workflow or an action manifest.
 type DocumentKind uint8
 
 const (
@@ -264,8 +242,6 @@ const (
 	KindAction
 )
 
-// String returns the language name given to analyzers: "workflow", "action",
-// or empty for KindUnknown.
 func (k DocumentKind) String() string {
 	switch k {
 	case KindWorkflow:
@@ -316,19 +292,17 @@ func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflows.BoundStep) bool {
+func (s *SourceSnapshots) HasStep(step workflows.BoundStep) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
 	s.mu.Lock()
 	admitted := s.documents[step.SourceReference().Document]
 	s.mu.Unlock()
-	return admitted != nil && admitted.verify() == nil && admitted.bound.Owns(step)
+	return admitted != nil && admitted.verify() == nil && admitted.bound.HasStep(step)
 }
 
-// BoundDocument returns the snapshot's declarations while its capture remains
-// admitted, and nil otherwise. BoundDocument's SourceIndex and Declarations accept a
-// nil receiver, so callers read either through this method directly.
+// BoundDocument returns nil once the capture is quarantined.
 func (s SourceSnapshot) BoundDocument() *workflows.BoundDocument {
 	if s.verify() != nil {
 		return nil
@@ -336,15 +310,12 @@ func (s SourceSnapshot) BoundDocument() *workflows.BoundDocument {
 	return s.admission.bound
 }
 
-// ValidateWorkflow checks, on every call, that the capture remains admitted and
-// that view was bound by this snapshot, returning the quarantine cause when the
-// capture is no longer admitted. It also rejects the workflow view of an action
-// body. ValidateJob and ValidateStep apply the same checks to jobs and steps.
+// ValidateWorkflow returns the quarantine cause after quarantine and rejects views this snapshot did not bind.
 func (s SourceSnapshot) ValidateWorkflow(view workflows.BoundWorkflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if s.admission.action || !s.admission.bound.OwnsWorkflow(view) {
+	if s.admission.action || !s.admission.bound.HasWorkflow(view) {
 		return errors.New("workflow does not belong to source snapshot")
 	}
 	return nil
@@ -354,7 +325,7 @@ func (s SourceSnapshot) ValidateJob(view workflows.BoundJob) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if !s.admission.bound.OwnsJob(view) {
+	if !s.admission.bound.HasJob(view) {
 		return errors.New("job does not belong to source snapshot")
 	}
 	return nil
@@ -364,7 +335,7 @@ func (s SourceSnapshot) ValidateStep(view workflows.BoundStep) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
-	if !s.admission.bound.Owns(view) {
+	if !s.admission.bound.HasStep(view) {
 		return errors.New("step does not belong to source snapshot")
 	}
 	return nil

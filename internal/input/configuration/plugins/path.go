@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-// FindOrDefaultPath selects an existing repository configuration in directory, or its default filename.
 func FindOrDefaultPath(directory string) (string, error) {
 	for _, name := range configuration.RepositoryConfigNames {
 		path := filepath.Join(directory, name)

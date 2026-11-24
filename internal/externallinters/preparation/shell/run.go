@@ -13,7 +13,6 @@ import (
 
 var ErrNoSourceAccess = errors.New("a snippet engine does not provide external source access")
 
-// Run supplies interpreter facts and integration settings for one script.
 type Run struct {
 	Shell         Shell
 	Settings      *integrationconfig.ResolvedSettings
@@ -26,8 +25,6 @@ type Run struct {
 	Environment   []scripts.EnvironmentNames
 }
 
-// PrepareRun validates the invocation, applies an integration's preparation plan
-// and maps the generated rows back to the original script.
 func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, error) {
 	language, setup := r.Language, ""
 	if !r.Input {

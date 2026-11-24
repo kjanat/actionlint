@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { DocumentRequest } from '#index';
 
 /**
- * Write a captured document to the conventional path expected by file-based tools.
+ * Write a captured document to the conventional path of file-based tools.
  * Remove the temporary directory even when the callback fails.
  * @example
  * ```ts

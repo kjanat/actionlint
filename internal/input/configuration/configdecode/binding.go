@@ -16,19 +16,14 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 )
 
-// Decoder validates and replaces a value using the shared configuration model.
 type Decoder interface{ DecodeConfig(any) error }
 
-// Encoder projects settings into the shared configuration model.
 type Encoder interface{ EncodeConfig() (any, error) }
 
-// OwnedCopier detaches a value whose runtime state cannot round-trip through its wire form.
-type OwnedCopier interface{ CopyConfig() (any, error) }
+type ConfigCopier interface{ CopyConfig() (any, error) }
 
-// ErrUnknownKey marks an unsupported object member. Its source is the key token.
 var ErrUnknownKey = errors.New("unknown key")
 
-// Error identifies the configuration value that failed to bind.
 type Error struct {
 	Path  string
 	Cause error
@@ -42,7 +37,6 @@ func (e *Error) Error() string {
 }
 func (e *Error) Unwrap() error { return e.Cause }
 
-// At prepends one object key or array index to an error's JSON pointer.
 func At(part string, err error) error {
 	if err == nil {
 		return nil
@@ -51,7 +45,6 @@ func At(part string, err error) error {
 	return prefixError(pointer, err)
 }
 
-// Context adds the description to each validation error.
 func Context(message string, err error) error {
 	if err == nil {
 		return nil
@@ -69,12 +62,8 @@ func Context(message string, err error) error {
 	return fmt.Errorf("%s: %w", message, err)
 }
 
-// Decode binds values strictly. Unknown struct fields and scalar coercions fail.
-// A failed decode leaves dst unchanged.
 func Decode(value, dst any) error { return decode(value, dst, true) }
 
-// DecodeKnown permits ignored fields in legacy mappings. Nested Decoder hooks
-// continue to apply their own strict contracts.
 func DecodeKnown(value, dst any) error { return decode(value, dst, false) }
 
 func decode(value, dst any, strict bool) error {
@@ -166,8 +155,6 @@ func decodeNumber(number json.Number, target reflect.Type) (any, error) {
 	}
 }
 
-// Native owns a runtime value and converts numbers only when a native Go number
-// represents them exactly. Other numbers use json.Number.
 func Native(value any) any {
 	switch selected := value.(type) {
 	case json.Number:
@@ -301,8 +288,6 @@ func fieldPointer(name string, value any) string {
 	return "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
 }
 
-// Encode returns detached standard containers and scalar values. Serialization
-// tags supply field names only; format libraries own syntax and presentation.
 func Encode(value any) (any, error) { return encode(reflect.ValueOf(value), false) }
 
 // EncodePartial omits unset struct fields while retaining explicit map entries.

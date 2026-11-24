@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
+func TestConcurrentResolveRulesCopiesPolicyAndOverrideLint(t *testing.T) {
 	t.Parallel()
 	rules, err := NewRuleSet([]rule.Declaration{{Name: "example", Aliases: []rule.Alias{{Name: "old-example"}}, Category: "correctness", Maturity: "stable", Recommended: true}})
 	if err != nil {
@@ -43,6 +43,6 @@ func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
 	close(start)
 	done.Wait()
 	if cfg.Policy.DisallowSuppressions != policy || cfg.Overrides[0].Lint != override {
-		t.Fatal("binding replaced caller-owned configuration fields")
+		t.Fatal("binding replaced cfg.Policy.DisallowSuppressions or cfg.Overrides[0].Lint")
 	}
 }

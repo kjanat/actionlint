@@ -10,8 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// All lists every native rule in presentation order. Each rule is defined
-// once, beside its checks; this list only fixes the order users see.
+// All lists every native rule in presentation order.
 var All = []*define.Rule{
 	correctness.VendorLockInRule,
 	correctness.ContainerRunnerRule,
@@ -83,7 +82,6 @@ var All = []*define.Rule{
 	correctness.CacheOperationRule,
 }
 
-// Declarations returns detached native declarations in presentation order.
 func Declarations() []rule.Declaration {
 	out := make([]rule.Declaration, len(All))
 	for i, native := range All {
@@ -92,7 +90,6 @@ func Declarations() []rule.Declaration {
 	return out
 }
 
-// Find returns the native rule named name.
 func Find(name string) (*define.Rule, bool) {
 	for _, native := range All {
 		if native.Name == name {
@@ -102,7 +99,6 @@ func Find(name string) (*define.Rule, bool) {
 	return nil, false
 }
 
-// HasRule reports whether a check implementation uses this registration name.
 func HasRule(name string) bool {
 	for _, native := range All {
 		if native.Name == name {

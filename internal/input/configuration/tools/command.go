@@ -1,4 +1,4 @@
-// Package tools owns external-tool invocation settings.
+// Package tools defines process and Wasm backend settings for external tools.
 package tools
 
 import (
@@ -12,29 +12,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type BackendSelection -output internal/input/configuration/tools/owned_backend.gen.go
+//go:generate go run ../../../development/generators/deep-copies -root ../../../.. -package ./internal/input/configuration/tools -type BackendSelection -output internal/input/configuration/tools/deep_copy_backend.gen.go
 
-// BackendSelection selects one transport: a native process or a core WebAssembly engine.
-// Executable names and argv are never the general backend contract.
-//
-// ProcessBackend, WasmBackend and decoding select exactly one transport. The
-// zero BackendSelection selects neither and behaves as an omitted backend.
+// BackendSelection behaves as an omitted backend when it is the zero value.
 type BackendSelection struct {
-	// transport is a Command or a Module.
 	transport interface{ backendTransport() } `clone:"shared"`
 }
 
-// ProcessBackend selects native invocation of command.
 func ProcessBackend(command Command) *BackendSelection {
 	return &BackendSelection{transport: command}
 }
 
-// WasmBackend selects the core WebAssembly engine at module.
 func WasmBackend(module Module) *BackendSelection {
 	return &BackendSelection{transport: module}
 }
 
-// Process returns the native invocation when the backend selects one.
 func (b *BackendSelection) Process() (Command, bool) {
 	if b == nil {
 		return Command{}, false
@@ -43,7 +35,6 @@ func (b *BackendSelection) Process() (Command, bool) {
 	return command, ok
 }
 
-// Wasm returns the core WebAssembly engine when the backend selects one.
 func (b *BackendSelection) Wasm() (Module, bool) {
 	if b == nil {
 		return Module{}, false
@@ -52,8 +43,6 @@ func (b *BackendSelection) Wasm() (Module, bool) {
 	return module, ok
 }
 
-// backendDocument is the wire form of a Backend. A transport the backend does
-// not select is omitted or null.
 type backendDocument struct {
 	Process *commandDocument `yaml:"process,omitempty"`
 	Wasm    *moduleDocument  `yaml:"wasm,omitempty"`
@@ -69,8 +58,6 @@ type moduleDocument struct {
 	Path string `yaml:"path"`
 }
 
-// DecodeConfig reads exactly one of a process or a wasm mapping and checks
-// it as NewCommand or NewModule does.
 func (b *BackendSelection) DecodeConfig(value any) error {
 	var document backendDocument
 	if err := configdecode.Decode(value, &document); err != nil {
@@ -98,8 +85,7 @@ func (b *BackendSelection) DecodeConfig(value any) error {
 	return nil
 }
 
-// EncodeConfig writes the selected transport in the form DecodeConfig reads.
-// The zero Backend is written as null.
+// EncodeConfig writes the zero BackendSelection as null.
 func (b *BackendSelection) EncodeConfig() (any, error) {
 	if command, ok := b.Process(); ok {
 		return backendDocument{Process: &commandDocument{Executable: command.Executable(), Args: command.Args(), Env: command.Env()}}, nil
@@ -110,18 +96,14 @@ func (b *BackendSelection) EncodeConfig() (any, error) {
 	return nil, nil
 }
 
-// Module locates a core WebAssembly engine.
 type Module struct {
 	path string
 }
 
 func (Module) backendTransport() {}
 
-// NewModule locates a core WebAssembly engine at path: a raw or
-// gzip-compressed module path, file URI, HTTP(S) URL, or
-// oci://<host>/<repository>@sha256:<hex> reference to an image with a
-// WebAssembly layer. URI fragments may pin downloaded bytes with
-// #sha256=<hex>. path must be nonempty and cannot contain NUL.
+// NewModule accepts a raw or gzip-compressed module path, file URI, HTTP(S) URL or
+// oci://<host>/<repository>@sha256:<hex> reference, with an optional #sha256=<hex> fragment.
 func NewModule(path string) (Module, error) {
 	if path == "" || strings.ContainsRune(path, 0) {
 		return Module{}, errors.New("wasm backend requires a module path")
@@ -129,11 +111,9 @@ func NewModule(path string) (Module, error) {
 	return Module{path: path}, nil
 }
 
-// Path returns the module location. Relative paths in a config file resolve
-// from that file; inline configs use the analysis directory.
+// Path is relative to the declaring config file, or to the analysis directory for inline configs.
 func (m Module) Path() string { return m.path }
 
-// Command is an argv invocation, never shell source.
 type Command struct {
 	executable string
 	args       []string
@@ -142,12 +122,7 @@ type Command struct {
 
 func (Command) backendTransport() {}
 
-// NewCommand returns an invocation of executable, a command on PATH or a
-// literal path; an empty executable keeps the tool's default. args are
-// literal arguments prepended to actionlint's analysis arguments, and env
-// overrides named variables in the child process only. NewCommand keeps
-// copies of args and env. Values cannot contain NUL, and environment names
-// cannot be empty or contain "=".
+// NewCommand keeps the tool's default for an empty executable and prepends args to actionlint's analysis arguments.
 func NewCommand(executable string, args []string, env map[string]string) (Command, error) {
 	if strings.ContainsRune(executable, 0) || slices.ContainsFunc(args, func(arg string) bool { return strings.ContainsRune(arg, 0) }) {
 		return Command{}, errors.New("tool executable and arguments cannot contain NUL")
@@ -160,21 +135,14 @@ func NewCommand(executable string, args []string, env map[string]string) (Comman
 	return Command{executable: executable, args: slices.Clone(args), env: maps.Clone(env)}, nil
 }
 
-// Executable returns the command on PATH or literal path, or "" for the
-// tool's default. Relative paths in a config file resolve from that file;
-// inline configs use the analysis directory.
+// Executable returns "" for the tool's default.
 func (c Command) Executable() string { return c.executable }
 
-// Args returns a copy of the literal arguments prepended to actionlint's
-// analysis arguments.
 func (c Command) Args() []string { return slices.Clone(c.args) }
 
-// Env returns a copy of the variables overridden in the child process.
 func (c Command) Env() map[string]string { return maps.Clone(c.env) }
 
-// NormalizePaths binds every tool's configured executable and module paths to
-// their declaring file, including overrides, before independently declared
-// configs are merged.
+// NormalizePaths must run before independently declared configs are merged.
 func NormalizePaths(value any, directory string) {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -199,5 +167,4 @@ func NormalizePaths(value any, directory string) {
 	}
 }
 
-// CopyConfig copies the owned configuration state.
-func (b *BackendSelection) CopyConfig() (any, error) { return copyOwnedBackendSelection(*b), nil }
+func (b *BackendSelection) CopyConfig() (any, error) { return deepCopyBackendSelection(*b), nil }

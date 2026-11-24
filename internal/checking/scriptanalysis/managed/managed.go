@@ -1,9 +1,4 @@
-// Package managed runs a tool provider through a managed document analyzer:
-// a component that speaks the integration contract the provider's manifest
-// names negotiates each configuration and checks the scripts it accepts;
-// the provider's own transport checks the rest. The route is deprecated
-// and serves providers prepared by the shell profile, whose preparer the
-// component imports.
+// Package managed runs a tool provider through a deprecated managed document analyzer route.
 package managed
 
 import (
@@ -29,8 +24,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// Bind lets a managed document analyzer replace a provider whose manifest
-// names an integration contract. Other providers are returned unchanged.
 func Bind(base contract.Registration, p backends.Provider) contract.Registration {
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
@@ -41,8 +34,6 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 	return base
 }
 
-// defaultSelection reports whether a selection runs the provider's default
-// command, which a managed analyzer may replace.
 func defaultSelection(sel backends.ToolSelection, name string) bool {
 	if sel.Backend != nil || sel.Runner != nil || sel.Command != name {
 		return false
@@ -54,10 +45,6 @@ func defaultSelection(sel backends.ToolSelection, name string) bool {
 		len(sel.Process.Arguments)+len(sel.Process.LauncherArguments)+len(sel.Process.Environment) == 0
 }
 
-// withAnalyzer selects a document analyzer or the provider's transport per
-// document, accounting for settings in overrides and composite actions.
-// Options in registration take precedence over the options configuration
-// gives the analyzer's rule.
 func withAnalyzer(base contract.Registration, p backends.Provider, registration results.AnalyzerRegistration) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
@@ -88,10 +75,7 @@ func withAnalyzer(base contract.Registration, p backends.Provider, registration 
 		if err != nil {
 			return false, err
 		}
-		// A referenced composite action can match project overrides that its
-		// workflow does not, so a declined override variant still needs the
-		// provider's transport. Variants differ by what the guest negotiates,
-		// not only by tool gates as in backend.ConfigCandidates.
+		// A referenced composite action can match project overrides that its workflow does not match.
 		if declined == nil && project != nil && len(project.Overrides) != 0 {
 			candidates, err := configuration.ConfigVariants(project, func(candidate *configuration.Config) (string, error) {
 				return route.negotiationKey(ctx, candidate, base.Enabled(contract.Context{Config: candidate}))
@@ -133,24 +117,18 @@ func withAnalyzer(base contract.Registration, p backends.Provider, registration 
 	return next, nil
 }
 
-// documentRoute negotiates one provider's configuration with a guest.
 type documentRoute struct {
 	settingsResolver *integrationconfig.SettingsResolver
 	name             string
 	capabilities     toolmanifest.Capabilities
-	// optionsSchema validates the options the guest negotiates with.
-	optionsSchema json.RawMessage
-	// analyzerOptions replaces the options configuration gives the guest's rule.
-	analyzerOptions json.RawMessage
+	optionsSchema    json.RawMessage
+	analyzerOptions  json.RawMessage
 }
 
-// enabled reports whether configuration leaves the provider on.
 func (r documentRoute) enabled(cfg *configuration.Config) bool {
 	return cfg.RuleSet().DiagnosticLevel(cfg, r.name) != "off" && (cfg == nil || cfg.Tools[r.name].Enabled == nil || *cfg.Tools[r.name].Enabled)
 }
 
-// declined reports the guest's refusal of cfg. Other negotiation failures
-// are returned as errors.
 func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *configuration.Config) (*checkinputs.UnsupportedToolConfigurationError, error) {
 	_, err := r.negotiate(ctx, guest, cfg, nil)
 	if err == nil {
@@ -162,8 +140,6 @@ func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolInteg
 	return nil, err
 }
 
-// negotiationKey identifies everything about cfg that the guest's
-// negotiation can depend on before a script is known.
 func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Config, enabled bool) (string, error) {
 	options, err := r.options(ctx, cfg, nil)
 	if err != nil {
@@ -184,8 +160,6 @@ func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Co
 	return string(data), err
 }
 
-// options validates configuration through the integration's schema and transforms
-// it without interpreting tool-specific property names.
 func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, expand func(string) (string, error)) (integrationconfig.ResolvedSettings, error) {
 	var inline json.RawMessage
 	file := ""
@@ -332,8 +306,6 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 			r.context.Completed(r.name)
 		}
 	}
-	// Scopes without analyzed runs still negotiate configuration. Source grants
-	// are materialized only for scripts that need them.
 	for _, scope := range batch.Scopes {
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
@@ -375,8 +347,6 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 	return findings, failure
 }
 
-// severity maps a guest severity through the manifest's table, as the
-// provider's own transport does.
 func (r documentRunner) severity(tool string) severity.Severity {
 	mapped, listed := r.capabilities.HostSeverity(tool)
 	if !listed && r.context.Debug != nil {

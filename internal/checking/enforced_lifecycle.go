@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 )
 
-// RequiredPolicyError reports failure to load an explicitly required policy.
 type RequiredPolicyError struct{ Err error }
 
 func (e *RequiredPolicyError) Error() string {

@@ -11,35 +11,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// ParallelStepsRule is the single definition of the parallel-steps rule.
 var ParallelStepsRule = &define.Rule{
 	Name:        "parallel-steps",
 	Description: "Validate background-step references and restrictions within parallel groups",
 	Category:    "correctness",
 	Subcategory: "steps",
 	Recommended: true,
-	Help:        "Check background-step names and wait/cancel references in the parallel group.",
+	Help:        "Fix the background-step names and the wait and cancel references.",
 	Checks:      define.Fixed(define.Checks{Job: ParallelSteps}),
 }
 
-// parallelCheck is a rule to check parallel steps: a 'wait' or 'cancel' step must refer to the ID
-// of a preceding background step, and a 'parallel' group may only contain 'run' and 'uses' steps
-// ('background', 'wait', 'wait-all', 'cancel', and nested 'parallel' steps are not allowed in it).
-// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type parallelCheck struct {
 	reporting.Collector
-	// background holds the IDs (lower-cased; step IDs are case insensitive) of the 'background: true'
-	// steps seen so far in the current job. Steps are visited in order, including steps nested in
-	// 'parallel:' groups, so a 'wait'/'cancel' reference found in this set both exists and precedes
-	// the reference.
+	// background holds lowercase IDs of the 'background: true' steps seen so far.
+	// Steps are visited in source order, so a reference found here also follows its step.
 	background map[string]struct{}
-	// inParallel identifies direct children of a 'parallel' group.
-	// Only run and uses steps are allowed there. Invalid wait and cancel steps
-	// receive that finding, and their references are excluded from validation.
 	inParallel map[sourcetext.Reference]struct{}
 }
 
-// ParallelSteps analyzes one complete job independently of visitor order.
 func ParallelSteps(job workflows.BoundJob) []reporting.StepFinding {
 	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[sourcetext.Reference]struct{}{}}
 	for step := range job.AllSteps() {
@@ -50,8 +39,7 @@ func ParallelSteps(job workflows.BoundJob) []reporting.StepFinding {
 }
 
 func (rule *parallelCheck) checkStep(n workflows.BoundStep) {
-	// A step that is itself inside a 'parallel' group is already reported by checkParallelChildren as
-	// not allowed there, so skip its reference check to avoid a second, redundant error.
+	// checkParallelChildren already reports a wait or cancel step inside a 'parallel' group.
 	_, insideParallel := rule.inParallel[n.Reference()]
 	if e, ok := n.Wait(); ok {
 		if !insideParallel {
@@ -74,9 +62,6 @@ func (rule *parallelCheck) checkStep(n workflows.BoundStep) {
 	}
 }
 
-// checkParallelChildren checks the steps inside a 'parallel' group. Only 'run' and 'uses' steps are
-// allowed there: 'background', 'wait', 'wait-all', 'cancel', and nested 'parallel' steps are not,
-// because steps in a 'parallel' group already run in the background with an implicit wait at the end.
 func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[workflows.BoundStep]) {
 	for s := range steps {
 		rule.inParallel[s.Reference()] = struct{}{}
@@ -99,8 +84,8 @@ func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[workflows.BoundS
 
 func (rule *parallelCheck) checkRef(ref *definition.String) {
 	if ref == nil || ref.Value == "" || ref.ContainsExpression() {
-		// Empty values come from an already-reported parse error; expression step IDs can't be
-		// resolved statically. Skip both.
+		// Empty values come from an already reported parse error, and expression step IDs
+		// cannot be resolved statically.
 		return
 	}
 	if _, ok := rule.background[strings.ToLower(ref.Value)]; !ok {
@@ -112,9 +97,7 @@ func (rule *parallelCheck) checkRef(ref *definition.String) {
 	}
 }
 
-// isBackgroundStep reports whether the step runs (or may run) in the background. When 'background' is
-// an expression, whether the step runs in the background can't be known statically, so it's treated
-// as a possible background step to avoid false positives.
+// isBackgroundStep treats an expression-valued 'background' as a possible background step.
 func isBackgroundStep(s workflows.BoundStep) bool {
 	return s.Background != nil && (s.Background.Expression != nil || s.Background.Value)
 }

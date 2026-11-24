@@ -10,8 +10,6 @@ import (
 )
 
 // validateAnalyzerInterface rejects incompatible analyzer interfaces before guest startup.
-// The generated consumer asks for the complete canonical interface, including
-// named types and nested record/enum shapes, rather than only its export name.
 func validateAnalyzerInterface(data []byte) error {
 	return validatePluginInterfaces(data, extensionRoleSet{analyzer: true})
 }

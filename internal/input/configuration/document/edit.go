@@ -5,9 +5,6 @@ import (
 	"slices"
 )
 
-// Editor rewrites one configuration file in its own syntax. Plugin
-// declaration edits and configuration migrations both use it, so they keep
-// comments, line endings and untouched settings in the same way.
 type Editor struct {
 	path     string
 	syntax   syntax
@@ -15,7 +12,6 @@ type Editor struct {
 	root     *Node
 }
 
-// NewEditor parses content as the file at path. The path's extension selects the syntax.
 func NewEditor(path string, content []byte) (*Editor, error) {
 	root, err := ParseConfigDocument(path, content)
 	if err != nil {
@@ -24,20 +20,14 @@ func NewEditor(path string, content []byte) (*Editor, error) {
 	return &Editor{path: path, syntax: syntaxOf(path), original: slices.Clone(content), root: root}, nil
 }
 
-// Path returns the file path whose extension selected the syntax.
 func (e *Editor) Path() string { return e.path }
 
-// Root returns the parsed file before any edit.
 func (e *Editor) Root() *Node { return e.root }
 
-// Original returns a copy of the file's bytes before any edit.
 func (e *Editor) Original() []byte { return slices.Clone(e.original) }
 
-// WritesNull reports whether the file's syntax can express null. TOML cannot.
 func (e *Editor) WritesNull() bool { return e.syntax != tomlSyntax }
 
-// TableFields lists the members of one list entry, in output order, for a
-// TOML inline table or [[table]]. Every value is a string.
 type TableFields func(entry any) ([][2]string, error)
 
 // SetList returns the file with the top-level member key set to entries and
@@ -84,7 +74,6 @@ func (e *Editor) Rewrite(value any, members []string, origins map[string]Locatio
 	return content, nil
 }
 
-// lineEnding returns CRLF when content uses it anywhere, otherwise LF.
 func lineEnding(content []byte) []byte {
 	if bytes.Contains(content, []byte("\r\n")) {
 		return []byte("\r\n")
@@ -92,7 +81,6 @@ func lineEnding(content []byte) []byte {
 	return []byte("\n")
 }
 
-// splice returns original with original[start:end] replaced.
 func splice(original []byte, start, end int, replacement []byte) []byte {
 	var result []byte
 	result = append(result, original[:start]...)

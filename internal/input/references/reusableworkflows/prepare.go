@@ -14,9 +14,7 @@ import (
 
 const concurrentRemoteLoads = 8
 
-// Prepare acquires metadata for direct workflow calls and nested local calls.
-// Invalid YAML and missing manifests are cached for caller diagnostics.
-// Other read failures return an error to the caller.
+// Prepare caches invalid YAML and missing manifests for caller diagnostics and returns other read failures.
 func (c *MetadataCache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -37,8 +35,7 @@ func (c *MetadataCache) Prepare(ctx context.Context, snapshot parsing.SourceSnap
 	return c.LoadCalls(ctx, pending)
 }
 
-// LoadCalls fetches remote workflow files and reads local workflow dependencies.
-// Rule callbacks use Resolved instead, which never fetches or reads files.
+// LoadCalls does all file reads, and Resolved in rule callbacks reads none.
 func (c *MetadataCache) LoadCalls(ctx context.Context, referencesToLoad []string) error {
 	if c == nil {
 		return nil

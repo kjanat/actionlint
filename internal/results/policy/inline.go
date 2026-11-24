@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
-// SuppressionRules returns the ordered rule catalogue for inline directives.
 func (processor Processor) SuppressionRules(additional ...string) []string {
 	rules := processor.RuleSet.Rules()
 	names := make([]string, 0, len(rules)+len(additional))
@@ -25,7 +24,7 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 type inlineAudit struct {
 	level func(string) ruleconfig.Level
 	used  func(sourcetext.Position, string)
-	// declared receives each rule a directive names, used or not.
+	// declared receives each rule named in a directive, used or not.
 	declared func(sourcetext.Position, string)
 }
 

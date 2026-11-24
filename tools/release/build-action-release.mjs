@@ -1,6 +1,3 @@
-// Prepare release files outside the checkout. --commit uses an isolated Git
-// index: it adds the bundle to the source tree without changing HEAD,
-// the working tree, the user's index, or any tag.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';

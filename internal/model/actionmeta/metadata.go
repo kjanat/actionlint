@@ -1,5 +1,4 @@
-// Package actionmeta owns action-manifest syntax, source positions, schema validation,
-// expression availability and runtime metadata.
+// Package actionmeta parses action manifests and provides their source positions, schema validation, expression availability and runtime metadata.
 package actionmeta
 
 import (
@@ -18,54 +17,34 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-// ExprString is a string value from action metadata that may contain
-// ${{ }} expressions, together with the position of the value node in the metadata file.
 type ExprString struct {
 	Value    string              `json:"value"`
 	Position sourcetext.Position `json:"position"`
 }
 
-// KeyValue is a named, positioned string in action metadata, used for input defaults
-// and composite step "with" and "env" mappings.
 type KeyValue struct {
 	Name  string     `json:"name"`
 	Value ExprString `json:"value"`
 }
 
-// CompositeStep is a step in "steps" section in "runs" section of action.yaml for a
-// composite action. The runner only accepts a step which runs a script with "run" and "shell"
-// keys, or a step which runs another action with "uses" key.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runssteps
 type CompositeStep struct {
-	// Position is where the step starts in action.yaml.
-	Position sourcetext.Position `json:"position"`
-	// IsMapping is whether the step is a mapping node. The runner requires every step to be a
-	// mapping.
-	IsMapping bool `json:"is_mapping"`
-	// Keys is the key names of the step mapping in file order.
-	Keys []string `json:"keys"`
-	// If is the "if" key value when it is a string.
-	If *ExprString `json:"if"`
-	// Run is the "run" key value when it is a string. It is nil when the key is absent or its
-	// value is not a string.
-	Run *ExprString `json:"run"`
-	// WorkingDirectory is the "working-directory" key value when it is a string.
+	Position  sourcetext.Position `json:"position"`
+	IsMapping bool                `json:"is_mapping"`
+	Keys      []string            `json:"keys"`
+	// If, Run, WorkingDirectory, StepName and Uses are nil when the key is absent or its value is not a string.
+	If               *ExprString `json:"if"`
+	Run              *ExprString `json:"run"`
 	WorkingDirectory *ExprString `json:"working_directory"`
-	// StepName is the "name" key value when it is a string.
-	StepName *ExprString `json:"name"`
-	// With holds each "with" input value that is a string.
-	With []*KeyValue `json:"with"`
-	// Env holds each "env" variable value that is a string.
-	Env             []*KeyValue `json:"env"`
-	Shell           *ExprString `yaml:"-" json:"-"`
-	ContinueOnError *ExprString `yaml:"-" json:"-"`
-	WithExpression  *ExprString `yaml:"-" json:"-"`
-	EnvExpression   *ExprString `yaml:"-" json:"-"`
-	ID              *ExprString `yaml:"-" json:"-"`
-	Node            *codec.Node `yaml:"-" json:"-"`
-	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
-	// is not a string.
-	Uses *string `json:"uses"`
+	StepName         *ExprString `json:"name"`
+	With             []*KeyValue `json:"with"`
+	Env              []*KeyValue `json:"env"`
+	Shell            *ExprString `yaml:"-" json:"-"`
+	ContinueOnError  *ExprString `yaml:"-" json:"-"`
+	WithExpression   *ExprString `yaml:"-" json:"-"`
+	EnvExpression    *ExprString `yaml:"-" json:"-"`
+	ID               *ExprString `yaml:"-" json:"-"`
+	Node             *codec.Node `yaml:"-" json:"-"`
+	Uses             *string     `json:"uses"`
 }
 
 func yamlActionExprString(n *codec.Node) *ExprString {
@@ -91,47 +70,28 @@ func yamlExprString(n *codec.Node) *ExprString {
 
 type actionCompositeSteps []*CompositeStep
 
-// Runs is "runs" section of action.yaml. It defines how the action is run.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 type Runs struct {
-	// Plugin is the runner-internal plugin action entrypoint.
-	Plugin string `yaml:"plugin" json:"plugin,omitempty"`
-	// Using is `using` configuration of action.yaml. It defines what runner is used for the action.
-	Using string `yaml:"using" json:"using"`
-	// Main is `main` configuration of action.yaml for JavaScript action.
-	Main string `yaml:"main" json:"main"`
-	// Pre is `pre` configuration of action.yaml for JavaScript action.
-	Pre string `yaml:"pre" json:"pre"`
-	// PreIf is `pre-if` configuration of action.yaml for JavaScript action.
-	PreIf string `yaml:"pre-if" json:"pre-if"`
-	// Post is `post` configuration of action.yaml for JavaScript action.
-	Post string `yaml:"post" json:"post"`
-	// PostIf is `post-if` configuration of action.yaml for JavaScript action.
-	PostIf string `yaml:"post-if" json:"post-if"`
-	// Steps is `steps` configuration of action.yaml for Composite action.
-	Steps actionCompositeSteps `yaml:"steps" json:"steps"`
-	// Image is `image` of action.yaml for Docker action.
-	Image string `yaml:"image" json:"image"`
-	// PreEntrypoint is `pre-entrypoint` of action.yaml for Docker action.
-	PreEntrypoint string `yaml:"pre-entrypoint" json:"pre-entrypoint"`
-	// Entrypoint is `entrypoint` of action.yaml for Docker action.
-	Entrypoint string `yaml:"entrypoint" json:"entrypoint"`
-	// PostEntrypoint is `post-entrypoint` of action.yaml for Docker action.
-	PostEntrypoint string `yaml:"post-entrypoint" json:"post-entrypoint"`
-	// Args is `args` of action.yaml for Docker action.
-	Args []any `yaml:"args" json:"args"`
-	// Env is `env` of action.yaml for Docker action.
-	Env map[string]any `yaml:"env" json:"env"`
+	Plugin         string               `yaml:"plugin" json:"plugin,omitempty"`
+	Using          string               `yaml:"using" json:"using"`
+	Main           string               `yaml:"main" json:"main"`
+	Pre            string               `yaml:"pre" json:"pre"`
+	PreIf          string               `yaml:"pre-if" json:"pre-if"`
+	Post           string               `yaml:"post" json:"post"`
+	PostIf         string               `yaml:"post-if" json:"post-if"`
+	Steps          actionCompositeSteps `yaml:"steps" json:"steps"`
+	Image          string               `yaml:"image" json:"image"`
+	PreEntrypoint  string               `yaml:"pre-entrypoint" json:"pre-entrypoint"`
+	Entrypoint     string               `yaml:"entrypoint" json:"entrypoint"`
+	PostEntrypoint string               `yaml:"post-entrypoint" json:"post-entrypoint"`
+	Args           []any                `yaml:"args" json:"args"`
+	Env            map[string]any       `yaml:"env" json:"env"`
 }
 
-// Branding is "branding" section of action.yaml.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#branding
 type Branding struct {
 	Icon  string `yaml:"icon"`
 	Color string `yaml:"color"`
 }
 
-// Key resolves a metadata key using the runner's literal-expression rules.
 func Key(n *codec.Node) string {
 	if key := Scalar(n); key != nil {
 		return *key
@@ -139,7 +99,6 @@ func Key(n *codec.Node) string {
 	return n.Value
 }
 
-// Fields copies a mapping's keys and normalizes their spelling for struct decoding.
 func Fields(node *codec.Node) *codec.Node {
 	n := Node(node)
 	if n.Kind != codec.MappingNode {
@@ -162,47 +121,28 @@ func Fields(node *codec.Node) *codec.Node {
 	return &normalized
 }
 
-// Metadata represents structure of action.yaml. It is a plain record: Parse
-// fills it, and catalogs and JSON build it directly. Source positions come from
-// its Provenance, which never reads the other fields.
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type Metadata struct {
-	// Provenance is set by Parse; it is zero for metadata without parsed source.
-	Provenance Provenance `yaml:"-" json:"-"`
-	// SourceMapped records that repository composition supplied a source override.
-	SourceMapped bool `yaml:"-" json:"-"`
-	// Directory, Filename and Source identify the decoded manifest independently of its caller.
-	Directory string `yaml:"-" json:"-"`
-	Filename  string `yaml:"-" json:"-"`
-	Source    []byte `yaml:"-" json:"-"`
-	// Root is the original YAML tree used for schema checks and source mapping.
-	Root *codec.Node `yaml:"-" json:"-"`
-	// Name is "name" field of action.yaml.
-	Name string `yaml:"name" json:"name"`
-	// Description is "description" field of action.yaml.
-	Description string `yaml:"description" json:"-"`
-	// Inputs is "inputs" field of action.yaml.
-	Inputs calls.Inputs `yaml:"inputs" json:"inputs"`
-	// Outputs is "outputs" field of action.yaml. Key is name of output. Description is omitted
-	// since actionlint does not use it.
+	manifest     *manifest
+	SourceMapped bool         `yaml:"-" json:"-"`
+	Directory    string       `yaml:"-" json:"-"`
+	Filename     string       `yaml:"-" json:"-"`
+	Root         *codec.Node  `yaml:"-" json:"-"`
+	Name         string       `yaml:"name" json:"name"`
+	Description  string       `yaml:"description" json:"-"`
+	Inputs       calls.Inputs `yaml:"inputs" json:"inputs"`
+	// Outputs omits each output's description.
 	Outputs calls.Outputs `yaml:"outputs" json:"outputs"`
-	// SkipOutputs is flag to specify a bit loose typing to outputs object. If it is set to
-	// true, the outputs object accepts any properties along with strictly typed props.
-	SkipOutputs bool `yaml:"-" json:"skip_outputs"`
-	// Runs is "runs" field of action.yaml.
-	Runs Runs `yaml:"runs" json:"runs"`
-	// Branding is "branding" field of action.yaml.
-	Branding Branding `yaml:"branding" json:"-"`
-	// InputDefaults holds each string input default and its position in the metadata file.
+	// SkipOutputs makes the outputs object accept any property besides the typed ones.
+	SkipOutputs   bool        `yaml:"-" json:"skip_outputs"`
+	Runs          Runs        `yaml:"runs" json:"runs"`
+	Branding      Branding    `yaml:"branding" json:"-"`
 	InputDefaults []*KeyValue `yaml:"-" json:"-"`
 }
 
-// Dir returns a directory path of the action.
 func (md *Metadata) Dir() string {
 	return md.Directory
 }
 
-// Path returns a file path of the action's metadata file.
 func (md *Metadata) Path() string {
 	if sourcetext.RemoteAddress(md.Directory) {
 		return md.Directory + "/" + md.Filename
@@ -214,17 +154,13 @@ func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, parser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// ParseActionMetadata decodes an action manifest.
-// Partially decoded declarations accompany errors for callers that inspect broken metadata.
-// A fatal decode takes diagnostic precedence when expansion admission also fails.
+// ParseActionMetadata returns partially decoded metadata along with a decode error.
 func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{}
-	owned := bytes.Clone(content)
-	root, err := codec.ParseYAML(owned)
+	cloned := bytes.Clone(content)
+	root, err := codec.ParseYAML(cloned)
 	if err == nil && root.Kind != 0 {
 		err = Decode(root, metadata)
-		// Schema errors can leave useful declarations and unvisited step fields.
-		// Admission must still gate semantic recovery of those fields.
 		if admissionErr := parser.AdmitYAMLAliases(root); admissionErr != nil {
 			if _, fatal := codec.FatalLoadError(err); fatal {
 				err = codec.NewAdmissionError(err)
@@ -233,8 +169,8 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 			}
 		}
 	}
-	metadata.Provenance = newProvenance(string(owned))
-	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
+	metadata.manifest = &manifest{text: string(cloned)}
+	metadata.Directory, metadata.Filename = filepath.Dir(path), filepath.Base(path)
 	if sourcetext.RemoteAddress(path) {
 		metadata.Directory, metadata.Filename = remotePathParts(path)
 	}
@@ -245,11 +181,9 @@ func remotePathParts(address string) (string, string) {
 	return strings.TrimSuffix(address, "/"+path.Base(address)), path.Base(address)
 }
 
-// OriginalSource returns the exact text decoded by Parse. Hand-built metadata
-// has no source provenance, even when its exported Source field is populated.
-func (md *Metadata) OriginalSource() (string, bool) {
-	if md == nil {
+func (md *Metadata) Text() (string, bool) {
+	if md == nil || md.manifest == nil {
 		return "", false
 	}
-	return md.Provenance.Text()
+	return md.manifest.text, true
 }

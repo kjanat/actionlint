@@ -14,7 +14,7 @@ function required(environment, name) {
 	return value;
 }
 
-/** Resolve runner-owned command files without allowing paths outside their directory. @param {NodeJS.ProcessEnv} environment @param {string} name */
+/** @param {NodeJS.ProcessEnv} environment @param {string} name */
 function commandFile(environment, name) {
 	const root = realpathSync(resolve(required(environment, 'RUNNER_TEMP'), '_runner_file_commands')) + sep;
 	const file = realpathSync(required(environment, name));
@@ -116,7 +116,6 @@ function projectChecks(project, profile) {
 		) jobs.push('plugins');
 		return jobs;
 	}
-	// Unknown projects select every check until their CI jobs have been assigned.
 	return null;
 }
 

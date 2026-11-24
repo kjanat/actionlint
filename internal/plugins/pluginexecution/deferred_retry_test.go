@@ -73,7 +73,6 @@ func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
 	if requests := registry.Requests(); len(requests) != 1 {
 		t.Fatalf("early requests = %v", requests)
 	}
-	// The elapsed retry time alone does not clear a failure during analysis.
 	engine.retryAfter = time.Now().Add(-time.Second)
 	if _, err := engine.get(t.Context()); !errors.Is(err, failure) {
 		t.Fatalf("same analysis retried: %v", err)

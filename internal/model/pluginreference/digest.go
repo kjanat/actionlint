@@ -8,9 +8,7 @@ import (
 )
 
 // NormalizeDigest accepts a SHA256 digest written as 64 hex digits in either
-// case and returns it in lowercase. URL pins (#sha256=<hex>) and candidate
-// digests use it; content addresses, which must already be canonical, use
-// CheckDigest.
+// case and returns it in lowercase.
 func NormalizeDigest(digest string) (string, bool) {
 	normalized := strings.ToLower(digest)
 	if !sha256hex.IsDigest(normalized) {

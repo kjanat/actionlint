@@ -21,8 +21,8 @@ type commandOptions struct {
 	online                                          bool
 }
 
-// outputModes is shared by all output aliases and command flag sets so every
-// occurrence appends, including flags on both sides of a subcommand.
+// outputModes appends every occurrence, including flags on both sides of a
+// subcommand.
 type outputModes []string
 
 func (m *outputModes) Set(value string) error {
@@ -40,8 +40,8 @@ func (m *outputModes) String() string {
 func (*outputModes) Type() string { return "MODE" }
 
 type commandApp struct {
-	// ctx is the invocation context. Cobra leaves Command.Context nil for
-	// commands it did not execute, such as help targets, so help output uses this.
+	// Cobra leaves Command.Context nil for help targets and other commands it
+	// does not execute.
 	ctx                   context.Context
 	root                  *cobra.Command
 	streams               Command

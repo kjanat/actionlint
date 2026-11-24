@@ -21,8 +21,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// TestProcessHelper is the tool process of these tests: the test binary run
-// with ACTIONLINT_PROCESS_HELPER naming its behavior.
+// TestProcessHelper is the tool process of these tests. The test binary runs as
+// that process, and ACTIONLINT_PROCESS_HELPER names its behavior.
 func TestProcessHelper(t *testing.T) {
 	t.Parallel()
 	mode := os.Getenv("ACTIONLINT_PROCESS_HELPER")
@@ -90,8 +90,6 @@ func helperManifest(spec toolmanifest.ProcessSpec) toolmanifest.Manifest {
 	}
 }
 
-// echoOutput transforms the echo helper's report into one diagnostic whose
-// message is the report and the exit status.
 var echoOutput = toolmanifest.Output{Format: toolmanifest.FormatJSON, Transform: &toolmanifest.Transform{
 	Language: toolmanifest.LanguageJQ,
 	Inline:   `[{filename: $vars.filename, code: "ECHO", message: ({report: ., exit_code: $vars.exit_code} | tojson), location: {row: 1, column: 1}}]`,
@@ -127,7 +125,6 @@ func TestBackendInvocation(t *testing.T) {
 	t.Setenv("ACTIONLINT_HOST_ONLY", "leaked")
 	t.Setenv("ACTIONLINT_PASSED", "passed")
 	t.Setenv("ACTIONLINT_REDIRECT_AMBIENT", "ambient")
-	// Configured environment cannot restore a variable the manifest unsets.
 	command := helperCommand(t, "echo", "ACTIONLINT_COMMAND=command", "ACTIONLINT_REDIRECT=command")
 	command.Args = []string{"--user", "value"}
 	manifest := helperManifest(toolmanifest.ProcessSpec{
@@ -189,9 +186,8 @@ func TestBackendDecoders(t *testing.T) {
 		err    string
 	}{
 		{
-			mode: "envelope",
-			spec: toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinRequest, Args: []string{"--"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
-			// The request carries the configuration the transform rendered.
+			mode:   "envelope",
+			spec:   toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinRequest, Args: []string{"--"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
 			config: json.RawMessage(`{"a": 1}`),
 			want:   scriptengine.Diagnostic{Filename: "snippet.py", Code: "EX1", Message: `envelope {"a":1}`, Location: sourcetext.Position{Line: 1, Column: 1}, EndLocation: sourcetext.Position{Line: 1, Column: 8}},
 			err:    "partial analysis",
@@ -231,7 +227,6 @@ func TestBackendRejectsUnlistedExitStatus(t *testing.T) {
 	}
 }
 
-// embedded runs manifests against a recording in-process runner.
 type embedded struct {
 	mu      sync.Mutex
 	calls   [][]string
@@ -282,10 +277,6 @@ func ruffOutput(t *testing.T, directory, filename string) string {
 	return string(encoded)
 }
 
-// Configuration values never become options: each rendered setting is one
-// --config argument, and the rule selection one --select=VALUE or
-// --ignore=VALUE argument. Ported from the Ruff adapter's native options
-// tests.
 func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
 	t.Parallel()
 	for _, config := range []string{`{"target-version": "--fix"}`, `{"lint": {"select": ["--fix"]}}`, `{"lint": {"ignore": ["--fix"]}}`} {
@@ -449,7 +440,6 @@ func TestShellCheckUserShellDropsDialect(t *testing.T) {
 	}
 }
 
-// The bundled manifests run the real tools when they are installed.
 func TestBundledToolsEndToEnd(t *testing.T) {
 	t.Parallel()
 	testBundledToolsEndToEnd(t, false)

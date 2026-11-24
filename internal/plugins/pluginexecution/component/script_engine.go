@@ -32,10 +32,8 @@ var (
 	_ scriptengine.ConfigValidator = (*Plugin)(nil)
 )
 
-// HasScriptEngine reports whether the component implements the snippet role.
 func (p *Plugin) HasScriptEngine() bool { return p.scriptDescriptor != nil }
 
-// ScriptDescriptor returns transport-independent snippet engine metadata.
 func (p *Plugin) ScriptDescriptor() scriptengine.Descriptor {
 	if p.scriptDescriptor == nil {
 		return scriptengine.Descriptor{}
@@ -43,8 +41,6 @@ func (p *Plugin) ScriptDescriptor() scriptengine.Descriptor {
 	return p.scriptDescriptor.Clone()
 }
 
-// loadScriptEngine describes the engine through the script-engine version it
-// exports, which extensionRoles negotiated.
 func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) error {
 	value, err := p.callInterface(ctx, p.script.interfaceName(), "describe")
 	if err != nil {
@@ -96,7 +92,6 @@ func verifyTemplateMetadata(data []byte, contract string) error {
 	return nil
 }
 
-// ValidateConfig validates engine-specific JSON through the typed guest API.
 func (p *Plugin) ValidateConfig(ctx context.Context, config json.RawMessage) error {
 	if !p.HasScriptEngine() {
 		return errors.New("component does not implement the script-engine role")
@@ -137,10 +132,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 	return string(config), nil
 }
 
-// Check analyzes a sanitized snippet and validates the returned findings.
-// A script-engine 0.3.0 engine also receives the excluded codes and, when it
-// requested the directory resource and the request carries a directory
-// grant, that grant mounted read-only for this call.
+// Check mounts a directory grant read-only for one call of a script-engine 0.3.0 engine that requested it.
 func (p *Plugin) Check(ctx context.Context, request scriptengine.Request) (diagnostics []scriptengine.Diagnostic, err error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
@@ -227,8 +219,7 @@ func (p *Plugin) Check(ctx context.Context, request scriptengine.Request) (diagn
 		if finding.Source == "" && (finding.Filename != request.Filename || finding.Code == "" || finding.Message == "") {
 			return nil, errors.New("script engine returned an invalid filename or diagnostic")
 		}
-		// Guests count universal newlines; the workflow source mapper uses LF
-		// rows. A reported source keeps the positions of its own file.
+		// Guests count universal newlines and the workflow source mapper uses LF rows.
 		if err := snippet.Normalize(&finding); err != nil {
 			return nil, fmt.Errorf("script engine returned an invalid source range: %w", err)
 		}
@@ -269,8 +260,6 @@ func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
 	return &result, nil
 }
 
-// liftScriptDiagnostic lifts a script-engine 0.2.0 diagnostic, whose
-// severity is an enum.
 func liftScriptDiagnostic(value wacogo.Val) (scriptengine.Diagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
@@ -284,8 +273,6 @@ func liftScriptDiagnostic(value wacogo.Val) (scriptengine.Diagnostic, error) {
 	return d, err
 }
 
-// liftScriptDiagnosticFields lifts the diagnostic fields every
-// script-engine version shares.
 func liftScriptDiagnosticFields(r *wacogo.ValRecord) (scriptengine.Diagnostic, error) {
 	var d scriptengine.Diagnostic
 	var err error
@@ -332,8 +319,7 @@ func liftScriptDescriptor(value wacogo.Val, reserved rule.Names) (scriptengine.D
 		if !ok || shell == "" || duplicate {
 			return d, errors.New("script descriptor contains an empty or duplicate shell")
 		}
-		// Shell metadata must use canonical runtime selectors:
-		// lowercase executable basenames without the .exe suffix.
+		// Shell selectors are lowercase executable basenames without the .exe suffix.
 		name := string(shell)
 		if strings.ContainsAny(name, " /\\\t\r\n") || name != strings.TrimSuffix(strings.ToLower(name), ".exe") {
 			return d, fmt.Errorf("script descriptor contains noncanonical shell %q", name)
@@ -395,9 +381,6 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 	return d, nil
 }
 
-// verifyScriptMetadata checks the artifact's static metadata against the
-// descriptor the engine exported through iface, and takes the action-input
-// selectors only the static metadata declares.
 func verifyScriptMetadata(data []byte, iface string, d *scriptengine.Descriptor) error {
 	if data == nil {
 		if len(d.Shells) == 0 {
@@ -459,7 +442,6 @@ func verifyScriptMetadata(data []byte, iface string, d *scriptengine.Descriptor)
 	if len(d.Shells)+len(declared.Capabilities.ScriptInputs) == 0 {
 		return errors.New("script descriptor needs shell or static action-input selectors")
 	}
-	// The host routes scripts using the artifact's static input selectors.
 	d.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
 	return nil
 }

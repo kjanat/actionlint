@@ -18,7 +18,7 @@ func (h hostLogger) Log(_ context.Context, message string) error {
 	return err
 }
 
-// lineWriter belongs to one invocation; its output budget is never reset.
+// lineWriter belongs to one invocation. The output budget of a lineWriter is never reset.
 type lineWriter struct {
 	log     func(string)
 	pending []byte

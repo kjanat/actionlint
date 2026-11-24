@@ -1,5 +1,4 @@
-// This is the CLI subset emitted by actionlint's embedded ShellCheck rule.
-// Refuse new flags until their semantics are mapped deliberately.
+// actionlint's embedded ShellCheck rule emits this CLI subset, and unmapped flags stay refused.
 export function shellcheckRequest(args: string[], script: string): ShellcheckRequest {
 	const request: ShellcheckRequest = { script, filename: '-', exclude: [] };
 	for (let i = 0; i < args.length; i++) {

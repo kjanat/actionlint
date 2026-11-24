@@ -115,7 +115,6 @@ func TestExprInsecureDetectUntrustedValue(t *testing.T) {
 		tests = append(tests, testCase{input, []string{input}})
 		props := strings.Split(input, ".")
 		{
-			// github.foo.*.bar -> github['foo'].*['bar']
 			var b strings.Builder
 			b.WriteString(props[0])
 			for _, p := range props[1:] {
@@ -131,10 +130,8 @@ func TestExprInsecureDetectUntrustedValue(t *testing.T) {
 		}
 
 		if strings.Contains(input, ".*") {
-			// Add both array dereference version and array index access version
 			tests = append(tests, testCase{strings.ReplaceAll(input, ".*", "[0]"), []string{input}})
 			{
-				// github.foo.*.bar -> github['foo'][0]['bar']
 				var b strings.Builder
 				b.WriteString(props[0])
 				for _, p := range props[1:] {
@@ -280,7 +277,6 @@ func TestExprInsecureAllUntrustedValuesAtOnce(t *testing.T) {
 			args = append(args, strings.ReplaceAll(i, ".*", "[0]")) // also add index access version
 		}
 	}
-	// Generate function call with all untrusted inputs as its arguments
 	expr := "someFunc(" + strings.Join(args, ", ") + ")"
 
 	c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
@@ -694,7 +690,6 @@ func TestExprInsecureDetectUntrustedObjectFiltering(t *testing.T) {
 		})
 	}
 
-	// Check all inputs with one checker
 	c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 	for _, tc := range tests {
 		c.Init()

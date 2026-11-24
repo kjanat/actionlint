@@ -6,8 +6,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// RenderedReport supplies report data and published findings for rendering. The
-// caller sets command completion in CheckResult before requesting JSON output.
+// RenderedReport needs the caller to set command completion in CheckResult
+// before requesting JSON output.
 type RenderedReport struct {
 	report.CheckResult
 	Findings []results.PublishedDiagnostic

@@ -1,6 +1,4 @@
-// Package registry registers the tool providers bundled with actionlint. It
-// names no tool: every bundled manifest is registered with the selection an
-// entrypoint makes for its rule name.
+// Package registry registers the tool providers bundled with actionlint.
 package registry
 
 import (
@@ -16,15 +14,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// ToolSelections chooses how each bundled provider runs, keyed by its rule name.
-// A provider without a selection is registered disabled.
+// ToolSelections without an entry for a provider leaves it registered disabled.
 type ToolSelections map[string]backends.ToolSelection
 
-// Registrations registers every bundled provider in directory order, binds
-// managed document analyzers to providers that name an integration
-// contract and routes repository-selected engines. The bundled data is a
-// build input that tests validate, so a defect in it panics, as does a
-// selection naming no bundled provider.
+// Registrations panics on invalid bundled data or a selection that names no bundled provider.
 func Registrations(selections ToolSelections) []contract.Registration {
 	registrations, err := bundledRegistrations(selections)
 	if err != nil {
@@ -59,8 +52,7 @@ func bundledRegistrations(selections ToolSelections) ([]contract.Registration, e
 	return registrations, nil
 }
 
-// IDs returns the rule names of the bundled providers in directory order.
-// It panics if the bundled data is invalid.
+// IDs panics if the bundled data is invalid.
 func IDs() []string {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {
@@ -73,9 +65,7 @@ func IDs() []string {
 	return ids
 }
 
-// Defaults returns a selection for every bundled provider that runs the
-// provider's own command from PATH and skips the provider, with a warning,
-// when that command cannot run. It panics if the bundled data is invalid.
+// Defaults panics if the bundled data is invalid.
 func Defaults() ToolSelections {
 	manifests, err := toolmanifest.Bundled()
 	if err != nil {

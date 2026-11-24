@@ -1,7 +1,5 @@
 // Package enginediagnostics admits the diagnostics a script engine returns
-// for one snippet. Every transport, process tools and WebAssembly engines
-// alike, validates and converts engine positions here, so all of them accept
-// the same ranges and produce the same scriptengine.Diagnostic coordinates.
+// for one snippet.
 package enginediagnostics
 
 import (
@@ -17,30 +15,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// ContractCoordinates is the convention of scriptengine.Diagnostic itself:
-// LF rows, Unicode scalar columns and exclusive ends.
 var ContractCoordinates = toolmanifest.Coordinates{Rows: toolmanifest.RowsLF, Columns: toolmanifest.ColumnsChars, End: toolmanifest.EndExclusive}
 
-// UniversalNewlineCoordinates is the convention of WebAssembly script
-// engines: LF, CRLF and lone CR delimit rows, columns count Unicode scalar
-// values and ends are exclusive.
 var UniversalNewlineCoordinates = toolmanifest.Coordinates{Rows: toolmanifest.RowsSource, Columns: toolmanifest.ColumnsChars, End: toolmanifest.EndExclusive}
 
-// Snippet is the source of one check, split into lines as its engine counts
-// them. Construct it with NewSnippet.
+// Snippet must be constructed with NewSnippet.
 type Snippet struct {
 	convention toolmanifest.Coordinates
 	lines      []engineLine
 }
 
-// engineLine is one line as the engine counts lines, without its line break,
-// and the contract position of its first character.
 type engineLine struct {
 	text  string
 	start sourcetext.Position
 }
 
-// NewSnippet splits source into the lines an engine using convention counts.
 func NewSnippet(source string, convention toolmanifest.Coordinates) Snippet {
 	s := Snippet{convention: convention}
 	position := sourcetext.Position{Line: 1, Column: 1}
@@ -59,7 +48,6 @@ func NewSnippet(source string, convention toolmanifest.Coordinates) Snippet {
 			position = sourcetext.Position{Line: position.Line + 1, Column: 1}
 			line, begin = engineLine{start: position}, i+1
 		case loneCR:
-			// The engine starts a line here; the contract continues the LF row.
 			line.text = source[begin:i]
 			s.lines = append(s.lines, line)
 			position.Column++
@@ -74,20 +62,7 @@ func NewSnippet(source string, convention toolmanifest.Coordinates) Snippet {
 }
 
 // Normalize validates d and converts its snippet positions, in place, from
-// the engine's convention to the contract's. A diagnostic in a reported
-// source keeps its positions, which belong to that file.
-//
-// The rules every transport applies:
-//   - a location starts at row 1, column 1 or later;
-//   - an end location is absent (zero), or valid and not before the location;
-//   - a fix has at least one replacement;
-//   - a replacement has both a start and an end, in that order;
-//   - every snippet position, of the diagnostic and of its replacements, lies
-//     inside the snippet: on one of its rows and at most one column past the
-//     end of that row.
-//
-// A reported source is a file the host has not seen yet, so only the first
-// two rules apply to its positions.
+// the engine's convention to the contract's.
 func (s Snippet) Normalize(d *scriptengine.Diagnostic) error {
 	if err := validRange(d.Location, d.EndLocation, false); err != nil {
 		return err
@@ -122,8 +97,6 @@ func (s Snippet) Normalize(d *scriptengine.Diagnostic) error {
 	return nil
 }
 
-// validRange accepts a positive start and an end that is positive and does
-// not precede it. An absent (zero) end is accepted unless endRequired.
 func validRange(start, end sourcetext.Position, endRequired bool) error {
 	if start.Line < 1 || start.Column < 1 {
 		return fmt.Errorf("invalid start %v", start)
@@ -137,13 +110,10 @@ func validRange(start, end sourcetext.Position, endRequired bool) error {
 	return nil
 }
 
-// contains reports whether position names a character of the snippet or the
-// end of one of its lines.
 func (s Snippet) contains(position sourcetext.Position) bool {
 	return position.Line <= len(s.lines) && position.Column <= s.units(s.lines[position.Line-1].text)+1
 }
 
-// units measures text in the engine's column unit.
 func (s Snippet) units(text string) int {
 	switch s.convention.Columns {
 	case toolmanifest.ColumnsBytes:
@@ -159,7 +129,6 @@ func (s Snippet) start(position sourcetext.Position) sourcetext.Position {
 	return s.convert(position, false)
 }
 
-// end converts an end position; the zero position means no end.
 func (s Snippet) end(position sourcetext.Position) sourcetext.Position {
 	if position == (sourcetext.Position{}) {
 		return position
@@ -185,7 +154,6 @@ func (s Snippet) convert(position sourcetext.Position, inclusive bool) sourcetex
 		}
 		characters++
 	}
-	// One column past the line's end is the line's end.
 	characters += max(units, 0)
 	converted := sourcetext.Position{Line: line.start.Line, Column: line.start.Column + characters}
 	if inclusive {
@@ -194,11 +162,6 @@ func (s Snippet) convert(position sourcetext.Position, inclusive bool) sourcetex
 	return converted
 }
 
-// ValidReportedSource reports whether a sandboxed engine may name a file it
-// read as name: a relative slash-separated path below the request directory,
-// with no "." or ".." elements and no NUL. Backslashes and colons are
-// rejected because a Windows host would read the name as a different path
-// than the engine opened.
 func ValidReportedSource(name string) bool {
 	return name != "." && fs.ValidPath(name) && !strings.ContainsAny(name, "\\:\x00")
 }

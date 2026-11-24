@@ -26,7 +26,6 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 	}
 	guest := &fallbackGuest{}
 	process := hostprocess.NewProcessPool(t.Context(), 1)
-	// The executable never runs: no script is checked.
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

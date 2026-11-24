@@ -14,16 +14,15 @@ import (
 	shellsyntax "mvdan.cc/sh/v3/syntax"
 )
 
-// ScriptInterpolationRule is the single definition of the script-interpolation rule.
 var ScriptInterpolationRule = &define.Rule{
 	Name:        "script-interpolation",
 	Description: "Detect template values that may change script syntax",
 	Category:    "correctness",
 	Subcategory: "scripts",
-	Explanation: "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. In that position a known string may also contain = + , @ % ^ ~ * ? [ and ], which expand an argument without changing shell syntax. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position.",
-	Help:        "Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.",
+	Explanation: "Report template values that may change script syntax, whether or not an attacker controls them.",
+	Help:        "Pass dynamic values through environment variables.",
 	Recommended: true,
-	Examples: []rule.Example{rule.LabeledWorkflowExample("Keep a dynamic value out of generated shell source.",
+	Examples: []rule.Example{rule.LabeledWorkflowExample("",
 		"wrong: template value in script text", "better: template value in environment variable",
 		"    steps:\n      - run: echo \"${{ vars.MESSAGE }}\"\n",
 		"    steps:\n      - env: { MESSAGE: \"${{ vars.MESSAGE }}\" }\n        run: echo \"${MESSAGE}\"\n")},
@@ -31,8 +30,6 @@ var ScriptInterpolationRule = &define.Rule{
 	DeclaredBy:      "expression",
 }
 
-// IsScalarInterpolation reports whether interpolation emits a boolean, number or null.
-// toJSON serializes these primitives without adding string quotes.
 func IsScalarInterpolation(node syntax.Node, types typecheck.InferredTypes) bool {
 	if call, ok := node.(*syntax.FuncCallNode); ok && strings.EqualFold(call.Callee, "toJSON") && len(call.Args) == 1 {
 		node = call.Args[0]
@@ -45,9 +42,7 @@ func IsScalarInterpolation(node syntax.Node, types typecheck.InferredTypes) bool
 	return kind == exprtypes.KindBool || kind == exprtypes.KindNumber || kind == exprtypes.KindNull
 }
 
-// SafeScriptLiteral recognizes text without quoting, expansion, whitespace or
-// command-separator characters. A proved value may be inserted without allowing
-// its contents to introduce those constructs; it does not validate the command.
+// SafeScriptLiteral does not validate the command.
 func SafeScriptLiteral(value string) bool {
 	for _, r := range value {
 		if scriptLiteralCharacter(r) {
@@ -62,9 +57,6 @@ func scriptLiteralCharacter(r rune) bool {
 	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./:-", r)
 }
 
-// SafeScriptArgumentLiteral recognizes text that a proved command argument
-// may hold. Beyond SafeScriptLiteral it allows assignment, tilde and glob
-// characters, which expand an argument without changing shell syntax.
 func SafeScriptArgumentLiteral(value string) bool {
 	for _, r := range value {
 		if !scriptArgumentCharacter(r) {
@@ -78,9 +70,7 @@ func scriptArgumentCharacter(r rune) bool {
 	return scriptLiteralCharacter(r) || strings.ContainsRune("=+,@%^~*?[]", r)
 }
 
-// SafeScriptArguments recognizes literal shell words separated by horizontal
-// whitespace. It requires an independent proof that insertion occupies a whole
-// command argument; it is not safe in command, assignment or redirection syntax.
+// SafeScriptArguments needs an independent proof that the insertion occupies a whole command argument.
 func SafeScriptArguments(value string) bool {
 	for _, r := range value {
 		if r == ' ' || r == '\t' || scriptArgumentCharacter(r) {
@@ -91,15 +81,11 @@ func SafeScriptArguments(value string) bool {
 	return true
 }
 
-// SafeScriptWord additionally excludes empty text, I/O numbers, and Bash/POSIX
-// reserved words from unrestricted shell-word proofs.
 func SafeScriptWord(value string) bool {
-	// IsKeyword omits elif, which the parser handles as conditional syntax.
+	// shellsyntax.IsKeyword omits elif.
 	return value != "" && SafeScriptLiteral(value) && !isScriptIONumber(value) && !shellsyntax.IsKeyword(value) && value != "elif"
 }
 
-// isScriptIONumber recognizes the unsigned decimal words that shells may parse
-// as file descriptors when they directly precede a redirection operator.
 func isScriptIONumber(value string) bool {
 	if value == "" {
 		return false
@@ -112,7 +98,6 @@ func isScriptIONumber(value string) bool {
 	return true
 }
 
-// ScriptInsertionKind identifies the syntax proved by the script's language and parser.
 type ScriptInsertionKind uint8
 
 const (
@@ -121,8 +106,6 @@ const (
 	ShellArgumentInsertion
 )
 
-// ScriptInterpolation checks value characters and the script insertion context.
-// Callers omit it when a specific secret or untrusted-input finding exists.
 func ScriptInterpolation(expr syntax.Node, ty exprtypes.Type, types typecheck.InferredTypes, position ScriptInsertionKind, safeReference func(syntax.Node) bool) []*typecheck.Error {
 	scalarArgument := position == ShellArgumentInsertion
 	if ty.Kind() == exprtypes.KindString && IsScalarInterpolation(expr, types) {
@@ -133,7 +116,6 @@ func ScriptInterpolation(expr syntax.Node, ty exprtypes.Type, types typecheck.In
 	}
 	switch ty.Kind() {
 	case exprtypes.KindObject, exprtypes.KindArray:
-		// Template type validation already rejects these values in every position.
 		return nil
 	case exprtypes.KindBool, exprtypes.KindNumber, exprtypes.KindNull:
 		if scalarArgument {
@@ -178,8 +160,7 @@ func safeScriptExpression(expr syntax.Node, scalarArgument bool, safeReference f
 	if safeScriptStatusReference(expr, scalarArgument, safeReference) {
 		return true
 	}
-	// Numeric identifiers and hashes need data-argument proofs. Actor names
-	// may contain glob characters.
+	// Actor names may contain glob characters.
 	switch strings.ToLower(syntax.DisplayReference(expr)) {
 	case "github.repository_owner":
 		return scalarArgument
@@ -257,7 +238,6 @@ func safeTruthyScriptResult(expr syntax.Node, scalarArgument bool, safeReference
 	case syntax.LogicalOpNodeKindOr:
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
 	case syntax.LogicalOpNodeKindInvalid:
-		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
@@ -282,12 +262,10 @@ func safeFalsyScriptResult(expr syntax.Node, scalarArgument bool, safeReference 
 	case syntax.LogicalOpNodeKindOr:
 		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
 	case syntax.LogicalOpNodeKindInvalid:
-		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
-// Step outcomes/conclusions and dependency results use fixed status enums.
 func safeScriptStatusReference(node syntax.Node, scalarArgument bool, safeReference func(syntax.Node) bool) bool {
 	var receiver syntax.Node
 	var property string
@@ -330,8 +308,7 @@ func safeScriptStatusReference(node syntax.Node, scalarArgument bool, safeRefere
 	default:
 		return false
 	}
-	// A missing or dynamic selector can yield an empty string, which is safe
-	// only when the script parser proved a data-argument position.
+	// A missing or dynamic selector can yield an empty string.
 	return scalarArgument || staticSelector && safeReference != nil && safeReference(receiver)
 }
 

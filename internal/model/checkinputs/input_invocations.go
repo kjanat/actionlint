@@ -15,7 +15,6 @@ func invalidGraph(format string, values ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalidCallGraph, fmt.Sprintf(format, values...))
 }
 
-// ValidateOccurrence checks every supplied field against the registered execution.
 func ValidateOccurrence(graph invocation.Graph, actual invocation.Script) error {
 	if want, exists := graph.Script(actual.ID); !exists || want != actual {
 		return invalidGraph("script %q disagrees with registered occurrence", actual.ID)
@@ -23,7 +22,6 @@ func ValidateOccurrence(graph invocation.Graph, actual invocation.Script) error 
 	return nil
 }
 
-// ValidateInvocations checks supplied facts against the captured occurrence graph.
 func (input AnalyzerInput) ValidateInvocations() error {
 	available := slices.Contains(input.AvailableInputs, rule.Invocations)
 	if available != input.CallGraph.Valid() {

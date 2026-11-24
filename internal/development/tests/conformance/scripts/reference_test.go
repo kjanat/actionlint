@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
-// These expectations replay captured output. They do not execute Bash.
+// These expectations replay captured output.
 func TestRecordedBashErrexit(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("testdata/bash-reference.txt")
@@ -64,7 +64,6 @@ func TestRecordedBashErrexit(t *testing.T) {
 	}
 }
 
-// Compare supported workflow-command mistakes with the runner's parser results.
 func TestRecordedRunnerCommands(t *testing.T) {
 	t.Parallel()
 	file, err := os.Open("testdata/runner-reference.jsonl")

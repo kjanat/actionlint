@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
-	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
 func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
@@ -46,10 +45,10 @@ func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
 					t.Fatalf("first lookup: metadata=%+v cached=%v error=%v", metadata, cached, err)
 				}
 				if broken {
-					if _, ok := errors.AsType[*ParseError](err); !ok || document.Provenance() == (parsing.Provenance{}) {
-						t.Fatalf("failed parse lost original provenance: %v", err)
+					if _, ok := errors.AsType[*ParseError](err); !ok || document.Parsed() == nil {
+						t.Fatalf("failed parse lost its parsed source: %v", err)
 					}
-				} else if original, parsed := metadata.OriginalSource(); metadata.SourceMapped != resolver || !parsed || original != string(document.Content()) {
+				} else if original, parsed := metadata.Text(); metadata.SourceMapped != resolver || !parsed || original != string(document.Content()) {
 					t.Fatal("returned metadata no longer matches its captured parse")
 				}
 				if !document.Capture().Valid() || string(document.Content()) != content || document.Address() != filepath.Join(root, "source", "action.yml") {

@@ -12,10 +12,9 @@ import (
 	"golang.org/x/net/idna"
 )
 
-// ErrInvalid reports a URL that names no usable HTTP(S) authority.
 var ErrInvalid = errors.New("invalid HTTP endpoint")
 
-// Authority is a canonical scheme, host and port. Port is always explicit.
+// Authority always has an explicit Port.
 type Authority struct{ Scheme, Host, Port string }
 
 // Of returns the canonical authority of an http or https URL without credentials.
@@ -52,12 +51,11 @@ func Host(name string) (string, error) {
 	if err != nil {
 		return "", ErrInvalid
 	}
-	// Preserve a trailing dot: an absolute DNS name must not grant the
-	// corresponding search-relative name access to private addresses.
+	// Preserve a trailing dot. An absolute DNS name grants the corresponding
+	// search-relative name no access to private addresses.
 	return strings.ToLower(ascii), nil
 }
 
-// Port returns a decimal TCP port without leading zeros.
 func Port(port string) (string, error) {
 	number, err := strconv.ParseUint(port, 10, 16)
 	if err != nil {
@@ -74,7 +72,6 @@ func (a Authority) URLHost() string {
 	return HostPort(a.Host, a.Port)
 }
 
-// HostPort brackets an IPv6 host and appends port when it is not empty.
 func HostPort(host, port string) string {
 	if ip, err := netip.ParseAddr(host); err == nil && ip.Is6() {
 		host = "[" + host + "]"

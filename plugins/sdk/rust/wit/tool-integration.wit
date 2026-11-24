@@ -15,7 +15,7 @@ interface tool-integration {
         directory(string),
     }
     record negotiated {
-        /// Plugin-owned JSON object supplied unchanged as analyzer options.
+        /// The host passes this JSON object unchanged to the analyzer as its options.
         options: string,
         /// Read-only grants requested from the host; never implicit in options.
         resources: list<resource-request>,
@@ -23,7 +23,8 @@ interface tool-integration {
     describe: func() -> descriptor;
     /// An error means unsupported configuration and permits native fallback.
     /// Each call uses a fresh instance and must not depend on earlier calls.
-    /// options is an explicit plugin-owned JSON object supplied by the caller.
+    /// options holds the plugin options from the actionlint configuration as a
+    /// JSON object, or {} when the configuration sets none.
     /// The guest combines it with config and derives resource requests from the
     /// effective configuration. The host never merges opaque plugin options.
     negotiate: func(config: string, options: string) -> result<negotiated, string>;

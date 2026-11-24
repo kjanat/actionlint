@@ -10,10 +10,9 @@ import (
 
 var (
 	ErrInvalidFacts   = errors.New("invocation: invalid call facts")
-	ErrForeignContext = errors.New("invocation: context is not owned by this graph")
+	ErrForeignContext = errors.New("invocation: context is absent from this graph")
 )
 
-// Facts are resolved once per call, including platform-dependent effects.
 type Facts struct {
 	Step                                                 sourcetext.Position
 	Uses                                                 string
@@ -37,7 +36,7 @@ func (facts Facts) validate() error {
 	return nil
 }
 
-// Context is an immutable owner-issued handle. Its zero value is invalid.
+// Context is invalid when it is the zero value.
 type Context struct{ data *contextData }
 
 type contextData struct {
@@ -98,7 +97,7 @@ func (b *Builder) Context(id ID) (Context, bool) {
 	return b.records[i].call.Context, true
 }
 
-func (b *Builder) Owns(context Context) bool {
+func (b *Builder) Issued(context Context) bool {
 	stored, exists := b.Context(context.ID())
 	return exists && stored == context
 }
@@ -111,7 +110,7 @@ func (g Graph) Context(id ID) (Context, bool) {
 	return call.Context, exists
 }
 
-func (g Graph) Owns(context Context) bool {
+func (g Graph) Issued(context Context) bool {
 	stored, exists := g.Context(context.ID())
 	return exists && stored == context
 }

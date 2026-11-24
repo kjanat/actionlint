@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// Batch is one admitted analysis and the settings prepared before its rules ran.
-// Sources and References must contain only sources accepted by final capture validation.
+// Batch Sources and References must contain only sources accepted by final
+// capture validation.
 type Batch struct {
 	Processor          Processor
 	Policy             DocumentInputs
@@ -29,9 +29,8 @@ type Batch struct {
 	EntryAliases       []string
 }
 
-// Publication contains the retained findings in batch order and their public projections.
-// InlineSuppressions lists each rule named by an inline directive in an
-// evaluated source once, ordered by path, line and rule.
+// Publication lists each rule named in an inline directive once in
+// InlineSuppressions, in path, line and rule order.
 type Publication struct {
 	Diagnostics        []results.PublishedDiagnostic
 	Findings           [][]*finding.Finding
@@ -39,14 +38,11 @@ type Publication struct {
 	InlineSuppressions []report.InlineSuppression
 }
 
-// obligation is issued by a policy evaluator, never by a diagnostic producer.
-// Its identity preserves distinct requirements during domain-independent retention.
 type obligation struct{ domain, identity string }
 
 type evaluatedBatch struct{ Batch }
 
-// Publish evaluates all admitted batches together, reconciles suppression use,
-// and makes the final retention decision. It does not change the input findings.
+// Publish does not change the input findings.
 func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication, error) {
 	incomplete = slices.Clone(incomplete)
 	files := make([]evaluatedBatch, len(batches))

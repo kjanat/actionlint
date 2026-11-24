@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 )
 
-// PartitionFiles groups discovered inputs by repository for configuration and plugin selection.
 func PartitionFiles(found FileSelection) []FileSelection {
 	var batches []FileSelection
 	indices := make(map[string]int)
@@ -29,8 +28,7 @@ func PartitionFiles(found FileSelection) []FileSelection {
 	return batches
 }
 
-// DirectoryPaths searches workflows and actions across repository boundaries.
-// Each repository supplies its own Git ignore rules.
+// DirectoryPaths applies each repository's own Git ignore rules.
 func DirectoryPaths(ctx context.Context, dir string, reader *files.Reader) ([]string, error) {
 	return discovery.Documents(ctx, dir, reader, discovery.Discovery{Repositories: true})
 }
@@ -39,7 +37,7 @@ func RepositoryPaths(ctx context.Context, project *Project, reader *files.Reader
 	return discovery.Documents(ctx, project.RootDir(), reader, discovery.Discovery{})
 }
 
-// FindRepositoryFiles discovers workflow and action paths before plugins are loaded.
+// FindRepositoryFiles runs before plugins are loaded.
 func FindRepositoryFiles(ctx context.Context, directory string, noIgnore bool) (FileSelection, error) {
 	root := discovery.RepositoryRoot(directory)
 	if root == "" {

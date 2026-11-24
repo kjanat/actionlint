@@ -11,9 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-// TestRustSDKScriptWorlds builds the downstream fixture from the SDK's Cargo
-// metadata and loads each package through the same path used for real plugins.
-// It is opt-in because it builds Rust components and requires wasm32-wasip2.
+// TestRustSDKScriptWorlds is opt-in and requires wasm32-wasip2.
 func TestRustSDKScriptWorlds(t *testing.T) {
 	t.Parallel()
 	if os.Getenv("ACTIONLINT_RUST_SDK_INTEGRATION") != "1" {

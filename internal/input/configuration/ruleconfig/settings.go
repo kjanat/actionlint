@@ -1,4 +1,4 @@
-// Package ruleconfig owns rule-setting syntax, independent of the analyzer and CLI.
+// Package ruleconfig decodes and encodes rule levels, presets, settings and groups.
 package ruleconfig
 
 import (
@@ -17,17 +17,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
-// Level controls one diagnostic, independently of its category or maturity.
 type Level string
 
 // Levels lists the named diagnostic levels in editor completion order.
-// The returned slice belongs to the caller.
 func Levels() []Level {
 	return []Level{"default", "off", "on", "info", "warn", "error"}
 }
 
-// Categories uses the public rule contract's semantic category names.
-// The returned slice belongs to the caller.
 func Categories() []string { return rule.Categories() }
 
 func choices[T ~string](values []T) string {
@@ -39,7 +35,6 @@ func choices[T ~string](values []T) string {
 }
 
 // DecodeConfig normalizes booleans to on/off and null to the default level.
-// The zero value represents an omitted/null level, never an empty string input.
 func (l *Level) DecodeConfig(value any) error {
 	switch selected := value.(type) {
 	case nil:
@@ -61,7 +56,6 @@ func (l *Level) DecodeConfig(value any) error {
 	return fmt.Errorf("rule level must be %s; empty strings are not allowed", choices(Levels()))
 }
 
-// EncodeConfig uses the canonical named level.
 func (l Level) EncodeConfig() (any, error) {
 	if l == "" {
 		return "default", nil
@@ -73,8 +67,6 @@ func (l Level) Valid() bool {
 	return slices.Contains(Levels(), l)
 }
 
-// Severity returns the finding severity that the info, warn and error levels
-// select. Other levels select no severity and report false.
 func (l Level) Severity() (severity.Severity, bool) {
 	switch l {
 	case "info":
@@ -87,17 +79,13 @@ func (l Level) Severity() (severity.Severity, bool) {
 	return "", false
 }
 
-// Preset selects a baseline. All intentionally excludes nursery rules.
 type Preset string
 
 // Presets lists the accepted baseline selections in editor completion order.
-// The returned slice belongs to the caller.
 func Presets() []Preset { return []Preset{"recommended", "all", "none"} }
 
-// Valid reports whether the preset is a named baseline selection.
 func (p Preset) Valid() bool { return slices.Contains(Presets(), p) }
 
-// DecodeConfig rejects unknown preset names.
 func (p *Preset) DecodeConfig(value any) error {
 	selected, ok := value.(string)
 	if !ok || !Preset(selected).Valid() {
@@ -107,25 +95,15 @@ func (p *Preset) DecodeConfig(value any) error {
 	return nil
 }
 
-// Setting is one rule's level and options. In configuration it is a level shorthand or
-// a level/options mapping. The options stay in their configuration form; LoadOptions
-// decodes them into the rule's registered type on every call, so each caller
-// gets its own copy.
 type Setting struct {
 	level Level
-	// options is an owned mapping, or nil when the setting has no options.
-	// options: null also leaves it nil, which resets the rule's options.
+	// options is nil when the setting has no options or sets options: null.
 	options map[string]any `clone:"shared"`
 }
 
-// NewSetting returns a setting with the given level and options. An empty
-// level selects the rule's default; nil options mean no options.
-//
-// options must form a mapping. A json.RawMessage is parsed as a JSON object,
-// the form analyzer.Registration.Options uses. Any other value is encoded with
-// the configuration encoder: struct fields are named by their yaml tags, json tags and
-// MarshalJSON methods are ignored, and a value whose EncodeConfig returns a
-// scalar, such as a disabled policy that encodes as false, is rejected.
+// NewSetting parses a json.RawMessage option as a JSON object. It encodes any
+// other value with the configuration encoder, which names struct fields by
+// their yaml tags and ignores json tags and MarshalJSON methods.
 func NewSetting(level Level, options any) (Setting, error) {
 	setting := Setting{level: level}
 	if raw, ok := options.(json.RawMessage); options == nil || ok && len(raw) == 0 {
@@ -149,38 +127,30 @@ func NewSetting(level Level, options any) (Setting, error) {
 	return setting, nil
 }
 
-// Level returns the configured level. The empty level means the setting gave
-// no level and the rule's default applies.
 func (s Setting) Level() Level { return s.level }
 
-// WithLevel returns a copy of the setting that uses level and keeps its options.
 func (s Setting) WithLevel(level Level) Setting {
 	s.level = level
 	return s
 }
 
-// HasOptions reports whether the setting configures options.
 func (s Setting) HasOptions() bool { return s.options != nil }
 
-// LoadOptions decodes the options into dst, which must point to the rule's
-// registered options type. It reports false and leaves dst unchanged when the
-// setting has no options. Options are copied before decoding; custom DecodeConfig
-// implementations receive that copy.
+// LoadOptions reports false and leaves dst unchanged when the setting has no options.
 func (s Setting) LoadOptions(dst any) (bool, error) {
 	if s.options == nil {
 		return false, nil
 	}
-	owned, err := configdecode.Encode(s.options)
+	encoded, err := configdecode.Encode(s.options)
 	if err != nil {
 		return false, err
 	}
-	if err := configdecode.Decode(owned, dst); err != nil {
+	if err := configdecode.Decode(encoded, dst); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// encodeOptions owns an options value, including already serialized JSON.
 func encodeOptions(options any) (any, error) {
 	if raw, ok := options.(json.RawMessage); ok {
 		if !json.Valid(raw) {
@@ -195,9 +165,6 @@ func encodeOptions(options any) (any, error) {
 	return configdecode.Encode(options)
 }
 
-// parseSetting reads a level shorthand or a level/options mapping. It checks
-// the level and that options form a mapping; the catalog validates the
-// options against the rule's type.
 func parseSetting(value any) (Setting, error) {
 	var next Setting
 	if object, ok := value.(map[string]any); ok {
@@ -218,15 +185,15 @@ func parseSetting(value any) (Setting, error) {
 			if !ok {
 				return Setting{}, configdecode.At("options", errors.New("options must be a mapping"))
 			}
-			owned, err := configdecode.Encode(mapping)
+			encoded, err := configdecode.Encode(mapping)
 			if err != nil {
 				return Setting{}, err
 			}
-			ownedMapping, ok := owned.(map[string]any)
+			encodedMapping, ok := encoded.(map[string]any)
 			if !ok {
 				return Setting{}, errors.New("encoded rule options must be a mapping")
 			}
-			next.options = ownedMapping
+			next.options = encodedMapping
 		}
 	} else if err := next.level.DecodeConfig(value); err != nil {
 		return Setting{}, err
@@ -234,7 +201,6 @@ func parseSetting(value any) (Setting, error) {
 	return next, nil
 }
 
-// DecodeConfig validates a rule level or level/options mapping.
 func (s *Setting) DecodeConfig(value any) error {
 	next, err := parseSetting(value)
 	if err != nil {
@@ -244,7 +210,6 @@ func (s *Setting) DecodeConfig(value any) error {
 	return nil
 }
 
-// EncodeConfig returns a level/options mapping with a copy of the configured options.
 func (s Setting) EncodeConfig() (any, error) {
 	var wire struct {
 		Level   Level `yaml:"level"`
@@ -257,50 +222,39 @@ func (s Setting) EncodeConfig() (any, error) {
 	return wire, nil
 }
 
-//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/ruleconfig -type Group -output internal/input/configuration/ruleconfig/owned_group.gen.go
+//go:generate go run ../../../development/generators/deep-copies -root ../../../.. -package ./internal/input/configuration/ruleconfig -type Group -output internal/input/configuration/ruleconfig/deep_copy_group.gen.go
 
-// Group contains a concern-wide baseline and individual exceptions.
 type Group struct {
 	preset Preset
 	level  Level
 	rules  map[string]Setting
 }
 
-// groupWire is the configuration mapping EncodeConfig writes for a Group.
 type groupWire struct {
 	Preset Preset             `yaml:"preset,omitempty"`
 	Level  Level              `yaml:"level,omitempty"`
 	Rules  map[string]Setting `yaml:",inline"`
 }
 
-// NewGroup returns a group with a preset, a group level and per-rule
-// settings. Empty preset and level leave the parent selection in place. The
-// group keeps its own copy of rules.
 func NewGroup(preset Preset, level Level, rules map[string]Setting) Group {
 	return Group{preset: preset, level: level, rules: maps.Clone(rules)}
 }
 
-// Preset returns the group's baseline, or "" when the group sets none.
 func (g Group) Preset() Preset { return g.preset }
 
-// Level returns the level applied to every rule in the group, or "" when the
-// group sets none.
 func (g Group) Level() Level { return g.level }
 
-// Rule returns the explicit setting for the named rule.
 func (g Group) Rule(name string) (Setting, bool) {
 	setting, ok := g.rules[name]
 	return setting, ok
 }
 
-// IsZero reports whether the group sets no preset, level or rule. The shared
-// encoder uses it to apply omitempty to fields with private state.
+// IsZero lets the shared encoder apply omitempty to fields with private state.
 func (g Group) IsZero() bool { return g.preset == "" && g.level == "" && len(g.rules) == 0 }
 
 // Rules yields each rule with an explicit setting, in no particular order.
 func (g Group) Rules() iter.Seq2[string, Setting] { return maps.All(g.rules) }
 
-// DecodeConfig accepts a group level or a preset/rule mapping.
 func (g *Group) DecodeConfig(value any) error {
 	var next Group
 	if object, ok := value.(map[string]any); ok {
@@ -332,7 +286,6 @@ func (g *Group) DecodeConfig(value any) error {
 	return nil
 }
 
-// EncodeConfig preserves group shorthand across configuration round trips.
 func (g Group) EncodeConfig() (any, error) {
 	if g.level != "" && g.preset == "" && len(g.rules) == 0 {
 		return string(g.level), nil
@@ -340,5 +293,4 @@ func (g Group) EncodeConfig() (any, error) {
 	return groupWire{Preset: g.preset, Level: g.level, Rules: maps.Clone(g.rules)}, nil
 }
 
-// CopyConfig copies the owned configuration state.
-func (g Group) CopyConfig() (any, error) { return copyOwnedGroup(g), nil }
+func (g Group) CopyConfig() (any, error) { return deepCopyGroup(g), nil }

@@ -12,35 +12,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// toolProvider is what configuration needs from a bundled tool provider.
 type toolProvider struct {
 	scope rule.ConfigurationScope
 	// schema validates inline tools.<name>.config settings; nil accepts any.
-	schema *toolsettings.Schema
-	// shorthands may be written directly under tools.<name>.
-	shorthands map[string]toolsettings.Shorthand
-	// configFiles permits a path in tools.<name>.config.
+	schema      *toolsettings.Schema
+	shorthands  map[string]toolsettings.Shorthand
 	configFiles bool
 }
 
-// toolProviders indexes the bundled tool providers by rule name. A provider
-// whose embedded manifest is invalid is left out of the index, and
-// BundledToolProvidersError reports why.
 func toolProviders() map[string]toolProvider {
 	index, _ := bundledToolProviders()
 	return index
 }
 
-// BundledToolProvidersError reports why a bundled tool provider could not be
-// indexed, or nil when every one was. Invalid embedded manifests are a build
-// defect that TestBundledToolProvidersLoad rejects; the rule catalog reports
-// this error to every check.
 func BundledToolProvidersError() error {
 	_, err := bundledToolProviders()
 	return err
 }
 
-// bundledToolProviders decodes the bundled tool providers once per process.
 var bundledToolProviders = sync.OnceValues(func() (map[string]toolProvider, error) {
 	index := map[string]toolProvider{}
 	bundled, err := toolmanifest.Bundled()
@@ -98,7 +87,6 @@ func (ruleSet RuleSet) toolProvider(name string) (toolProvider, bool) {
 	return provider, ok
 }
 
-// toolProviderNames lists the bundled tool providers' rule names in order.
 func toolProviderNames() []string {
 	return slices.Sorted(maps.Keys(toolProviders()))
 }

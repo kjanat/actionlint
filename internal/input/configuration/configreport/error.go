@@ -26,5 +26,4 @@ func (e *OverlayError) Error() string {
 	return fmt.Sprintf("configuration after inputs %s: %v", strings.Join(e.inputs, ", "), e.cause)
 }
 
-// Unwrap returns the configuration validation error.
 func (e *OverlayError) Unwrap() error { return e.cause }

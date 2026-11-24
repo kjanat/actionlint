@@ -12,7 +12,7 @@ import (
 )
 
 func parseWorkflowPanicFree(data []byte) *definition.Workflow {
-	// Avoid Parse() panicking. It panics when go-yaml panics
+	// Parse() panics when go-yaml panics.
 	defer func() { _ = recover() }()
 	w, _ := parser.ParseWorkflow(data)
 	return w

@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
-// publishSuppressionFixture enables the tested rules so publication exercises
-// suppression independently of their recommendation and default levels.
 func publishSuppressionFixture(t *testing.T, p policy.DocumentInputs, cfg *configuration.Config, findings []*finding.Finding, sources map[string][]byte) []*finding.Finding {
 	t.Helper()
 	rules := checking.ConfigurationRules()
@@ -44,8 +42,8 @@ func publishSuppressionFixture(t *testing.T, p policy.DocumentInputs, cfg *confi
 	if cfg == nil {
 		cfg = &configuration.Config{}
 	} else {
-		owned := *cfg
-		cfg = &owned
+		copied := *cfg
+		cfg = &copied
 	}
 	cfg.Lint.Rules = enabled.Lint.Rules
 	originalRestrictions := cfg.Policy.DisallowSuppressions
@@ -63,7 +61,6 @@ func publishSuppressionFixture(t *testing.T, p policy.DocumentInputs, cfg *confi
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Preserve fixture input order while checking the final published records.
 	ordered := make([]*finding.Finding, 0, len(got))
 	used := make([]bool, len(got))
 	for _, original := range findings {
@@ -110,7 +107,6 @@ func fixtureConfigured(t *testing.T, path, root string, source []byte, findings 
 	return publishSuppressionFixture(t, policy.DocumentInputs{Path: path, ConfigPath: path, Root: root, Content: source}, cfg, findings, nil)
 }
 
-// fixtureIdentity keeps the attributes under test while publication adds bindings and paths.
 type fixtureIdentity struct {
 	Rule    string
 	Start   sourcetext.Position

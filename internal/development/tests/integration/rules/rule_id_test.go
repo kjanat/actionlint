@@ -17,7 +17,6 @@ import (
 
 func TestCheckInvalidJobNames(t *testing.T) {
 	t.Parallel()
-	// Note: Empty string is already reported as error by parser
 	inputs := []string{
 		"-foo",
 		"v1.2.3",

@@ -33,8 +33,6 @@ func Actions(ctx context.Context, root string, reader *files.Reader) ([]string, 
 	return discoverFiles(ctx, root, reader, isManifest, discoverActions)
 }
 
-// YAML discovers YAML inputs within an explicitly selected directory, applying
-// the same repository boundaries, ignore rules and directory skips as Actions.
 func YAML(ctx context.Context, root string, reader *files.Reader) ([]string, error) {
 	return discoverFiles(ctx, root, reader, isYAML, discoverYAML)
 }
@@ -89,8 +87,7 @@ func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitF
 	return gitFilterWithQuery(ctx, root, reader, nil)
 }
 
-// GitQuery executes a local metadata query selected by the Go discoverer.
-// A work-tree lookup outside a repository returns fs.ErrNotExist.
+// GitQuery returns fs.ErrNotExist for a work-tree lookup outside a repository.
 type GitQuery func(context.Context, string, ...string) (gitcommand.Output, error)
 
 func gitFilterWithQuery(ctx context.Context, root string, reader *files.Reader, query GitQuery) (*gitFilter, error) {

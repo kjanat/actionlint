@@ -23,7 +23,7 @@ import (
 
 func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*declarations.CapturedSnapshots) (Composition, error) {
 	t.Helper()
-	content, available := metadata.OriginalSource()
+	content, available := metadata.Text()
 	if !available {
 		t.Fatal("action fixture has no original source")
 	}
@@ -47,7 +47,7 @@ func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta
 		if captureErr != nil {
 			t.Fatal(captureErr)
 		}
-		snapshot, err = registry.Document(captured, document)
+		snapshot, err = registry.Admit(captured, document.Parsed)
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +69,6 @@ type mutatingStandaloneMetadata struct {
 
 func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	metadata.Runs.Using = "node24"
-	metadata.Source[0] = 'x'
 	return nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// Checkout describes one runner placement without linking mutable state.
 type Checkout struct {
 	Directory       Directory
 	CaseInsensitive bool
@@ -75,7 +74,6 @@ func (placement CheckoutPlacement) Matching(local string) CheckoutPlacement {
 	return CheckoutPlacement{}
 }
 
-// MergeCheckoutBranches merges checkout placements from conditional execution.
 func MergeCheckoutBranches(before, after CheckoutPlacement, mayFail bool) CheckoutPlacement {
 	if after == before || !after.Present() {
 		return before

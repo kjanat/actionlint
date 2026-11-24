@@ -11,19 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// ArtifactCacheDir returns the directory that stores verified plugin artifacts.
 func ArtifactCacheDir(acquisition dependencycache.Acquisition) (string, error) {
 	return cacheSubdirectory(acquisition, "artifacts")
 }
 
-// RegistryCacheDir returns the directory that stores verified registry
-// releases, selections and release statuses.
 func RegistryCacheDir(acquisition dependencycache.Acquisition) (string, error) {
 	return cacheSubdirectory(acquisition, "registry")
 }
 
-// ArtifactOptions caches artifacts in the dependency cache and pulls oci://
-// sources over the acquisition's connections.
 func ArtifactOptions(acquisition dependencycache.Acquisition) artifacts.Options {
 	options := artifacts.Options{PullOCI: oci.Pull, Connections: acquisition.Connections}
 	if directory, err := ArtifactCacheDir(acquisition); err == nil {
@@ -32,8 +27,7 @@ func ArtifactOptions(acquisition dependencycache.Acquisition) artifacts.Options 
 	return options
 }
 
-// CompiledModuleCacheDir creates the directory for compiled modules, or
-// returns empty on failure.
+// CompiledModuleCacheDir returns empty when it cannot create the directory.
 func CompiledModuleCacheDir(acquisition dependencycache.Acquisition) string {
 	directory, err := cacheSubdirectory(acquisition, "wazero")
 	if err != nil {

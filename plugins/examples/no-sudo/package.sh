@@ -30,7 +30,7 @@ printf '%s\n' "${license}" >"${output}/LICENSE"
 cp "${component}" "${output}/plugin.wasm"
 
 # Custom sections can follow executable sections. The raw build has no discovery
-# section; package a fresh build each time rather than appending to a distribution.
+# section. Package a fresh build each time and append nothing to a distribution.
 uleb32() {
 	local value="$1" byte escaped
 	while ((value >= 128)); do

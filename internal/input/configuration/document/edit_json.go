@@ -9,8 +9,7 @@ import (
 	"github.com/tidwall/jsonc"
 )
 
-// setJSONList replaces or appends the top-level member key of a JSON object.
-// Comments and trailing commas elsewhere are kept.
+// setJSONList keeps comments and trailing commas outside the replaced member.
 func setJSONList(original []byte, member string, sequence []any) ([]byte, error) {
 	value, err := json.Marshal(sequence)
 	if err != nil {

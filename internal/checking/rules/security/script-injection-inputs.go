@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
-// UntrustedInputMap is a node in a tree of untrusted input paths. Roots name
-// contexts; children name properties or array elements.
 type UntrustedInputMap struct {
 	Name     string
 	Parent   *UntrustedInputMap
@@ -30,7 +28,6 @@ func (m *UntrustedInputMap) String() string {
 	return b.String()
 }
 
-// findChild finds the child with the exact key.
 func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
 	if m != nil && m.Children != nil {
 		if c, ok := m.Children[key]; ok {
@@ -40,7 +37,6 @@ func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
 	return nil, false
 }
 
-// findObjectProp finds a property by name. A `**` child matches any property name.
 func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, bool) {
 	if c, ok := m.findChild(name); ok {
 		return c, true
@@ -48,17 +44,14 @@ func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, boo
 	return m.findAnyProp()
 }
 
-// findArrayElem finds the child representing an array element.
 func (m *UntrustedInputMap) findArrayElem() (*UntrustedInputMap, bool) {
 	return m.findChild("*")
 }
 
-// findAnyProp finds the child that matches any property name.
 func (m *UntrustedInputMap) findAnyProp() (*UntrustedInputMap, bool) {
 	return m.findChild("**")
 }
 
-// buildPath follows parents to build a path such as `github.event.commits.*.body`.
 func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
 	if m.Parent != nil && m.Parent.Name != "" {
 		m.Parent.buildPath(b)
@@ -67,15 +60,13 @@ func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
 	b.WriteString(m.Name)
 }
 
-// NewUntrustedInputMap creates a node in the untrusted input search tree.
-// The name `*` matches an array element and is reached by an index access or an object
-// filter. The name `**` matches any property name. A map which uses either name must have
-// it as its only child.
+// NewUntrustedInputMap treats the name `*` as an array element and `**` as any
+// property name. A map which uses either name must have it as its only child.
 func NewUntrustedInputMap(name string, children ...*UntrustedInputMap) *UntrustedInputMap {
 	m := &UntrustedInputMap{
 		Name:     name,
 		Parent:   nil,
-		Children: nil, // Leaf of the tree is nil
+		Children: nil,
 	}
 	if len(children) > 0 {
 		m.Children = make(map[string]*UntrustedInputMap, len(children))
@@ -87,19 +78,13 @@ func NewUntrustedInputMap(name string, children ...*UntrustedInputMap) *Untruste
 	return m
 }
 
-// UntrustedInputSearchRoots maps context names to trees of untrusted input paths.
-// The checker follows those paths through properties, array indices and object filters.
 type UntrustedInputSearchRoots map[string]*UntrustedInputMap
 
-// AddRoot adds a context root to the search tree.
 func (ms UntrustedInputSearchRoots) AddRoot(m *UntrustedInputMap) {
 	ms[m.Name] = m
 }
 
-// TODO: Automatically generate BuiltinUntrustedInputs from https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql
-
 // BuiltinUntrustedInputs lists inputs treated as untrusted in `run:` scripts.
-// See these references for details.
 // - https://securitylab.github.com/research/github-actions-untrusted-input/
 // - https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 // - https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql
@@ -204,13 +189,8 @@ var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
 	),
 }
 
-// UntrustedInputChecker is a checker to detect untrusted inputs in an expression syntax tree.
-// This checker checks object property accesses, array index accesses, and object filters. And
-// detects paths to untrusted inputs. Found errors are stored in this instance and can be get via
-// Errs method.
-//
-// Note: To avoid breaking the state of checking property accesses on nested property accesses like
-// foo[aaa.bbb].bar, IndexAccessNode.Index must be visited before IndexAccessNode.Operand.
+// UntrustedInputChecker needs IndexAccessNode.Index visited before
+// IndexAccessNode.Operand for nested accesses such as foo[aaa.bbb].bar.
 type UntrustedInputChecker struct {
 	roots           UntrustedInputSearchRoots
 	filteringObject bool
@@ -227,8 +207,6 @@ type untrustedInputVisit struct {
 	boolean bool
 }
 
-// NewUntrustedInputChecker creates a new UntrustedInputChecker instance. The roots argument is a
-// search tree which defines untrusted input paths as trees.
 func NewUntrustedInputChecker(roots UntrustedInputSearchRoots) *UntrustedInputChecker {
 	return &UntrustedInputChecker{
 		roots: roots,
@@ -236,7 +214,6 @@ func NewUntrustedInputChecker(roots UntrustedInputSearchRoots) *UntrustedInputCh
 	}
 }
 
-// Reset the state for next search
 func (u *UntrustedInputChecker) reset() {
 	u.start = nil
 	u.filteringObject = false
@@ -258,7 +235,7 @@ func (u *UntrustedInputChecker) compact() {
 }
 
 func (u *UntrustedInputChecker) onVar(v *syntax.VariableNode) {
-	c, ok := u.roots[v.Name] // Find root context (currently only "github" exists)
+	c, ok := u.roots[v.Name]
 	if !ok {
 		return
 	}
@@ -275,7 +252,7 @@ func (u *UntrustedInputChecker) onPropAccess(name string) {
 			compact = true
 			continue
 		}
-		u.cur[i] = c // depth + 1
+		u.cur[i] = c
 	}
 	if compact {
 		u.compact()
@@ -285,7 +262,7 @@ func (u *UntrustedInputChecker) onPropAccess(name string) {
 func (u *UntrustedInputChecker) onIndexAccess() {
 	if u.filteringObject {
 		u.filteringObject = false
-		return // For example, match `github.event.*.body[0]` as `github.event.commits[0].body`
+		return
 	}
 
 	compact := false
@@ -311,7 +288,6 @@ func (u *UntrustedInputChecker) onObjectFilter() {
 
 	compact := false
 	for i, cur := range u.cur {
-		// Object filter for arrays
 		if c, ok := cur.findArrayElem(); ok {
 			u.cur[i] = c
 			continue
@@ -322,7 +298,6 @@ func (u *UntrustedInputChecker) onObjectFilter() {
 			compact = true
 		}
 
-		// Object filter for objects
 		first := true
 		for _, c := range cur.Children {
 			if first {
@@ -346,7 +321,7 @@ func (u *UntrustedInputChecker) endInput(serialized bool) {
 	var inputs []string
 	for _, cur := range u.cur {
 		if cur.Children != nil && !serialized {
-			continue // When `Children` is nil, the node is a leaf
+			continue
 		}
 		var b strings.Builder
 		cur.buildPath(&b)
@@ -365,8 +340,6 @@ func (u *UntrustedInputChecker) reportInputs(start syntax.Node, inputs []string)
 		)
 		u.errs = append(u.errs, err)
 	} else if len(inputs) > 1 {
-		// When multiple untrusted inputs are detected, it means the expression extracts multiple properties with object
-		// filter syntax. Show all properties in error message.
 		err := scriptInjectionIssuef("untrusted-interpolation",
 			start,
 			"object filter extracts potentially untrusted properties %s. avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
@@ -376,8 +349,6 @@ func (u *UntrustedInputChecker) reportInputs(start syntax.Node, inputs []string)
 	}
 }
 
-// serializedContainers follows values selected for JSON serialization. Boolean
-// operands and function predicates do not contribute container contents.
 func (u *UntrustedInputChecker) serializedContainers(expr syntax.Node) {
 	switch n := expr.(type) {
 	case *syntax.LogicalOpNode:
@@ -480,7 +451,6 @@ func (u *UntrustedInputChecker) OnVisitNodeEnter(n syntax.Node) {
 	}
 }
 
-// OnVisitNodeLeave is a callback which should be called on visiting node after visiting its children.
 func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 	defer func() {
 		if len(u.visits) > 0 {
@@ -491,7 +461,6 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 			}
 		}
 	}()
-	// Skip unsafe checks if we are inside of safe function call expression
 	if u.safeCalls > 0 {
 		if f, ok := n.(*syntax.FuncCallNode); ok && functions.IsStringPredicate(f.Callee) {
 			u.safeCalls--
@@ -510,7 +479,6 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 		}
 	case *syntax.IndexAccessNode:
 		if lit, ok := n.Index.(*syntax.StringNode); ok {
-			// Special case like github['event']['issue']['title']
 			u.onPropAccess(strings.ToLower(lit.Value))
 		} else {
 			u.onIndexAccess()
@@ -539,14 +507,11 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 	}
 }
 
-// OnVisitEnd is a callback which should be called after visiting whole syntax tree. This callback
-// is necessary to handle the case where an untrusted input access is at root of expression.
+// OnVisitEnd must run after the whole syntax tree is visited.
 func (u *UntrustedInputChecker) OnVisitEnd() {
 	u.end()
 }
 
-// Errs returns errors detected by this checker. This method should be called after visiting all
-// nodes in a syntax tree.
 func (u *UntrustedInputChecker) Errs() []*typecheck.Error {
 	out := make([]*typecheck.Error, len(u.errs))
 	for i, issue := range u.errs {
@@ -556,7 +521,6 @@ func (u *UntrustedInputChecker) Errs() []*typecheck.Error {
 	return out
 }
 
-// Init initializes a state of checker.
 func (u *UntrustedInputChecker) Init() {
 	u.errs = u.errs[:0]
 	u.safeCalls = 0

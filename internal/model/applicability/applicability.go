@@ -3,12 +3,10 @@ package applicability
 
 import "fmt"
 
-// Applicability describes the review required for one concrete fix.
-// Its zero value requires review; an omitted plugin field never enables automatic edits.
+// Applicability requires review when it is the zero value.
 type Applicability uint8
 
 const (
-	// Suggested offers a correction whose intent or effects need review.
 	Suggested Applicability = iota
 	// Safe can be applied without changing the intended behavior.
 	Safe
@@ -16,7 +14,6 @@ const (
 	Unsafe
 )
 
-// Parse validates a wire value. Older plugins may omit it or send an empty string.
 func Parse(value string) (Applicability, error) {
 	switch value {
 	case "", "suggested":
@@ -30,10 +27,8 @@ func Parse(value string) (Applicability, error) {
 	}
 }
 
-// Valid reports whether the value belongs to the fix contract.
 func (a Applicability) Valid() bool { return a <= Unsafe }
 
-// Automatic reports whether this fix can be applied without review.
 func (a Applicability) Automatic() bool { return a == Safe }
 
 func (a Applicability) String() string {
@@ -49,7 +44,6 @@ func (a Applicability) String() string {
 	}
 }
 
-// MarshalText preserves the string representation used by JSON plugin protocols.
 func (a Applicability) MarshalText() ([]byte, error) {
 	if !a.Valid() {
 		return nil, fmt.Errorf("invalid fix applicability %d", a)
@@ -57,7 +51,6 @@ func (a Applicability) MarshalText() ([]byte, error) {
 	return []byte(a.String()), nil
 }
 
-// UnmarshalText validates applicability before it enters the diagnostic model.
 func (a *Applicability) UnmarshalText(text []byte) error {
 	parsed, err := Parse(string(text))
 	if err == nil {

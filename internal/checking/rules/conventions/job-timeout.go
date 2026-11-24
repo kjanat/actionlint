@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// JobTimeoutRule is the single definition of the job-timeout rule.
 var JobTimeoutRule = &define.Rule{
 	Name:        "job-timeout",
 	Aliases:     []rule.Alias{{Name: "require-job-timeout", Deprecated: true}},
@@ -30,7 +29,6 @@ type TimeoutPolicy struct {
 	Min, Max *float64
 }
 
-// TimeoutPolicyFrom converts the configured policy into the bounds JobTimeoutChecks enforces.
 func TimeoutPolicyFrom(policy *configuration.JobTimeoutPolicy) TimeoutPolicy {
 	options := TimeoutPolicy{Enabled: policy.Enabled()}
 	if lower, ok := policy.MinMinutes(); ok {
@@ -42,7 +40,6 @@ func TimeoutPolicyFrom(policy *configuration.JobTimeoutPolicy) TimeoutPolicy {
 	return options
 }
 
-// JobTimeoutChecks copies the configured bounds and checks each job against them.
 func JobTimeoutChecks(policy TimeoutPolicy) define.Checks {
 	if policy.Min != nil {
 		policy.Min = new(*policy.Min)

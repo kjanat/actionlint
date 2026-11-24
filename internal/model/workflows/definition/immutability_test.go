@@ -12,20 +12,14 @@ import (
 
 const definitionPackage = "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-// treeBuilders may modify decoded syntax trees: they build them before
-// declaration.Bind takes ownership. internal/model/parsing builds the step
-// projection of composite action metadata.
+// treeBuilders may modify decoded syntax trees.
 var treeBuilders = []string{
 	definitionPackage,
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser",
 	"actionlint.kjanat.dev/v2/internal/model/parsing",
 }
 
-// TestProductionCannotModifyPublishedSyntax replaces the read-only views that
-// consumers once received. Outside the tree builders, production code may not
-// assign to fields of definition types reached through a pointer, slice or map,
-// nor write into or delete from their slices and maps. Writes to a local copy
-// of a definition value stay allowed.
+// TestProductionCannotModifyPublishedSyntax allows writes to a local copy of a definition value.
 func TestProductionCannotModifyPublishedSyntax(t *testing.T) {
 	if testing.Short() {
 		t.Skip("type-checks the whole module")
@@ -99,9 +93,7 @@ func publishedSyntaxWrites(loaded []*packages.Package) []string {
 	return writes
 }
 
-// sharedDefinitionField reports a write target that is a field of a definition
-// type, or an element of a slice or map held in one, reached through a pointer,
-// slice or map. A chain of value selections from a local variable is a copy.
+// A chain of value selections from a local variable is a copy.
 func sharedDefinitionField(info *types.Info, target ast.Expr) (string, bool) {
 	field, shared := "", false
 	for {

@@ -16,9 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CheckSelection holds the workflow rules and script analyzers that
-// configuration enables, and the checks that cannot run because their
-// required inputs are unknown.
 type CheckSelection struct {
 	Unavailable []UnavailableCheck
 	Rules       []workflowvisit.Rule
@@ -26,15 +23,12 @@ type CheckSelection struct {
 	ScriptInfo  []rule.Descriptor
 }
 
-// UnavailableCheck identifies a selected check whose required inputs are unknown.
 type UnavailableCheck struct {
 	Name, Reason string
 }
 
-// CreateRules prepares and constructs the native rules that configuration
-// enables, in presentation order. For an action document it selects only the
-// rules that support actions. Every native rule that executes must be declared
-// in ruleSet.
+// CreateRules returns the enabled native rules in presentation order. Every
+// native rule that executes must be declared in ruleSet.
 func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (CheckSelection, error) {
 	inputs.Rules = ruleSet
 	var selected CheckSelection

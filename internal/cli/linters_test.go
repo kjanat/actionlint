@@ -29,8 +29,6 @@ func TestRootOptionalLinterCommands(t *testing.T) {
 	}
 }
 
-// TestRootDeprecatedShellCheckCommand checks the --shellcheck=COMMAND flag
-// of actionlint v1.17.0, which the bundled ShellCheck manifest declares.
 func TestRootDeprecatedShellCheckCommand(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -50,8 +48,6 @@ func TestRootDeprecatedShellCheckCommand(t *testing.T) {
 	}
 }
 
-// assertToolCommand parses args and checks the command selected for the
-// tool name and that input.yml is the only path left.
 func assertToolCommand(t *testing.T, name string, args []string, want string) {
 	t.Helper()
 	app := newCommandApp(t.Context(), &Command{})

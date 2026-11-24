@@ -10,7 +10,6 @@ func testBindings(settings *configuration.Config) *rulebinding.Scope {
 	return rulebinding.NewRegistry(settings.RuleSet()).Prepare(settings, settings, settings)
 }
 
-// testSourceBindings supplies the prepared scopes normally owned by checking.
 func testSourceBindings(load func(string) (*configuration.Config, error)) func(*rulebinding.Scope, string) (*rulebinding.Scope, error) {
 	prepared := make(map[string]*rulebinding.Scope)
 	return func(parent *rulebinding.Scope, path string) (*rulebinding.Scope, error) {

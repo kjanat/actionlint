@@ -15,8 +15,6 @@ import (
 // Loaded is a configuration file merged over the files it extends.
 // Files lists every source file in merge order, ending with the selected file.
 // Contents maps the spelling each source was requested by to its bytes.
-// Selected holds the selected file as parsed, before normalization, so it can
-// be edited without parsing it again.
 type Loaded struct {
 	Root     *Node
 	Files    []string
@@ -26,14 +24,10 @@ type Loaded struct {
 
 // Normalizer rewrites one parsed source before it is merged. origin is the
 // source's normalized address; the node's locations still name the spelling
-// that was read. A nil Normalizer keeps each source unchanged.
+// that was read.
 type Normalizer func(origin string, source *Node) (*Node, error)
 
-// Files holds parsed configuration sources by normalized address. Load reads
-// and parses a source only when Files does not already hold it, so several
-// loads of one configuration, each with its own Normalizer, share one read and
-// parse of every file. Failed reads are not kept. Files is safe for
-// concurrent use; a nil *Files keeps nothing.
+// Files holds parsed configuration sources by normalized address.
 type Files struct {
 	mu      sync.Mutex
 	sources map[string]heldSource
@@ -44,7 +38,6 @@ type heldSource struct {
 	root *Node
 }
 
-// NewFiles returns an empty set of parsed sources.
 func NewFiles() *Files { return &Files{sources: map[string]heldSource{}} }
 
 // Add records root as the already loaded source at address, which must be normalized.
@@ -54,8 +47,6 @@ func (f *Files) Add(address string, root *Node) {
 	f.sources[address] = heldSource{root: cloneNode(root)}
 }
 
-// parse returns the source at address, located in readPath. A source that
-// Files does not hold is read with read and kept.
 func (f *Files) parse(address, readPath string, read func(string) ([]byte, error)) ([]byte, *Node, error) {
 	if f != nil {
 		f.mu.Lock()
@@ -84,9 +75,7 @@ func (f *Files) parse(address, readPath string, read func(string) ([]byte, error
 }
 
 // LoadConfigDocument merges path over the files it extends, depth first, according to
-// plan. Sources held by files are used as already loaded; read supplies the
-// others, and files keeps them for later loads. Within one load each file is
-// read and parsed once.
+// plan. Within one load each file is read and parsed once.
 func LoadConfigDocument(path string, files *Files, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
@@ -176,7 +165,6 @@ func LoadConfigDocument(path string, files *Files, read func(string) ([]byte, er
 	return result, err
 }
 
-// extendsError reports a base that failed to load from the file that extends it.
 type extendsError struct {
 	origin string
 	cause  error

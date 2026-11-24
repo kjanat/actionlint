@@ -47,7 +47,6 @@ expect_change true rm new-file
 expect_change false bash -c 'echo cache > ignored'
 expect_change false chmod +x tracked
 
-# Preserve both staged and unstaged changes in the caller's index.
 git add tracked
 echo unstaged >tracked
 index_before=$(git hash-object .git/index)
@@ -56,7 +55,6 @@ expect_change true bash -c 'echo updated > tracked'
 index_after=$(git hash-object .git/index)
 [[ "${index_after}" == "${index_before}" ]]
 
-# A failed tool must fail the step without publishing a success output.
 : >"${GITHUB_OUTPUT}"
 status=0
 bash "${script}" bash -c 'echo partial > tracked; exit 7' || status=$?
@@ -65,18 +63,17 @@ bash "${script}" bash -c 'echo partial > tracked; exit 7' || status=$?
 leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 [[ -z "${leftover}" ]]
 
-# Exercise selection against real Git trees, including added and removed inputs.
 expect_inputs() {
-	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false}
+	local base=$1 head=$2 tables=$3 readme=$4 nix=${5:-false} forks=${6:-false}
 	local output
 	: >"${GITHUB_OUTPUT}"
 	bash "${inputs_script}" "${base}" "${head}"
 	output=$(cat "${GITHUB_OUTPUT}")
-	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s' "${tables}" "${readme}" "${nix}")" ]]
+	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s\nnix=%s\nforks=%s' "${tables}" "${readme}" "${nix}" "${forks}")" ]]
 }
 
 check_input() {
-	local path=$1 tables=$2 readme=$3 nix=${4:-false}
+	local path=$1 tables=$2 readme=$3 nix=${4:-false} forks=${5:-false}
 	local base head directory
 	base=$(git write-tree)
 	directory=$(dirname "${path}")
@@ -84,8 +81,8 @@ check_input() {
 	echo fixture >"${path}"
 	git add --all
 	head=$(git write-tree)
-	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}"
-	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}"
+	expect_inputs "${base}" "${head}" "${tables}" "${readme}" "${nix}" "${forks}"
+	expect_inputs "${head}" "${base}" "${tables}" "${readme}" "${nix}" "${forks}"
 }
 
 check_input docs/unrelated.md false false
@@ -116,10 +113,16 @@ check_input docs/screenshots/demo-workflow.yaml false false
 check_input docs/screenshots/actionlint.yaml false false
 check_input tools/docs/readme-demo.mjs false true
 check_input README.md false true
-check_input go.mod true true true
-check_input go.sum true true true
-check_input .github/workflows/autofix.yml true true true
-check_input tools/ci/autofix-inputs.bash true true true
+check_input go.mod true true true true
+check_input go.sum true true true true
+check_input .github/workflows/autofix.yml true true true true
+check_input tools/ci/autofix-inputs.bash true true true true
+check_input plugins/sdk/go/go.mod false false false true
+check_input plugins/sdk/go/go.sum false false false true
+check_input plugins/examples/insecure-download/go.mod false false false true
+check_input plugins/examples/insecure-download/go.sum false false false true
+check_input docs/go-forks.md false false false true
+check_input internal/development/generators/go-forks/main.go true true true true
 check_input flake.nix false false true
 check_input flake.lock false false true
 check_input distribution/nix/package.nix false false true
@@ -129,13 +132,11 @@ check_input plugins/examples/insecure-download/main.go false false false
 tree=$(git write-tree)
 expect_inputs "${tree}" "${tree}" false false
 
-# An unavailable comparison must fail the job.
 status=0
 bash "${inputs_script}" missing-ref HEAD 2>"${temporary}/error" || status=$?
 [[ "${status}" != 0 ]]
 : >"${GITHUB_OUTPUT}"
 
-# A snapshot failure must stop before running the tool.
 git symbolic-ref HEAD refs/heads/unborn
 status=0
 bash "${script}" touch should-not-exist 2>"${temporary}/error" || status=$?

@@ -8,9 +8,8 @@ import (
 )
 
 // executableLookup pins a successful absolute path until the lookup environment
-// changes or that file disappears. It never caches a failed search. PATH order
-// and Windows PATHEXT selection are supplied by execabs, including its refusal
-// to select an executable through an implicit current-directory search.
+// changes or that file disappears. execabs refuses to select an executable
+// through an implicit current-directory search.
 type executableLookup struct {
 	mu          sync.Mutex
 	environment lookupEnvironment

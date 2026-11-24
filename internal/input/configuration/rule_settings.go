@@ -6,15 +6,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
 )
 
-// loadOptions decodes the options of s into dst and reports whether it did.
-// ResolveRules validates options before policy projection calls this helper.
 func loadOptions(s ruleconfig.Setting, dst any) bool {
 	loaded, err := s.LoadOptions(dst)
 	return loaded && err == nil
 }
 
-// RuleOptions decodes options from the rule's semantic category. It returns
-// nil when the rule has no options. Each call returns a new map.
+// RuleOptions returns nil when the rule has no options and a new map on each call.
 func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
 	ruleSet := c.ruleSet
 
@@ -30,7 +27,6 @@ func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
 		setting, found = boundSetting.Setting, true
 	}
 	if !found {
-		// Legacy registrations remain readable until migration has metadata.
 		setting, _ = ruleSet.canonicalSetting(c.Plugins, name)
 	}
 	var options map[string]any
@@ -56,14 +52,10 @@ func (c *LintRulesConfig) Groups() map[string]ruleconfig.Group {
 	return map[string]ruleconfig.Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "conventions": c.Conventions}
 }
 
-// LegacyGroups exposes decode-only controls needed for metadata-aware migration.
 func (c *LintRulesConfig) LegacyGroups() map[string]ruleconfig.Group {
 	return map[string]ruleconfig.Group{"style": c.Style, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
 }
 
-// LegacyGroup identifies a built-in rule's configuration group before semantic
-// categories replaced provider, maturity and policy groups. Bundled tool
-// providers belonged to "external"; other rules declare their group.
 func (ruleSet RuleSet) LegacyGroup(name string) string {
 	name = ruleSet.ResolveAlias(name)
 	if _, bundled := toolProviders()[name]; bundled {

@@ -3,25 +3,17 @@ import type { Diagnostic, JSONValue, ScriptRequest } from '#index';
 import { isDiagnostic, isJSONValue } from '#index';
 import { array, record, runCommand, text } from '#process';
 
-/** Select the actionlint executable that validates this plugin. */
 export interface AuthoringOptions {
-	/** kjanat/actionlint executable. Defaults to ACTIONLINT, then actionlint on PATH. */
 	actionlint?: string;
-	/** Bound the entire validation/test subprocess; defaults to 30 seconds. */
 	timeoutMs?: number;
 }
 
-/** Decoded scanner output, before workflow policy changes diagnostic severity. */
 export interface ProviderResult {
-	/** Findings after actionlint validates ranges, fixes and coordinate conventions. */
 	diagnostics: Diagnostic[];
-	/** Additional source names; permitted only when the manifest declares that capability. */
 	sources?: string[];
-	/** Scanner-reported failures, distinct from findings about the captured source. */
 	errors?: string[];
 }
 
-/** Interpreter and environment facts used to evaluate a preparation transform. */
 export interface PreparationContext {
 	language: string;
 	startup?: string;
@@ -33,7 +25,6 @@ export interface PreparationContext {
 	input?: boolean;
 }
 
-/** Generated text and tool options returned by a preparation transform. */
 export interface PreparationPlan {
 	source_prefix?: string;
 	startup?: string;
@@ -44,13 +35,11 @@ export interface PreparationPlan {
 }
 
 interface CaseInput {
-	/** Required when the provider defines preparationTransform. Source and settings come from request. */
+	/** Required when the provider defines preparationTransform. */
 	preparation?: PreparationContext;
-	/** Unique label shown by the CLI and assertion failure, such as "PowerShell alias". */
+	/** Unique label shown by the CLI and assertion failures. */
 	name: string;
-	/** Captured snippet/document and user configuration. The linter is never executed. */
 	request: ScriptRequest & { directory?: string };
-	/** Preparation variables exposed to jq as $vars; actionlint filename and exit-code values take precedence. */
 	variables?: Record<string, string>;
 	/** Recorded process status; defaults to zero and must match the manifest's accepted exit codes. */
 	exit_code?: number;
@@ -59,31 +48,14 @@ interface CaseInput {
 interface SuccessAssertions {
 	/** Complete source sent to the process after generated text is inserted. */
 	expect_source?: string;
-	/** Complete plan returned by the preparation transform. */
 	expect_preparation?: PreparationPlan;
-	/** Recorded stdout exactly as emitted by the wrapped linter. An empty string still gets decoded. */
 	stdout?: string;
-	/** Expected complete diagnostics/result after actionlint decodes output and validates source ranges. */
 	expect?: ProviderResult;
-	/** Expected configuration after the manifest's jq config transform. */
 	expect_config?: JSONValue;
-	/** Expected complete variable map after configuration overrides and host variables. */
 	expect_vars?: Record<string, string>;
 	expect_error?: never;
 }
 
-/**
- * One recorded scanner/configuration example with at least one assertion.
- * The expect_error assertion matches errors returned by actionlint.
- *
- * @example
- * ```ts
- * const clean: ProviderTestCase = {
- *   name: 'clean output', request: { source: 'echo ok\n', filename: 'script.sh' },
- *   stdout: '[]', expect: { diagnostics: [] },
- * };
- * ```
- */
 export type ProviderTestCase =
 	& CaseInput
 	& (
@@ -94,7 +66,6 @@ export type ProviderTestCase =
 		| SuccessAssertions & { expect_vars: Record<string, string> }
 		| {
 			stdout?: string;
-			/** Substring required in a genuine config/decoder failure, such as "invalid jq transform output". */
 			expect_error: string;
 			expect?: never;
 			expect_source?: never;
@@ -104,43 +75,29 @@ export type ProviderTestCase =
 		}
 	);
 
-/** Result of actionlint validating the manifest and bundled schemas and compiling jq transforms. */
 export interface ValidationReport {
-	/** Version of the authoring report protocol. */
 	schema_version: 1;
-	/** True only when actionlint accepts the process manifest and compiles its transforms. */
 	valid: boolean;
-	/** Parse, schema or compiler error from actionlint when validation fails. */
 	error?: string;
 }
 
-/** One evaluated fixture, including the values needed to diagnose failed assertions. */
 export interface CaseReport {
-	/** Source after generated comments and startup commands are inserted. */
 	source: string;
-	/** The submitted fixture's name. */
 	name: string;
-	/** Whether all assertions passed, including any explicitly expected pipeline error. */
 	passed: boolean;
-	/** Configuration computed by actionlint after transformation. */
 	config?: JSONValue;
-	/** Argument and jq variables computed by actionlint. */
 	variables?: Record<string, string>;
-	/** Decoded findings and scanner errors; omitted for configuration-only fixtures. */
+	/** Omitted for configuration-only fixtures. */
 	result?: ProviderResult;
-	/** Pipeline or expectation failure, if any. */
 	error?: string;
 }
 
-/** Machine-readable result of validating the manifest and evaluating all submitted fixtures. */
 export interface TestReport extends ValidationReport {
-	/** Fixture results in declaration order; never interpret an empty suite as a passing test. */
+	/** Fixture results in declaration order. */
 	cases: CaseReport[];
 }
 
-/** Failed author assertions with the complete actionlint report for test-runner diagnostics. */
 export class ProviderTestError extends Error {
-	/** The cases evaluated by actionlint and its validation error. */
 	readonly report: TestReport;
 
 	constructor(report: TestReport) {
@@ -152,19 +109,6 @@ export class ProviderTestError extends Error {
 	}
 }
 
-/**
- * Validate compiled manifest data with actionlint's own schema and jq compiler.
- * No scanner is launched, environment read by jq, or network access performed.
- *
- * @example
- * ```ts
- * import { compileProvider } from '@kjanat-actionlint/plugin-sdk/authoring';
- * import { validateManifest } from '@kjanat-actionlint/plugin-sdk/testing';
- * const manifest = await compileProvider(new URL('./actionlint.plugin.ts', import.meta.url));
- * const report = await validateManifest(manifest);
- * if (!report.valid) throw new Error(report.error);
- * ```
- */
 export async function validateManifest(
 	manifest: Record<string, JSONValue>,
 	options: AuthoringOptions = {},
@@ -173,18 +117,6 @@ export async function validateManifest(
 	return validationReport(response);
 }
 
-/**
- * Validate a compiled manifest and evaluate fixtures loaded from JSON.
- * actionlint validates the fixture structure and rejects empty suites and missing assertions.
- * Use createPluginTester for typed source fixtures and automatic manifest compilation.
- *
- * @example
- * ```ts
- * const fixtures: unknown = JSON.parse(await readFile('actionlint.fixtures.json', 'utf8'));
- * const report = await testManifest(manifest, fixtures);
- * if (!report.valid) throw new ProviderTestError(report);
- * ```
- */
 export async function testManifest(
 	manifest: Record<string, JSONValue>,
 	cases: unknown,
@@ -195,23 +127,15 @@ export async function testManifest(
 	return testReport(response);
 }
 
-/** Framework-independent test client; use assert with Bun, Node, Deno, Vitest or another test runner. */
 export interface PluginTester {
-	/** Load the source definition and embed its jq/program without changing author package files. */
 	compile(): Promise<Record<string, JSONValue>>;
-	/** Validate the manifest and compile all jq expressions without invoking the wrapped tool. */
 	validate(): Promise<ValidationReport>;
-	/** Evaluate recorded fixtures with actionlint and return all successes and failures. */
 	test(cases: readonly ProviderTestCase[]): Promise<TestReport>;
-	/** Evaluate fixtures and throw ProviderTestError when any assertion or validation fails. */
+	/** Throws ProviderTestError when any assertion or validation fails. */
 	assert(cases: readonly ProviderTestCase[]): Promise<TestReport>;
 }
 
 /**
- * Test a source manifest and its real jq expressions against recorded scanner output.
- * Only author-controlled TypeScript is imported; plugin executables are never launched.
- * actionlint uses the same jq sandbox, schemas, coordinate conversion and fix checks as linting.
- *
  * @example
  * ```ts
  * import { test } from 'bun:test';

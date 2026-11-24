@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
+func TestParseEmptySourcesReturnZeroRootNode(t *testing.T) {
 	t.Parallel()
 	for _, data := range [][]byte{nil, {}, []byte(" \n \n"), []byte("# comment\n")} {
 		root, err := ParseYAML(data)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the insecure-download plugin component. Usage: build.sh [output.wasm]
-# Requires tinygo, wasm-tools and go; composes TinyGo's WASI imports with the plugin world.
+# Usage: build.sh [output.wasm]
+# Requires tinygo, wasm-tools and go.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"

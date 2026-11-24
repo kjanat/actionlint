@@ -11,12 +11,9 @@ import (
 	"unicode/utf8"
 )
 
-// FromJSONValue reads the first value using the runner's Newtonsoft.Json loose
-// syntax. It deliberately does not consume trailing data. Object member
-// collisions are exposed separately by JSONMemberCollisions; callers folding
-// expressions must reject those because the selected member is mode-dependent.
-// Valid JavaScript constructors return an unsupported-value error: their
-// Newtonsoft string serialization is not modeled by constant evaluation.
+// FromJSONValue reads the first value with the runner's Newtonsoft.Json loose
+// syntax and leaves trailing data unread. Callers that fold expressions must
+// reject the member collisions JSONMemberCollisions reports.
 func FromJSONValue(source string) (any, error) {
 	value, _, err := Read(source)
 	return value, err

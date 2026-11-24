@@ -127,8 +127,6 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 	return configErr
 }
 
-// checkDoctorTools rejects tool ids named by --tool or --no-tool that no
-// bundled provider has. Doctor loads no plugins, so only bundled tools count.
 func checkDoctorTools(manifests []toolmanifest.Manifest, named []string) error {
 	known := make([]string, len(manifests))
 	for i, manifest := range manifests {
@@ -146,9 +144,6 @@ func checkDoctorTools(manifests []toolmanifest.Manifest, named []string) error {
 	return exitcode.UsageError{Cause: assembly.NewUnknownToolError(unknown, known)}
 }
 
-// probeDoctorVersion runs the manifest's version probe against command, as
-// analysis does before it uses an automatically discovered tool. A provider
-// without a version probe passes.
 func probeDoctorVersion(ctx context.Context, manifest toolmanifest.Manifest, command string, options *hostprocess.CommandOptions) error {
 	if manifest.Process == nil || manifest.Process.Version == nil {
 		return nil

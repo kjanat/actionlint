@@ -79,8 +79,6 @@ func (rule *Visitor) matrixResolution(strategy *definition.Strategy) matrix.Reso
 	return workflows.MatrixResolution(strategy)
 }
 
-// safeMatrixScriptReferences proves individual paths across all declared axis
-// values and include assignments, without expanding the Cartesian product.
 // Includes apply after exclusions, so an excluded match may become a sparse job.
 func safeMatrixScriptReferences(resolution matrix.Resolution) map[string]scriptValueProof {
 	result := map[string]scriptValueProof{}
@@ -152,8 +150,7 @@ func matrixScriptValuePaths(path string, item value.Value, safe map[string]scrip
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
-		// A wildcard can select no value or a missing member, so it is only
-		// proved safe when the caller also proves shell argument position.
+		// A wildcard can select no value or a missing member.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	case value.Array:
 		safe[path] = scriptUnsafe
@@ -166,8 +163,7 @@ func matrixScriptValuePaths(path string, item value.Value, safe map[string]scrip
 			}
 			allSafe = min(allSafe, safe[child])
 		}
-		// A wildcard can select no value or a missing member, so it is only
-		// proved safe when the caller also proves shell argument position.
+		// A wildcard can select no value or a missing member.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	case value.KindUnknown:
 		return false
@@ -230,7 +226,6 @@ func matrixScriptReferencePath(node syntax.Node) string {
 	return ""
 }
 
-// Only unambiguous dotted identifier paths participate in these proofs.
 func scriptPathName(name string) bool {
 	if name == "" {
 		return false

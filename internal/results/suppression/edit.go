@@ -16,8 +16,6 @@ import (
 
 // Edit proposes a suppression for a physical YAML line. The caller must check
 // policy and bind the returned edit to the captured source revision and path.
-// Existing directives retain their selectors and reason; scalar content is
-// targeted through its YAML declaration, never by inserting script comments.
 func Edit(content []byte, line int, rule string, allowed []string, names rule.Names) (results.Edit, bool) {
 	if !slices.Contains(allowed, rule) {
 		return results.Edit{}, false
@@ -76,8 +74,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 	return validateEdit(content, edit, line, rule, allowed, invalid, 1, names)
 }
 
-// Validate through the suppression parser itself, including malformed YAML
-// recovery. An edit must suppress its target without hiding grammar errors.
+// An edit must suppress its target without hiding grammar errors.
 func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rule.Names) (results.Edit, bool) {
 	first, last, err := byteoffset.Range(content, sourcetext.YAML, edit.Start, edit.End)
 	if err != nil {

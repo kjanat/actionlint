@@ -21,7 +21,6 @@ func (cfg *Config) IncludesFile(path, root string) bool {
 	return cfg.Files.Match(RepositoryRelativePath(path, root))
 }
 
-// IncludesSelectedFile applies configured file filters unless bypassFilters is set.
 func (cfg *Config) IncludesSelectedFile(path, root string, bypassFilters bool) bool {
 	return bypassFilters || cfg.IncludesFile(path, root)
 }
@@ -35,8 +34,7 @@ func RepositoryRelativePath(path, root string) string {
 	if err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return relative
 	}
-	// Preserve in-repository alias scopes. Resolve checkout aliases only when
-	// lexical matching would place the supplied file outside the project.
+	// Resolve checkout aliases only when lexical matching would place the file outside the project.
 	physicalRoot, rootErr := filepath.EvalSymlinks(root)
 	physicalPath, pathErr := filepath.EvalSymlinks(path)
 	if rootErr == nil && pathErr == nil {
@@ -110,7 +108,6 @@ func normalizeSourcePaths(value any, directory string, inherited bool) {
 	}
 }
 
-// ValidateSourcePaths rejects local paths in an HTTPS source.
 func ValidateSourcePaths(origin string, value any) error {
 	if !configsource.IsRemoteAddress(origin) {
 		return nil
@@ -237,7 +234,6 @@ func expandInheritedConfigDirectory(value, directory string) string {
 	}
 }
 
-// SourceError identifies the source location of a configuration error.
 type SourceError struct {
 	File     string
 	Position sourcetext.Position

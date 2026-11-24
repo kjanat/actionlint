@@ -6,7 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
-// StringConditions reports a bare string reference used as a condition.
 func StringConditions(root syntax.Node, types typecheck.InferredTypes) []*typecheck.Error {
 	if ty, known := types.TypeOf(root); known && conditionStringReference(root, ty) {
 		return []*typecheck.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; compare the string explicitly or use fromJSON() to parse a boolean value")}
@@ -14,7 +13,6 @@ func StringConditions(root syntax.Node, types typecheck.InferredTypes) []*typech
 	return nil
 }
 
-// MixedTypeComparisons reports string references compared with numeric or boolean literals.
 func MixedTypeComparisons(root syntax.Node, types typecheck.InferredTypes) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {

@@ -36,8 +36,7 @@ test('workspace install links the CLI before SDK build outputs exist', async () 
 				scripts: { probe: 'actionlint-plugin --help' },
 			}),
 		);
-		// Only source files exist at install time. Dist is deliberately absent,
-		// as in a fresh checkout; this test isolates package-manager bin linking.
+		// Dist is deliberately absent, as in a fresh checkout.
 		if (!entry.startsWith('./dist/')) {
 			await mkdir(join(provider, 'bin'));
 			await copyFile(join(sdk, entry), join(provider, entry));

@@ -57,7 +57,6 @@ permissions: {}
 			{name: "old py315", version: "ruff 0.16.0", config: "tools: {ruff: {target-version: py315}}", source: python, warning: true, probe: true},
 			{name: "unrecognized", version: "unexpected banner", source: python, warning: true, probe: true},
 			{name: "current py315", version: "ruff 0.17.0", config: "tools: {ruff: {target-version: py315}}", source: python, probe: true},
-			// An explicitly selected Ruff is probed too; an old one is an error.
 			{name: "explicit old", version: "ruff 0.9.0", source: python, explicit: true, probe: true, status: 3},
 			{name: "environment binary old", version: "ruff 0.9.0", source: python, environment: "BIN", probe: true, status: 3},
 			{name: "environment flags old", version: "ruff 0.9.0", source: python, environment: "FLAGS", probe: true, status: 3},
@@ -67,8 +66,6 @@ permissions: {}
 			{name: "independent findings", version: "ruff 0.9.0", source: strings.TrimSuffix(python, "permissions: {}\n") + "      - run: echo '${{ missing.value }}'\npermissions: {}\n", warning: true, probe: true, status: 1},
 		} {
 			t.Run(fmt.Sprint(prefix, tc.name), func(t *testing.T) {
-				// The tool runs with a scrubbed environment; the fake reads
-				// its version from a file beside it.
 				calls := testutil.RuffDiscoveryFixture(t, bin, tc.version)
 				switch tc.environment {
 				case "BIN":
@@ -85,7 +82,6 @@ permissions: {}
 				if tc.explicit {
 					args = append(args, "--tool=ruff="+tool)
 				}
-				// Multiple source files must share the version probe and warning.
 				for index := range 2 {
 					path := filepath.Join(t.TempDir(), fmt.Sprintf("workflow%d.yaml", index))
 					if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {

@@ -2,7 +2,6 @@ package messages
 
 import "fmt"
 
-// Ordinal formats a positive argument position, such as 1st, 2nd or 11th.
 func Ordinal(i int) string {
 	suffix := "th"
 	switch i % 10 {

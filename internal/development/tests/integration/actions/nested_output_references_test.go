@@ -14,8 +14,6 @@ import (
 
 // Composite outputs are published through the manifest's value mapping:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#outputs-for-composite-actions
-// These cases promote the saved issue #361 reproductions in
-// .review-artifacts/pr343-output-completeness to permanent host regressions.
 func TestNestedCompositeOutputReferences(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -166,7 +164,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 	}
 }
 
-func TestCompositePropertyFindingsHaveOneOwner(t *testing.T) {
+func TestCompositeUnknownPropertyReportedOncePerField(t *testing.T) {
 	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")

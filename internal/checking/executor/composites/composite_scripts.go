@@ -145,13 +145,13 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call, declaration workflows
 }
 
 func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted parsing.SourceSnapshot, address string, callContext invocation.Context, parents []workflowvisit.InvocationParticipant) (err error) {
-	if !analysis.invocations.Owns(callContext) {
+	if !analysis.invocations.Issued(callContext) {
 		return invocation.ErrForeignContext
 	}
 	if analysis.sourceSnapshots == nil {
 		return errors.New("action source registry is unavailable")
 	}
-	if !analysis.sourceSnapshots.OwnsSnapshot(admitted) {
+	if !analysis.sourceSnapshots.HasSnapshot(admitted) {
 		return errors.New("action source snapshot belongs to a different registry")
 	}
 	snapshot, err := analysis.sourceSnapshots.Action(admitted.Capture(), meta)
@@ -301,8 +301,8 @@ func (analysis *compositeAnalyzer) describeCall(step workflows.BoundStep) (sourc
 
 func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference sourcetext.Reference, visit func() error) error {
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *finding.Finding) {
-		// Metadata declarations belong to their captured target, which the run
-		// binds after source admission. Other findings belong to this invocation.
+		// Metadata declarations belong to their captured target. The run
+		// binds the target after source admission. Other findings belong to this invocation.
 		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source.Content == nil) {
 			finding.Binding = bindings.Rule(finding.Rule).ID()
 		}

@@ -10,8 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Commands and input paths share the first position. Extension-filter directives
-// would make the shell interpret Cobra's command candidates as file extensions.
+// Extension-filter directives would make the shell read Cobra's command candidates as file extensions.
 func completeRootInputs(_ *cobra.Command, args []string, prefix string) ([]string, cobra.ShellCompDirective) {
 	if len(args) != 0 {
 		return []string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt
@@ -85,9 +84,6 @@ func completionShellFromName(name string) (completionShell, bool) {
 	return "", false
 }
 
-// completionShellFromPath resolves a bare shell name such as "zsh" or "pwsh", or a shell executable
-// path such as "/usr/bin/zsh" or `C:\Program Files\PowerShell\7\pwsh.exe`, to the shell it names.
-// Accepting a path makes `actionlint -completion "$SHELL"` work as-is.
 func completionShellFromPath(p string) (completionShell, bool) {
 	if i := strings.LastIndexAny(p, `/\`); i >= 0 {
 		p = p[i+1:]
@@ -114,10 +110,7 @@ func completionShellFromPath(p string) (completionShell, bool) {
 	return completionShellFromName(strings.ToLower(p))
 }
 
-// detectCompletionShell resolves the current shell from the process environment. $SHELL wins when
-// it names a supported shell. PowerShell exports $PSModulePath but never $SHELL, so a present
-// $PSModulePath is the fallback signal. A pwsh session launched from bash inherits SHELL=/bin/bash
-// and the login shell the user opted into wins over the fallback.
+// PowerShell exports $PSModulePath but not $SHELL.
 func detectCompletionShell(shellVar string, powerShellPresent bool) (completionShell, bool) {
 	if s, ok := completionShellFromPath(shellVar); ok {
 		return s, true

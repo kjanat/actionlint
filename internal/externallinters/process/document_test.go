@@ -277,7 +277,7 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 	}
 }
 
-func TestDocumentInvocationDefinitionsOwnTheirOptions(t *testing.T) {
+func TestDocumentAnalyzerCopiesInvocationOptions(t *testing.T) {
 	t.Parallel()
 	manifest := documentManifest(toolmanifest.ProcessSpec{Output: echoOutput})
 	manifest.InvocationDefinitions = []commands.Definition{{ID: "example/runtime", Executables: []string{"custom"}, Options: []commands.Option{{Short: "o", Argument: true, Choices: []string{"allowed"}}}}}

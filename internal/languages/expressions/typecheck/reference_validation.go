@@ -127,7 +127,7 @@ func checkCallArity(n *syntax.FuncCallNode, sig *functions.FuncSignature) *Error
 }
 
 func (sema *Checker) resolveFunction(n *syntax.FuncCallNode) []*functions.FuncSignature {
-	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
+	// Function names are case insensitive.
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
 	if overloads, overridden := sema.functionOverloads[callee]; overridden {

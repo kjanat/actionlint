@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// ProviderSelection identifies the selected implementation without holding it.
 type ProviderSelection struct {
 	Descriptor       runnerapi.Descriptor
 	ImplementationID string
@@ -25,8 +24,7 @@ type jobRange struct {
 	start, end int
 }
 
-// ResolutionPlan maps provider answers to the captured jobs that requested them.
-// It contains values only and cannot invoke a provider.
+// ResolutionPlan holds values only.
 type ResolutionPlan struct {
 	request     runnerapi.Request
 	selection   ProviderSelection
@@ -36,11 +34,10 @@ type ResolutionPlan struct {
 	hasSnapshot bool
 }
 
-// UnknownKnowledge supplies the target without inventing job capabilities.
 func UnknownKnowledge(target string) *Knowledge { return &Knowledge{target: target} }
 
-// NewResolutionPlan captures selectors and provider identity. hasSnapshot records
-// whether an inventory was explicitly supplied before freshness normalization.
+// NewResolutionPlan takes hasSnapshot true when an inventory was explicitly
+// supplied before freshness normalization.
 func NewResolutionPlan(snapshot parsing.SourceSnapshot, custom LabelSet, request runnerapi.Request, selection ProviderSelection, hasSnapshot bool) (*ResolutionPlan, error) {
 	workflow, _ := snapshot.WorkflowView()
 	var selectors []runnerapi.Selector
@@ -73,7 +70,7 @@ func NewResolutionPlan(snapshot parsing.SourceSnapshot, custom LabelSet, request
 
 func (plan *ResolutionPlan) Empty() bool { return len(plan.request.Selectors) == 0 }
 
-// Request returns a detached request so a provider cannot change the plan.
+// Request returns a detached copy.
 func (plan *ResolutionPlan) Request() runnerapi.Request {
 	request := plan.request
 	request.Selectors = slices.Clone(request.Selectors)
@@ -87,7 +84,6 @@ func (plan *ResolutionPlan) Request() runnerapi.Request {
 	return request
 }
 
-// Unknown returns the provider identity with no established job capabilities.
 func (plan *ResolutionPlan) Unknown() *Knowledge {
 	return &Knowledge{target: plan.request.Target, report: runnerapi.Report{
 		CacheKey: sha256hex.Digest(plan.dependency), Provider: plan.selection.Descriptor,
@@ -95,7 +91,6 @@ func (plan *ResolutionPlan) Unknown() *Knowledge {
 	}}
 }
 
-// Complete validates and copies provider-owned answers before building knowledge.
 func (plan *ResolutionPlan) Complete(response runnerapi.Response) (*Knowledge, error) {
 	k := plan.Unknown()
 	catalog := runnerapi.CloneSupportCatalog(response.Support)

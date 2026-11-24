@@ -13,8 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// Rule is a prepared configuration decision. Execution and publication retain
-// the same record; publication never selects a configuration scope again.
 type Rule struct {
 	scope      *Scope
 	id         binding.ID
@@ -24,7 +22,6 @@ type Rule struct {
 	optionsErr error
 }
 
-// Options returns caller-owned analyzer options. Explicit registration options take precedence.
 func (r *Rule) Options(explicit json.RawMessage) (json.RawMessage, error) {
 	if len(explicit) != 0 {
 		return slices.Clone(explicit), nil
@@ -32,10 +29,9 @@ func (r *Rule) Options(explicit json.RawMessage) (json.RawMessage, error) {
 	return slices.Clone(r.options), r.optionsErr
 }
 
-// ID identifies the decision within its analysis registry. Zero is unbound.
+// ID is zero when the rule is unbound.
 func (r *Rule) ID() binding.ID { return r.id }
 
-// Registry owns every prepared decision for one entry analysis.
 type Registry struct {
 	rules     configuration.RuleSet
 	records   []*Rule
@@ -43,19 +39,16 @@ type Registry struct {
 	sealed    bool
 }
 
-// SealedRegistry permits publication to read only decisions prepared before sealing.
 type SealedRegistry struct {
 	namespace binding.Namespace
 	records   []*Rule
 }
 
-// Seal ends preparation. Existing scopes remain readable by completed tasks.
 func (r *Registry) Seal() *SealedRegistry {
 	r.sealed = true
 	return &SealedRegistry{namespace: r.namespace, records: r.records}
 }
 
-// NewRegistry creates an analysis-owned configuration binding registry.
 func NewRegistry(rules configuration.RuleSet) *Registry {
 	return &Registry{rules: rules, namespace: binding.NewNamespace()}
 }
@@ -66,7 +59,6 @@ func (r *Registry) add(execution, policy *configuration.Config) *Rule {
 	return decision
 }
 
-// Lookup returns a prepared decision without selecting configuration scope.
 func (r *SealedRegistry) Lookup(id binding.ID) (*Rule, bool) {
 	if r == nil {
 		return nil, false
@@ -78,17 +70,13 @@ func (r *SealedRegistry) Lookup(id binding.ID) (*Rule, bool) {
 	return r.records[index-1], true
 }
 
-// Config returns the resolved execution settings. Consumers must not mutate them.
+// Config returns settings that consumers must not mutate.
 func (r *Rule) Config() *configuration.Config { return r.execution }
 
-// Policy returns resolved notification settings, including an entry lint-off override.
 func (r *Rule) Policy() *configuration.Config { return r.policy }
 
-// Scope returns the occurrence's prepared configuration roles.
 func (r *Rule) Scope() *Scope { return r.scope }
 
-// Scope owns the prepared rule decisions for one source within an entry analysis.
-// Its maps are private and are never changed after construction.
 type Scope struct {
 	rules     configuration.RuleSet
 	bindings  map[string]*Rule
@@ -98,8 +86,6 @@ type Scope struct {
 	caller    *configuration.Config
 }
 
-// Prepare binds all declared rules. The caller owns configuration resolution;
-// source and composite projections can differ even for the same document.
 func (r *Registry) Prepare(caller, source, composite *configuration.Config) *Scope {
 	if r.sealed {
 		panic("configuration binding registry is sealed")
@@ -136,7 +122,7 @@ func (r *Registry) Prepare(caller, source, composite *configuration.Config) *Sco
 	return s
 }
 
-// Rule returns an existing binding. Undeclared diagnostics use the prepared caller binding.
+// Rule returns the prepared caller binding for undeclared diagnostics.
 func (s *Scope) Rule(name string) *Rule {
 	if r, exists := s.bindings[s.rules.ResolveAlias(name)]; exists {
 		return r
@@ -144,16 +130,12 @@ func (s *Scope) Rule(name string) *Rule {
 	return s.fallback
 }
 
-// DiagnosticLevel reads the policy selected when this occurrence was prepared.
 func (s *Scope) DiagnosticLevel(name string) ruleconfig.Level {
 	return s.rules.DiagnosticLevel(s.Rule(name).policy, name)
 }
 
-// Source returns the projection governing source suppressions.
 func (s *Scope) Source() *configuration.Config { return s.source }
 
-// Composite returns the resolved invocation settings for script collection.
 func (s *Scope) Composite() *configuration.Config { return s.composite }
 
-// Caller returns the entry settings governing dependency blocking and path filters.
 func (s *Scope) Caller() *configuration.Config { return s.caller }

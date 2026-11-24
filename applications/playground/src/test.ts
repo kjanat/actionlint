@@ -55,7 +55,6 @@ describe('source', () => {
 		assert.throws(() => querySource('a'.repeat(maxSourceBytes + 1)), /larger than/);
 	});
 
-	// Exercise the full 16 MiB boundary, including compression, on slower runners.
 	it('accepts an incompressible source at the limit', { timeout: 30_000 }, () => {
 		const source = new Uint8Array(maxSourceBytes);
 		for (let offset = 0; offset < source.length; offset += 65536) {

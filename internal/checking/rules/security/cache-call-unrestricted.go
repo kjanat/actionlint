@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// CacheCallUnrestrictedRule is the single definition of the cache-call-unrestricted rule.
 var CacheCallUnrestrictedRule = &define.Rule{
 	Name:        "cache-call-unrestricted",
 	Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers",
@@ -15,7 +14,7 @@ var CacheCallUnrestrictedRule = &define.Rule{
 	Subcategory: "cache",
 	Policy:      "cache-call-unrestricted",
 	Recommended: true,
-	Explanation: "Report reusable workflow calls reachable from low-trust triggers without an explicit cache mode. The called workflow can request cache writes despite the trigger's read-only default.",
+	Explanation: "Report reusable workflow calls on low-trust triggers that set no cache mode. The called workflow can then request cache writes.",
 	Help:        "Set cache-mode to read or none on the calling job or workflow.",
 	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
@@ -24,8 +23,7 @@ var CacheCallUnrestrictedRule = &define.Rule{
 	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") },
 }
 
-// CacheCallUnrestrictedChecks requires an explicit cache ceiling on low-trust
-// reusable calls, using the supplied workflow's triggering events.
+// CacheCallUnrestrictedChecks judges trust from the supplied workflow's triggering events.
 func CacheCallUnrestrictedChecks(workflow workflows.BoundWorkflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{

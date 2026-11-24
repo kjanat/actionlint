@@ -45,7 +45,6 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	if got := query(ctx, actionInput); len(got) != 1 || got[0].Text != "# action input" || got[0].Placement != sourceannotations.PlacementLeading || got[0].Start.Line != 12 {
 		t.Fatalf("action input comments=%+v", got)
 	}
-	// Returning a result must not give the caller ownership of the stored slice.
 	query(ctx, root)[0].Text = "# returned mutation"
 	if got := query(ctx, root); len(got) != 1 || got[0].Text != "# root" {
 		t.Fatalf("returned comments alias the snapshot: %+v", got)

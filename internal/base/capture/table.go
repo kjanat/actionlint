@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
-// State describes already-discovered evidence; lookup never acquires evidence.
 type State string
 
 const (
@@ -18,9 +17,7 @@ const (
 	Conflicted State = "conflicted"
 )
 
-// TableRow is a copied row of the sealed source table. Conflicted documents expose
-// no revision or model: first-arrival bytes remain private and cannot authorize
-// admission. Code and Message are deterministic projections of Error for JSON.
+// TableRow keeps first-arrival bytes private, and they cannot authorize admission.
 type TableRow struct {
 	Document             string                 `json:"document"`
 	State                State                  `json:"state"`
@@ -48,9 +45,8 @@ func state(e *entry) State {
 	}
 }
 
-// Lookup performs no metadata or content IO and never waits. An alias not yet
-// passed to Canonical/Read is Absent; admission must resolve authorized aliases
-// through Canonical during the capture phase. A pending alias is Pending.
+// Lookup performs no IO and never waits. Admission must resolve authorized
+// aliases through Canonical during the capture phase.
 func (s *Store) Lookup(path string) (CapturedDocument, State, error) {
 	if err := validatePath(path); err != nil {
 		return CapturedDocument{}, Absent, err
@@ -79,7 +75,6 @@ func (s *Store) Lookup(path string) (CapturedDocument, State, error) {
 	case Conflicted:
 		return CapturedDocument{}, current, e.conflict
 	case Absent, Pending:
-		// Absent and pending documents have no snapshot or error.
 		fallthrough
 	default:
 		return CapturedDocument{}, current, nil
@@ -87,9 +82,6 @@ func (s *Store) Lookup(path string) (CapturedDocument, State, error) {
 }
 
 // Sources returns copied rows only after Close has successfully joined all work.
-// Aliases include every completed source resolution, even from cancelled or
-// conflicting requests. Identity-only aliases are omitted. Returned rows and
-// alias slices cannot mutate the sealed table.
 func (s *Store) Sources() ([]TableRow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,8 +95,7 @@ func (s *Store) Sources() ([]TableRow, error) {
 	return rows, nil
 }
 
-// Revision returns an exact captured revision only after sealing. It performs
-// no metadata or content IO and never admits failed or conflicted documents.
+// Revision returns an exact captured revision only after sealing.
 func (s *Store) Revision(revision sourcetext.Revision) (CapturedDocument, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -118,8 +109,6 @@ func (s *Store) Revision(revision sourcetext.Revision) (CapturedDocument, bool) 
 	return s.snapshot(e), true
 }
 
-// ReadAliases lists requested Read aliases whose documents sealed as Captured,
-// including cancelled waiters. Overlays and identity-only lookups do not count.
 func (s *Store) ReadAliases() ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -155,7 +144,6 @@ func (s *Store) sourceTable() []TableRow {
 		case Conflicted:
 			row.Error, row.Code, row.Message = e.conflict, e.conflict.Code(), e.conflict.Error()
 		case Absent, Pending:
-			// Absent and pending rows carry no capture payload.
 		}
 		rows = append(rows, row)
 	}

@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// ServiceKind names the GitHub service that runs a workflow.
 type ServiceKind string
 
 const (

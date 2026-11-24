@@ -15,8 +15,7 @@ import (
 	"time"
 )
 
-// BoundedFS exposes bounded, read-only file snapshots beneath an open root.
-// Every lookup is root-contained, including when symlinks change concurrently.
+// BoundedFS keeps every lookup root-contained, including when symlinks change concurrently.
 type BoundedFS struct {
 	ctx    context.Context
 	root   *os.Root
@@ -27,7 +26,6 @@ type BoundedFS struct {
 	budget *SnapshotBudget
 }
 
-// SnapshotBudget bounds all directory grants participating in one invocation.
 type SnapshotBudget struct {
 	mu             sync.Mutex
 	bytes          int64
@@ -35,8 +33,6 @@ type SnapshotBudget struct {
 	failure        budgetError
 }
 
-// budgetError is the condition that invalidated a budget; every grant
-// sharing the budget reports it from Close. The zero value means none.
 type budgetError string
 
 const (
@@ -48,13 +44,13 @@ const (
 
 func (f budgetError) Error() string { return string(f) }
 
-// fail records failure and returns it. The caller holds b.mu.
+// The caller of fail holds b.mu.
 func (b *SnapshotBudget) fail(failure budgetError) error {
 	b.failure = failure
 	return failure
 }
 
-// err returns the recorded failure, or nil. The caller holds b.mu.
+// The caller of err holds b.mu.
 func (b *SnapshotBudget) err() error {
 	if b.failure == "" {
 		return nil
@@ -67,8 +63,6 @@ type snapshotData struct {
 	info    fileInfo
 }
 
-// fileInfo copies the file's name, size, mode and modification time for guest
-// code. Its Sys method returns nil.
 type fileInfo struct {
 	name                 string
 	size                 int64
@@ -93,7 +87,7 @@ type snapshotName struct {
 	info fs.FileInfo
 }
 
-// NewSnapshot opens an explicit directory grant. Close it after guest teardown.
+// NewSnapshot callers close the snapshot after guest teardown.
 func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *SnapshotBudget) (*BoundedFS, error) {
 	root, err := os.OpenRoot(directory)
 	if err != nil {
@@ -102,8 +96,6 @@ func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *
 	return newSnapshot(ctx, root, reader, budget), nil
 }
 
-// NewSnapshotAt opens a child grant through an already authorized root. The
-// parent stays caller-owned; the snapshot owns its independently opened child.
 func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Reader, budget *SnapshotBudget) (*BoundedFS, error) {
 	root, err := parent.OpenRoot(name)
 	if err != nil {
@@ -212,9 +204,7 @@ func (s *BoundedFS) lookup(name string) error {
 	return nil
 }
 
-// ReadFile reads name through the snapshot: the bytes the guest read if it
-// read the file, otherwise a new root-contained read within the budget. It
-// records the read like a guest's.
+// ReadFile returns the guest's bytes when the guest read the file, and records the read like a guest's.
 func (s *BoundedFS) ReadFile(name string) ([]byte, error) {
 	file, err := s.Open(name)
 	if err != nil {
@@ -231,7 +221,6 @@ func (s *BoundedFS) ReadFile(name string) ([]byte, error) {
 	return data, nil
 }
 
-// Content returns the resolved name and exact bytes read by the guest.
 func (s *BoundedFS) Content(name string) (string, []byte, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

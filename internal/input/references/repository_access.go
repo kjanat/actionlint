@@ -23,7 +23,6 @@ type RepositorySession interface {
 	Finish(context.Context) (json.RawMessage, error)
 }
 
-// Object identifies a commit, tree or annotated tag returned by the repository.
 type (
 	RepositoryObject        interface{ repositoryObject() }
 	RepositoryCommit        struct{}

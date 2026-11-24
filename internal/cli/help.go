@@ -49,7 +49,6 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 		case output.ColorNever:
 			return false
 		case output.ColorAuto:
-			// Fall back to terminal detection.
 		}
 	}
 	// Help runs before capture and prepareInvocation, but its flags are parsed.
@@ -160,7 +159,6 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	writeHelpDestinations(out, heading, links)
 }
 
-// Root help shows an overview; check --help lists the checking options.
 func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)

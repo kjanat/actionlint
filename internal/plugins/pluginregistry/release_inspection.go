@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
 
-// InspectRelease resolves a registry reference and verifies its downloaded metadata.
 func InspectRelease(ctx context.Context, ref pluginreference.Reference, acquisition dependencycache.Acquisition) (artifacts.ArtifactProvenance, error) {
 	client, err := New(ref.Registry(), acquisition)
 	if err != nil {

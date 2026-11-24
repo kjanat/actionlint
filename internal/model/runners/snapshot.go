@@ -10,10 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
-// snapshotProvider resolves GitHub selectors against an explicitly selected inventory.
 type snapshotProvider struct{}
 
-// SnapshotProvider evaluates selectors against the inventory in each request.
 func SnapshotProvider() runnerapi.Provider { return snapshotProvider{} }
 
 type runnerInventory struct {
@@ -55,7 +53,6 @@ func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Re
 		DatasetID: "snapshot:" + request.Snapshot.Digest(), Scope: request.Snapshot.Scope,
 		ObtainedAt: request.Snapshot.ObtainedAt, Freshness: request.Snapshot.Freshness, Complete: request.Snapshot.Complete,
 	}
-	// An absent snapshot gives unknown results in the requested scope.
 	if request.Snapshot.Content == "" {
 		evidence.Scope, evidence.Freshness, evidence.Complete = request.Scope, runnerapi.Missing, false
 	}

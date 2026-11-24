@@ -55,9 +55,6 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 		}
 		return actions.NewManifest(selection, []byte(content))
 	}))
-	// A host-owned tag selection and raw object selection exercise the shared
-	// immutable-manifest cache after the branch lookup. The synthetic test tag
-	// makes no assertion about an upstream tag's target.
 	for _, ref := range []string{"v3.x", "test-tag", commit} {
 		t.Run(ref, func(t *testing.T) {
 			t.Parallel()

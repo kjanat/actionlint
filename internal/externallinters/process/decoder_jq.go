@@ -12,7 +12,6 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// JQInput selects what a jq transform receives as its input value.
 type JQInput string
 
 const (
@@ -38,20 +37,16 @@ var resultSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compiler.Compile(url)
 })
 
-// JQ reshapes tool output with a jq program run by gojq. The program sees
-// stdout as its input and the check's argument variables as $vars. It must
-// emit exactly one value: a diagnostics array, or an object with diagnostics
-// and optional sources and errors, as result_schema.json defines.
+// JQ programs see the check's argument variables as $vars and must emit
+// exactly one value matching result_schema.json.
 //
-// Programs are sandboxed: $ENV and env are empty objects, import, include,
-// input and inputs do not compile, evaluation stops when ctx is done, and the
-// output is bounded by MaxOutputBytes and MaxDiagnostics.
+// In the sandbox, $ENV and env are empty objects, import, include, input and
+// inputs fail to compile, and evaluation stops when ctx is done.
 type JQ struct {
 	program *jq.Program
 	input   JQInput
 }
 
-// NewJQ compiles a transform program.
 func NewJQ(program string, input JQInput) (*JQ, error) {
 	if input != JQJSON && input != JQText {
 		return nil, fmt.Errorf("unknown jq input %q", input)
@@ -67,7 +62,6 @@ func compileJQ(program string) (*jq.Program, error) {
 	return jq.New(program, MaxOutputBytes)
 }
 
-// stringVariables converts argument variables to jq values.
 func stringVariables(vars map[string]string) map[string]any {
 	variables := make(map[string]any, len(vars))
 	for name, value := range vars {
@@ -76,7 +70,6 @@ func stringVariables(vars map[string]string) map[string]any {
 	return variables
 }
 
-// Decode implements Decoder.
 func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) {
 	if err := checkInput(stdout); err != nil {
 		return DecodedCheck{}, err
@@ -97,8 +90,6 @@ func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	return decodeJQResult(output)
 }
 
-// decodeJQResult validates transform output against the result schema
-// before decoding it, so a malformed program fails instead of dropping data.
 func decodeJQResult(data []byte) (DecodedCheck, error) {
 	schema, err := resultSchema()
 	if err != nil {

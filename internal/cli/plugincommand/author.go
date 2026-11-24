@@ -72,7 +72,6 @@ type authoringCaseResult struct {
 	Error       string                  `json:"error,omitempty"`
 }
 
-// Run validates the manifest without running its tool.
 func (r ValidateOptions) Run(ctx context.Context, streams output.Streams, _ dependencycache.Acquisition) (int, error) {
 	manifest, programs, err := loadAuthorManifest(ctx, streams, r.Path)
 	if err == nil {
@@ -99,7 +98,6 @@ func (r ValidateOptions) Run(ctx context.Context, streams output.Streams, _ depe
 	return 0, nil
 }
 
-// Run applies the manifest transforms to fixtures without running its tool.
 func (r TestOptions) Run(ctx context.Context, streams output.Streams, _ dependencycache.Acquisition) (int, error) {
 	manifest, programs, fixtures, err := loadAuthorTests(ctx, streams, r.Paths)
 	cases := []authoringCaseResult{}

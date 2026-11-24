@@ -1,22 +1,22 @@
-#:schema dprint.schema.json
+#:schema kprint.schema.json
 # format through npx @kjanat/fmt -- [files...]
 
 incremental = true
 newLineKind = "lf"
 plugins     = [
   "https://plugins.dprint.dev/kjanat/json-schema-sort-0.1.2.wasm",
-  "npm:@dprint/dockerfile@0.7.0",
-  "npm:@dprint/typescript@0.96.1",
-  "npm:@dprint/markdown@0.26.0",
-  "npm:@dprint/json@0.25.2",
+  "npm:@dprint/dockerfile@0.8.0",
+  "npm:@dprint/typescript@0.101.0",
+  "npm:@dprint/markdown@0.29.0",
+  "npm:@dprint/json@0.26.0",
   "https://plugins.dprint.dev/sargunv/dprint-cmakefmt-0.1.0.wasm",
   "npm:dprint-plugin-yaml@0.6.0",
-  "npm:dprint-plugin-malva@0.16.0",
-  "npm:dprint-plugin-markup@0.27.5",
+  "npm:dprint-plugin-malva@0.16.1",
+  "npm:dprint-plugin-markup@0.28.0",
   "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
   "https://plugins.dprint.dev/kjanat/shfmt-1.1.1.wasm",
   "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
-  "https://plugins.dprint.dev/kjanat/tombi-0.1.1.wasm",
+  "https://plugins.dprint.dev/kjanat/tombi-0.2.1.wasm",
   "npm:@jakebailey/dprint-plugin-gofumpt@0.0.20",
 ]
 excludes    = [
@@ -91,10 +91,10 @@ quoteStyle                              = "preferSingle"
 useTabs                                 = true
 "module.sortImportDeclarations"         = "maintain"
 "importDeclaration.sortNamedImports"    = "maintain"
-"importDeclaration.sortTypeOnlyImports" = "none"
+"importDeclaration.sortTypeOnlyImports" = "inline"
 "module.sortExportDeclarations"         = "maintain"
 "exportDeclaration.sortNamedExports"    = "maintain"
-"exportDeclaration.sortTypeOnlyExports" = "none"
+"exportDeclaration.sortTypeOnlyExports" = "inline"
 
 [markup]
 printWidth                 = 999

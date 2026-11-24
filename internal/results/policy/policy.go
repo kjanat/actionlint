@@ -16,24 +16,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// DocumentInputs supplies source text and the rule bindings prepared for this analysis.
 type DocumentInputs struct {
 	Path, ConfigPath, Root, WorkingDir string
 	ProjectRoot                        string
 	Content                            []byte
 
-	EnforcedLifecycle []lifecycle.Policy
-	Bindings          *rulebinding.SealedRegistry
-	Scope             *rulebinding.Scope
-	SourceBindings    map[string]*rulebinding.Scope
-	Metadata          *actionmeta.Metadata
-	AdditionalRules   []string
-	IgnorePatterns    configuration.IgnorePatterns
-	IgnoreSelectors   IgnoreSelectors
-	Log               func(...any)
-	Debug             func(string, ...any)
-	usedSuppression   func(string, sourcetext.Position, string)
-	// declaredSuppression receives each rule an inline directive names.
+	EnforcedLifecycle   []lifecycle.Policy
+	Bindings            *rulebinding.SealedRegistry
+	Scope               *rulebinding.Scope
+	SourceBindings      map[string]*rulebinding.Scope
+	Metadata            *actionmeta.Metadata
+	AdditionalRules     []string
+	IgnorePatterns      configuration.IgnorePatterns
+	IgnoreSelectors     IgnoreSelectors
+	Log                 func(...any)
+	Debug               func(string, ...any)
+	usedSuppression     func(string, sourcetext.Position, string)
 	declaredSuppression func(string, sourcetext.Position, string)
 }
 
@@ -167,7 +165,7 @@ func (processor Processor) evaluate(p DocumentInputs, all []*finding.Finding, me
 	for _, err := range all {
 		err.Origin = processor.diagnosticOrigin(p, err.Path)
 		if err.Path == "" {
-			err.Path = path // Populate filename in the error
+			err.Path = path
 		} else {
 			err.Path = processor.displayPath(p.WorkingDir, err.Path)
 		}
@@ -230,8 +228,7 @@ Loop:
 	return filtered
 }
 
-// Code-based filters keep working when messages no longer repeat the code.
-// Match the plain message too, preserving existing message-anchored patterns.
+// Matching the plain message keeps message-anchored patterns working.
 func matchesIgnorePatterns(patterns configuration.IgnorePatterns, item *finding.Finding) bool {
 	return len(patterns) != 0 && (patterns.Match(item.Message) ||
 		item.Code != "" && patterns.Match(item.Code+": "+item.Message))

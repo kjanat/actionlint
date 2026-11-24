@@ -13,24 +13,17 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-// PathSelection is a feature-independent file scope over validated patterns. Nil
-// includes selects everything; an explicit empty list selects nothing.
-// Exclusions always win. The zero value selects everything.
+// PathSelection with nil includes selects everything, with empty includes selects nothing, and exclusions always win.
 type PathSelection struct {
-	// includes selects repository-relative files using doublestar globs; ! excludes.
 	includes []string
-	// excludes removes matching files, regardless of include order.
 	excludes []string
 }
 
-// selectionDocument is the wire form of a Selection.
 type selectionDocument struct {
 	Includes []string `yaml:"includes,omitempty"`
 	Excludes []string `yaml:"excludes,omitempty"`
 }
 
-// NewPathSelection validates both pattern lists and owns copies of them. A nil
-// includes list selects everything; an empty one selects nothing.
 func NewPathSelection(includes, excludes []string) (PathSelection, error) {
 	if err := validatePatterns(includes, excludes); err != nil {
 		return PathSelection{}, err
@@ -49,18 +42,14 @@ func validatePatterns(lists ...[]string) error {
 	return nil
 }
 
-// IsZero distinguishes no selection from an explicitly empty includes list.
 func (s PathSelection) IsZero() bool { return s.includes == nil && s.excludes == nil }
 
-// ValidPattern rejects ambiguous or escaping file patterns.
 func ValidPattern(pattern string) bool {
 	p := strings.TrimPrefix(pattern, "!")
-	// Globs always use repository-relative slash paths, independent of the host.
 	// filepath.IsAbs("/tmp/*") is false on Windows, where a volume is required.
 	return p != "" && !strings.ContainsAny(p, "\\:") && !strings.HasPrefix(p, "/") && !strings.Contains("/"+p+"/", "/../") && doublestar.ValidatePattern(p)
 }
 
-// DecodeConfig validates the whole scope and rejects unknown keys.
 func (s *PathSelection) DecodeConfig(value any) error {
 	if value == nil {
 		*s = PathSelection{}
@@ -89,26 +78,20 @@ func (s PathSelection) EncodeConfig() (any, error) {
 	return v, nil
 }
 
-// Match evaluates a normalized path. A rule cannot re-include an excluded file.
 func (s PathSelection) Match(path string) bool {
 	return MatchPatterns(s.includes, s.excludes, path)
 }
 
-// Excludes reports an explicit exclusion, including negated include patterns.
-// A directory outside a positive include glob is not an excluded subtree.
+// Excludes reports only explicit exclusions, including negated include patterns.
 func (s PathSelection) Excludes(path string) bool {
 	return !matchPatterns(s.includes, s.excludes, path, true)
 }
 
-// MatchPatterns evaluates a path against include and exclude globs with
-// Selection semantics. Callers validate patterns at their input boundary;
-// a malformed pattern never matches.
+// MatchPatterns expects validated patterns, and a malformed pattern never matches.
 func MatchPatterns(includes, excludes []string, path string) bool {
 	return matchPatterns(includes, excludes, path, includes == nil)
 }
 
-// Starting included evaluates only explicit exclusions. Normal selection starts
-// outside an explicit include scope and requires a matching positive pattern.
 func matchPatterns(includes, excludes []string, path string, match bool) bool {
 	path = strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
 	for _, pattern := range includes {
@@ -130,5 +113,5 @@ func normalizePattern(pattern string) string {
 	return path.Clean(strings.TrimPrefix(pattern, "!"))
 }
 
-// CopyConfig shares immutable selection patterns. DecodeConfig replaces the selection.
+// CopyConfig shares immutable selection patterns.
 func (s PathSelection) CopyConfig() (any, error) { return s, nil }

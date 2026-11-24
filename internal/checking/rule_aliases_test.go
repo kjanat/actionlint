@@ -2,7 +2,7 @@ package checking
 
 import "testing"
 
-func TestDeclaredAliasesResolveToTheirOwningRules(t *testing.T) {
+func TestDeclaredAliasesResolveToDeclaringRule(t *testing.T) {
 	t.Parallel()
 	for _, declaration := range ListRules() {
 		for _, alias := range declaration.Aliases {

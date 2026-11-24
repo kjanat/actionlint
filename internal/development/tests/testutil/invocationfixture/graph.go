@@ -8,10 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
-// Workflow is the entry declaration of every fixture graph.
 var Workflow = sourcetext.Reference{Document: "workflow", Revision: "r", Node: "document"}
 
-// Action is the body the fixture call expands into.
 var Action = sourcetext.Reference{Document: "action", Revision: "r", Node: "document"}
 
 // Script declares one occurrence. Entry scripts belong to Workflow, others to
@@ -21,8 +19,7 @@ type Script struct {
 	Entry       bool
 }
 
-// Graph publishes a workflow entry with one enabled call expanded into Action.
-// Entry scripts are registered first, then call scripts, each in order.
+// Graph registers entry scripts first, then call scripts, each in order.
 func Graph(tb testing.TB, scripts ...Script) invocation.Graph {
 	tb.Helper()
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, Workflow, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: max(1, len(scripts))})

@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync/atomic" // Note: atomic.Bool was added at Go 1.19
+	"sync/atomic" // atomic.Bool was added in Go 1.19
 	"testing"
 	"testing/synctest"
 	"time"
@@ -31,7 +31,7 @@ func testStartEchoCommand(t *testing.T, proc *ProcessPool, done *atomic.Bool) {
 		done.Store(true)
 		return nil
 	})
-	// This function does not wait the command finishes
+	// This function does not wait for the command to finish.
 }
 
 func testSkipIfNoCommand(t *testing.T, p *ProcessPool, cmd string) *Command {
@@ -84,7 +84,6 @@ func TestProcessCancelStopsRunningCommand(t *testing.T) {
 		return err
 	})
 
-	// Let the child process start before killing it
 	time.Sleep(100 * time.Millisecond)
 	cancel()
 

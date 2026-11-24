@@ -94,8 +94,6 @@ func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t 
 	}
 }
 
-// A closing marker inside a template's string literal does not end the
-// template, so no part of it reaches the plugin.
 func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
 	t.Parallel()
 	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}

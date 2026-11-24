@@ -16,22 +16,18 @@ import (
 var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"}
 
 // NormalizeForMerge expands and canonicalizes one document before inheritance
-// merging. Plugin-rule binding is deferred until providers are installed.
-// Callers must validate the resulting configuration before analysis.
+// merging. Callers must validate the result before analysis.
 func (ruleSet RuleSet) NormalizeForMerge(node any) (any, error) {
 	canonical, _, err := ruleSet.migrateNode(ruleSet.normalizeToolSwitch(node))
 	return canonical, err
 }
 
-// Migration contains converted configuration in the input's format.
 type Migration struct {
 	Content []byte   `json:"content"`
 	Changed bool     `json:"changed"`
 	Notes   []string `json:"notes,omitempty"`
 }
 
-// MigrateDocument converts legacy syntax without reading or writing files.
-// Explicit migrated policy levels now survive presets and --strict.
 func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registrations ...rule.Descriptor) (Migration, error) {
 	editor, err := document.NewEditor(path, content)
 	if err != nil {
@@ -40,7 +36,6 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	return ruleSet.migrateFile(editor, registrations)
 }
 
-// migrateFile converts the legacy syntax of one parsed file.
 func (ruleSet RuleSet) migrateFile(editor *document.Editor, registrations []rule.Descriptor) (Migration, error) {
 	root := editor.Root().Value()
 	for _, warning := range configWarnings(root, nil) {
@@ -80,15 +75,8 @@ func (ruleSet RuleSet) migrateFile(editor *document.Editor, registrations []rule
 	return result, nil
 }
 
-// migratedMembers are the top-level settings that migration may rewrite:
-// lint, repository and overrides receive moved settings, and the legacy
-// settings are removed.
 var migratedMembers = append([]string{"lint", "repository", "overrides"}, legacyKeys...)
 
-// legacyRuleControls reports whether root selects the rule by its name in its
-// category, a disable entry or an ignore. A rule whose name kept a narrower
-// meaning cannot tell old broad intent from a deliberate selection, so
-// migration explains the change instead of aliasing the name.
 func legacyRuleControls(root any, descriptor rule.Declaration) bool {
 	rules := field(field(root, "lint"), "rules")
 	if field(field(rules, descriptor.Category), descriptor.Name) != nil {
@@ -278,9 +266,8 @@ func migratedPolicySettings(value any) any {
 	return policies
 }
 
-// mergeMigration combines distinct fields but refuses to choose between two
-// explicitly configured values. "default" levels introduced for knowledge
-// options never override a user-specified diagnostic level.
+// mergeMigration refuses to choose between two explicitly configured values.
+// A "default" level never overrides a user-specified level.
 func mergeMigration(current, legacy any, path, origin string) (any, error) {
 	if !isMapping(current) && isMapping(legacy) && field(legacy, "level") != nil {
 		wrapped := mapping()

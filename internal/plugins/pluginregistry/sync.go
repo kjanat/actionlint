@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-// Sync downloads selected plugins and the OCI layers required by this host.
-// Afterwards the plugins run offline from the artifact store.
 func Sync(ctx context.Context, selected ResolvedPlugins, acquisition dependencycache.Acquisition) error {
 	options := pluginacquisition.ArtifactOptions(acquisition)
 	if err := selected.Sync(ctx, options, StatusOptions{Acquisition: acquisition}); err != nil {

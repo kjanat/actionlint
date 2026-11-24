@@ -14,7 +14,7 @@ const (
 	FileMissing
 )
 
-// ReferencedFiles records observed availability. An absent entry is unknown.
+// ReferencedFiles treats an absent entry as unknown.
 type ReferencedFiles struct{ availability map[string]FileAvailability }
 
 func NewReferencedFiles(availability map[string]FileAvailability) ReferencedFiles {
@@ -23,8 +23,7 @@ func NewReferencedFiles(availability map[string]FileAvailability) ReferencedFile
 
 func (f ReferencedFiles) Lookup(path string) FileAvailability { return f.availability[path] }
 
-// FileReferences lists manifest-relative paths that can be checked on the host.
-// Container entrypoints refer to files inside an image and are excluded.
+// FileReferences excludes container entrypoints, which refer to files inside an image.
 func (r Runs) FileReferences() []string {
 	var files []string
 	using := strings.ToLower(r.Using)
@@ -37,7 +36,6 @@ func (r Runs) FileReferences() []string {
 	return slices.DeleteFunc(files, func(file string) bool { return file == "" })
 }
 
-// ImageOnRegistry distinguishes accepted registry image forms from local paths.
 func ImageOnRegistry(image string) bool {
 	return strings.HasPrefix(image, "docker://") || strings.HasPrefix(image, "gcr.io/") || strings.HasPrefix(image, "pkg.dev/") || strings.HasPrefix(image, "ghcr.io/") || strings.HasPrefix(image, "docker.io/")
 }

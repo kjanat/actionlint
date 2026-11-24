@@ -17,8 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-// testReference builds a declaration through pluginreference.New and fails the test
-// when name, version or registry is invalid.
 func testReference(t *testing.T, name, version, registry string) pluginreference.Reference {
 	t.Helper()
 	ref, err := pluginreference.New(name, version, registry)

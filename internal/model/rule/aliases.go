@@ -5,29 +5,23 @@ import (
 	"strings"
 )
 
-// Alias declares another accepted spelling of the rule that contains it.
-// Deprecated aliases work, but editors should recommend the rule's Name instead.
 type Alias struct {
 	Name       string `json:"name"`
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
-// Names indexes current names and aliases from a set of rule declarations.
-// The zero value accepts no declared names and passes unknown names through.
+// Names accepts no declared names when it is the zero value.
 type Names struct {
 	targets map[string]string
-	// keep, when set, limits the index to the rules whose current name it accepts.
-	keep func(target string) bool
+	keep    func(target string) bool
 }
 
-// Contains reports whether a current name or alias was declared in this index.
 func (n Names) Contains(name string) bool {
 	_, found := n.target(name)
 	return found
 }
 
-// Restrict returns a view of n that holds only the rules whose current name
-// keep accepts, with their aliases. The view shares n's index.
+// Restrict returns a view that shares n's index.
 func (n Names) Restrict(keep func(target string) bool) Names {
 	if n.keep == nil {
 		return Names{targets: n.targets, keep: keep}
@@ -36,7 +30,6 @@ func (n Names) Restrict(keep func(target string) bool) Names {
 	return Names{targets: n.targets, keep: func(target string) bool { return outer(target) && keep(target) }}
 }
 
-// target returns the current name declared for name in this index.
 func (n Names) target(name string) (string, bool) {
 	target, found := n.targets[name]
 	if !found || n.keep != nil && !n.keep(target) {
@@ -45,8 +38,7 @@ func (n Names) target(name string) (string, bool) {
 	return target, true
 }
 
-// NewNames rejects duplicate names and aliases, including aliases that shadow
-// another rule. Every alias points directly to its declaring rule.
+// NewNames rejects duplicate names and aliases, including aliases that shadow another rule.
 func NewNames(descriptors []Descriptor) (Names, error) {
 	result := Names{targets: make(map[string]string)}
 	add := func(name, target string) error {
@@ -72,8 +64,7 @@ func NewNames(descriptors []Descriptor) (Names, error) {
 	return result, nil
 }
 
-// ResolveAlias returns the current name for a declared spelling.
-// Unknown names pass through unchanged.
+// ResolveAlias passes unknown names through unchanged.
 func (n Names) ResolveAlias(name string) string {
 	if target, exists := n.target(name); exists {
 		return target

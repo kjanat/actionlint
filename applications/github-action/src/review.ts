@@ -100,7 +100,7 @@ function offset(lines: string[], position: Position): number | undefined {
 		+ characters.slice(0, position.column - 1).join('').length;
 }
 
-// A single suggestion applies the entire fix. Partial or overlapping fix groups are omitted.
+// A single suggestion applies the entire fix. This function omits partial or overlapping fix groups.
 export function suggestion(
 	fix: Fix,
 	path: string,

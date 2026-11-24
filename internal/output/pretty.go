@@ -105,8 +105,6 @@ func writePrettyLocation(b *strings.Builder, prefix, path string, position sourc
 	writeWrapped(b, prefix, fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column), width, nil, hyperlinks)
 }
 
-// writeRemoteLocation prints an unbroken URL with its line and column.
-// The hyperlink points to the corresponding line on GitHub.
 func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcetext.Position, hyperlinks bool) {
 	b.WriteString(prefix)
 	if hyperlinks {
@@ -119,8 +117,6 @@ func writeRemoteLocation(b *strings.Builder, prefix, address string, position so
 	fmt.Fprintf(b, " (line %d, column %d)\n", position.Line, position.Column)
 }
 
-// remoteLocationTarget replaces any fragment of address with a #L<line> anchor.
-// Locations without a line keep address unchanged.
 func remoteLocationTarget(address string, line int) string {
 	if line <= 0 {
 		return address
@@ -202,8 +198,6 @@ func writeWrapped(b *strings.Builder, prefix, text string, width int, style *col
 	}
 }
 
-// prettySource expands the excerpt line for display within width cells and
-// returns it with the cell offset and length of the indicated range.
 func prettySource(f results.PublishedDiagnostic, width int) (string, int, int) {
 	var expanded strings.Builder
 	start, end, cells := -1, -1, 0

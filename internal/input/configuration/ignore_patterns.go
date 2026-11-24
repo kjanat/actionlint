@@ -5,7 +5,6 @@ import (
 	"regexp"
 )
 
-// CompileIgnorePatterns validates message filters used by analysis and config initialization.
 func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
 	ignore := make(IgnorePatterns, 0, len(patterns))
 	for _, pattern := range patterns {

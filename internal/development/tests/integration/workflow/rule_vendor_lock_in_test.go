@@ -53,8 +53,6 @@ func TestVendorLockInSelection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			// A reusable-only workflow does not request any runners. Its target
-			// must still be known without consulting a runner provider.
 			source := "on: push\njobs:\n  call:\n    uses: https://github.com/example/repo/.github/workflows/build.yml@v1" + tc.comment + "\n"
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Runners: runnerapi.Options{Target: tc.target}, Presets: configuration.Presets{Strict: tc.strict}})
 			count := 0
@@ -82,7 +80,6 @@ func TestVendorLockInSelection(t *testing.T) {
 
 func TestVendorLockInRecordedWorkflow(t *testing.T) {
 	t.Parallel()
-	// The fixture header records the source repository and exact commit.
 	content, err := os.ReadFile("internal/development/tests/integration/workflow/testdata/repositories/actions-rs.yml")
 	if err != nil {
 		t.Fatal(err)

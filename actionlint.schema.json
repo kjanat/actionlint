@@ -570,8 +570,8 @@
           "const": "unknown-input"
         },
         {
-          "description": "Require full commit SHAs for actions and workflows, and digests for images",
-          "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for images",
+          "description": "Require full commit SHAs for actions and workflows, and digests for docker:// actions",
+          "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for docker:// actions",
           "type": "string",
           "const": "unpinned-reference"
         },
@@ -1341,8 +1341,8 @@
                                                   "properties": {
                                                     "report": {
                                                       "title": "report",
-                                                      "description": "Select suppression comments",
-                                                      "markdownDescription": "Select suppression comments",
+                                                      "description": "Report suppression comments or original violations or both.",
+                                                      "markdownDescription": "Report suppression comments or original violations or both.",
                                                       "default": "all",
                                                       "type": "string",
                                                       "enum": [
@@ -1353,8 +1353,8 @@
                                                     },
                                                     "rules": {
                                                       "title": "rules",
-                                                      "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                                                      "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                      "description": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
+                                                      "markdownDescription": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
                                                       "type": "array",
                                                       "minItems": 1,
                                                       "items": {
@@ -1410,8 +1410,8 @@
                                                   "properties": {
                                                     "report": {
                                                       "title": "report",
-                                                      "description": "Select suppression comments",
-                                                      "markdownDescription": "Select suppression comments",
+                                                      "description": "Report suppression comments or original violations or both.",
+                                                      "markdownDescription": "Report suppression comments or original violations or both.",
                                                       "default": "all",
                                                       "type": "string",
                                                       "enum": [
@@ -1422,8 +1422,8 @@
                                                     },
                                                     "rules": {
                                                       "title": "rules",
-                                                      "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                                                      "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                      "description": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
+                                                      "markdownDescription": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
                                                       "type": "array",
                                                       "minItems": 1,
                                                       "items": {
@@ -1523,8 +1523,8 @@
                             "preset": {
                               "$ref": "#/$defs/preset",
                               "title": "preset",
-                              "description": "Baseline selection within this group: recommended",
-                              "markdownDescription": "Baseline selection within this group: recommended"
+                              "description": "Baseline selection within this group: recommended or all or none.",
+                              "markdownDescription": "Baseline selection within this group: recommended or all or none."
                             },
                             "require-action-metadata": {
                               "title": "require-action-metadata",
@@ -2033,8 +2033,8 @@
                             "preset": {
                               "$ref": "#/$defs/preset",
                               "title": "preset",
-                              "description": "Baseline selection within this group: recommended",
-                              "markdownDescription": "Baseline selection within this group: recommended"
+                              "description": "Baseline selection within this group: recommended or all or none.",
+                              "markdownDescription": "Baseline selection within this group: recommended or all or none."
                             },
                             "required-input": {
                               "title": "required-input",
@@ -2246,8 +2246,8 @@
                     "preset": {
                       "$ref": "#/$defs/preset",
                       "title": "preset",
-                      "description": "Baseline selection: recommended",
-                      "markdownDescription": "Baseline selection: recommended"
+                      "description": "Baseline selection of recommended rules or all stable rules or none. Explicit rules override presets.",
+                      "markdownDescription": "Baseline selection of recommended rules or all stable rules or none. Explicit rules override presets."
                     },
                     "security": {
                       "title": "security",
@@ -2325,8 +2325,8 @@
                                               "properties": {
                                                 "require-at": {
                                                   "title": "require-at",
-                                                  "description": "Require permissions at every listed location. Omit require-at to accept permissions on the workflow or on every job. Set the rule to off to disable it.",
-                                                  "markdownDescription": "Require permissions at every listed location. Omit require-at to accept permissions on the workflow or on every job. Set the rule to off to disable it.",
+                                                  "description": "Require permissions at every listed location. When require-at is omitted the rule accepts permissions on the workflow or on every job.",
+                                                  "markdownDescription": "Require permissions at every listed location. When require-at is omitted the rule accepts permissions on the workflow or on every job.",
                                                   "anyOf": [
                                                     {
                                                       "type": "string",
@@ -2363,8 +2363,8 @@
                             "preset": {
                               "$ref": "#/$defs/preset",
                               "title": "preset",
-                              "description": "Baseline selection within this group: recommended",
-                              "markdownDescription": "Baseline selection within this group: recommended"
+                              "description": "Baseline selection within this group: recommended or all or none.",
+                              "markdownDescription": "Baseline selection within this group: recommended or all or none."
                             },
                             "require-commit-hash": {
                               "title": "require-commit-hash",
@@ -2392,14 +2392,14 @@
                                               "additionalProperties": true
                                             },
                                             {
-                                              "description": "Selects exceptions to immutable action references.",
-                                              "markdownDescription": "Selects exceptions to immutable action references.",
+                                              "description": "References exempt from pinning.",
+                                              "markdownDescription": "References exempt from pinning.",
                                               "type": "object",
                                               "properties": {
                                                 "exclude": {
                                                   "title": "exclude",
-                                                  "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
-                                                  "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                  "description": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
+                                                  "markdownDescription": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -2437,8 +2437,8 @@
                             },
                             "unpinned-reference": {
                               "title": "unpinned-reference",
-                              "description": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
+                              "description": "Require full commit SHAs for actions and workflows, and digests for docker:// actions. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for docker:// actions. Stable; not enabled by the recommended preset.",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/plugin-setting"
@@ -2460,14 +2460,14 @@
                                               "additionalProperties": true
                                             },
                                             {
-                                              "description": "Selects exceptions to immutable action references.",
-                                              "markdownDescription": "Selects exceptions to immutable action references.",
+                                              "description": "References exempt from pinning.",
+                                              "markdownDescription": "References exempt from pinning.",
                                               "type": "object",
                                               "properties": {
                                                 "exclude": {
                                                   "title": "exclude",
-                                                  "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
-                                                  "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                  "description": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
+                                                  "markdownDescription": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -2694,8 +2694,8 @@
                             "preset": {
                               "$ref": "#/$defs/preset",
                               "title": "preset",
-                              "description": "Baseline selection within this group: recommended",
-                              "markdownDescription": "Baseline selection within this group: recommended"
+                              "description": "Baseline selection within this group: recommended or all or none.",
+                              "markdownDescription": "Baseline selection within this group: recommended or all or none."
                             },
                             "string-conditions": {
                               "title": "string-conditions",
@@ -2832,8 +2832,8 @@
     },
     "local-actions": {
       "title": "local-actions",
-      "description": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
-      "markdownDescription": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
+      "description": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root and use ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
+      "markdownDescription": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root and use ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
       "oneOf": [
         {
           "type": "object",
@@ -3422,8 +3422,8 @@
                                                             "properties": {
                                                               "report": {
                                                                 "title": "report",
-                                                                "description": "Select suppression comments",
-                                                                "markdownDescription": "Select suppression comments",
+                                                                "description": "Report suppression comments or original violations or both.",
+                                                                "markdownDescription": "Report suppression comments or original violations or both.",
                                                                 "default": "all",
                                                                 "type": "string",
                                                                 "enum": [
@@ -3434,8 +3434,8 @@
                                                               },
                                                               "rules": {
                                                                 "title": "rules",
-                                                                "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                                                                "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                                "description": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
+                                                                "markdownDescription": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
                                                                 "type": "array",
                                                                 "minItems": 1,
                                                                 "items": {
@@ -3491,8 +3491,8 @@
                                                             "properties": {
                                                               "report": {
                                                                 "title": "report",
-                                                                "description": "Select suppression comments",
-                                                                "markdownDescription": "Select suppression comments",
+                                                                "description": "Report suppression comments or original violations or both.",
+                                                                "markdownDescription": "Report suppression comments or original violations or both.",
                                                                 "default": "all",
                                                                 "type": "string",
                                                                 "enum": [
@@ -3503,8 +3503,8 @@
                                                               },
                                                               "rules": {
                                                                 "title": "rules",
-                                                                "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                                                                "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                                "description": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
+                                                                "markdownDescription": "Rules whose inline suppressions are forbidden. Omit to select all suppressible rules.",
                                                                 "type": "array",
                                                                 "minItems": 1,
                                                                 "items": {
@@ -3604,8 +3604,8 @@
                                       "preset": {
                                         "$ref": "#/$defs/preset",
                                         "title": "preset",
-                                        "description": "Baseline selection within this group: recommended",
-                                        "markdownDescription": "Baseline selection within this group: recommended"
+                                        "description": "Baseline selection within this group: recommended or all or none.",
+                                        "markdownDescription": "Baseline selection within this group: recommended or all or none."
                                       },
                                       "require-action-metadata": {
                                         "title": "require-action-metadata",
@@ -4114,8 +4114,8 @@
                                       "preset": {
                                         "$ref": "#/$defs/preset",
                                         "title": "preset",
-                                        "description": "Baseline selection within this group: recommended",
-                                        "markdownDescription": "Baseline selection within this group: recommended"
+                                        "description": "Baseline selection within this group: recommended or all or none.",
+                                        "markdownDescription": "Baseline selection within this group: recommended or all or none."
                                       },
                                       "required-input": {
                                         "title": "required-input",
@@ -4327,8 +4327,8 @@
                               "preset": {
                                 "$ref": "#/$defs/preset",
                                 "title": "preset",
-                                "description": "Baseline selection: recommended",
-                                "markdownDescription": "Baseline selection: recommended"
+                                "description": "Baseline selection of recommended rules or all stable rules or none. Explicit rules override presets.",
+                                "markdownDescription": "Baseline selection of recommended rules or all stable rules or none. Explicit rules override presets."
                               },
                               "security": {
                                 "title": "security",
@@ -4406,8 +4406,8 @@
                                                         "properties": {
                                                           "require-at": {
                                                             "title": "require-at",
-                                                            "description": "Require permissions at every listed location. Omit require-at to accept permissions on the workflow or on every job. Set the rule to off to disable it.",
-                                                            "markdownDescription": "Require permissions at every listed location. Omit require-at to accept permissions on the workflow or on every job. Set the rule to off to disable it.",
+                                                            "description": "Require permissions at every listed location. When require-at is omitted the rule accepts permissions on the workflow or on every job.",
+                                                            "markdownDescription": "Require permissions at every listed location. When require-at is omitted the rule accepts permissions on the workflow or on every job.",
                                                             "anyOf": [
                                                               {
                                                                 "type": "string",
@@ -4444,8 +4444,8 @@
                                       "preset": {
                                         "$ref": "#/$defs/preset",
                                         "title": "preset",
-                                        "description": "Baseline selection within this group: recommended",
-                                        "markdownDescription": "Baseline selection within this group: recommended"
+                                        "description": "Baseline selection within this group: recommended or all or none.",
+                                        "markdownDescription": "Baseline selection within this group: recommended or all or none."
                                       },
                                       "require-commit-hash": {
                                         "title": "require-commit-hash",
@@ -4473,14 +4473,14 @@
                                                         "additionalProperties": true
                                                       },
                                                       {
-                                                        "description": "Selects exceptions to immutable action references.",
-                                                        "markdownDescription": "Selects exceptions to immutable action references.",
+                                                        "description": "References exempt from pinning.",
+                                                        "markdownDescription": "References exempt from pinning.",
                                                         "type": "object",
                                                         "properties": {
                                                           "exclude": {
                                                             "title": "exclude",
-                                                            "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
-                                                            "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                            "description": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
+                                                            "markdownDescription": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -4518,8 +4518,8 @@
                                       },
                                       "unpinned-reference": {
                                         "title": "unpinned-reference",
-                                        "description": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
+                                        "description": "Require full commit SHAs for actions and workflows, and digests for docker:// actions. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for docker:// actions. Stable; not enabled by the recommended preset.",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/plugin-setting"
@@ -4541,14 +4541,14 @@
                                                         "additionalProperties": true
                                                       },
                                                       {
-                                                        "description": "Selects exceptions to immutable action references.",
-                                                        "markdownDescription": "Selects exceptions to immutable action references.",
+                                                        "description": "References exempt from pinning.",
+                                                        "markdownDescription": "References exempt from pinning.",
                                                         "type": "object",
                                                         "properties": {
                                                           "exclude": {
                                                             "title": "exclude",
-                                                            "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
-                                                            "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                            "description": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
+                                                            "markdownDescription": "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -4775,8 +4775,8 @@
                                       "preset": {
                                         "$ref": "#/$defs/preset",
                                         "title": "preset",
-                                        "description": "Baseline selection within this group: recommended",
-                                        "markdownDescription": "Baseline selection within this group: recommended"
+                                        "description": "Baseline selection within this group: recommended or all or none.",
+                                        "markdownDescription": "Baseline selection within this group: recommended or all or none."
                                       },
                                       "string-conditions": {
                                         "title": "string-conditions",
@@ -5613,8 +5613,8 @@
                 "properties": {
                   "source": {
                     "title": "source",
-                    "description": "Independent artifact URL with a mandatory SHA256 pin",
-                    "markdownDescription": "Independent artifact URL with a mandatory SHA256 pin",
+                    "description": "Artifact URL with a mandatory SHA256 pin or an OCI digest reference. Cannot be combined with registry declaration fields.",
+                    "markdownDescription": "Artifact URL with a mandatory SHA256 pin or an OCI digest reference. Cannot be combined with registry declaration fields.",
                     "type": "string",
                     "minLength": 1,
                     "pattern": "^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$"

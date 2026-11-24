@@ -60,7 +60,7 @@ func TestCallPositionAdmission(t *testing.T) {
 	}
 }
 
-func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
+func TestCallFactsUseMetadataStepPosition(t *testing.T) {
 	t.Parallel()
 	for _, body := range []string{
 		"    - uses: ./child\n",

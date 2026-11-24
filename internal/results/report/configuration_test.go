@@ -10,7 +10,6 @@ import (
 
 func TestConfigurationSelectionJSON(t *testing.T) {
 	t.Parallel()
-	// Configuration selections expose their file, overlays and source metadata.
 	selected := configreport.Report{
 		Project: "project", File: "actionlint.yml", Explicit: true,
 		Overrides: []string{"tools"},
@@ -31,7 +30,6 @@ func TestConfigurationSelectionJSON(t *testing.T) {
 	if string(got) != want {
 		t.Fatalf("configuration JSON = %s, want %s", got, want)
 	}
-	// Inspection JSON also includes the decoded configuration.
 	got, err = json.Marshal(selected.Inspection)
 	if err != nil {
 		t.Fatal(err)

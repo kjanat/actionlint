@@ -2,15 +2,13 @@ package exprtypes
 
 import "maps"
 
-// EventVariant keeps an Actions trigger and activity correlated with its payload.
-// An empty event is unknown; a strict payload can establish an absent action.
+// EventVariant with an empty event is unknown, and a strict payload can establish an absent action.
 type EventVariant struct {
 	Event, Action string
 	Payload       ObjectType
 }
 
-// NewEventType merges event payloads and attaches the variants for guard narrowing.
-// Without variants it returns a loose object.
+// NewEventType returns a loose object without variants.
 func NewEventType(variants []EventVariant) ObjectType {
 	if len(variants) == 0 {
 		return NewEmptyObjectType()
@@ -26,9 +24,8 @@ func NewEventType(variants []EventVariant) ObjectType {
 	return object.WithEventVariants(variants)
 }
 
-// combineEventTypes joins the payload types of two variants. Actions permits
-// reading absent properties, so a member known in one variant is included even
-// if another omits it.
+// Actions permits reading absent properties, and combineEventTypes keeps a
+// member known in either variant.
 func combineEventTypes(a, b Type) Type {
 	if a == b {
 		return a

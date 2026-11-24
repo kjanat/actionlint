@@ -158,7 +158,7 @@ permissions: {}
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			t.Parallel()
 			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Process: &hostprocess.CommandOptions{Executable: &command, Arguments: flags}}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
-			if err == nil || !strings.Contains(err.Error(), "integration-owned option") {
+			if err == nil || !strings.Contains(err.Error(), "actionlint sets this ruff option") {
 				t.Fatalf("integration flag not rejected: %v", err)
 			}
 		})

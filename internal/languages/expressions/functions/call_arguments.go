@@ -5,7 +5,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 )
 
-// ArgumentValueState distinguishes an unknown value from a rejected conversion.
 type ArgumentValueState uint8
 
 const (
@@ -22,7 +21,6 @@ type CallArgument struct {
 	Format *FormatPlan
 }
 
-// ParameterMatch records the source argument, parameter contract and converted value.
 type ParameterMatch struct {
 	Argument   CallArgument
 	Accepted   bool

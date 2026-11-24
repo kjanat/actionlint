@@ -7,8 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
-// Configuration reports leave both the resolver and the session cache. Each
-// publication owns its maps and slices, including the decoded effective values.
 func configurationSnapshot(report configreport.Report) configreport.Report {
 	report.Overrides = slices.Clone(report.Overrides)
 	report.FileDigests = maps.Clone(report.FileDigests)
@@ -26,8 +24,6 @@ func configurationMapSnapshot(values map[string]any) map[string]any {
 	return result
 }
 
-// EffectiveValues decodes a YAML value tree: mappings, sequences and immutable
-// scalars. Copy its concrete container shapes without converting scalar types.
 func configurationValueSnapshot(value any) any {
 	switch value := value.(type) {
 	case map[string]any:

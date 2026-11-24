@@ -2,20 +2,16 @@
 // configuration loading, validation and resolution.
 package configreport
 
-// Report describes the configuration actually selected for one project.
 type Report struct {
 	Project    string
 	File       string
 	Explicit   bool
 	Overrides  []string
 	Inspection Inspection
-	// FileDigests holds the lowercase hexadecimal SHA-256 digest of each
-	// loaded configuration source, keyed by its normalized address. The
-	// verbose run context prints them; the JSON and YAML report omits them.
+	// FileDigests maps each loaded configuration source to its lowercase hex SHA-256 digest.
 	FileDigests map[string]string `json:"-" yaml:"-"`
 }
 
-// Inspection contains effective settings and optional source locations.
 type Inspection struct {
 	Path     string            `json:"path" yaml:"path"`
 	Config   map[string]any    `json:"config" yaml:"config"`
@@ -23,8 +19,6 @@ type Inspection struct {
 	Warnings []Warning         `json:"warnings,omitempty" yaml:"warnings,omitempty"`
 }
 
-// Origin identifies the default, project file, policy file or Action input that supplied a setting.
-// The JSON and YAML reports expose Line and Column as separate fields and omit zero values.
 type Origin struct {
 	File   string `json:"file,omitempty" yaml:"file,omitempty"`
 	Source string `json:"source" yaml:"source"`
@@ -34,8 +28,6 @@ type Origin struct {
 	Column int    `json:"column,omitempty" yaml:"column,omitempty"`
 }
 
-// Warning identifies an ignored setting without rejecting legacy config files.
-// Like Origin, it keeps Line and Column flat for the JSON and YAML report.
 type Warning struct {
 	File    string `json:"file,omitempty" yaml:"file,omitempty"`
 	Message string `json:"message" yaml:"message"`

@@ -129,8 +129,6 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if filepath.Ext(path) == ".sh" {
 		coordinates = sourcetext.RawLF
 	}
-	// The synthetic producer observes bytes captured before traversal by the
-	// same owner used for workflow analysis and final publication.
 	dependencySource, err := cache.snapshots.Capture(path, []byte("dependency content"), coordinates)
 	if err != nil {
 		return nil, err

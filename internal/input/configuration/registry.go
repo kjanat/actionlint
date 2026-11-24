@@ -9,9 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// RuleSet contains the declarations available to one configuration loader.
-// Construction copies metadata; later operations do not change the set.
-// Its zero value declares no rules.
+// RuleSet is immutable after construction. Its zero value declares no rules.
 type RuleSet struct {
 	entries         []rule.Declaration
 	names           rule.Names
@@ -20,11 +18,8 @@ type RuleSet struct {
 	providers       map[string]toolProvider
 }
 
-// Names returns the read-only index of current names and declared aliases.
 func (ruleSet RuleSet) Names() rule.Names { return ruleSet.names }
 
-// RuleSet returns the declarations bound to these settings.
-// Nil settings have no bound declarations.
 func (cfg *Config) RuleSet() RuleSet {
 	if cfg == nil {
 		return RuleSet{}
@@ -32,8 +27,6 @@ func (cfg *Config) RuleSet() RuleSet {
 	return cfg.Lint.Rules.ruleSet
 }
 
-// NewRuleSet validates names and indexes declarations for configuration.
-// Callers supply built-in and plugin declarations; this package loads no implementations.
 func NewRuleSet(declarations []rule.Declaration) (RuleSet, error) {
 	descriptors := make([]rule.Descriptor, len(declarations))
 	for i, declaration := range declarations {
@@ -67,7 +60,6 @@ func NewRuleSet(declarations []rule.Declaration) (RuleSet, error) {
 	return result, nil
 }
 
-// WithDefaults returns metadata annotated with the host's default rule selection.
 func (ruleSet RuleSet) WithDefaults(descriptor rule.Descriptor) rule.Descriptor {
 	entry, ok := ruleSet.FindRule(descriptor.Name)
 	if !ok {
@@ -79,7 +71,6 @@ func (ruleSet RuleSet) WithDefaults(descriptor rule.Descriptor) rule.Descriptor 
 	return descriptor
 }
 
-// Rules returns declarations with caller-owned metadata slices.
 func (ruleSet RuleSet) Rules() []rule.Declaration {
 	result := make([]rule.Declaration, len(ruleSet.entries))
 	for i, entry := range ruleSet.entries {
@@ -88,7 +79,6 @@ func (ruleSet RuleSet) Rules() []rule.Declaration {
 	return result
 }
 
-// RuleInfos returns metadata for schema construction and rule-name completion.
 func (ruleSet RuleSet) RuleInfos() []rule.Descriptor {
 	descriptors := make([]rule.Descriptor, len(ruleSet.entries))
 	for i, entry := range ruleSet.entries {
@@ -111,7 +101,6 @@ func (ruleSet RuleSet) FindRule(name string) (rule.Declaration, bool) {
 	return rule.Declaration{}, false
 }
 
-// Suppressible reports whether a selector names a declared rule or an additional plugin rule.
 func (ruleSet RuleSet) Suppressible(name string, additional ...string) bool {
 	_, found := ruleSet.FindRule(name)
 	return found || slices.Contains(additional, name)

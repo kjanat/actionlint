@@ -1,7 +1,6 @@
 package sourcetext
 
-// Coordinates identifies the physical coordinate rules for a captured document.
-// The zero value is invalid. Availability also requires valid UTF-8 bytes.
+// Coordinates zero value is invalid.
 type Coordinates string
 
 const (

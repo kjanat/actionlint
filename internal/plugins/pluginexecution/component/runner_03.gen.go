@@ -5,7 +5,7 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	Runner03Interface = "kjanat:actionlint/runner-provider@0.3.0"
-	runner03WITSHA256 = "10d347dc13fa4d2c1c5b24dae49679d2ccad272854b4596a89033c751a2ddc70"
+	runner03WITSHA256 = "e3034ea15784ba35ca54986d3f28c982693fd39aaa0a366b2730f95038655c71"
 )
 
 func expectedRunner03Interface() *wp.ComponentType {

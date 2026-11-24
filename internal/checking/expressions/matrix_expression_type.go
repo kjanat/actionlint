@@ -15,9 +15,6 @@ type expressionRefinement struct {
 	hasTemplateInvalid bool
 }
 
-// expressionType keeps finite matrix-dependent expressions precise without
-// choosing one row's value for another. Unknown or oversized matrices retain
-// the ordinary semantic checker's type.
 func (rule *Visitor) expressionType(text string, evaluation exprvalues.EvaluationResult) expressionRefinement {
 	switch evaluation.State {
 	case exprvalues.EvaluationKnown:

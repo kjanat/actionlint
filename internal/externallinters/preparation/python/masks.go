@@ -7,8 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-// Masks records where sanitizing replaced templates with opaque values so
-// findings caused by those values can be filtered.
 type Masks struct {
 	identifiers        map[sourcetext.Position]int
 	parentheses        map[sourcetext.Position]sourcetext.Position
@@ -18,28 +16,23 @@ type Masks struct {
 	percentConversions map[sourcetext.Position]bool
 }
 
-// Accept reports whether a finding is independent of the masks. Its template
-// effect, never its code or message, decides.
+// Accept decides by the finding's template effect alone.
 func (m *Masks) Accept(d scriptengine.Diagnostic) bool {
 	if d.TemplateEffect == scriptengine.TemplateEffectLineLength && m.lines[d.Location.Line] {
 		return false
 	}
 	// Opaque values, quoted annotations and exports may hide references.
-	// Comment-only templates add no masks; unrelated checks still apply.
 	if len(m.identifiers) > 0 && d.TemplateEffect == scriptengine.TemplateEffectCompleteReferences {
 		return false
 	}
 	if m.dynamicQuotedValue(d) {
 		return false
 	}
-	// A mask can cause undefined-name and useless-expression findings.
-	// Only its exact identifier range is excluded.
 	if width, ok := m.identifiers[d.Location]; ok && d.TemplateEffect == scriptengine.TemplateEffectOpaqueName &&
 		d.EndLocation == (sourcetext.Position{Line: d.Location.Line, Column: d.Location.Column + width}) {
 		return false
 	}
 	// UP034 can identify the wrapper added around an opaque value.
-	// Source parentheses extend outside this exact generated range.
 	if end, ok := m.parentheses[d.Location]; ok && d.TemplateEffect == scriptengine.TemplateEffectOpaqueParentheses && d.EndLocation == end {
 		return false
 	}
@@ -47,7 +40,6 @@ func (m *Masks) Accept(d scriptengine.Diagnostic) bool {
 }
 
 func (m *Masks) dynamicQuotedValue(d scriptengine.Diagnostic) bool {
-	// Filter content-dependent findings only when their range contains a quoted mask.
 	contents := d.TemplateEffect == scriptengine.TemplateEffectStringContents
 	summary := d.TemplateEffect == scriptengine.TemplateEffectDocstringSummary
 	export := d.TemplateEffect == scriptengine.TemplateEffectExportedName

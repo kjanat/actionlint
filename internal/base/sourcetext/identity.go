@@ -29,10 +29,10 @@ func NewReferenceIndex(path string, content []byte) *ReferenceIndex {
 	return &ReferenceIndex{DocumentID(path), sha256hex.Digest(content), map[string]int{}}
 }
 
-func (i *ReferenceIndex) Ref(owner, key, content, address string) Reference {
-	identity := owner + "\x00" + key
+func (i *ReferenceIndex) Ref(prefix, key, content, address string) Reference {
+	identity := prefix + "\x00" + key
 	if key == "" {
-		identity = owner + "\x00anonymous\x00" + sha256hex.Digest([]byte(content))
+		identity = prefix + "\x00anonymous\x00" + sha256hex.Digest([]byte(content))
 	}
 	occurrence := i.occurrences[identity]
 	i.occurrences[identity]++

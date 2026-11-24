@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-// RPCMessage is one JSON-RPC request or notification.
 type RPCMessage struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -19,7 +18,6 @@ type RPCMessage struct {
 	Params  json.RawMessage `json:"params"`
 }
 
-// ReadRPCMessage reads and decodes one Content-Length-framed message.
 func ReadRPCMessage(r *bufio.Reader) (RPCMessage, error) {
 	data, err := ReadFramedPayload(r)
 	if err != nil {
@@ -30,8 +28,6 @@ func ReadRPCMessage(r *bufio.Reader) (RPCMessage, error) {
 	return m, err
 }
 
-// ReadFramedPayload reads one Content-Length-framed JSON-RPC payload. Browser hosts
-// use it to carry unchanged server responses over a worker message channel.
 func ReadFramedPayload(r *bufio.Reader) (json.RawMessage, error) {
 	length := -1
 	headers := 0
@@ -73,7 +69,6 @@ func ReadFramedPayload(r *bufio.Reader) (json.RawMessage, error) {
 	return data, nil
 }
 
-// WriteRPCMessage writes value as one Content-Length-framed JSON message.
 func WriteRPCMessage(w io.Writer, value any) error {
 	data, err := jsonv2.Marshal(value)
 	if err != nil {

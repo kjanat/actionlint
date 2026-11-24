@@ -14,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
-// RepositoryWire defines the configuration fields shared by the schema and overlay.
 type RepositoryWire struct {
 	Service      any                `yaml:"service"`
 	Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
@@ -27,11 +26,10 @@ type RepositoryWire struct {
 	} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
 }
 
-// MergeWire exposes the repository's wire shape to configuration plan compilation.
 func (RepositoryConfig) MergeWire() reflect.Type { return reflect.TypeFor[RepositoryWire]() }
 
-// RepositoryConfig supplies overrides for host knowledge. Omission inherits the
-// host fact; null makes it unknown; an empty collection is a known empty set.
+// RepositoryConfig omission inherits the host fact; null makes it unknown; an
+// empty collection is a known empty set.
 type RepositoryConfig struct {
 	reset        bool
 	service      *services.Service        `clone:"shared"`
@@ -279,7 +277,6 @@ func repositoryService(value any) (services.Service, error) {
 	return services.ParseService(selected.Kind, selected.Version)
 }
 
-// RepositoryFacts returns facts independently of the diagnostic preset.
 func RepositoryFacts(cfg *Config, host repository.Settings) repository.Settings {
 	if cfg == nil {
 		return host
@@ -287,7 +284,6 @@ func RepositoryFacts(cfg *Config, host repository.Settings) repository.Settings 
 	return cfg.Repository.Apply(host)
 }
 
-// Facts returns only the repository overrides declared by this document.
 func (cfg *Config) Facts() repository.Settings { return RepositoryFacts(cfg, repository.Settings{}) }
 
 // VariableNames and SecretNames preserve nil for unavailable name sets.
@@ -312,5 +308,4 @@ func RunnerLabels(facts repository.Settings) []string {
 	return nil
 }
 
-// CopyConfig copies the owned configuration state.
-func (r RepositoryConfig) CopyConfig() (any, error) { return copyOwnedRepositoryConfig(r), nil }
+func (r RepositoryConfig) CopyConfig() (any, error) { return deepCopyRepositoryConfig(r), nil }

@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 )
 
-// Variant is a script with known values in place of templates.
 type Variant struct {
 	Text          string
 	Substitutions []preparation.Substitution
@@ -18,8 +17,7 @@ type Variant struct {
 // Variants returns one script for each value of the template with the most
 // known values. Variant i gives each template with known values its value at
 // i modulo their number and masks every other template, as Expressions does.
-// A template spanning rows, or with a value spanning rows, stays masked. No
-// variant is returned when no template has known values.
+// A template spanning rows, or with a value spanning rows, stays masked.
 func Variants(text string) []Variant {
 	type template struct {
 		start, stop int

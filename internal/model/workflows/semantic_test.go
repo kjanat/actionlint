@@ -178,7 +178,6 @@ jobs:
 	if !ok {
 		t.Fatal("job view missing")
 	}
-	// Legacy String text stays unchanged while the separate source snapshot keeps the YAML tag.
 	if sourceValue := workflow.Jobs["build"].Env.Vars["literal-null"].Value.Value; sourceValue != "null" {
 		t.Fatalf("parser literal-null value = %q; want observed text null", sourceValue)
 	}

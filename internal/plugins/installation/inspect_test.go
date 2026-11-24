@@ -36,8 +36,6 @@ func TestPinSourceLeavesLocalAndPinnedSourcesUnchanged(t *testing.T) {
 	}
 }
 
-// An explicitly supplied private artifact reaches its endpoint. The registry
-// counterpart, which must refuse that endpoint, is in pluginregistry.
 func TestInspectGrantsExplicitPrivateArtifactAccess(t *testing.T) {
 	t.Parallel()
 	digest := sha256.Sum256([]byte{0, 97, 115, 109, 13, 0, 1, 0})

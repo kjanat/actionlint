@@ -67,31 +67,14 @@ export interface BrowserLanguageClient {
 
 export interface BrowserClientOptions {
 	platform?: 'windows' | 'darwin' | 'linux';
-	/** Absolute workspace URI. Virtual schemes such as vscode-vfs are supported. */
+	/** Absolute workspace URI, which may use a virtual scheme such as vscode-vfs. */
 	rootURI: string;
-	/** Bundled tool IDs whose commands the host can run. Omission disables external tools. */
+	/** Omission disables external tools. */
 	tools?: readonly string[];
-	/** Receive versioned diagnostics exactly as published by the language server. */
 	onDiagnostics(params: PublishDiagnosticsParams): void;
-	/** Display operational failures separately from source diagnostics. */
 	onError(message: string): void;
 }
 
-/** Connect to the packaged worker using Microsoft's browser LSP transport.
- *
- * @example
- * ```ts
- * const client = createBrowserLanguageClient(worker, {
- *   async readFile(uri) { return files.get(uri) ?? null },
- * }, {
- *   rootURI: 'file:///workspace',
- *   onDiagnostics: showDiagnostics,
- *   onError: console.error,
- * })
- * await client.initialize()
- * await client.open('file:///workspace/.github/workflows/ci.yml', yaml, 1)
- * ```
- */
 export function createBrowserLanguageClient(
 	worker: Worker,
 	host: BrowserHost,

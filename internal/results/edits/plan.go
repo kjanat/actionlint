@@ -32,8 +32,8 @@ type edit struct {
 	text       string
 }
 
-// Build chooses the first permitted alternative per finding. Review-required fixes
-// need explicit inclusion. Missing or inconsistent revisions are errors.
+// Build requires explicit inclusion for review-required fixes. Missing or
+// inconsistent revisions are errors.
 func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Reader, includeSuggested bool) (Plan, error) {
 	p := Plan{}
 	edits := map[string][]edit{}

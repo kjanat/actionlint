@@ -56,7 +56,7 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 	}
 }
 
-func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
+func TestPackagedRunnerSeparatesPackageIDAndRejectsForeignScope(t *testing.T) {
 	t.Parallel()
 	plugin := loadRunnerFixture(t)
 	data, err := os.ReadFile("testdata/plugins/buildkite-runners.wasm")

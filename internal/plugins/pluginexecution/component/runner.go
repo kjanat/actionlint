@@ -255,8 +255,7 @@ func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runnerapi.Answ
 }
 
 func liftRunnerPosition(value wacogo.Val) (sourcetext.Position, error) {
-	// Runner rejections may address the containing job. This sentinel is not
-	// valid for analyzer diagnostics; all other coordinates use their checks.
+	// Runner rejections may address the containing job with this sentinel.
 	if record, ok := value.(*wacogo.ValRecord); ok && record.Field("line") == wacogo.ValU32(0) && record.Field("column") == wacogo.ValU32(0) {
 		return sourcetext.Position{}, nil
 	}

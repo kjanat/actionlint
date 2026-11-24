@@ -8,18 +8,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
-// CaseInsensitiveConditionsRule is the single definition of the case-insensitive-conditions rule.
 var CaseInsensitiveConditionsRule = &define.Rule{
 	Name:        "case-insensitive-conditions",
 	Description: "Flag case-insensitive identity comparisons",
 	Category:    "suspicious",
 	Subcategory: "expressions",
-	Help:        "Expression string comparisons ignore case; avoid using them as case-sensitive identity checks.",
+	Help:        "Expression string comparisons ignore case.",
 	DeclaredBy:  "expression",
 }
 
-// CaseInsensitiveConditions reports identity comparisons whose string operations ignore case.
-// The caller invokes this rule only for workflow condition fields.
+// CaseInsensitiveConditions runs only for workflow condition fields.
 func CaseInsensitiveConditions(root syntax.Node, types typecheck.InferredTypes, calls typecheck.CheckedCalls) []*typecheck.Error {
 	var findings []*typecheck.Error
 	report := func(node, left, right syntax.Node) {

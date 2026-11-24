@@ -11,15 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// ConfigFile resolves a tool's native configuration file and records it with
-// reader, unless reader is nil. A path naming a directory selects the first of files.Names in it.
-// Without a path it searches the places files.Search lists, in order:
-// "upward" walks from start to the filesystem root, "home" looks in the
-// user's home directory except on Windows, and "xdg" in the XDG
-// configuration directory (the user configuration directory on Windows).
-// This is where native tools such as ShellCheck look: Windows keeps per-user
-// files in the configuration directory, not the home directory. It returns
-// an absolute path, or "" when the search finds nothing.
+// ConfigFile returns an absolute path, or "" when the search finds nothing.
+// Native tools such as ShellCheck keep per-user files in the configuration directory on Windows.
 func ConfigFile(reader *files.Reader, files toolmanifest.ConfigFiles, path, start string) (string, error) {
 	if path != "" {
 		return configFile(reader, files.Names, path)
@@ -63,8 +56,6 @@ func searchUpward(names []string, start string) (string, error) {
 	}
 }
 
-// homeDirectory is the home directory searched for configuration; "" on
-// Windows or when it is unknown.
 func homeDirectory() string {
 	if runtime.GOOS == "windows" {
 		return ""
@@ -76,8 +67,6 @@ func homeDirectory() string {
 	return home
 }
 
-// xdgConfigHome is the XDG configuration directory, or the user
-// configuration directory on Windows; "" when neither is known.
 func xdgConfigHome() string {
 	if runtime.GOOS == "windows" {
 		directory, err := os.UserConfigDir()
@@ -96,7 +85,6 @@ func xdgConfigHome() string {
 	return filepath.Join(home, ".config")
 }
 
-// configInDirectory returns the first of names present in directory.
 func configInDirectory(names []string, directory string) (string, error) {
 	for _, name := range names {
 		path := filepath.Join(directory, name)
@@ -115,8 +103,6 @@ func configInDirectory(names []string, directory string) (string, error) {
 	return "", nil
 }
 
-// configFile selects path, or the first of names inside a directory path,
-// records it as read and returns it absolute.
 func configFile(reader *files.Reader, names []string, path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-func TestYAMLAliasProjectionIsRepeatableAndOwnsItsNodes(t *testing.T) {
+func TestYAMLAliasProjectionIsRepeatableAndSharesNoNodes(t *testing.T) {
 	t.Parallel()
 	root, err := codec.ParseYAML([]byte("base: &base {nested: {value: original}}\none: *base\ntwo: *base\n"))
 	if err != nil {

@@ -19,28 +19,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// ReadMode selects which configuration fields are normalized during plugin discovery.
 type ReadMode uint8
 
 const (
-	// CompleteConfiguration normalizes every configuration field before merging.
 	CompleteConfiguration ReadMode = iota
-	// PluginDeclarationsOnly projects plugin declarations and inheritance before merging.
 	PluginDeclarationsOnly
 )
 
-// MaxFileBytes limits each configuration source to four MiB.
 const MaxFileBytes = 4 << 20
 
-// File edits plugin declarations and checks inherited inputs for
-// concurrent changes before saving.
 type File struct {
 	Path       string
 	References []pluginreference.Reference
 	Declared   bool
 	Exists     bool
-	// original is the content that Save edits. parsed is that content as the
-	// loader parsed it, or nil after SetContent replaces the content.
 	original   []byte
 	parsed     *document.Editor
 	snapshots  map[string][]byte
@@ -48,24 +40,18 @@ type File struct {
 	readSource func(context.Context, string) ([]byte, error)
 }
 
-// Open reads plugin declarations and the configuration sources they inherit. Plugin rule configuration
-// cannot be validated until the plugins supplying those rules have been loaded.
 func Open(ctx context.Context, rules configuration.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
 	return Read(ctx, rules, path, func(ctx context.Context, path string) ([]byte, error) {
 		return readPluginManifest(ctx, path, connections)
 	}, CompleteConfiguration, nil)
 }
 
-// Read loads plugin declarations with the supplied source reader and
-// normalization mode. Inherited sources held by files are used without reading
-// them again, and files keeps the sources read here; files may be nil.
 func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode, files *document.Files) (*File, error) {
 	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
 	if configsource.IsRemoteAddress(absolute) {
-		// Pass the declared URL spelling to caller-supplied readers.
 		absolute = path
 	} else {
 		absolute, err = physicalPluginManifestPath(absolute)
@@ -145,8 +131,6 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	return manifest, nil
 }
 
-// pluginSourcePath returns the absolute filename of a local inherited source.
-// HTTPS addresses are returned unchanged.
 func pluginSourcePath(name string) (string, error) {
 	if configsource.IsRemoteAddress(name) {
 		return name, nil
@@ -154,9 +138,6 @@ func pluginSourcePath(name string) (string, error) {
 	return filepath.Abs(name)
 }
 
-// The tree loader expands aliases before this projection, so plugin references
-// may still use anchors declared under unrelated fields. Validate every source
-// declaration before merging: a leaf reset cannot hide a malformed base.
 func pluginDependencyNode(value any) (any, error) {
 	if _, _, err := References(value); err != nil {
 		return nil, err
@@ -249,8 +230,6 @@ func selectFields(source map[string]any, keys ...string) map[string]any {
 	return selected
 }
 
-// An explicit manifest trusts its containing directory, including checkout
-// aliases and macOS /var. Resolve that directory, never the file itself.
 func physicalPluginManifestPath(absolute string) (string, error) {
 	base := filepath.Dir(absolute)
 	for {
@@ -274,7 +253,6 @@ func physicalPluginManifestPath(absolute string) (string, error) {
 	return filepath.Join(physical, relative), nil
 }
 
-// ValidateLocalPath rejects symlinks in the configuration path and its ancestors.
 func ValidateLocalPath(path string) error {
 	for current := path; ; current = filepath.Dir(current) {
 		info, err := os.Lstat(current)
@@ -300,7 +278,6 @@ func readPluginManifest(ctx context.Context, path string, connections acquisitio
 	return ReadSource(ctx, path, connections)
 }
 
-// ReadSource reads a local or remote configuration source within the file-size limit.
 func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
 	if configsource.IsRemoteAddress(path) {
 		return configsource.New(ctx, nil, connections).ReadConfig(path)
@@ -328,7 +305,6 @@ func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Co
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	// Distinguish an existing empty document from an absent document.
 	return append([]byte{}, data...), nil
 }
 
@@ -361,13 +337,10 @@ func (m *File) read(ctx context.Context, path string) ([]byte, error) {
 	}, acquisitionhttp.Connections{}).ReadFile(path)
 }
 
-// OriginalBytes returns a copy of the selected config's original bytes.
 func (m *File) OriginalBytes() []byte {
 	return slices.Clone(m.original)
 }
 
-// Save writes an explicit leaf-level list, including [] when removing the last
-// plugin.
 func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err error) {
 	if configsource.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
@@ -444,10 +417,8 @@ func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err 
 	return nil
 }
 
-// MergedDocument returns the loaded configuration after inheritance has been merged.
 func (m *File) MergedDocument() any { return m.merged }
 
-// SourceContents returns copies of the source bytes used to build the merged document.
 func (m *File) SourceContents() map[string][]byte {
 	sources := make(map[string][]byte, len(m.snapshots))
 	for path, content := range m.snapshots {
@@ -456,5 +427,6 @@ func (m *File) SourceContents() map[string][]byte {
 	return sources
 }
 
-// SetContent selects the content that Save edits. Source-change checks still use the captured files.
+// SetContent selects the content that Save edits. Source-change checks still
+// use the captured files.
 func (m *File) SetContent(content []byte) { m.original, m.parsed = bytes.Clone(content), nil }

@@ -36,7 +36,7 @@ func New(program string, maxOutputBytes int) (*Program, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse jq transform: %w", err)
 	}
-	// No environ loader, module loader or input iterator: each stays closed.
+	// The program compiles without an environ loader, module loader or input iterator, and all three stay closed.
 	code, err := gojq.Compile(query, gojq.WithVariables([]string{"$vars"}))
 	if err != nil {
 		return nil, fmt.Errorf("compile jq transform: %w", err)
@@ -75,7 +75,6 @@ func (p *Program) Apply(ctx context.Context, input any, variables map[string]any
 	}
 }
 
-// encodeBounded rejects output exceeding the caller's byte limit.
 func encodeBounded(value any, maxOutputBytes int) ([]byte, bool) {
 	encoded, err := gojq.Marshal(value)
 	if err != nil || len(encoded) > maxOutputBytes {
@@ -84,8 +83,6 @@ func encodeBounded(value any, maxOutputBytes int) ([]byte, bool) {
 	return encoded, true
 }
 
-// jsonValue converts decoded JSON numbers to the integer, big integer or float
-// values gojq accepts.
 func jsonValue(value any) any {
 	switch value := value.(type) {
 	case json.Number:

@@ -9,16 +9,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// Availability supplies the name restrictions and overloads for an expression.
-// Its provider decides which source location or execution context they describe.
-// ContextNames supplies lowercase names.
+// Availability supplies name restrictions and overloads. ContextNames returns
+// lowercase names.
 type Availability interface {
 	ContextNames() []string
 	FunctionAvailability() map[string]functions.Availability
 	FunctionOverloads() map[string][]*functions.FuncSignature
 }
 
-// Scope supplies the initial variable types as well as name availability.
 type Scope interface {
 	Availability
 	ContextTypes() map[string]exprtypes.Type
@@ -60,8 +58,6 @@ func (sema *Checker) functionRestriction(callName string) (functions.Availabilit
 	return availability, restricted && !availability.Allowed
 }
 
-// AvailableContexts returns permitted names and their current types. The caller
-// owns the map; later scope updates do not change the returned entries.
 func (sema *Checker) AvailableContexts() map[string]exprtypes.Type {
 	contexts := make(map[string]exprtypes.Type, len(sema.availableContexts))
 	for _, name := range sema.availableContexts {

@@ -1,4 +1,4 @@
-// Package repository describes repository facts independently of configuration and fetching.
+// Package repository describes repository facts.
 package repository
 
 import (
@@ -12,13 +12,12 @@ import (
 )
 
 // Permissions is the repository's default workflow token setting.
-// Its zero value is unavailable, rather than an assumed read grant.
+// Its zero value is unavailable and grants no assumed read access.
 type Permissions struct {
 	write, known bool
 	missing      availability.Unavailability
 }
 
-// ParsePermissions accepts the repository setting's read and write values.
 func ParsePermissions(value string) (Permissions, error) {
 	switch value {
 	case "read":
@@ -53,13 +52,11 @@ func UnavailablePermissions(reason availability.Unavailability) Permissions {
 	return Permissions{missing: reason}
 }
 
-// Names owns a case-insensitive set of names in their original spelling.
 type Names struct {
 	values  []string
 	missing availability.Unavailability
 }
 
-// NewNames rejects blank and duplicate names and owns a copy of the input.
 func NewNames(values ...string) (Names, error) {
 	seen := make(map[string]bool, len(values))
 	for _, value := range values {
@@ -75,7 +72,6 @@ func NewNames(values ...string) (Names, error) {
 	return Names{values: append([]string{}, values...)}, nil
 }
 
-// Values returns an owned list, including a non-nil list for an empty set.
 func (n Names) Values() []string {
 	if n.values == nil {
 		return nil
@@ -92,14 +88,12 @@ func (n Names) Reason() availability.Reason {
 }
 func UnavailableNames(reason availability.Unavailability) Names { return Names{missing: reason} }
 
-// Variable records a known name and an optional value. Unknown values do not
-// make the name unavailable. Consumers must not include values in diagnostics.
+// Variable values must stay out of diagnostics.
 type Variable struct {
 	Name  string
 	Value availability.String
 }
 
-// Variables owns variable names and their optional values.
 type Variables struct {
 	entries []Variable
 	missing availability.Unavailability
@@ -141,7 +135,6 @@ func (v Variables) Names() []string {
 	return names
 }
 
-// Environment contains the names visible within one deployment environment.
 type Environment struct {
 	Name      string
 	Variables Variables
@@ -180,7 +173,6 @@ func UnavailableEnvironments(reason availability.Unavailability) Environments {
 // Settings is host knowledge for one repository. Each field is independently
 // available, so a denied lookup cannot erase facts obtained by other lookups.
 type Settings struct {
-	// Service identifies the service that executes this repository's workflows.
 	Service                    services.Service
 	DefaultWorkflowPermissions Permissions
 	RunnerLabels               Names

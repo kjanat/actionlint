@@ -40,8 +40,6 @@ func TestCompareVersions(t *testing.T) {
 	}
 }
 
-// The bundled Ruff probe keeps the Ruff adapter's minimum: 0.17.0 releases
-// and newer, never a prerelease of the minimum.
 func TestRuffVersionProbe(t *testing.T) {
 	t.Parallel()
 	probe := bundledManifest(t, "ruff").Process.Version

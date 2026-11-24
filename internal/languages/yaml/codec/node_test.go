@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestOwnedGraphAndNestedDecode(t *testing.T) {
+func TestCodecGraphKeepsAliasIdentityAndNestedDecode(t *testing.T) {
 	t.Parallel()
 	root, err := ParseYAML([]byte("base: &a {value: null}\ncopy: *a\n"))
 	if err != nil {
@@ -59,7 +59,7 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 		t.Errorf("base/copy visits=%d child visits=%d want 2 each", visits, children)
 	}
 	if reflect.TypeFor[Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/languages/yaml/codec" {
-		t.Fatal("tree is not owned by codec")
+		t.Fatal("Node is declared outside package codec")
 	}
 }
 

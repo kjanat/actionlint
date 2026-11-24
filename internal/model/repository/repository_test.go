@@ -30,7 +30,7 @@ func TestUnknownDiffersFromKnownEmptyFacts(t *testing.T) {
 	}
 }
 
-func TestSnapshotsOwnNameAndValueCollections(t *testing.T) {
+func TestRepositoryCollectionsCopyInputsAndResults(t *testing.T) {
 	t.Parallel()
 	source := []string{"TOKEN"}
 	names, err := repository.NewNames(source...)

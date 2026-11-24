@@ -7,8 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// withBranchContext checks a branch using model-supplied context refinements.
-// Overrides apply only inside this operation, including nested branches.
 func (sema *Checker) withBranchContext(guard syntax.Node, truth bool, check func() exprtypes.Type) exprtypes.Type {
 	overrides, possible := sema.narrowContext(guard, truth, sema.ContextType)
 	if !possible {

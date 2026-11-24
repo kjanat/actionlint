@@ -19,8 +19,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/assembly"
 )
 
-// TestLocalManifestToolHelper is the tool a local manifest runs: the test
-// binary, reporting what it read on stdin.
+// TestLocalManifestToolHelper is the tool of a local manifest. The test binary
+// runs as that tool and reports what the tool read on stdin.
 func TestLocalManifestToolHelper(t *testing.T) {
 	t.Parallel()
 	if os.Getenv("ACTIONLINT_LOCAL_MANIFEST_HELPER") != "1" {
@@ -34,7 +34,6 @@ func TestLocalManifestToolHelper(t *testing.T) {
 	os.Exit(0)
 }
 
-// A user runs any binary through a manifest and a jq transform beside it.
 func TestLocalManifestRunsBinaryWithJQ(t *testing.T) {
 	t.Parallel()
 	executable, err := os.Executable()

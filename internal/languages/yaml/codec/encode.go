@@ -50,8 +50,6 @@ func checkEncoding(v reflect.Value, active map[encodingVisit]bool) error {
 			return nil
 		}
 	}
-	// Only reference and container kinds can form cycles or hold nested values;
-	// every other kind is a leaf.
 	kind := v.Kind()
 	if kind == reflect.Pointer || kind == reflect.Map || kind == reflect.Slice {
 		if v.IsNil() {

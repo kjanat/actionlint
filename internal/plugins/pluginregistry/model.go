@@ -1,6 +1,4 @@
-// Package pluginregistry resolves plugin releases from registry catalogues and
-// local candidate catalogues, verifies their publisher identity and status, and
-// caches verified releases for offline use.
+// Package pluginregistry resolves, verifies and caches plugin releases.
 package pluginregistry
 
 import (
@@ -116,8 +114,8 @@ type record struct {
 	URL          string `json:"url"`
 }
 
-// Pin records selection intent separately from the exact artifact. Lint and sync
-// use only the latter; only install/update contact the catalogue.
+// Pin records selection intent separately from the exact artifact. Only install
+// and update contact the catalogue.
 type Pin struct {
 	Origin       string                   `json:"source,omitempty"`
 	Registry     string                   `json:"registry"`
@@ -137,8 +135,6 @@ type Pin struct {
 	Metadata     string                   `json:"metadata,omitempty"`
 }
 
-// SameRelease compares immutable release evidence, ignoring alias spelling and
-// whether install originally requested latest or the exact release.
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
 
 func (p Pin) Source() string {
@@ -163,7 +159,6 @@ func (p Pin) Matches(ref pluginreference.Reference) bool {
 	return strings.EqualFold(p.Name, ref.Name())
 }
 
-// SameRegistry compares the canonical spellings of two catalogue endpoints.
 func SameRegistry(left, right string) bool {
 	a, err := registryURL(left)
 	if err != nil {
@@ -185,8 +180,8 @@ func canonicalName(name string) bool {
 	return pluginreference.ValidName(name)
 }
 
-// RepositoryName returns the publishing repository, independently of a package
-// selector. Historical pins omit Repository and retain their original Name.
+// RepositoryName returns the publishing repository. Historical pins omit
+// Repository and retain their original Name.
 func (p Pin) RepositoryName() string {
 	if p.Repository != "" {
 		return p.Repository

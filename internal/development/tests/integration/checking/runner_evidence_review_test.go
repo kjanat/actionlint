@@ -55,9 +55,6 @@ func (o *evidenceCompletionObserver) AnalyzeDocument(_ context.Context, input ch
 	return nil, nil
 }
 
-// One path holds one source revision: differing content under one path is a
-// capture conflict, so reports order by path. The source that sorts first
-// finishes last, and completion order must not leak into the evidence.
 func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -74,7 +71,6 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 			Runners:    runnerapi.Options{Target: "order", Providers: []runnerapi.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
 			Analyzers:  []results.AnalyzerRegistration{{Analyzer: observer}},
 		}
-		// a.yml waits until b.yml has been analyzed.
 		result, err := checking.Analyze(t.Context(), settings, []workspace.InputFile{source("b.yml", fast), source("a.yml", slow)})
 		if err != nil {
 			t.Fatal(err)

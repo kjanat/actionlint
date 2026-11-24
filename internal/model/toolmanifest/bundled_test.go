@@ -9,9 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// Bundled decodes once, so a caller that edits its result, as tests that
-// derive a provider from shellcheck do, must not change what later callers get.
-func TestBundledReturnsCallerOwnedManifests(t *testing.T) {
+func TestBundledReturnsFreshCopies(t *testing.T) {
 	t.Parallel()
 	edited, err := toolmanifest.Bundled()
 	if err != nil {

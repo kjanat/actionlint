@@ -7,9 +7,8 @@ import (
 	"strings"
 )
 
-// RecordResolverCall distinguishes host cache hits and opaque delegated lookups from
-// actual provider-reported attempts. Invalid auxiliary receipts are treated as
-// opaque rather than changing an otherwise valid dependency resolution.
+// RecordResolverCall treats invalid auxiliary receipts as opaque. They leave an
+// otherwise valid dependency resolution unchanged.
 func RecordResolverCall(ctx context.Context, receipt *RequestReport, cached bool) {
 	session := RequestTrackerFromContext(ctx)
 	if session == nil {
@@ -82,8 +81,8 @@ func RecordResolverCall(ctx context.Context, receipt *RequestReport, cached bool
 	}
 }
 
-// RecordCacheLookup counts one lookup in a local cache of remote data. Purpose
-// is a fixed label such as repository-metadata, never a path or reference.
+// RecordCacheLookup takes a fixed purpose label, such as repository-metadata,
+// that holds no path or reference.
 func RecordCacheLookup(ctx context.Context, purpose string, hit bool) {
 	session := RequestTrackerFromContext(ctx)
 	if session == nil {

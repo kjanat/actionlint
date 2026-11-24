@@ -186,8 +186,6 @@ func TestLoadUsesHeldSourcesWithoutReading(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A second load spells the selected file differently. Its normalizer must
-	// see that spelling, as it would after reading the file itself.
 	spelled := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "leaf.yaml"
 	seen := map[string]string{}
 	second, err := LoadConfigDocument(spelled, files, func(path string) ([]byte, error) {

@@ -19,8 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Each workflow analysis owns its validation store.
-// Its templates contain no caller state and are also shared with nested composites.
+// actionMetadataValidation templates hold no caller state and are shared with nested composites.
 type actionMetadataValidation struct {
 	templates map[string][]*finding.Finding
 	copies    *finding.Copier
@@ -55,7 +54,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 		store.templates[path] = templates
 	}
 	if len(templates) != 0 {
-		original, present := meta.OriginalSource()
+		original, present := meta.Text()
 		if !source.Capture().Valid() || !present || original != string(source.Content()) {
 			return fmt.Errorf("metadata source %q has no matching captured revision", path)
 		}

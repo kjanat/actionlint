@@ -12,14 +12,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 )
 
-// File records whether a path was literally named or found by discovery.
 type File struct {
 	Path     string
 	Explicit bool
 }
 
-// FileSelection contains selected paths and all observed discovery inputs.
-// Discovery does not read workflow bytes or validate repository configuration.
+// FileSelection discovery reads no workflow bytes and validates no repository configuration.
 type FileSelection struct {
 	Files  []File
 	Inputs []string
@@ -40,15 +38,12 @@ func ExpandHome(path string) (string, error) {
 	return filepath.Join(home, path[2:]), nil
 }
 
-// FindFiles expands directory arguments and shell-style *, ? and [] globs.
-// Literal file arguments bypass Git ignore rules. Set noIgnore to include ignored
-// directory and glob matches. Each directory and physical file is visited at most once.
+// FindFiles lets literal file arguments bypass Git ignore rules.
 func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelection, error) {
 	return FindFilesWithFilesystem(ctx, paths, noIgnore, files.DiskFilesystem{}, nil)
 }
 
-// FindFilesWithFilesystem applies the same selection policy to host filesystem operations.
-// A nil query executes local Git commands to apply repository ignore rules.
+// FindFilesWithFilesystem runs local Git commands for ignore rules when query is nil.
 func FindFilesWithFilesystem(ctx context.Context, paths []string, noIgnore bool, filesystem files.Filesystem, query discovery.GitQuery) (FileSelection, error) {
 	identity := func(path string) string {
 		path = absPath(path)

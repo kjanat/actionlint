@@ -27,8 +27,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/assembly"
 )
 
-// providerRegistration returns the registration of the bundled provider
-// named name, run as selection says.
 func providerRegistration(t *testing.T, name string, selection backends.ToolSelection) contract.Registration {
 	t.Helper()
 	for _, registration := range registry.Registrations(registry.ToolSelections{name: selection}) {
@@ -283,8 +281,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					return &selectedInputBackend{descriptor: scriptengine.Descriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
 				}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 				// The composite action's own configuration enables the tool
-				// even when the calling workflow disables it (decision b5 in
-				// docs/design/tool-providers-decisions.md).
+				// even when the calling workflow disables it.
 				if mode == "built" || mode == "caller-disabled" {
 					want := "override module missing"
 					if failure == "conflicting" {

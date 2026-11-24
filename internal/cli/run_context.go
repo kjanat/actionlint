@@ -10,12 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// shortDigestLength keeps digests readable while distinguishing revisions.
 const shortDigestLength = 12
 
-// writeRunContext prints the verbose description of what determined a check's
-// findings, one "verbose:" line per fact. It is the only place the run context
-// is formatted.
 func writeRunContext(w io.Writer, run assembly.RunContext) error {
 	var lines []string
 	add := func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) }

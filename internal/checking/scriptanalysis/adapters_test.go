@@ -188,7 +188,7 @@ func (a partialTool) Analyze(_ context.Context, batch scriptanalysis.Batch) ([]c
 	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: sourcetext.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
 }
 
-func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
+func TestScriptAdaptersKeepSiteAndIgnoreOriginOnPartialResults(t *testing.T) {
 	t.Parallel()
 	graph, collection := scriptanalysis.BatchFixture(t, false)
 	batch, err := scriptanalysis.NewBatch(graph, collection)
@@ -200,7 +200,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	if !exists || !hasPosition {
 		t.Fatal("fixture source absent")
 	}
-	owner := &finding.Owner{Job: "test", Step: &position}
+	site := &finding.Site{Job: "test", Step: &position}
 	origin := &workflows.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
@@ -217,8 +217,8 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 			t.Parallel()
 			adapter := adapter(t)
 			findings, err := (scriptanalysis.Service{Analyzers: []scriptanalysis.BatchAnalyzer{adapter}}).Run(t.Context(), batch)
-			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source.Content != nil {
-				t.Fatalf("partial finding lost its independent owner or source: %+v %v", findings, err)
+			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Site, site) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source.Content != nil {
+				t.Fatalf("partial finding lost its independent site or source: %+v %v", findings, err)
 			}
 		})
 	}

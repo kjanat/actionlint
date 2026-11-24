@@ -8,8 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
-// ActionOrigin resolves the runner and analysis locations of one composite invocation.
-// An entry has no caller, so only its analysis location is set.
+// ActionOrigin sets only the analysis location for an entry, which has no caller.
 func ActionOrigin(paths *Paths, context invocation.Context, actionPath string) {
 	paths.ActionPath = actionPath
 	paths.ActionRunnerPath, paths.ActionIndependent = "", false

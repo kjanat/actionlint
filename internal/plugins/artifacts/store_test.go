@@ -165,7 +165,6 @@ func TestStoreMaterialize(t *testing.T) {
 	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o755 {
 		t.Fatalf("mode = %v", info.Mode())
 	}
-	// A changed copy is re-hashed and rewritten on the next use.
 	if err := os.WriteFile(path, []byte("tampered"), 0o755); err != nil {
 		t.Fatal(err)
 	}

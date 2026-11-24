@@ -13,8 +13,8 @@ var MissingFileRule = &define.Rule{
 	Subcategory:     "files",
 	Recommended:     true,
 	SupportsActions: true,
-	Explanation:     "Check file references whose location the declaring format defines. For action metadata, check runs.main, runs.pre, runs.post and a local Dockerfile relative to the action directory. Unknown file availability produces no finding. Container entrypoints resolve inside the image and are excluded. Generated files can be absent before the build; disable this rule for those manifests with a per-file override.",
-	Help:            "Correct the referenced path, provide the file, or disable missing-file for manifests whose files are generated before execution.",
+	Explanation:     "Report missing files that action metadata references in runs.main, runs.pre, runs.post or a local Dockerfile. Paths resolve from the action directory.",
+	Help:            "Fix the path or add the file. For files generated before the run, disable this rule in a per-file override.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -36,7 +36,7 @@ var RequiredInputRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Help:            "Supply the required input or use an action version with a suitable default.",
+	Help:            "Supply the input, or use an action version that gives it a default.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -47,7 +47,7 @@ var DeprecatedInputRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Help:            "Follow the action's deprecation message and use its replacement input.",
+	Help:            "Follow the action's deprecation message.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -58,8 +58,8 @@ var ActionRuntimeRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Explanation:     "Report unsupported, removed or deprecated runs.using runtimes in action metadata and referenced action definitions. This checks the GitHub Actions runner's runtime contract. The runtime-lifecycle rule separately checks language release support for setup-node inputs.",
-	Help:            "Select a runtime supported by current GitHub Actions runners or update the referenced action.",
+	Explanation:     "Report unsupported, removed or deprecated runs.using values in action metadata and referenced actions.",
+	Help:            "Use a supported runtime, or update the referenced action.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -70,7 +70,7 @@ var ActionBrandingRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Help:            "Choose an icon and color supported by GitHub Actions metadata.",
+	Help:            "Use a supported icon and color.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -81,7 +81,7 @@ var ActionInputDeprecationRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Help:            "Explain how callers should replace the deprecated input, or remove deprecationMessage.",
+	Help:            "Say what replaces the input, or remove deprecationMessage.",
 	DeclaredBy:      "action metadata traversal",
 }
 
@@ -103,6 +103,6 @@ var ActionMetadataReadRule = &define.Rule{
 	Subcategory:     "actions",
 	Recommended:     true,
 	SupportsActions: true,
-	Help:            "Check access to the action metadata file and correct the reported read failure.",
+	Help:            "Check access to the metadata file and fix the reported error.",
 	DeclaredBy:      "action metadata traversal",
 }

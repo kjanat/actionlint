@@ -54,7 +54,6 @@ test('cold cache saves verified artifacts despite findings; warm cache avoids hy
 				saves.push(key);
 			},
 		};
-		// Unplanned files must never enter the archive.
 		await writeFile(join(plan.directory, 'private-data'), 'unrelated');
 		let downloads = 0;
 		assert.equal(

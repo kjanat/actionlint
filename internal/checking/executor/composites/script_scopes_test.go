@@ -64,7 +64,6 @@ jobs:
 	if !slices.Equal(shells, []string{"bash", "python3", "python"}) {
 		t.Fatal(shells)
 	}
-	// Composite declarations receive explicit shells from the indexed AST.
 	meta, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo composite\n"))
 	if err != nil {
 		t.Fatal(err)

@@ -48,7 +48,7 @@ test('configuration preflight can terminate a noncooperative child at its deadli
 
 for (const wrapperExits of [false, true]) {
 	test(`capture deadline releases inherited pipes and the caller can exit (wrapper exits: ${wrapperExits})`, {
-		// Windows does not keep these inherited anonymous pipes open after the wrapper exits.
+		// Windows closes these inherited anonymous pipes when the wrapper exits.
 		skip: process.platform === 'win32',
 	}, async () => {
 		await temporary(async (directory) => {

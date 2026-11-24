@@ -54,8 +54,6 @@ func ruffLaunchers(t *testing.T) []launcher {
 	return launchers
 }
 
-// The Ruff launcher grammar is data. These cases are those of the Ruff
-// adapter's commandArguments test, run against the bundled manifest.
 func TestRuffLauncherGrammar(t *testing.T) {
 	t.Parallel()
 	launchers := ruffLaunchers(t)
@@ -149,8 +147,6 @@ func TestRuffLauncherGrammar(t *testing.T) {
 	}
 }
 
-// The Ruff user-argument rules are data. These cases are those the Ruff
-// adapter's validateCommand rejects or preserves.
 func TestRuffUserArgs(t *testing.T) {
 	t.Parallel()
 	spec := bundledManifest(t, "ruff").Process.UserArgs
@@ -192,8 +188,8 @@ func TestRuffUserArgs(t *testing.T) {
 		{[]string{"-h"}, "non-diagnostic modes"},
 		{[]string{"--watch"}, "non-diagnostic modes"},
 		{[]string{"-n"}, "--no-cache"},
-		{[]string{"--target-version=py312"}, "integration-owned"},
-		{[]string{"--stdin-filename", "x.py"}, "integration-owned"},
+		{[]string{"--target-version=py312"}, "actionlint sets this ruff option"},
+		{[]string{"--stdin-filename", "x.py"}, "actionlint sets this ruff option"},
 		{[]string{"--config"}, "requires a value"},
 		{[]string{"--config="}, "requires a value"},
 		{[]string{"--config", " "}, "requires a value"},

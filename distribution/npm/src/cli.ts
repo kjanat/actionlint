@@ -41,16 +41,19 @@ export const build = command('build')
 	.action(async ({ flags, out }) => {
 		const root = resolve(flags.root);
 		const npmDir = resolve(flags['npm-dir'] || join(root, 'distribution/npm'));
-		await buildPackages({
-			version: flags.version,
-			repository: flags.repository ?? '',
-			token: flags.token ?? '',
-			repoRoot: root,
-			npmDir,
-			outDir: resolve(flags.out || join(npmDir, 'dist')),
-			downloads: flags.downloads ? resolve(flags.downloads) : '',
-			only: flags.only ?? '',
-		}, { report: message => out.log(message) });
+		await buildPackages(
+			{
+				version: flags.version,
+				repository: flags.repository ?? '',
+				token: flags.token ?? '',
+				repoRoot: root,
+				npmDir,
+				outDir: resolve(flags.out || join(npmDir, 'dist')),
+				downloads: flags.downloads ? resolve(flags.downloads) : '',
+				only: flags.only ?? '',
+			},
+			{ report: message => out.log(message) },
+		);
 	});
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

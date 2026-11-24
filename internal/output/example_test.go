@@ -9,7 +9,6 @@ import (
 )
 
 func ExampleFormatter() {
-	// Errors returned from Linter methods
 	errs := []results.Diagnostic{
 		{
 			Message: "error message 1",
@@ -25,10 +24,8 @@ func ExampleFormatter() {
 		},
 	}
 
-	// Create ErrorFormatter instance with template
 	f, err := output.NewFormatter(`{{range $ := .}}{{$.Filepath}}:{{$.Line}}:{{$.Column}}: {{$.Message}}\n{{end}}`, func() string { return "example" }, nil)
 	if err != nil {
-		// Some error happened while creating the formatter (e.g. syntax error)
 		panic(err)
 	}
 
@@ -41,7 +38,6 @@ jobs:
       - run: echo
 `
 
-	// Prints all errors to stdout following the template
 	var fields []*output.TemplateFields
 	for _, d := range errs {
 		fields = append(fields, output.TemplateFieldsOf(results.Publish(d, results.DiagnosticSource{Content: []byte(src)})))

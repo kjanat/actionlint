@@ -10,19 +10,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
-// UnsoundTernaryRule is the single definition of the unsound-ternary rule.
 var UnsoundTernaryRule = &define.Rule{
 	Name:        "unsound-ternary",
 	Description: "Report a && b || c expressions where b is always falsy",
 	Category:    "correctness",
 	Subcategory: "expressions",
 	Recommended: true,
-	Help:        "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation.",
+	Help:        "Use an explicit conditional, or give b a truthy value.",
 	DeclaredBy:  "expression",
 }
 
-// UnsoundTernary uses the shared Actions evaluator to identify falsy middle
-// operands. Unknown middle operands are left alone to allow conditional fallbacks.
+// UnsoundTernary leaves unknown middle operands alone to allow conditional fallbacks.
 func UnsoundTernary(expr syntax.Node) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(expr, func(node, _ syntax.Node, entering bool) {
@@ -52,8 +50,6 @@ func UnsoundTernary(expr syntax.Node) []*typecheck.Error {
 	return findings
 }
 
-// ternaryOperandTruthy preserves definite truthiness when a logical expression
-// can return several distinct values with the same truthiness.
 func ternaryOperandTruthy(expr syntax.Node) (bool, bool) {
 	switch n := expr.(type) {
 	case *syntax.NotOpNode:

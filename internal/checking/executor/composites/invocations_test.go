@@ -92,7 +92,7 @@ func (f *invocationFixture) actionSnapshot(t *testing.T, spec string) parsing.So
 	return snapshot
 }
 
-func TestComposedInvocationChainsFollowStructuralOwners(t *testing.T) {
+func TestComposedChainsGiveOneScriptPerInvocation(t *testing.T) {
 	t.Parallel()
 	workflow := `on: push
 jobs:
@@ -138,7 +138,7 @@ jobs:
 			for _, script := range result.Batch.Scripts {
 				registered, exists := graph.Script(script.Occurrence)
 				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Context.ID() {
-					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
+					t.Fatalf("script occurrence differs from the graph's script record: %+v", script)
 				}
 			}
 			root, _ := f.root.WorkflowView()

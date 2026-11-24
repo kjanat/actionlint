@@ -66,6 +66,5 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format outputfo
 	case "", outputformat.Text, outputformat.Pretty, outputformat.Oneline:
 		r.Color = output.ColorAlways
 	case outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub:
-		// Machine-readable formats stay uncolored.
 	}
 }

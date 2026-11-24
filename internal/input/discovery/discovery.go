@@ -33,7 +33,6 @@ func repositoryRoot(start string, filesystem files.Filesystem) string {
 	}
 }
 
-// HasWorkflowFiles reports whether any YAML file exists under the repository's workflows directory.
 func HasWorkflowFiles(root string, reader *files.Reader) (bool, error) {
 	found := false
 	err := reader.WalkDir(filepath.Join(root, ".github", "workflows"), func(path string, entry os.DirEntry, err error) error {
@@ -55,8 +54,6 @@ func HasWorkflowFiles(root string, reader *files.Reader) (bool, error) {
 	return found, err
 }
 
-// WorkflowTypo returns a misspelled workflow directory and its expected path.
-// It only examines the nearest repository, and never selects files for linting.
 func WorkflowTypo(start string, reader *files.Reader) (found, expected string) {
 	dir := RepositoryRoot(start)
 	if dir == "" {
@@ -80,7 +77,6 @@ func WorkflowTypo(start string, reader *files.Reader) (found, expected string) {
 	return "", ""
 }
 
-// Recognize one insertion, deletion, substitution, or adjacent transposition.
 func near(name, want string) bool {
 	name = strings.ToLower(name)
 	if name == want {

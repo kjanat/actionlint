@@ -1,7 +1,4 @@
-// Package artifacts resolves and inspects WebAssembly modules and tool
-// provider packages without compiling or executing them, and keeps the
-// content-addressed Store they are cached in. Its oci subpackage pulls
-// oci:// sources and is the only package that imports oras-go.
+// Package artifacts inspects WebAssembly modules and tool provider packages without compiling or executing them.
 package artifacts
 
 import (
@@ -19,22 +16,15 @@ const (
 	maxMetadataBytes = 1 << 20
 )
 
-// ArtifactFormat is the format of an artifact. Sniff detects the WebAssembly kinds
-// from the bytes; SniffPackage also recognizes process-provider JSON.
-// A provider's executables are blobs its manifest names, not artifacts.
 type ArtifactFormat string
 
 const (
-	Core      ArtifactFormat = "core"
-	Component ArtifactFormat = "component"
-	// ProviderManifest is a tool provider manifest, JSON.
+	Core             ArtifactFormat = "core"
+	Component        ArtifactFormat = "component"
 	ProviderManifest ArtifactFormat = "manifest"
 )
 
-// ArtifactProvenance describes the distributed artifact and its top-level custom metadata.
-// SHA256 covers the downloaded bytes, before optional gzip decompression;
-// for an oci:// source it is the digest the source pins. Metadata is
-// untrusted declarative data, not evidence of ABI compatibility.
+// ArtifactProvenance hashes the downloaded bytes before gzip decompression, and its Metadata is untrusted.
 type ArtifactProvenance struct {
 	Source     string          `json:"source"`
 	Kind       ArtifactFormat  `json:"kind"`
@@ -42,27 +32,18 @@ type ArtifactProvenance struct {
 	Size       int             `json:"size"`
 	ModuleSize int             `json:"module_size"`
 	Metadata   json.RawMessage `json:"metadata,omitempty"`
-	// Platform is the platform key an oci:// source was pulled for:
-	// "<os>/<arch>", or AnyPlatform for a lone image manifest.
-	Platform string `json:"platform,omitempty"`
-	// Manifest is the SHA256 hex of the image manifest an oci:// source
-	// was pulled from.
-	Manifest string `json:"manifest,omitempty"`
-	// Blobs are the SHA256 hex digests of every layer of that image
-	// manifest. The Store holds the primary layer; the oci subpackage's
-	// Layer and PullLayers fetch the others.
-	Blobs []string `json:"blobs,omitempty"`
+	// Platform is "<os>/<arch>", or AnyPlatform for a lone image manifest.
+	Platform string   `json:"platform,omitempty"`
+	Manifest string   `json:"manifest,omitempty"`
+	Blobs    []string `json:"blobs,omitempty"`
 }
 
-// Artifact owns one resolved snapshot, shared by inspection and execution.
 type Artifact struct {
 	Info  ArtifactProvenance
 	Bytes []byte
 }
 
-// SniffPackage recognizes a Wasm module or a process-provider manifest without
-// compiling or executing it. Runtime schema validation belongs to the provider
-// loader; this boundary checks the package framing and discovery metadata.
+// SniffPackage checks only package framing and discovery metadata.
 func SniffPackage(data []byte) (ArtifactFormat, json.RawMessage, error) {
 	if !bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
 		return Sniff(data)
@@ -71,8 +52,6 @@ func SniffPackage(data []byte) (ArtifactFormat, json.RawMessage, error) {
 	return ProviderManifest, metadata, err
 }
 
-// ProviderMetadata reads the optional registry discovery object. Unpublished
-// manifests without it retain their full manifest as inspection metadata.
 func ProviderMetadata(data []byte) (json.RawMessage, error) {
 	if len(data) > maxMetadataBytes {
 		return nil, errors.New("tool provider manifest exceeds 1 MiB")
@@ -101,9 +80,7 @@ func ProviderMetadata(data []byte) (json.RawMessage, error) {
 	return bytes.Clone(manifest.Metadata), nil
 }
 
-// Sniff reads only the module envelope and top-level custom sections. Nested
-// modules in components cannot supply metadata for their enclosing component.
-// It detects only the WebAssembly kinds, Core and Component.
+// Sniff reads only the module envelope and top-level custom sections.
 func Sniff(data []byte) (ArtifactFormat, json.RawMessage, error) {
 	if len(data) < 8 || !bytes.Equal(data[:4], []byte{0, 'a', 's', 'm'}) {
 		return "", nil, errors.New("not a WebAssembly binary")
@@ -170,8 +147,7 @@ func readU32(data []byte) (uint32, []byte, error) {
 	return 0, nil, errors.New("invalid u32 LEB128")
 }
 
-// SameMetadata compares JSON values, allowing whitespace and property order
-// differences without rounding numeric values through floating point.
+// SameMetadata ignores whitespace and property order and compares numbers without floating-point rounding.
 func SameMetadata(a, b []byte) bool {
 	x, y := jsontext.Value(bytes.Clone(a)), jsontext.Value(bytes.Clone(b))
 	return x.Canonicalize(jsontext.CanonicalizeRawInts(false), jsontext.CanonicalizeRawFloats(false)) == nil && y.Canonicalize(jsontext.CanonicalizeRawInts(false), jsontext.CanonicalizeRawFloats(false)) == nil && bytes.Equal(x, y)

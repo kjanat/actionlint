@@ -1,5 +1,5 @@
 // Package outputs derives expression output types from published declarations
-// and supplied dependency metadata. It performs no lookups or rule checks.
+// and supplied dependency metadata.
 package outputs
 
 import (
@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// ActionType distinguishes an exhaustive output declaration from unknown names.
-// Output values are strings even when their names could not be determined.
 func ActionType(definition actionmeta.Definition) exprtypes.ObjectType {
 	var object exprtypes.ObjectBuilder
 	if !definition.OutputsComplete() {
@@ -38,17 +36,12 @@ func WorkflowType(metadata *calls.Metadata) exprtypes.ObjectType {
 	return object.Build()
 }
 
-// StepType adds the string-valued conclusion and outcome to supplied output
-// types. Use ActionType for action metadata or unknown run-step output names.
 func StepType(outputs exprtypes.ObjectType) exprtypes.ObjectType {
 	return exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 		"outputs": outputs.Type(), "conclusion": exprtypes.StringType(), "outcome": exprtypes.StringType(),
 	})
 }
 
-// DirectDependencies yields existing direct prerequisites once each. Missing
-// jobs, duplicate references and self references do not introduce context entries.
-// Each iteration has independent state.
 func DirectDependencies(workflow workflows.BoundWorkflow, job workflows.BoundJob) iter.Seq2[string, workflows.BoundJob] {
 	return func(yield func(string, workflows.BoundJob) bool) {
 		seen := map[string]bool{}
@@ -69,9 +62,7 @@ func DirectDependencies(workflow workflows.BoundWorkflow, job workflows.BoundJob
 	}
 }
 
-// JobType supplies outputs and result for either the jobs or needs context.
-// reusableWorkflows contains already loaded metadata keyed by the declaring job.
-// An absent or nil entry for a reusable call leaves output names unknown.
+// JobType leaves output names unknown for an absent or nil reusable call entry.
 func JobType(job workflows.BoundJob, reusableWorkflows map[workflows.BoundJob]*calls.Metadata) exprtypes.ObjectType {
 	var outputs exprtypes.ObjectType
 	if job.WorkflowCall != nil {
@@ -88,8 +79,7 @@ func JobType(job workflows.BoundJob, reusableWorkflows map[workflows.BoundJob]*c
 	})
 }
 
-// NeedsType includes direct prerequisites only. The caller supplies reusable
-// workflow metadata; this function never resolves or reads their source files.
+// NeedsType includes direct prerequisites only and never reads reusable workflow files.
 func NeedsType(workflow workflows.BoundWorkflow, job workflows.BoundJob, reusableWorkflows map[workflows.BoundJob]*calls.Metadata) exprtypes.ObjectType {
 	var object exprtypes.ObjectBuilder
 	for name, dependency := range DirectDependencies(workflow, job) {
@@ -98,8 +88,6 @@ func NeedsType(workflow workflows.BoundWorkflow, job workflows.BoundJob, reusabl
 	return object.Build()
 }
 
-// JobsType exposes the same job output shapes when a reusable workflow maps its
-// job outputs to on.workflow_call.outputs. Context availability is checked elsewhere.
 func JobsType(workflow workflows.BoundWorkflow, reusableWorkflows map[workflows.BoundJob]*calls.Metadata) exprtypes.ObjectType {
 	var object exprtypes.ObjectBuilder
 	for name, job := range workflow.Jobs() {

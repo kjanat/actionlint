@@ -136,7 +136,7 @@ async function pack(manifestPath: string, options: AuthoringOptions): Promise<st
 	let packageChanged = false;
 	if (bundleFile !== undefined) {
 		// Adding an exports map to a legacy package would hide its existing main
-		// entry and subpaths. Extend only maps the author already declared.
+		// entry and subpaths. Extend only existing maps.
 		if (packageData.exports !== undefined) packageData.exports = withActionlintExport(packageData.exports, bundleFile);
 		packageData.bin = withPluginBin(packageData.bin, packageData.name, bundleFile);
 		packageChanged = true;

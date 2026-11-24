@@ -16,7 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// WorkflowCallRule is the single definition of the workflow-call rule.
 var WorkflowCallRule = &define.Rule{
 	SupportsActions: true,
 	Name:            "workflow-call",
@@ -25,8 +24,8 @@ var WorkflowCallRule = &define.Rule{
 	Subcategory:     "workflows",
 	MovedOptions:    []rule.MovedOption{{Option: "default-permissions", Repository: "default-workflow-permissions"}},
 	Recommended:     true,
-	Explanation:     "Check reusable workflow references and report missing or undeclared inputs and secrets using available local or remote metadata. Compare the caller's known token permissions with the called workflow's declared job permissions. Cache limits are checked for local calls. The expression-reference rule checks references to workflow outputs.",
-	Help:            "Correct the reference and supply required inputs and secrets. For permission or cache conflicts, adjust the caller's grant or reduce the called workflow's requirements.",
+	Explanation:     "Report invalid reusable workflow references, missing or undeclared inputs and secrets, and token permission conflicts with the called workflow.",
+	Help:            "Fix the reference and supply the required inputs and secrets.",
 	Prepare:         define.PrepareWorkflowMetadata,
 	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
@@ -44,9 +43,7 @@ type workflowCallCheck struct {
 	log                 func(string, ...any)
 }
 
-// WorkflowCallChecks validates each reusable call against supplied workflow
-// defaults, repository facts and loaded dependency metadata. Source preparation
-// seeds the metadata cache before callbacks run. A nil log disables debug output.
+// WorkflowCallChecks disables debug output for a nil log.
 func WorkflowCallChecks(workflow workflows.BoundWorkflow, resolvedWorkflows *reusableworkflows.ResolvedWorkflows, facts repository.Settings, log func(string, ...any)) define.Checks {
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {

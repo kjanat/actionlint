@@ -108,7 +108,7 @@ func TestConditionPreservesInvalidAndDynamicStates(t *testing.T) {
 	}
 }
 
-func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepOwned(t *testing.T) {
+func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepCopied(t *testing.T) {
 	t.Parallel()
 	span := Span{Start: sourcetext.Position{Line: 5, Column: 7}, End: sourcetext.Position{Line: 5, Column: 39}}
 	input := map[string]any{"outer": []any{map[string]any{"value": "before"}}}

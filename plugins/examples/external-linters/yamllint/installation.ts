@@ -17,7 +17,6 @@ jobs:
 permissions: {}
 `;
 
-/** Prepare one YAML style violation for the registry's installed-plugin checks. */
 export async function prepare({ directory }: Pick<Context, 'directory'>): Promise<void> {
 	await mkdir(join(directory, '.github'), { recursive: true });
 	await writeFile(
@@ -39,7 +38,6 @@ function object(value: unknown): Record<string, unknown> {
 	return Object.fromEntries(Object.entries(value));
 }
 
-/** Run real yamllint through the installed provider and check corrected source. */
 export async function verify({ directory, run }: Context): Promise<{ checks: string[]; probe: string[] }> {
 	const probe = ['check', '--json', 'workflow.yml'];
 	const result = object(JSON.parse(await run(probe, 1)));

@@ -146,7 +146,6 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 			want := string(buf)
 
 			have := b.String()
-			// Fix path separators on Windows
 			if runtime.GOOS == "windows" {
 				slash := filepath.ToSlash(infile)
 				have = strings.ReplaceAll(have, infile, slash)

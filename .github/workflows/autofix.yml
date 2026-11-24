@@ -23,8 +23,8 @@ on:
       - "**/*.ps1"
       - "distribution/docker/Dockerfile"
       - "distribution/docker/Dockerfile.*"
-      - "go.mod"
-      - "go.sum"
+      - "**/go.mod"
+      - "**/go.sum"
       - "flake.nix"
       - "flake.lock"
       - "distribution/nix/**"
@@ -94,6 +94,11 @@ jobs:
         id: schema
         timeout-minutes: 5
         run: bash tools/ci/autofix-step.bash mise run generate:config-schema
+      - name: Regenerate the Go fork version labels
+        id: forks
+        timeout-minutes: 5
+        if: steps.inputs.outputs.forks == 'true'
+        run: bash tools/ci/autofix-step.bash mise run generate:go-forks
       - name: Install catalogue generator dependencies
         if: steps.inputs.outputs.tables == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
@@ -124,6 +129,7 @@ jobs:
           NIX_CHANGED: ${{ steps.nix.outputs.changed }}
           MODERNIZE_CHANGED: ${{ steps.modernize.outputs.changed }}
           SCHEMA_CHANGED: ${{ steps.schema.outputs.changed }}
+          FORKS_CHANGED: ${{ steps.forks.outputs.changed }}
           TABLES_CHANGED: ${{ steps.tables.outputs.changed }}
           README_CHANGED: ${{ steps.readme.outputs.changed }}
           FORMAT_CHANGED: ${{ steps.format.outputs.changed }}
@@ -132,6 +138,7 @@ jobs:
           if [[ "${NIX_CHANGED}" == true ]]; then changes+=('update Nix vendor hash'); fi
           if [[ "${MODERNIZE_CHANGED}" == true ]]; then changes+=('modernize Go'); fi
           if [[ "${SCHEMA_CHANGED}" == true ]]; then changes+=('regenerate configuration schema'); fi
+          if [[ "${FORKS_CHANGED}" == true ]]; then changes+=('update Go fork version labels'); fi
           if [[ "${TABLES_CHANGED}" == true ]]; then changes+=('regenerate Go tables'); fi
           if [[ "${README_CHANGED}" == true ]]; then changes+=('refresh README demo'); fi
           if [[ "${FORMAT_CHANGED}" == true ]]; then changes+=('format code'); fi

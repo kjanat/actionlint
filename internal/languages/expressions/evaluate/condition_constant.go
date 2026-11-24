@@ -13,37 +13,31 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
-// ConditionConstantValue evaluates the subset used by condition diagnostics and
-// invocation reachability. It reports unknown for unsupported functions,
-// ambiguous JSON members and mode-dependent serialization.
+// ConditionConstantValue reports unknown for unsupported functions, ambiguous
+// JSON members and mode-dependent serialization.
 func ConditionConstantValue(expr syntax.Node) (any, bool) {
 	return ExpressionValue(expr, nil)
 }
 
-// ExpressionValue evaluates the same supported operations as constant folding,
-// with a caller-supplied lookup for known context variables. A missing lookup or
-// unknown variable stays unknown; absent properties of a known object are null.
-// It never changes the parsed expression or the caller's context values.
+// ExpressionValue keeps unknown variables unknown and treats absent properties
+// of a known object as null.
 func ExpressionValue(expr syntax.Node, variables func(string) (any, bool)) (any, bool) {
 	result := Evaluate(expr, variables)
 	return result.Value, result.State == exprvalues.EvaluationKnown
 }
 
-// Evaluate reports a known value, missing runtime knowledge, a runtime failure,
-// or a call rejected before evaluation. It does not perform name or type checks.
+// Evaluate performs no name or type checks.
 func Evaluate(expr syntax.Node, variables func(string) (any, bool)) exprvalues.EvaluationResult {
 	return expressionResult(expr, variables, nil, nil)
 }
 
-// ExpressionValueWithLookup also asks for qualified context paths, such as
-// runner.os. This permits partial context knowledge without treating other
-// properties as null. Unknown paths fall back to ordinary object evaluation.
+// ExpressionValueWithLookup looks up qualified context paths such as runner.os
+// and falls back to object evaluation for unknown paths.
 func ExpressionValueWithLookup(expr syntax.Node, lookup func(string) (any, bool)) (any, bool) {
 	result := EvaluateWithLookup(expr, lookup)
 	return result.Value, result.State == exprvalues.EvaluationKnown
 }
 
-// EvaluateWithLookup accepts known qualified paths as well as root variables.
 func EvaluateWithLookup(expr syntax.Node, lookup func(string) (any, bool)) exprvalues.EvaluationResult {
 	return expressionResult(expr, lookup, lookup, nil)
 }
@@ -184,7 +178,6 @@ func constantProperty(receiver any, name string) (any, bool) {
 	return value, true
 }
 
-// functionContext caches source arguments while implementations choose which to request.
 type functionContext struct {
 	call       *syntax.FuncCallNode
 	variables  func(string) (any, bool)

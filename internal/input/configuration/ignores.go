@@ -27,10 +27,8 @@ type IgnoreConfig struct {
 	Reason string `yaml:"reason,omitempty"`
 }
 
-// IgnoreConfigs is the reusable suppression list.
 type IgnoreConfigs []IgnoreConfig
 
-// DecodeConfig accepts a list of mappings and rejects empty list entries.
 func (c *IgnoreConfigs) DecodeConfig(value any) error {
 	if value == nil {
 		*c = nil
@@ -55,7 +53,6 @@ func (c *IgnoreConfigs) DecodeConfig(value any) error {
 	return nil
 }
 
-// DecodeConfig rejects ineffective selectors and unknown fields.
 func (c *IgnoreConfig) DecodeConfig(value any) error {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -90,7 +87,7 @@ func (ruleSet RuleSet) ValidateIgnore(c IgnoreConfig, additional ...string) erro
 }
 
 func (c IgnoreConfig) validateStructure() error {
-	// Decoding has no rule set; ValidateIgnore also rejects aliases.
+	// Decoding has no rule set, and ValidateIgnore rejects aliases.
 	if c.Rule == "forbidden-suppression" {
 		return errors.New("ignores: forbidden-suppression cannot be suppressed")
 	}

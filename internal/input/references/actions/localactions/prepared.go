@@ -17,14 +17,12 @@ type preparedAction struct {
 	diagnosticError error
 }
 
-// PreparedActions reads the action acquired for the current execution step.
-// It cannot resolve paths, read manifests or change checkout state.
 type PreparedActions struct{ resolver *Resolver }
 
 func (c *Resolver) Prepared() *PreparedActions { return &PreparedActions{resolver: c} }
 
-// PrepareMetadata acquires a reference after the caller applies the step's
-// checkout state, before rule callbacks observe that step.
+// PrepareMetadata runs after the caller applies the step's checkout state and
+// before rule callbacks observe the step.
 func (c *Resolver) PrepareMetadata(ctx context.Context, spec string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -45,7 +43,7 @@ func (c *Resolver) PrepareMetadata(ctx context.Context, spec string) error {
 	return nil
 }
 
-// LookupMetadata returns the prepared acquisition result without filesystem IO.
+// LookupMetadata performs no filesystem IO.
 func (r *PreparedActions) LookupMetadata(spec string) (MetadataResult, bool) {
 	prepared := r.lookup(spec)
 	return prepared.result, prepared.cached

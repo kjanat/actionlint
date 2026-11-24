@@ -23,7 +23,7 @@ func TestIgnoreOriginReadsSelectorValuesAndPosition(t *testing.T) {
 			bound := Bind("origin-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": {Steps: []*definition.Step{step}}}}, false, "")
 			job, present := bound.Workflow().Job("build")
 			if !present {
-				t.Fatal("owned job unavailable")
+				t.Fatal("job build unavailable")
 			}
 			view := slices.Collect(job.Steps())[0]
 			want := IgnoreOrigin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, StepPosition: &sourcetext.Position{Line: 3, Column: 7}}
@@ -56,7 +56,7 @@ func TestJobIgnoreOriginReadsUsesSelector(t *testing.T) {
 			bound := Bind("origin-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": job}}, false, "")
 			view, present := bound.Workflow().Job("build")
 			if !present {
-				t.Fatal("owned job unavailable")
+				t.Fatal("job build unavailable")
 			}
 			want := IgnoreOrigin{Job: "Build", Uses: tc.want}
 			if got := view.IgnoreOrigin(); *got != want {

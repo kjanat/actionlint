@@ -29,9 +29,6 @@ const (
 	CompositeAction = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
 )
 
-// ExecutableFixture creates a Git repository holding shell scripts with and
-// without the executable bit, and returns its root and a function that runs
-// git there. Its configuration disables the tools named by disabled.
 func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string)) {
 	t.Helper()
 	git, err := exec.LookPath("git")
@@ -67,9 +64,8 @@ func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string
 	return root, command
 }
 
-// RequireTool skips the test unless the command of the bundled provider
-// named name is on PATH, and returns the command's path. It clears environment
-// variables such as SHELLCHECK_OPTS that add options to the provider's command.
+// RequireTool clears environment variables such as SHELLCHECK_OPTS that add
+// options to the provider's command.
 func RequireTool(t *testing.T, name string) string {
 	t.Helper()
 	manifests, err := toolmanifest.Bundled()
@@ -147,8 +143,6 @@ func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, c
 	return sources
 }
 
-// Main gives file-based suites a stable repository root, isolated Git settings
-// and no host options for bundled tool providers.
 func Main(m *testing.M) {
 	root, err := os.Getwd()
 	if err != nil {
@@ -196,7 +190,6 @@ func Main(m *testing.M) {
 	os.Exit(code)
 }
 
-// Diagnostics projects completed report values without exposing traversal state.
 func Diagnostics(result *report.Analysis, err error) ([]results.Diagnostic, error) {
 	if err != nil {
 		return nil, err
@@ -204,7 +197,6 @@ func Diagnostics(result *report.Analysis, err error) ([]results.Diagnostic, erro
 	return results.Diagnostics(result.Diagnostics), nil
 }
 
-// WorkflowDiagnostics checks a fixture with an explicit in-memory configuration.
 func WorkflowDiagnostics(t *testing.T, source, config string) []results.Diagnostic {
 	t.Helper()
 	return WorkflowDiagnosticsWithOptions(t, source, config, checking.Options{})
@@ -227,7 +219,6 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 	return results.Diagnostics(result.Diagnostics)
 }
 
-// Composite writes a caller fixture and checks it through application input selection.
 func Composite(t *testing.T, root, steps string, options checking.Options) *report.Analysis {
 	t.Helper()
 	workflow := fixturefiles.Write(t, root, ".github/workflows/composite.yml", `on: push

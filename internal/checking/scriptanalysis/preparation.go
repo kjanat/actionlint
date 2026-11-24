@@ -73,7 +73,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Scope: scope, Execution: request.Execution,
 			Environment:  slices.Clone(request.Environment),
 			Interpreters: request.Interpreters,
-			Origin:       origin, Owner: &finding.Owner{Job: job, Step: sourcetext.NilUnlessPresent(decl.Position())},
+			Origin:       origin, Site: &finding.Site{Job: job, Step: sourcetext.NilUnlessPresent(decl.Position())},
 			Path: scope.Deployment.SourcePath(),
 		}
 		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)

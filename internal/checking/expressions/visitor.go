@@ -32,8 +32,6 @@ type typedExpr struct {
 }
 
 // Visitor validates expression syntax and types in workflow declarations.
-// It checks syntax and semantics of the expressions including type checks and functions/contexts
-// definitions. For more details see
 // - https://docs.github.com/en/actions/learn-github-actions/contexts
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type Visitor struct {
@@ -71,7 +69,6 @@ type ReferenceNames struct {
 	EnvironmentSecrets *exprtypes.ObjectType
 }
 
-// Options selects expression diagnostics without repository configuration.
 type Options struct {
 	Semantics                 typecheck.Options
 	UnsoundTernary            bool
@@ -85,26 +82,20 @@ type Options struct {
 	JobReferences             func(workflows.BoundJob) ReferenceNames
 }
 
-// Dependencies supplies runner facts and action/workflow definitions for expression inference.
 type Dependencies struct {
 	Runners *runners.Knowledge
-	// Action returns declared inputs, outputs and runtime for either reference origin.
 	// An absent definition means these declarations are unknown.
 	Action   func(string) (actionmeta.Definition, error)
 	Workflow func(string) (*calls.Metadata, error)
 	Log      func(string, ...any)
 }
 
-// NewVisitor creates an expression visitor with independent per-workflow context state.
 func NewVisitor(dependencies Dependencies, options Options) *Visitor {
 	return &Visitor{dependencies: dependencies, options: options}
 }
 
-// Configure replaces semantic options before checking a document.
 func (rule *Visitor) Configure(options Options) { rule.options = options }
 
-// report is the stored form of an expression finding. Fix alternatives are owned
-// by the checker and copied when published to consumers.
 type report struct {
 	rule, code, message string
 	severity            severity.Severity
@@ -128,16 +119,12 @@ func (r report) finding() *finding.Finding {
 	return finding
 }
 
-// Findings returns diagnostics accumulated during workflow expression checking.
-// The result is detached from the checker.
+// Findings returns a copy detached from the checker.
 func (rule *Visitor) Findings() []*finding.Finding { return rule.FindingsSince(0) }
 
-// FindingCount returns the number of diagnostics accumulated so far. Pass it to
-// FindingsSince to read only the diagnostics reported after this point.
 func (rule *Visitor) FindingCount() int { return len(rule.errs) }
 
-// FindingsSince returns diagnostics reported after mark, a prior FindingCount.
-// The result is detached from the checker.
+// FindingsSince returns a copy detached from the checker.
 func (rule *Visitor) FindingsSince(mark int) []*finding.Finding {
 	if mark >= len(rule.errs) {
 		return nil

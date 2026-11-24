@@ -5,7 +5,8 @@ edition      = "2024"
 rust-version = "1.99"
 publish      = false
 
-[workspace]
+[features]
+v03 = []
 
 [lib]
 crate-type = ["cdylib"]
@@ -13,8 +14,7 @@ crate-type = ["cdylib"]
 [dependencies]
 actionlint-extension-api = { path = "../.." }
 
-[features]
-v03 = []
+[workspace]
 
 [profile.dev]
 debug       = 0

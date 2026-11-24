@@ -18,7 +18,7 @@ import (
 )
 
 // Examples and semantic boundaries from GitHub's expression reference, checked
-// on 2026-11-04. Tests use local inputs and never fetch the page:
+// on 2026-11-04. Tests use local inputs and never fetch the page at
 // https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
 func TestGitHubReferenceValues(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,6 @@ func TestGitHubReferenceValues(t *testing.T) {
 
 func TestGitHubReferenceCoercions(t *testing.T) {
 	t.Parallel()
-	// Supported coercions infer bool without type errors, independently of warning selection.
 	for _, tc := range []struct {
 		input string
 		want  bool

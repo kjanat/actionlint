@@ -1,5 +1,3 @@
-//! Native component packaging. Plugin projects supply their own identity and data.
-
 use std::borrow::Cow;
 use std::error::Error;
 use std::fs;
@@ -16,12 +14,10 @@ use crate::{
     RUNNER_PROVIDER_03_WIT_SHA256, RUNNER_PROVIDER_INTERFACE, RUNNER_PROVIDER_WIT_SHA256,
 };
 
-/// Discovery section read by actionlint without starting a guest.
 pub const METADATA_SECTION: &str = "actionlint.plugin";
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// Stable package identity and release metadata.
 pub struct Identity<'a> {
     pub id: &'a str,
     pub name: &'a str,
@@ -31,14 +27,12 @@ pub struct Identity<'a> {
     pub version: &'a str,
 }
 
-/// Analysis engine embedded by the extension.
 #[derive(Serialize)]
 pub struct Engine<'a> {
     pub name: &'a str,
     pub version: &'a str,
 }
 
-/// Resources and features the extension uses.
 #[derive(Serialize)]
 pub struct Capabilities {
     pub filesystem: bool,
@@ -48,7 +42,6 @@ pub struct Capabilities {
     pub source_files: bool,
 }
 
-/// Extension-owned declarations and license for a component distribution.
 pub struct Package<'a> {
     pub identity: Identity<'a>,
     pub engine: Engine<'a>,
@@ -58,30 +51,24 @@ pub struct Package<'a> {
     pub license_text: &'a str,
 }
 
-/// Distribution of a snapshot-based runner provider. Supply the provider fields
-/// from its `describe()` result; package identity and version are independent.
+/// Supply the provider fields from the provider's `describe()` result.
 pub struct RunnerPackage<'a> {
     pub interface_version: RunnerVersion,
-    /// Package release metadata used by registry discovery.
     pub identity: Identity<'a>,
-    /// Name returned by `describe()` and selected by `--runner-provider`.
+    /// `--runner-provider` selects this name.
     pub provider_name: &'a str,
-    /// Implementation version from `describe()`, independent of the package release version.
     pub provider_version: &'a str,
-    /// Execution platforms advertised by `describe()`, such as `buildkite`.
     pub targets: &'a [String],
-    /// License file contents; CRLF line endings are converted to LF.
+    /// The packager converts CRLF line endings to LF.
     pub license_text: &'a str,
 }
 
-/// Exact runner-provider contract exported by the component.
 #[derive(Clone, Copy)]
 pub enum RunnerVersion {
     V02,
     V03,
 }
 
-/// A static action input that contains code for this engine.
 #[derive(Serialize)]
 pub struct ScriptInput<'a> {
     pub action: &'a str,
@@ -89,16 +76,13 @@ pub struct ScriptInput<'a> {
     pub language: &'a str,
 }
 
-/// The world exported by a script engine component.
 #[derive(Clone, Copy)]
 pub enum ScriptWorld {
-    /// The component exports only script-engine.
     ScriptEngine,
     /// The component also exports template-effects.
     TemplateScriptEngine,
 }
 
-/// Discovery metadata for a script engine, using its exported descriptor.
 pub struct ScriptPackage<'a, D> {
     pub identity: Identity<'a>,
     pub descriptor: &'a D,
@@ -107,7 +91,7 @@ pub struct ScriptPackage<'a, D> {
     pub license_text: &'a str,
 }
 
-/// A script engine descriptor generated from a supported WIT world.
+/// The SDK generates this script engine descriptor from a supported WIT world.
 pub trait ScriptDescriptor {
     #[doc(hidden)]
     fn metadata(
@@ -120,7 +104,6 @@ pub trait ScriptDescriptor {
 }
 
 impl<D: ScriptDescriptor> ScriptPackage<'_, D> {
-    /// Serialize metadata that agrees with the descriptor returned by the guest.
     pub fn metadata(&self) -> Result<Vec<u8>> {
         let mut metadata = self
             .descriptor
@@ -131,7 +114,6 @@ impl<D: ScriptDescriptor> ScriptPackage<'_, D> {
         pretty_json(&metadata)
     }
 
-    /// Write the component, metadata, schema, license and checksums.
     pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
         let schema = self.descriptor.schema()?.unwrap_or_else(|| json!({}));
         write_distribution(
@@ -247,7 +229,6 @@ fn component_metadata(
 }
 
 impl Package<'_> {
-    /// Serialize discovery metadata from the same descriptor the guest exports.
     pub fn metadata(&self) -> Result<Vec<u8>> {
         let mut metadata =
             component_metadata(&self.identity, ANALYZER_INTERFACE, ANALYZER_WIT_SHA256)?;
@@ -301,7 +282,6 @@ impl Package<'_> {
         pretty_json(&metadata)
     }
 
-    /// Write the component, discovery/schema sidecars, license and SHA256SUMS.
     pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
         let metadata = self.metadata()?;
         let schema = pretty_json(
@@ -312,7 +292,6 @@ impl Package<'_> {
 }
 
 impl RunnerPackage<'_> {
-    /// Serialize the provider role and descriptor without starting the component.
     pub fn metadata(&self) -> Result<Vec<u8>> {
         let (interface, digest) = match self.interface_version {
             RunnerVersion::V02 => (RUNNER_PROVIDER_INTERFACE, RUNNER_PROVIDER_WIT_SHA256),
@@ -327,8 +306,6 @@ impl RunnerPackage<'_> {
         pretty_json(&metadata)
     }
 
-    /// Write the component, discovery manifest, empty option schema, license and
-    /// checksums. Runner snapshots are supplied by the host, not package options.
     pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
         write_distribution(
             input,
@@ -366,7 +343,7 @@ fn write_distribution(
     Ok(())
 }
 
-/// Replace only the outer component's discovery section, preserving nested modules.
+/// Replace the outer component's discovery section. Nested modules stay unchanged.
 pub fn with_metadata(input: &[u8], metadata: &[u8]) -> Result<Vec<u8>> {
     Validator::new().validate_all(input)?;
     let mut component = Component::new();
@@ -443,7 +420,7 @@ mod tests {
             explanation: String::new(),
             help: String::new(),
             documentation_url: String::new(),
-            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
+            fix_availability: String::new(), // The host ignores this legacy ABI field.
             options_schema: options_schema.into(),
             examples: Vec::new(),
             required_inputs: Vec::new(),
@@ -670,7 +647,6 @@ mod tests {
         Ok(())
     }
 
-    // Repackaging preserves unrelated outer sections and nested core metadata.
     #[test]
     fn packaging_is_idempotent_and_keeps_nested_custom_sections() -> Result<()> {
         let mut module = Module::new();
@@ -848,7 +824,6 @@ mod tests {
         }
     }
 
-    // Reject a valid core module and a component with a truncated section payload.
     #[test]
     fn packaging_rejects_core_modules_and_truncated_components() {
         assert!(with_metadata(&Module::new().finish(), b"{}").is_err());

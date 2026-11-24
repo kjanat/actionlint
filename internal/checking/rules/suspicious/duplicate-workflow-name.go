@@ -17,7 +17,6 @@ import (
 // which stays a literal so the registration test can find the definition.
 const duplicateWorkflowNameRuleName = "duplicate-workflow-name"
 
-// DuplicateWorkflowNameRule is the single definition of the duplicate-workflow-name rule.
 var DuplicateWorkflowNameRule = &define.Rule{
 	Name:         "duplicate-workflow-name",
 	Description:  "Report workflows whose name another workflow in the repository also uses",
@@ -25,10 +24,8 @@ var DuplicateWorkflowNameRule = &define.Rule{
 	Subcategory:  "workflows",
 	Recommended:  true,
 	DefaultLevel: "warn",
-	Explanation: "Report a workflow whose top-level name another workflow under .github/workflows also uses, ignoring case. " +
-		"GitHub accepts the files, but the Actions tab lists the workflows under names that cannot be told apart, " +
-		"and a workflow_run filter naming one of them also matches the others spelled the same way. Workflows without a name " +
-		"are listed by their path and are not reported. Names written as expressions are not compared.",
+	Explanation: "Report workflows under .github/workflows that share a top-level name, ignoring case. " +
+		"A workflow_run filter that names one of them also matches the others.",
 	Help:    "Give each workflow its own name.",
 	Prepare: prepareDuplicateWorkflowName,
 	Enabled: define.RuleInputs.InProjectWorkflows,
@@ -39,9 +36,7 @@ var DuplicateWorkflowNameRule = &define.Rule{
 	},
 }
 
-// DuplicateWorkflowName reports the workflow's plain-text name when another
-// workflow in others uses it too. others must not contain the workflow itself.
-// It does not read files.
+// DuplicateWorkflowName requires others to exclude the workflow itself.
 func DuplicateWorkflowName(others names.Inventory, w workflows.BoundWorkflow) []reporting.StepFinding {
 	if !w.Present() {
 		return nil
@@ -67,9 +62,6 @@ func DuplicateWorkflowName(others names.Inventory, w workflows.BoundWorkflow) []
 		name, strings.Join(described, ", "))}
 }
 
-// prepareDuplicateWorkflowName loads the project's workflow names without the
-// checked workflow itself. An incomplete inventory still proves the duplicates
-// among the workflows it could read.
 func prepareDuplicateWorkflowName(c define.RuleInputs) (define.InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, duplicateWorkflowNameRuleName) == "off" {
 		return define.PreparedInputs{RuleInputs: c}, nil

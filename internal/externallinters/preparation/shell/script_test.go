@@ -52,7 +52,7 @@ func TestInputKeepsDeclaredLanguageAndDirectiveCoordinates(t *testing.T) {
 		t.Fatalf("prepared %q as %q", prepared.Source, dialect)
 	}
 	if prepared.LineMap == nil || prepared.LineMap(2) != (preparation.Line{Origin: preparation.LineDirective}) || prepared.LineMap(4) != (preparation.Line{Line: 3, Origin: preparation.LineScript}) {
-		t.Fatal("directive prefix changed source line ownership")
+		t.Fatal("directive prefix shifted the line map")
 	}
 	plain, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: LanguageDialect("sh")}, "echo input")
 	if err != nil {

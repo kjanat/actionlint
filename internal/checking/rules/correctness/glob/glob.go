@@ -8,25 +8,9 @@ import (
 	"unicode"
 )
 
-// Note:
-// - Broken pattern causes a syntax error
-//   - '+' or '?' at top of pattern
-//   - preceding character of '+' or '?' is special character like '+', '?', '*'
-//   - Missing ] in [...] pattern like '[0-9'
-//   - Missing end of range in [...] like '[0-]'
-// - \ can escape special characters like '['. Otherwise \ is handled as normal character
-// - invalid characters for Git ref names are not checked on GitHub Actions runtime
-//   - `man git-check-ref-format` for more details
-//   - \ is invalid character for ref names. it means that \ can be used only for escaping special chars
-
-// InvalidGlobPatternError is an error on invalid glob pattern.
 type InvalidGlobPatternError struct {
-	// Message is a human readable error message.
 	Message string
-	// Column is a column number of the error in the glob pattern. This value is 1-based, but zero
-	// is valid value. Zero means the error occurred before reading first character. This happens
-	// when a given pattern is empty. When the given pattern include a newline and line number
-	// increases (invalid pattern), the column number falls back into always 0.
+	// Column is 1-based, and zero means the error occurred before the first character or after a newline.
 	Column int
 }
 
@@ -47,10 +31,10 @@ type globValidator struct {
 
 func (v *globValidator) error(msg string) {
 	p := v.scan.Pos()
-	// - 1 because character at the error position is already eaten from scanner
+	// The scanner has already consumed the character at the error position.
 	c := p.Column - 1
 	if p.Line > 1 {
-		c = 0 // fallback to 0
+		c = 0
 	}
 	v.errs = append(v.errs, InvalidGlobPatternError{msg, c})
 }
@@ -96,12 +80,12 @@ func (v *globValidator) validateNext() bool {
 	case '\\':
 		switch v.scan.Peek() {
 		case '[', '?', '*':
-			c = v.scan.Next() // eat escaped character
+			c = v.scan.Next()
 			if v.isRef {
 				v.invalidRefChar(v.scan.Peek(), "ref name cannot contain spaces, ~, ^, :, [, ?, *")
 			}
 		case '+', '\\', '!':
-			c = v.scan.Next() // eat escaped character
+			c = v.scan.Next()
 		default:
 			// file path can contain '\' (`mkdir 'foo\bar'` works)
 			if v.isRef {
@@ -123,7 +107,7 @@ func (v *globValidator) validateNext() bool {
 		prec = false
 	case '[':
 		if v.scan.Peek() == ']' {
-			c = v.scan.Next() // eat ]
+			c = v.scan.Next()
 			v.unexpected(']', "content of character match []", "character match must not be empty")
 			break
 		}
@@ -140,24 +124,21 @@ func (v *globValidator) validateNext() bool {
 				return false
 			default:
 				if v.scan.Peek() != '-' {
-					// in case of single character
 					chars++
 					continue Loop
 				}
-				// When match is range of character like 0-9
 
-				chars += 2 // actually one or more. but this is ok since we only check chars > 1 later
+				chars += 2 // The range matches one or more characters. The later check only tests chars > 1.
 				s := c
-				v.scan.Next() // eat -
+				v.scan.Next()
 				switch v.scan.Peek() {
 				case ']':
-					c = v.scan.Next() // eat ]
+					c = v.scan.Next()
 					v.unexpected(c, "character range in []", "end of range is missing")
 					break Loop
 				case scanner.EOF:
-					// do nothing
 				default:
-					c = v.scan.Next() // eat end of range
+					c = v.scan.Next()
 					if s > c {
 						why := fmt.Sprintf("start of range %q (%d) is larger than end of range %q (%d)", s, s, c, c)
 						v.unexpected(c, "character range in []", why)
@@ -202,7 +183,6 @@ func (v *globValidator) validate(pat string) {
 		return
 	}
 
-	// Handle first character if necessary
 	switch v.scan.Peek() {
 	case '/':
 		if v.isRef {
@@ -230,16 +210,10 @@ func Validate(pat string, isRef bool) []InvalidGlobPatternError {
 	return v.errs
 }
 
-// ValidateRefGlob checks a given input as glob pattern for Git ref names. It returns list of
-// errors found by the validation. See the following URL for more details of the syntax:
-// https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 func ValidateRefGlob(pat string) []InvalidGlobPatternError {
 	return Validate(pat, true)
 }
 
-// ValidatePathGlob checks a given input as glob pattern for file paths. It returns list of
-// errors found by the validation. See the following URL for more details of the syntax:
-// https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 func ValidatePathGlob(pat string) []InvalidGlobPatternError {
 	p := strings.TrimSpace(pat)
 

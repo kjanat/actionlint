@@ -78,8 +78,6 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 		level = "on"
 		fixed = false
 	}
-	// Retained legacy controls apply only to their original membership. The
-	// semantic category then supplies the current baseline and exception.
 	groups := []ruleconfig.Group{}
 	legacyCategory := ruleSet.LegacyGroup(d.Name)
 	if legacy, removed := rules.LegacyGroups()[legacyCategory]; removed {
@@ -94,8 +92,6 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 		groups = append(groups, rules.Plugins)
 	}
 	if d.Experimental() {
-		// Decode-only nursery controls retain their historical opt-in. A
-		// migration expands that selection into individual category entries.
 		if rules.Nursery.Preset() == "all" {
 			level = "on"
 		}
@@ -108,8 +104,6 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 	var explicit ruleconfig.Setting
 	var explicitLevel ruleconfig.Level
 	for _, group := range groups {
-		// Category baselines select stable checks only. Nursery checks need
-		// an individual enable or the invocation's experimental switch.
 		if !d.Experimental() {
 			level = presetLevel(group.Preset(), d, level)
 			if group.Preset() == "recommended" || group.Preset() == "all" || group.Preset() == "none" {
@@ -122,8 +116,6 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 			level = group.Level()
 			fixed = level == "warn" || level == "info" || level == "error"
 		}
-		// An explicit setting supplies the options and, unless it defers to the
-		// default, the level.
 		if setting, found := ruleSet.canonicalSetting(group, d.Name); found {
 			explicit = setting
 			if setting.Level() != "" && setting.Level() != "default" {
@@ -147,7 +139,6 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, se
 	return explicit.WithLevel(level), fixed
 }
 
-// FixedDiagnosticLevel distinguishes a selected severity from a rule's default.
 func (ruleSet RuleSet) FixedDiagnosticLevel(cfg *Config, name string) (ruleconfig.Level, bool) {
 	name = ruleSet.ResolveAlias(name)
 	if cfg != nil {
@@ -178,8 +169,6 @@ func (ruleSet RuleSet) DiagnosticLevel(cfg *Config, name string) ruleconfig.Leve
 	return "on"
 }
 
-// ResolveRules projects presets and explicit rule settings into an effective configuration.
-// Registered descriptors participate in selection without loading analyzer implementations.
 func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...rule.Descriptor) (*Config, error) {
 	registrations := make([]RuleRegistration, len(descriptors))
 	for i, descriptor := range descriptors {
@@ -188,20 +177,15 @@ func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...ru
 	return ruleSet.ResolveRegisteredRules(p, config, registrations...)
 }
 
-// RuleRegistration identifies a rule and, for a selected tool integration, the
-// bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
 type RuleRegistration struct {
 	ToolSettings *toolsettings.Spec
-	// Declaration supplies the rule's metadata and configuration scope. Its
-	// Options constructor is ignored; registered rules decode options as JSON.
+	// Declaration's Options constructor is ignored. Registered rules decode
+	// options as JSON.
 	Declaration  rule.Declaration
 	ReplacesTool string
-	// Options overrides repository options when the registration supplies JSON.
-	Options json.RawMessage
+	Options      json.RawMessage
 }
 
-// ResolveRegisteredRules adds registrations to ruleSet and resolves config's
-// rule settings with the result, as ResolveSettings does.
 func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registrations ...RuleRegistration) (*Config, error) {
 	if config == nil && !p.Strict && p.Experimental == nil && len(registrations) == 0 {
 		return nil, nil
@@ -213,10 +197,6 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	return registered.resolveSettings(p, config)
 }
 
-// ResolveSettings resolves the level and options of every rule ruleSet
-// declares, from config and presets p. ruleSet already holds the run's
-// registrations, from WithRegisteredRules; the configuration was loaded with
-// the same rule set, so its rule settings are read as they are.
 func (ruleSet RuleSet) ResolveSettings(p Presets, config *Config) (*Config, error) {
 	if config == nil && !p.Strict && p.Experimental == nil && len(ruleSet.registered) == 0 {
 		return nil, nil
@@ -251,8 +231,6 @@ func (ruleSet RuleSet) resolveSettings(p Presets, config *Config) (*Config, erro
 	return &next, nil
 }
 
-// WithRegisteredRules adds plugin declarations before selecting source-specific settings.
-// It validates declarations without decoding options from an unrelated source.
 func (ruleSet RuleSet) WithRegisteredRules(registrations ...RuleRegistration) (RuleSet, error) {
 	providers := maps.Clone(ruleSet.providers)
 	if providers == nil {
@@ -350,14 +328,14 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 	// Binding writes name indexes into policies and override lint structs.
 	// Detach those structs from configurations shared by workflow checks.
 	if policy := config.Policy.DisallowSuppressions; policy != nil {
-		owned := *policy
-		config.Policy.DisallowSuppressions = &owned
+		copied := *policy
+		config.Policy.DisallowSuppressions = &copied
 	}
 	config.Overrides = slices.Clone(config.Overrides)
 	for i := range config.Overrides {
 		if lint := config.Overrides[i].Lint; lint != nil {
-			owned := *lint
-			config.Overrides[i].Lint = &owned
+			copied := *lint
+			config.Overrides[i].Lint = &copied
 		}
 	}
 	for _, source := range config.Lint.Rules.bindingSources {

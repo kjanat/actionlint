@@ -5,7 +5,6 @@ import (
 	"slices"
 )
 
-// selectLintRules projects a lint tree without altering reset or preset semantics.
 func selectLintRules(value any, rules map[string][]string) any {
 	object, ok := value.(map[string]any)
 	if !ok {

@@ -15,7 +15,7 @@ import (
 )
 
 // PermissiveJSONCalls locates known fromJSON arguments accepted only by the
-// runner's loose reader. It does not change semantic validity or inferred types.
+// runner's loose reader.
 func PermissiveJSONCalls(expr syntax.Node) []*typecheck.Error {
 	var findings []*typecheck.Error
 	syntax.Visit(expr, func(node, _ syntax.Node, entering bool) {

@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// CacheOperationRule is the single definition of the cache-operation rule.
 var CacheOperationRule = &define.Rule{
 	Name:        "cache-operation",
 	Description: "Report cache actions blocked by explicit cache access limits",
@@ -18,8 +17,8 @@ var CacheOperationRule = &define.Rule{
 	Subcategory: "cache",
 	Policy:      "cache-operation",
 	Recommended: true,
-	Explanation: "Report cache save or restore operations blocked by an explicit cache mode. GitHub skips the blocked operations.",
-	Help:        "Remove the cache step or choose an action and cache mode that allow the intended operation.",
+	Explanation: "Report cache saves and restores that an explicit cache mode blocks. GitHub skips them.",
+	Help:        "Remove the step, or change the action or cache mode to allow the operation.",
 	Prepare:     define.PrepareWorkflowMetadata,
 	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
@@ -28,8 +27,6 @@ var CacheOperationRule = &define.Rule{
 	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-operation") },
 }
 
-// CacheOperationChecks checks action operations and reusable calls against their
-// effective cache grant. Each callback derives its job mode from its own input.
 func CacheOperationChecks(workflow workflows.BoundWorkflow, lookup *reusableworkflows.ResolvedWorkflows) define.Checks {
 	return define.Checks{
 		Job: func(job workflows.BoundJob) []reporting.StepFinding {

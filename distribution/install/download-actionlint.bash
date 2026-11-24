@@ -110,7 +110,6 @@ esac
 
 echo "Detected OS=${os} ext=${ext} arch=${arch}"
 
-# https://github.com/kjanat/actionlint/releases/download/v1.0.0/actionlint_1.0.0_linux_386.tar.gz
 file="actionlint_${version}_${os}_${arch}.${ext}"
 url="https://github.com/kjanat/actionlint/releases/download/v${version}/${file}"
 
@@ -145,7 +144,6 @@ installed_version="$("${exe}" -version)"
 echo "Done: ${installed_version}"
 
 if [[ -n "${GITHUB_ACTION}" ]]; then
-	# On GitHub Actions, write the executable path to the step output.
 	if [[ -n "${GITHUB_OUTPUT}" ]]; then
 		echo "executable=${exe}" >>"${GITHUB_OUTPUT}"
 	else

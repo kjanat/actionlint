@@ -127,8 +127,7 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatal(err)
 	}
-	// Host instances vary independently of the guest. Leave exactly
-	// one page for stdin's stub and two pages for the guest's core instances.
+	// Leave exactly one page for stdin's stub and two pages for the guest's core instances.
 	plugin.memory.limit = callImportMemory(t, plugin) + 3<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
 	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {

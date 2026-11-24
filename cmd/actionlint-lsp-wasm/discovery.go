@@ -162,7 +162,6 @@ func (h hostFilesystem) Glob(path string) ([]string, error) {
 	return matches, nil
 }
 
-// fs.Glob uses StatFS and ReadDirFS; discovery never opens file contents here.
 type discoveryGlobFilesystem struct{ host hostFilesystem }
 
 func (discoveryGlobFilesystem) Open(string) (fs.File, error) { return nil, fs.ErrInvalid }

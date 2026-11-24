@@ -8,9 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
-// Evaluate resolves an assigned expression against this exact matrix row.
-// Other contexts and unsupported operations remain dynamic. Missing properties
-// of the complete matrix object have the runner's null value.
+// Evaluate leaves other contexts and unsupported operations dynamic, and
+// missing matrix properties take the runner's null value.
 func (c Combination) Evaluate(text string) value.Value {
 	expression := syntax.ParseAssignedExpression(text)
 	if expression == nil {
@@ -23,8 +22,7 @@ func (c Combination) Evaluate(text string) value.Value {
 	return value.FromJSON(result, value.Origin{FromExpression: true})
 }
 
-// LookupExpressionVariable exposes a complete matrix row to the shared evaluator.
-// An unresolved member makes the object unknown rather than silently omitting it.
+// LookupExpressionVariable makes the object unknown for an unresolved member and keeps the member.
 func (c Combination) LookupExpressionVariable(name string) (any, bool) {
 	if name != "matrix" {
 		return nil, false

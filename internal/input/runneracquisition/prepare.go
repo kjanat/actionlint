@@ -15,13 +15,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
-// Prepare acquires runner answers with an explicitly known custom-label list.
 func Prepare(ctx context.Context, snapshot parsing.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*runners.Knowledge, error) {
 	return PrepareWithLabels(ctx, snapshot, runners.KnownLabels(custom), options, scope)
 }
 
-// PrepareWithLabels selects and invokes a provider before constructing job knowledge.
-// Failed acquisition returns unknown capabilities with any established provider identity.
+// PrepareWithLabels returns unknown capabilities when acquisition fails.
 func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, custom runners.LabelSet, options runnerapi.Options, scope string) (*runners.Knowledge, error) {
 	if options.Target == "" {
 		options.Target = "github"

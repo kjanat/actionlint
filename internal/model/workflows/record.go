@@ -1,6 +1,4 @@
-// Package workflows binds parsed workflow and action syntax to its source
-// document. Consumers read the parsed tree directly; BoundWorkflow, BoundJob and BoundStep
-// handles add the owning document's identity and semantic lookups.
+// Package workflows binds parsed workflow and action syntax to its source document.
 package workflows
 
 import (
@@ -12,10 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-// BoundDocument is one decoded document bound to a registry's document identity. Over
-// the parsed tree it adds the source references derived from that identity and
-// the source text, so views can name and locate their declarations. Bind takes
-// ownership of the tree: callers must not modify it afterwards.
+// BoundDocument indexes steps and references at Bind. Changes to the tree after Bind leave those indexes stale.
 type BoundDocument struct {
 	text       string
 	using      string
@@ -24,8 +19,7 @@ type BoundDocument struct {
 	steps      map[sourcetext.Reference]*definition.Step
 }
 
-// Bind indexes workflow under identity. action selects action-manifest step
-// addresses; using is the action's runs.using value, empty for workflows.
+// Bind takes the action's runs.using value in using, empty for workflows.
 func Bind(identity, text string, workflow *definition.Workflow, action bool, using string) *BoundDocument {
 	refs := facts.Index(identity, []byte(text), workflow, action)
 	bound := &BoundDocument{text: text, using: using, workflow: workflow, references: refs, steps: map[sourcetext.Reference]*definition.Step{}}
@@ -51,12 +45,11 @@ func (b *BoundDocument) Step(reference sourcetext.Reference) (BoundStep, bool) {
 	return BoundStep{step, b}, true
 }
 
-func (b *BoundDocument) Owns(step BoundStep) bool          { return step.Present() && b == step.owner }
-func (b *BoundDocument) OwnsWorkflow(w BoundWorkflow) bool { return w.Present() && b == w.owner }
-func (b *BoundDocument) OwnsJob(job BoundJob) bool         { return job.Present() && b == job.owner }
+func (b *BoundDocument) HasStep(step BoundStep) bool      { return step.Present() && b == step.document }
+func (b *BoundDocument) HasWorkflow(w BoundWorkflow) bool { return w.Present() && b == w.document }
+func (b *BoundDocument) HasJob(job BoundJob) bool         { return job.Present() && b == job.document }
 
-// SourceIndex returns detached source identities and positions. A nil BoundDocument
-// returns the zero index.
+// SourceIndex returns the zero index for a nil BoundDocument.
 func (b *BoundDocument) SourceIndex() facts.SourceIndex {
 	if b == nil {
 		return facts.SourceIndex{}
@@ -64,13 +57,11 @@ func (b *BoundDocument) SourceIndex() facts.SourceIndex {
 	return b.references.SourceIndex()
 }
 
-// ActionBody exposes composite action steps without a workflow lifecycle.
 func (b *BoundDocument) ActionBody() ActionBody { return ActionBody{workflow: b.Workflow()} }
 
-// BoundWorkflow is a parsed workflow bound to its document.
 type BoundWorkflow struct {
 	*definition.Workflow
-	owner *BoundDocument
+	document *BoundDocument
 }
 
 func (w BoundWorkflow) Present() bool { return w.Workflow != nil }
@@ -83,25 +74,24 @@ func (w BoundWorkflow) Job(key string) (BoundJob, bool) {
 	if !ok || job == nil {
 		return BoundJob{}, false
 	}
-	return BoundJob{job, w.owner, key}, true
+	return BoundJob{job, w.document, key}, true
 }
 
-// Jobs yields the workflow's jobs keyed by lowercase ID.
+// Jobs keys jobs by lowercase ID.
 func (w BoundWorkflow) Jobs() iter.Seq2[string, BoundJob] {
 	return func(yield func(string, BoundJob) bool) {
 		if !w.Present() {
 			return
 		}
 		for key, job := range w.Workflow.Jobs {
-			if job != nil && !yield(key, BoundJob{job, w.owner, key}) {
+			if job != nil && !yield(key, BoundJob{job, w.document, key}) {
 				return
 			}
 		}
 	}
 }
 
-// ScalarSource maps a decoded scalar back to its captured YAML. It is
-// available for indexed expressions, conditions and dependency references.
+// ScalarSource is available for indexed expressions, conditions and dependency references.
 func (w BoundWorkflow) ScalarSource(s *definition.String) *definition.ScriptSource {
 	pos, ok := s.Position()
 	if !ok || !w.Present() {
@@ -110,36 +100,32 @@ func (w BoundWorkflow) ScalarSource(s *definition.String) *definition.ScriptSour
 	return w.ExpressionSources[pos]
 }
 
-// BoundJob is a parsed job bound to its document.
 type BoundJob struct {
 	*definition.Job
-	owner *BoundDocument
-	key   string
+	document *BoundDocument
+	key      string
 }
 
 func (j BoundJob) Present() bool { return j.Job != nil }
 
-// Key returns the lowercase job ID that indexes the job in the workflow.
 func (j BoundJob) Key() string { return j.key }
 
 func (j BoundJob) Reference() sourcetext.Reference {
-	if !j.Present() || j.owner == nil {
+	if !j.Present() || j.document == nil {
 		return sourcetext.Reference{}
 	}
-	return j.owner.references.Jobs[j.Key()]
+	return j.document.references.Jobs[j.Key()]
 }
 
-func (j BoundJob) Workflow() BoundWorkflow { return j.owner.Workflow() }
+func (j BoundJob) Workflow() BoundWorkflow { return j.document.Workflow() }
 
-// Steps yields the job's top-level steps.
-func (j BoundJob) Steps() iter.Seq[BoundStep] { return boundSteps(j.owner, j.stepNodes()) }
+func (j BoundJob) Steps() iter.Seq[BoundStep] { return boundSteps(j.document, j.stepNodes()) }
 
-// AllSteps yields every step of the job, each parallel group before the steps
-// inside it, in the order of definition.AllSteps.
+// AllSteps yields each parallel group before the steps inside it.
 func (j BoundJob) AllSteps() iter.Seq[BoundStep] {
 	return func(yield func(BoundStep) bool) {
 		for step := range definition.AllSteps(j.stepNodes()) {
-			if !yield(BoundStep{step, j.owner}) {
+			if !yield(BoundStep{step, j.document}) {
 				return
 			}
 		}
@@ -153,65 +139,62 @@ func (j BoundJob) stepNodes() []*definition.Step {
 	return j.Job.Steps
 }
 
-func boundSteps(owner *BoundDocument, nodes []*definition.Step) iter.Seq[BoundStep] {
+func boundSteps(document *BoundDocument, nodes []*definition.Step) iter.Seq[BoundStep] {
 	return func(yield func(BoundStep) bool) {
 		for _, step := range nodes {
-			if step != nil && !yield(BoundStep{step, owner}) {
+			if step != nil && !yield(BoundStep{step, document}) {
 				return
 			}
 		}
 	}
 }
 
-// BoundStep is a parsed step bound to its document.
 type BoundStep struct {
 	*definition.Step
-	owner *BoundDocument
+	document *BoundDocument
 }
 
 func (s BoundStep) Present() bool { return s.Step != nil }
 
 func (s BoundStep) Reference() sourcetext.Reference {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return sourcetext.Reference{}
 	}
-	return s.owner.references.Steps[s.Step]
+	return s.document.references.Steps[s.Step]
 }
 
 func (s BoundStep) SourceReference() sourcetext.Reference {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return sourcetext.Reference{}
 	}
-	return s.owner.Reference()
+	return s.document.Reference()
 }
 
 func (s BoundStep) ContentText() string {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return ""
 	}
-	return s.owner.text
+	return s.document.text
 }
 
 func (s BoundStep) DeclaringJob() string {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return ""
 	}
-	return s.owner.references.StepJobs[s.Step]
+	return s.document.references.StepJobs[s.Step]
 }
 
-// Job returns the job that declares this step, including nested parallel
-// steps. Composite metadata without a declaring workflow job returns an absent Job.
+// Job returns an absent Job for composite metadata.
 func (s BoundStep) Job() BoundJob {
-	if !s.Present() || s.owner == nil {
+	if !s.Present() || s.document == nil {
 		return BoundJob{}
 	}
-	job, _ := s.owner.Workflow().Job(s.DeclaringJob())
+	job, _ := s.document.Workflow().Job(s.DeclaringJob())
 	return job
 }
 
-func (s BoundStep) Workflow() BoundWorkflow { return s.owner.Workflow() }
+func (s BoundStep) Workflow() BoundWorkflow { return s.document.Workflow() }
 
-// Condition decodes the step's if condition.
 func (s BoundStep) Condition() value.Value {
 	if !s.Present() {
 		return value.Value{}
@@ -251,7 +234,6 @@ func (s BoundStep) Cancel() (*definition.ExecCancel, bool) {
 	return cancel, ok && cancel != nil
 }
 
-// ParallelSteps yields the steps of a parallel group; it reports false for other steps.
 func (s BoundStep) ParallelSteps() (iter.Seq[BoundStep], bool) {
 	if !s.Present() {
 		return nil, false
@@ -260,19 +242,18 @@ func (s BoundStep) ParallelSteps() (iter.Seq[BoundStep], bool) {
 	if !ok || parallel == nil {
 		return nil, false
 	}
-	return boundSteps(s.owner, parallel.Steps), true
+	return boundSteps(s.document, parallel.Steps), true
 }
 
-// ActionBody exposes composite steps without a workflow lifecycle.
 type ActionBody struct{ workflow BoundWorkflow }
 
 func (a ActionBody) Present() bool           { return a.workflow.Present() }
 func (a ActionBody) Workflow() BoundWorkflow { return a.workflow }
 func (a ActionBody) Using() string {
-	if a.workflow.owner == nil {
+	if a.workflow.document == nil {
 		return ""
 	}
-	return a.workflow.owner.using
+	return a.workflow.document.using
 }
 
 func (a ActionBody) Steps() iter.Seq[BoundStep] {
@@ -280,7 +261,6 @@ func (a ActionBody) Steps() iter.Seq[BoundStep] {
 	return job.Steps()
 }
 
-// OutputValues yields composite output expressions evaluated after all steps.
 func (a ActionBody) OutputValues() iter.Seq[*definition.String] {
 	return func(yield func(*definition.String) bool) {
 		job, ok := a.workflow.Job("")

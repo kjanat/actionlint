@@ -16,13 +16,9 @@ var (
 	githubCommandProperty = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
 )
 
-// GitHubCommandProperty is one name=value property of a workflow command.
 type GitHubCommandProperty struct{ Name, Value string }
 
-// FormatGitHubCommand formats one workflow command line, such as
-// "::error file=a.yml,line=1,title=t::message\n". It escapes property values
-// and the message the way @actions/core does, so neither can end the command
-// early or start another one.
+// FormatGitHubCommand escapes property values and the message the way @actions/core does.
 func FormatGitHubCommand(command string, properties []GitHubCommandProperty, message string) string {
 	var line strings.Builder
 	line.WriteString("::")
@@ -43,12 +39,10 @@ func FormatGitHubCommand(command string, properties []GitHubCommandProperty, mes
 	return line.String()
 }
 
-// EscapeGitHubCommandData escapes text written to a stream the runner scans
-// for workflow commands, so the text stays on one line.
+// EscapeGitHubCommandData keeps text on one line in a stream the runner scans
+// for workflow commands.
 func EscapeGitHubCommandData(text string) string { return githubCommandData.Replace(text) }
 
-// GitHubAnnotationCommand returns the workflow command that annotates a
-// finding of the given severity: notice, warning or error.
 func GitHubAnnotationCommand(level severity.Severity) string {
 	switch level.Effective() {
 	case severity.Warning:
@@ -60,7 +54,6 @@ func GitHubAnnotationCommand(level severity.Severity) string {
 	return "error"
 }
 
-// WriteGitHub writes one workflow command annotation per diagnostic.
 func WriteGitHub(out io.Writer, diagnostics []results.Diagnostic) error {
 	for _, diagnostic := range diagnostics {
 		endLine := diagnostic.End.Line

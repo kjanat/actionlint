@@ -5,16 +5,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
-// CallInspection describes failures and return-type refinements established from
-// already checked arguments. It does not traverse or evaluate expression syntax.
 type CallInspection struct {
 	ReturnType exprtypes.Type
 	Problems   []CallProblemReport
 }
 
-// CallProblemReport records a problem and whether its operation is required,
-// conditional or skipped within the call. Enclosing expressions can further
-// restrict execution without changing the problem itself.
 type CallProblemReport struct {
 	Problem CallProblem
 	Demand  ArgumentDemand
@@ -26,9 +21,6 @@ func (inspection *CallInspection) addProblem(problem CallProblem, demand Argumen
 	}
 }
 
-// CallProblem describes a function operation independently of diagnostic codes
-// and source locations. The caller supplies those when reporting the problem.
-//
 //sumtype:decl
 type CallProblem interface{ callProblem() }
 
@@ -61,7 +53,6 @@ type JSONMemberCollision struct {
 
 func (JSONMemberCollision) callProblem() {}
 
-// InvalidCasePredicate identifies a predicate rejected by the boolean contract.
 type InvalidCasePredicate struct {
 	Index  int
 	Actual exprtypes.Type
@@ -69,8 +60,7 @@ type InvalidCasePredicate struct {
 
 func (InvalidCasePredicate) callProblem() {}
 
-// InspectArguments accepts a selected signature and its parameter matches.
-// Callers validate arity first. Matches can include rejected parameters when the
+// InspectArguments requires validated arity. Matches can include rejected parameters when the
 // function reports that rejection during evaluation, as case() does.
 func (function Function) InspectArguments(signature *FuncSignature, arguments []ParameterMatch) CallInspection {
 	inspection := CallInspection{ReturnType: signature.Ret}

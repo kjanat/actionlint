@@ -1,5 +1,3 @@
-// Exercise the published Node entrypoint and the ordinary actionlint binary with
-// the same INPUT_* environment variables supplied by the Actions runner.
 import assert from 'node:assert/strict';
 
 import { spawnSync } from 'node:child_process';
@@ -260,7 +258,6 @@ try {
 	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
 	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
-	// Install the exact released plugin and forbid PATH-based fallbacks.
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
@@ -327,7 +324,6 @@ try {
 	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quoteFix.edits.length);
-	// Deprecated tool booleans are ignored; disable-tools is the supported switch.
 	const ignoredLegacyInput = await run(
 		{ files: 'shell-fix.yaml', shellcheck: 'false', pyflakes: 'false', 'fail-on-error': 'false' },
 		0,
@@ -437,8 +433,6 @@ try {
 		assert.match(configured.log, new RegExp(`actionlint\\.${extension}`));
 		await rm(configuration);
 	}
-	// Exercise released component bytes through the actual bundled launcher.
-	// The second URL cannot download: success proves reuse of the digest cache.
 	const pluginDigest = '23e924599d6e4b91c2aeb995e7759fd6bbece3aeaeccf7a3e9f7428c527ec13f';
 	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.3.0/plugin.wasm';
 	const pluginCache = join(workspace, 'plugin-cache');
@@ -464,8 +458,6 @@ try {
 	const coldDiagnostics = cold.analysis.diagnostics;
 	assert.ok(coldDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), cold.log);
 	if (realCache) {
-		// Remove only this test's verified artifact. The next process must restore
-		// it from GitHub cache; a warning/miss cannot masquerade as coverage.
 		const base = process.platform === 'darwin' ? join(pluginCache, 'Library/Caches') : pluginCache;
 		await rm(join(base, 'actionlint/artifacts', pluginDigest));
 	}
@@ -524,8 +516,6 @@ try {
 			`missing ${rule}/${code}: ${defaults.log}`,
 		);
 	}
-	// Both packages are pinned and cached now. Broken proxies make any registry
-	// or artifact fetch fail; checking must use the recorded bytes unchanged.
 	const offline = await run(defaultInputs, 0, {
 		...pluginEnvironment,
 		HTTP_PROXY: 'http://127.0.0.1:1',

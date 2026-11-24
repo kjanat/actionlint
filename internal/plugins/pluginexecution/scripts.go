@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-// ScriptEngineLoader loads configured core modules and script-engine components
-// with the same artifact verification and lifecycle for every native entrypoint.
 func ScriptEngineLoader(acquisition dependencycache.Acquisition, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (scriptengine.Backend, error) {
 	return func(ctx context.Context, path string) (scriptengine.Backend, error) {
 		if err := artifacts.RequireRemotePin(path); err != nil {
@@ -31,7 +29,6 @@ func ScriptEngineLoader(acquisition dependencycache.Acquisition, reserved rule.N
 	}
 }
 
-// LoadScriptArtifact opens a verified core module or component that implements script checking.
 func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acquisition dependencycache.Acquisition, reserved rule.Names, log io.Writer, debug bool) (scriptengine.Backend, error) {
 	if artifact.Info.Kind != artifacts.Core && artifact.Info.Kind != artifacts.Component {
 		return nil, fmt.Errorf("%s is a %s artifact, not a WebAssembly module", artifact.Info.Source, artifact.Info.Kind)

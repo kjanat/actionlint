@@ -5,9 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 )
 
-// DemandForArgument is shared by semantic checking and constant evaluation. Earlier
-// arguments supply their source values: conversion must not hide array shape or
-// the boolean contract of a case predicate.
+// DemandForArgument conversion must not hide array shape or the boolean contract of a case predicate.
 func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args []CallArgument) ArgumentDemand {
 	if index == 0 || policy == EvaluateAllArguments {
 		return DemandRequired
@@ -85,9 +83,7 @@ func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args [
 	return DemandRequired
 }
 
-// ArgumentExecutionOrder lists arguments after the first in runtime order.
-// Unreferenced arguments follow the demanded arguments so static checking still
-// visits every node. Argument facts remain indexed by their source position.
+// ArgumentExecutionOrder lists unreferenced arguments after the demanded arguments.
 func ArgumentExecutionOrder(policy FunctionEvaluationPolicy, count int, args []CallArgument) []int {
 	order := make([]int, 0, max(count-1, 0))
 	seen := make([]bool, count)

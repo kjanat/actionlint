@@ -1,9 +1,6 @@
 # Browser language server
 
-`@kjanat-actionlint/language-server` runs actionlint's Go language server in a
-WebAssembly worker. It uses the same analysis, diagnostics, completions and code
-actions as the native server. The browser host supplies workspace files and any
-enabled external tools through JSON-RPC requests.
+`@kjanat-actionlint/language-server` runs actionlint's Go language server in a WebAssembly worker.
 
 ## Use with a browser editor
 
@@ -22,7 +19,7 @@ const client = createBrowserLanguageClient(worker, {
 }, {
   rootURI: 'file:///workspace',
   onDiagnostics(params) {
-    // Apply only publications matching the editor's current document version.
+    // Apply only publications whose version equals the editor's current document version.
     console.log(params.uri, params.version, params.diagnostics);
   },
   onError(message) {
@@ -41,33 +38,22 @@ await client.change(
   editedYAML,
   2,
 );
-// On editor shutdown:
 await client.stop();
 ```
 
-`change` sends the complete document with an increasing version. Diagnostic ranges
-use zero-based UTF-16 positions and exclusive ends. Code actions include document
-versions; reject an edit if its version differs from the current buffer. Use
-`client.connection` for other standard protocol operations. Call `client.dispose()`
-to terminate immediately without waiting for a graceful shutdown.
+`change` sends the whole document with an increasing version. Reject a code action whose document version differs from the current buffer. `client.connection` handles other protocol operations. `client.dispose()` terminates without a graceful shutdown.
 
-Other bundlers must copy `worker.js`, its JavaScript imports, `wasm_exec.js` and
-`server.wasm` together. Serve JavaScript as modules and Wasm as `application/wasm`.
-No Node.js runtime, subprocess or analysis service is needed in the browser.
+Other bundlers must copy `worker.js`, its JavaScript imports, `wasm_exec.js` and `server.wasm` together. Serve JavaScript as modules and Wasm as `application/wasm`.
 
 ## Discover workflow and action files
 
-`client.discover(uris, noIgnore)` selects files with actionlint's Go discoverer, including Git ignore rules, nested repositories and explicit-file handling. Pass absolute file URIs for the selected files, directories or glob patterns. The result contains the selected file URIs.
+`client.discover(uris, noIgnore)` selects files with actionlint's Go discoverer. Pass absolute file URIs of files, directories or glob patterns.
 
-Discovery requires two additional host operations: `filesystem` supplies directory entries, metadata and canonical paths; `gitQuery` executes the read-only Git metadata queries requested by Go. File contents use the existing `readFile` operation. Go retains glob expansion, workflow/action selection and ignore policy. Existing editor clients that only open documents do not need to provide them.
-
-Set the client's `platform` to `windows`, `darwin` or `linux` so discovery uses the host's filename comparison behavior. The host must enforce its own filesystem scope and permitted Git operations.
+`filesystem` supplies directory entries, metadata and canonical paths. `gitQuery` runs read-only Git queries. Set the client's `platform` to `windows`, `darwin` or `linux`. The host must enforce its own filesystem scope and Git permissions.
 
 ## Connect a VS Code web extension
 
-The worker speaks standard LSP over `postMessage`. Pass it directly to
-[`vscode-languageclient/browser`](https://github.com/microsoft/vscode-languageserver-node/tree/main/client),
-without wrapping it in `createBrowserLanguageClient`:
+Pass the worker to [`vscode-languageclient/browser`](https://github.com/microsoft/vscode-languageserver-node/tree/main/client) directly:
 
 ```ts
 import { FileSystemError, Uri, workspace } from 'vscode';
@@ -103,35 +89,15 @@ client.onRequest(ReadFileRequest, async ({ uri }) => {
 await client.start();
 ```
 
-This is integration code for a future extension, not an extension package. Declare
-the extension's browser entry point and bundle against the browser client, as
-described in the [VS Code web extension guide](https://code.visualstudio.com/api/extension-guides/web-extensions).
-The server maps one workspace root into its in-memory host. It sends the original
-URI scheme, authority and revision query back to the client, including
-`vscode-vfs` workspace URIs. Open buffers override closed files read through the
-host. Reads outside the initialized workspace are rejected.
+The [VS Code web extension guide](https://code.visualstudio.com/api/extension-guides/web-extensions) explains the browser entry point and bundling. The server supports one workspace root, including `vscode-vfs` URIs, and rejects reads outside it.
 
 ## Supply external tools
 
-Tools are disabled unless named in `tools` (or `initializationOptions.tools` for
-a VS Code client). Implement `BrowserHost.runTool` or register `RunToolRequest` to
-handle the enabled bundled provider IDs. The request contains the provider's
-command arguments and script on standard input; return the tool's standard output.
-The existing provider manifest translates that output into findings and fixes.
-
-The host decides how to execute a tool. For example, the playground sends
-ShellCheck requests to a separate Wasm worker. Tool and file requests carry
-cancellation tokens. Stop pending work when cancellation is requested, and reject
-failed operations so the client can display an analysis error.
+Tools stay disabled until `tools` names them, or `initializationOptions.tools` in VS Code. Implement `BrowserHost.runTool` or register `RunToolRequest`. The request carries the command arguments and the script on standard input. Return the standard output of the tool.
 
 ## Scope and verification
 
-The browser server analyzes opened YAML files and local dependencies supplied by
-the host. Call `client.discover` to select files before opening them. Opening a
-document does not start a scan. The browser server does not load project
-configuration, download remote actions or launch native plugins. Completions cover the same subset as the native
-server; hover and navigation are not implemented. Multiple workspace roots need
-separate server instances.
+The browser server analyzes opened YAML files and their local dependencies. The server loads no project configuration, downloads no remote actions and launches no native plugins. Hover and navigation are not implemented.
 
 From this package directory:
 
@@ -140,9 +106,3 @@ mise exec -- bun run typecheck
 mise exec -- bunx playwright install chromium
 mise exec -- bun run test
 ```
-
-The package script builds the actual Go server and runs
-Chromium tests for diagnostics, virtual files, cancellation, completions and
-versioned quick fixes. The repository's playground tests additionally exercise the
-built editor and the real ShellCheck worker. The browser tests do not establish
-that a VS Code extension has been installed or tested.

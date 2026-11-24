@@ -14,14 +14,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// ExecutableBitRule is the single definition of the executable-bit rule.
 var ExecutableBitRule = &define.Rule{
 	Name:        "executable-bit",
 	Description: "Report directly invoked repository scripts not marked executable in Git",
 	Category:    "correctness",
 	Subcategory: "scripts",
 	Recommended: true,
-	Help:        "Record the executable bit for the referenced script in Git, or invoke it explicitly through its interpreter.",
+	Help:        "Set the executable bit in Git, or run the script through its interpreter.",
 	Prepare:     prepareExecutableIndex,
 	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewRuleExecutableBit(base, ExecutableContext{
@@ -32,7 +31,6 @@ var ExecutableBitRule = &define.Rule{
 	Enabled: func(c define.RuleInputs) bool { return c.ProjectRoot != "" && c.Index != nil },
 }
 
-// ruleExecutableBit adapts workflow execution checks to traversal and composite scopes.
 type ruleExecutableBit struct {
 	*ExecutableChecker
 	reporting.Logger
@@ -41,7 +39,6 @@ type ruleExecutableBit struct {
 	findings          workflowvisit.Findings
 }
 
-// NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
 func NewRuleExecutableBit(base workflowvisit.Base, input ExecutableContext) workflowvisit.Rule {
 	r := &ruleExecutableBit{Tag: base.Name(), name: base.Name(), description: base.Description()}
 	input.Report = func(finding *finding.Finding) { r.findings.Report(finding) }

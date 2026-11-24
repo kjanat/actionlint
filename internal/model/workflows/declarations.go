@@ -10,16 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-// declarationSet collects the mappings and dependencies one document declares.
-// It holds only the new slices it builds; each method reads the BoundDocument it is
-// given.
 type declarationSet struct {
 	mappings     []facts.Mapping
 	dependencies []facts.Dependency
 }
 
-// Declarations returns the mappings and dependencies the document declares. A
-// nil BoundDocument declares none.
+// Declarations accepts a nil BoundDocument, which declares none.
 func (b *BoundDocument) Declarations() ([]facts.Mapping, []facts.Dependency) {
 	if b == nil || b.workflow == nil {
 		return nil, nil
@@ -60,9 +56,9 @@ func (d *declarationSet) job(b *BoundDocument, job *definition.Job, ref sourcete
 	}
 }
 
-func (d *declarationSet) env(scope string, owner sourcetext.Reference, env *definition.Env) {
+func (d *declarationSet) env(scope string, declarer sourcetext.Reference, env *definition.Env) {
 	if env != nil {
-		d.mapping(scope, owner, Environment(env))
+		d.mapping(scope, declarer, Environment(env))
 	}
 }
 
@@ -78,8 +74,8 @@ func (d *declarationSet) dependency(value *definition.String, kind string, ref s
 	d.dependencies = append(d.dependencies, facts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
 }
 
-func (d *declarationSet) mapping(scope string, owner sourcetext.Reference, values mappings.Mapping) {
+func (d *declarationSet) mapping(scope string, declarer sourcetext.Reference, values mappings.Mapping) {
 	d.mappings = append(d.mappings, facts.Mapping{
-		Scope: scope, Reference: owner, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
+		Scope: scope, Reference: declarer, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
 	})
 }

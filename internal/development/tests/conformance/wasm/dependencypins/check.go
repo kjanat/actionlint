@@ -11,8 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Analyzer requires remote actions and reusable workflows to use full commit
-// hashes. Local dependencies and Docker image references follow other policies.
 type Analyzer struct{}
 
 func (Analyzer) Descriptor() checkinputs.Descriptor {

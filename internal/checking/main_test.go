@@ -35,5 +35,3 @@ func isolateToolEnvironment() (string, error) {
 	}
 	return dir, nil
 }
-
-// The portable fake process exercises failures even when Ruff is not installed.

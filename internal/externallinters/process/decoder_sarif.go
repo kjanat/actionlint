@@ -13,11 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-// SARIF decodes a SARIF 2.1.0 log. Results of every run become diagnostics;
-// applied/accepted suppressions and results whose kind is not "fail" are skipped.
-// Suppressions under review or rejected remain active findings.
-// Columns are passed through as the log reports them; the manifest's output
-// coordinates describe their unit.
+// SARIF decodes a SARIF 2.1.0 log. It skips applied or accepted suppressions
+// and results whose kind is not "fail", and passes columns through unconverted.
 type SARIF struct{}
 
 type sarifLog struct {
@@ -122,7 +119,7 @@ func sarifSuppressed(suppressions []sarifSuppression) (bool, error) {
 }
 
 // Decode implements Decoder. A result whose artifact is not vars["filename"]
-// (or vars["filename_abs"]) is a finding in a file the engine read: its
+// (or vars["filename_abs"]) is a finding in an engine-read file. The finding's
 // Filename and Source are the artifact URI.
 func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) {
 	if err := ctx.Err(); err != nil {
@@ -229,7 +226,6 @@ func sarifDiagnostic(run sarifRun, entry sarifResult, vars map[string]string) (s
 	return d, nil
 }
 
-// sarifResultRule resolves rule references within the selected tool component.
 func sarifResultRule(run sarifRun, entry sarifResult) (sarifRule, int, int, error) {
 	ref := entry.Rule
 	componentIndex := -1
@@ -311,8 +307,6 @@ func sarifResultRule(run sarifRun, entry sarifResult) (sarifRule, int, int, erro
 	return rule, componentIndex, ruleIndex, nil
 }
 
-// sameArtifact reports whether a SARIF artifact URI names path, either
-// verbatim or as a file URI.
 func sameArtifact(uri, path string) bool {
 	if uri == "" || path == "" {
 		return false

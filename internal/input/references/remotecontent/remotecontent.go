@@ -1,6 +1,4 @@
-// Package remotecontent shares remote metadata acquisition within one analysis
-// request. Actions and reusable workflows use it with their own reference
-// keys, results and parse functions.
+// Package remotecontent shares remote metadata acquisition within one analysis request.
 package remotecontent
 
 import (
@@ -12,23 +10,19 @@ import (
 	"sync"
 )
 
-// Location identifies immutable content: one file location at one commit.
-// Repository names compare without case.
+// Location repository names compare without case.
 type Location struct {
 	Host, Repository, Commit, Path string
 }
 
-// Content is the file obtained for one immutable location. Name identifies the file.
 type Content struct {
 	Location Location
 	Name     string
 	Bytes    string
 }
 
-// Store acquires each request key once at a time and parses each immutable
-// location once. Successful results are kept for the request; failures are
-// shared with concurrent waiters and the next acquisition tries again.
-// It contains no process-global data.
+// Store keeps successful results for the request, shares failures with
+// concurrent waiters, and retries failed keys on the next acquisition.
 type Store[K comparable, R, P any] struct {
 	parse    func([]byte) P
 	mu       sync.Mutex
@@ -48,15 +42,11 @@ type parsed[P any] struct {
 	value  P
 }
 
-// New creates a store that parses content with parse.
 func New[K comparable, R, P any](parse func([]byte) P) *Store[K, R, P] {
 	return &Store[K, R, P]{parse: parse, results: make(map[K]R), pending: make(map[K]*flight[R]), contents: make(map[Location]parsed[P])}
 }
 
-// Acquire returns the kept result for key or runs acquire for it. Concurrent
-// callers for one key wait for the running acquisition and receive its result
-// or failure. A waiter whose own context is live acquires again when the
-// running acquisition was canceled. A canceled ctx returns its error.
+// Acquire runs again for a live waiter when the running acquisition was canceled.
 func (s *Store[K, R, P]) Acquire(ctx context.Context, key K, acquire func(context.Context) (R, error)) (R, error) {
 	var zero R
 	for {
@@ -101,7 +91,6 @@ func (s *Store[K, R, P]) Acquire(ctx context.Context, key K, acquire func(contex
 	}
 }
 
-// Lookup returns a kept result without acquiring it.
 func (s *Store[K, R, P]) Lookup(key K) (R, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -109,15 +98,13 @@ func (s *Store[K, R, P]) Lookup(key K) (R, bool) {
 	return result, ok
 }
 
-// Results returns a copy of every kept result.
 func (s *Store[K, R, P]) Results() map[K]R {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return maps.Clone(s.results)
 }
 
-// Parse returns the parsed value for content, parsing each location once.
-// It reports false when the location was already seen with other content.
+// Parse reports false when the location was already seen with other content.
 func (s *Store[K, R, P]) Parse(content Content) (P, bool) {
 	location := content.Location
 	location.Repository = strings.ToLower(location.Repository)
@@ -136,9 +123,7 @@ func (s *Store[K, R, P]) Parse(content Content) (P, bool) {
 	return value, true
 }
 
-// failure is an immutable copy of an acquisition error. Waiters receive this
-// copy, never the error value through which they could reach request-owned state.
-// The zero value records no failure.
+// failure is an immutable copy of an acquisition error.
 type failure struct {
 	message                     string
 	present, canceled, deadline bool

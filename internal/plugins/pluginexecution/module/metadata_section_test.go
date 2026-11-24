@@ -18,7 +18,6 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Fixtures use the runtime export for metadata discovery.
 	engine := loadEngine(t, enginePath("echo"), module.Options{})
 	metadata := engine.Metadata()
 	metadata.Engine.Name = "spoofed"

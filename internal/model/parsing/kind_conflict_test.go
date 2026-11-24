@@ -40,7 +40,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			var earlierView workflows.BoundStep
 			var earlierReference sourcetext.Reference
 			bind := func(index int) {
-				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
+				snapshots[index], failures[index] = registry.Admit(captures[index], documents[index].Parsed)
 			}
 			if order == "concurrent" {
 				var workers sync.WaitGroup
@@ -79,7 +79,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {
-				if _, err := registry.Document(captured, document); err == nil {
+				if _, err := registry.Admit(captured, document.Parsed); err == nil {
 					t.Fatal("quarantined declaration was readmitted")
 				} else if conflict, ok := errors.AsType[capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
 					t.Fatalf("non-deterministic kind conflict: %v", err)
@@ -92,8 +92,8 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal("registry retained a live document after conflict")
 			}
 			if earlierView.Present() {
-				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
-					t.Fatal("quarantined view retained semantic ownership")
+				if _, ok := registry.Declaration(earlierReference); ok || registry.HasStep(earlierView) {
+					t.Fatal("registry still resolves the quarantined view")
 				}
 				if err := previous.ValidateStep(earlierView); err == nil {
 					t.Fatal("quarantined step reference remained available")

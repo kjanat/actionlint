@@ -10,8 +10,6 @@ import (
 
 type Mark struct{ Index, Line, Column int }
 
-// EncodeError reports a value the codec cannot represent. Its message is
-// fixed when the error is created.
 type EncodeError struct {
 	message string
 	cause   error
@@ -29,19 +27,15 @@ type LoadError struct {
 	cause   error
 }
 
-// NewLoadError creates a schema diagnostic located at mark. A zero mark
-// takes the position of the node it is later wrapped at.
+// NewLoadError with a zero mark takes the position of the node it is later wrapped at.
 func NewLoadError(message string, mark Mark) *LoadError {
 	return &LoadError{message: message, mark: mark}
 }
 
-// Message is the diagnostic without its position.
 func (e *LoadError) Message() string { return e.message }
 
-// Mark is the diagnostic's source position; zero when unknown.
 func (e *LoadError) Mark() Mark { return e.mark }
 
-// FatalLoadError distinguishes aborting loads from collected schema diagnostics.
 func FatalLoadError(err error) (*LoadError, bool) {
 	if admission, rejected := errors.AsType[*AdmissionError](err); rejected {
 		if loaded, ok := errors.AsType[*LoadError](admission); ok {
@@ -92,12 +86,10 @@ func (e *DecodeError) Unwrap() []error {
 	return result
 }
 
-// LoadDiagnostics preserves wrapper context, source marks and joined-cause order.
 func LoadDiagnostics(err error) []*LoadError {
 	return locateDecodeErrors(err, Mark{}).Errors
 }
 
-// FormatLoadError preserves native load context and renders collected diagnostics.
 func FormatLoadError(err error) string {
 	if err == nil {
 		return ""

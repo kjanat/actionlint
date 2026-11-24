@@ -27,10 +27,13 @@ test('summary reads bounded workspace context and keeps stale/external sources o
 			start: { line: 4, column: 6 },
 			end: { line: 4, column: 13 },
 		};
-		const diagnostics = [finding, { ...finding, path: '../../outside.yml' }, { ...finding, path: '../large.yml' }, {
-			...finding,
-			path: 'missing.yml',
-		}, { ...finding, snippet: 'stale' }];
+		const diagnostics = [
+			finding,
+			{ ...finding, path: '../../outside.yml' },
+			{ ...finding, path: '../large.yml' },
+			{ ...finding, path: 'missing.yml' },
+			{ ...finding, snippet: 'stale' },
+		];
 		if (process.platform !== 'win32') {
 			await symlink(join(root, 'outside.yml'), join(workspace, 'sub', 'escape.yml'));
 			diagnostics.push({ ...finding, path: 'escape.yml' });

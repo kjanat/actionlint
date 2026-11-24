@@ -15,7 +15,6 @@ temp_dir="$(mktemp -d)"
 trap 'popd && rm -rf $temp_dir' EXIT
 pushd "${temp_dir}"
 
-# Normal cases
 set -e
 
 check_latest_version() {
@@ -54,18 +53,15 @@ download() {
 	fi
 }
 
-# Latest release
 github_output="${temp_dir}/github-output"
 download latest
 check_latest_version "${executable}"
 rm -f "${executable}"
 
-# No arguments
 download
 check_latest_version "${executable}"
 rm -f "${executable}"
 
-# Specify only version
 download '1.8.0'
 out="$("${executable}" -version | head -n 1)"
 if [[ "${out}" != '1.8.0' ]]; then
@@ -74,13 +70,11 @@ if [[ "${out}" != '1.8.0' ]]; then
 fi
 rm -f "${executable}"
 
-# Specify only a download directory
 mkdir ./test1
 download latest ./test1
 check_latest_version "${executable}"
 rm -rf ./test1
 
-# Specify both version and a download directory
 mkdir ./test2
 download '1.8.0' ./test2
 out="$("${executable}" -version | head -n 1)"
@@ -90,7 +84,6 @@ if [[ "${out}" != '1.8.0' ]]; then
 fi
 rm -rf ./test2
 
-# Error cases
 set +e
 
 fails=0

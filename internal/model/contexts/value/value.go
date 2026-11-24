@@ -1,5 +1,4 @@
-// Package value owns immutable workflow semantic values without depending on
-// workflow syntax trees.
+// Package value defines immutable workflow semantic values.
 package value
 
 import (
@@ -29,7 +28,6 @@ const (
 	Invalid
 )
 
-// ValueKind is the JSON type of a context value. KindUnknown means the type is not known statically.
 type ValueKind uint8
 
 const (
@@ -138,10 +136,6 @@ func (v Value) ScalarString() (string, bool) {
 	return "", false
 }
 
-// StringAlternatives returns complete, bounded string results for a scalar or
-// its original template. Unsupported or ambiguous values stay unknown. Known
-// values are already evaluated data and are never parsed as templates again.
-// The returned slice belongs to the caller.
 func (v Value) StringAlternatives() ([]string, bool) {
 	if text, known := v.ScalarString(); known {
 		return []string{text}, true
@@ -152,10 +146,7 @@ func (v Value) StringAlternatives() ([]string, bool) {
 	return evaluate.TemplateStringAlternatives(v.Source())
 }
 
-// Spelling returns the source text a YAML literal scalar was written with,
-// such as "TRUE", "~", or "+1.2e2". Diagnostics quote it so users see their
-// own input rather than its normalized semantic value. Values not built from a
-// YAML scalar (evaluated, dynamic, or composite values) have no spelling.
+// Spelling returns the source text of a YAML literal scalar, such as "TRUE", "~", or "+1.2e2".
 func (v Value) Spelling() (string, bool) {
 	if v.p == nil || v.p.state != Literal {
 		return "", false
@@ -239,8 +230,6 @@ func (v Value) Source() string {
 	return v.p.source
 }
 
-// Err explains why an Invalid value could not be built and is nil for every
-// other state. Each call returns a fresh error carrying the stored message.
 func (v Value) Err() error {
 	if v.p == nil || v.p.state != Invalid {
 		return nil
@@ -255,8 +244,7 @@ func (v Value) Origin() Origin {
 	return v.p.origin
 }
 
-// Equal applies the workflow raw-YAML equality rule to known semantic values.
-// Unknown values never compare equal, even to another unknown value.
+// Equal never reports unknown values as equal, even to each other.
 func (v Value) Equal(other Value) bool {
 	if !v.Known() || !other.Known() || v.p.kind != other.p.kind {
 		return false
@@ -320,9 +308,6 @@ func YAMLScalar(text, tag string, origin Origin) Value {
 	return value
 }
 
-// DynamicValue constructs a runtime-dependent semantic value. source is the
-// original expression or template text when one exists; kind may be
-// KindUnknown when the runtime result shape is not known.
 func DynamicValue(source string, kind ValueKind, origin Origin) Value {
 	result := makeValue(Dynamic, kind, origin)
 	result.p.source = source

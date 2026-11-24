@@ -44,7 +44,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 	}
 }
 
-func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
+func TestMetadataCoercionReportsCoercionRule(t *testing.T) {
 	t.Parallel()
 	const expression = "${{ format('{0}', startsWith(true, 'TR')) }}"
 	for _, tc := range []struct{ name, source string }{
@@ -72,5 +72,36 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 				t.Fatalf("coercion problem lost its rule or source range: %+v", findings)
 			}
 		})
+	}
+}
+
+func TestFindingsShareManifestContent(t *testing.T) {
+	t.Parallel()
+	const source = "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}, {run: echo ok, shell: bash, continue-on-error: []}]}\n"
+	parsed, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := actioncheck.Standalone(parsed, actionmeta.NewReferencedFiles(nil))
+	var codes []string
+	for _, item := range findings {
+		codes = append(codes, item.Code)
+		if string(item.Source.Content) != source || &item.Source.Content[0] != &findings[0].Source.Content[0] {
+			t.Fatalf("finding does not share the manifest buffer: %+v", item)
+		}
+	}
+	slices.Sort(codes)
+	if !slices.Equal(codes, []string{"invalid-field-type", "missing-shell"}) {
+		t.Fatalf("fixture must report a step finding and a schema finding: %v", codes)
+	}
+	handBuilt := &actionmeta.Metadata{Name: "example", Description: "example", Runs: actionmeta.Runs{Using: "composite", Steps: []*actionmeta.CompositeStep{{}}}}
+	findings = actioncheck.Standalone(handBuilt, actionmeta.NewReferencedFiles(nil))
+	if len(findings) == 0 {
+		t.Fatal("hand-built fixture reported no step finding")
+	}
+	for _, item := range findings {
+		if item.Source.Content != nil {
+			t.Fatalf("hand-built metadata finding has content: %+v", item)
+		}
 	}
 }

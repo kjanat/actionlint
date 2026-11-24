@@ -76,7 +76,7 @@ func TestSelectedItemsShareAliasExpansionBudgetAndStopAfterFatal(t *testing.T) {
 			beforeFatal++
 		}
 		failures = append(failures, decodeErr)
-		return nil // Keep traversing so codec must enforce its sticky fatal state.
+		return nil
 	})
 	finished, isFatal := codec.FatalLoadError(err)
 	if !isFatal || firstFatal == nil || finished != firstFatal {
@@ -163,7 +163,7 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 
 	root, parseErr := codec.ParseYAML(data)
 	if parseErr != nil {
-		t.Fatalf("parse owned graph: %v", parseErr)
+		t.Fatalf("codec.ParseYAML: %v", parseErr)
 	}
 	items := mappingValue(root, "items")
 	anchor := mappingValue(root, "payload")
@@ -178,7 +178,6 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 		aliases = append(aliases, occurrence)
 	}
 
-	// Historical regression name retained for exact -run gates; implementation uses Select.
 	var completed [][]string
 	attempts := 0
 	err := selectAliasItems(root, func(item codec.Cursor) error {

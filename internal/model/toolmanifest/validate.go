@@ -18,14 +18,11 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// maxManifestBytes bounds a manifest before it is decoded.
 const maxManifestBytes = 1 << 20
 
 //go:embed manifest_schema.json
 var manifestSchemaJSON []byte
 
-// manifestSchema compiles the embedded schema once. A failure is a build
-// defect, reported by every Parse call and by the package tests.
 var manifestSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compileSchema("https://actionlint.kjanat.dev/schemas/tool-provider-manifest-1.json", manifestSchemaJSON)
 })
@@ -69,7 +66,6 @@ func ParsePluginManifest(data []byte) (Manifest, error) {
 	return manifest, nil
 }
 
-// validate checks what the schema cannot express.
 func validate(m Manifest) error {
 	if _, err := commands.New(m.InvocationDefinitions); err != nil {
 		return err
@@ -144,16 +140,11 @@ func validate(m Manifest) error {
 	return nil
 }
 
-// configPlaceholders maps each configuration placeholder to the rendering it
-// needs.
 var configPlaceholders = map[string]Render{
 	"{config:toml-file}": RenderTOMLFile,
 	"{config:json-file}": RenderJSONFile,
 }
 
-// validateRendering requires every configuration placeholder to match the
-// configuration rendering and a rendering that needs a placeholder or the
-// request on stdin to have it.
 func validateRendering(p *ProcessSpec) error {
 	used := map[Render]bool{}
 	for _, arg := range p.Args {
@@ -188,7 +179,6 @@ func validateRendering(p *ProcessSpec) error {
 	return nil
 }
 
-// validateLaunchers compiles every launcher expression.
 func validateLaunchers(args *UserArgs) error {
 	if args == nil {
 		return nil
@@ -224,7 +214,7 @@ func compileSchema(url string, data []byte) (*jsonschema.Schema, error) {
 	return compiler.Compile(url)
 }
 
-// bundledSchemaLoader refuses every external reference: schemas must bundle
+// bundledSchemaLoader refuses every external reference. Schemas must bundle
 // their definitions.
 type bundledSchemaLoader struct{}
 

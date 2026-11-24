@@ -19,7 +19,6 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		known  []string
 		errs   []string
 	}{
-		// Normal cases
 		{
 			what:   "retired macOS 14",
 			labels: []string{"macos-14"},
@@ -235,10 +234,6 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			what:   "ubuntu-24.04",
 			labels: []string{"ubuntu-24.04"},
 		},
-		// TODO: Add tests for 'include:'
-		// TODO: Check matrix with 'include:'
-
-		// Error cases
 		{
 			what:   "undefined label",
 			labels: []string{"linux-latest"},
@@ -383,7 +378,6 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			known:  []string{"INSTANCE_TYPE=["},
 			errs:   []string{`label pattern "INSTANCE_TYPE=[" is an invalid glob. kindly check list of labels in actionlint.yaml config file: syntax error in pattern`},
 		},
-		// TODO: Add error tests for 'include:'
 	}
 
 	for _, tc := range testCases {

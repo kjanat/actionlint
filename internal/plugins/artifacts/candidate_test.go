@@ -28,7 +28,6 @@ func (r *candidateTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("unexpected candidate network request")
 }
 
-// Rejected imports must leave both existing cache entries and absent entries alone.
 func TestCandidateImportPreservesCacheOnFailure(t *testing.T) {
 	t.Parallel()
 	data := module(`{"id":"candidate"}`)
@@ -88,7 +87,6 @@ func TestCandidateImportPreservesCacheOnFailure(t *testing.T) {
 	}
 }
 
-// Invalid import requests fail before consuming their source.
 func TestCandidateImportRejectsInvalidRequest(t *testing.T) {
 	t.Parallel()
 	input := candidateReader(func([]byte) (int, error) {
@@ -105,7 +103,6 @@ func TestCandidateImportRejectsInvalidRequest(t *testing.T) {
 	}
 }
 
-// Candidate execution uses only imported bytes and rechecks their digest.
 func TestCandidateCacheResolution(t *testing.T) {
 	t.Parallel()
 	transport := &candidateTransport{}

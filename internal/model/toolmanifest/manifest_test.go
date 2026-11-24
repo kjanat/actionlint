@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// minimal is the smallest valid process manifest; cases below patch it.
 const minimal = `{
   "schema_version": 1,
   "id": "example.invalid/providers/lint",

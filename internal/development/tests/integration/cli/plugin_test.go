@@ -25,8 +25,8 @@ import (
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 	t.Parallel()
 	acquisition := dependencycache.Acquisition{UserCacheDir: t.TempDir()}
-	// This module has an invalid code section. Static inspection succeeds, while
-	// compilation or execution would fail; inspection must never start a runtime.
+	// This module has an invalid code section. Static inspection succeeds, and
+	// compilation or execution would fail. Inspection must start no runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)
 	metadata := `{"id":"inspect-only","engine":{"name":"ruff"}}`
 	payload := append([]byte{byte(len(artifacts.MetadataSection))}, artifacts.MetadataSection...)
@@ -80,8 +80,6 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 
 func TestRealRemoteRuffArtifact(t *testing.T) {
 	t.Parallel()
-	// Opt in to the separately built Ruff artifact. CI unit tests above use
-	// checked-in engines; this test verifies the actual published ABI and section.
 	path := os.Getenv("ACTIONLINT_TEST_RUFF_WASM")
 	if path == "" {
 		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")

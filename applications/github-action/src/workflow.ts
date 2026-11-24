@@ -7,7 +7,7 @@ export const commandEscape = (value: string): string =>
 		.replaceAll('\r', '%0D')
 		.replaceAll('\n', '%0A');
 
-// Read the multiline file-command format written by the native Action.
+// Read the multiline file-command format of the native Action.
 export async function readOutputs(path: string): Promise<Record<string, string>> {
 	const lines = (await readFile(path, 'utf8')).split(/\r?\n/);
 	const values: Record<string, string> = {};

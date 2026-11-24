@@ -4,7 +4,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 )
 
-// ExpressionCallRule is the single definition of the expression-call rule.
 var ExpressionCallRule = &define.Rule{
 	ExecutionFailure: true,
 	Name:             "expression-call",

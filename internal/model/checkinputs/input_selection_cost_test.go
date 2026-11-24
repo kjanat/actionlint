@@ -23,7 +23,6 @@ func selectedGraphInput(tb testing.TB, count int) AnalyzerInput {
 	}
 }
 
-// This bounds allocations only; timing remains benchmark evidence.
 func TestSelectedInvocationValidationAllocationBound(t *testing.T) {
 	for _, count := range []int{1, 256, 10000} {
 		t.Run(strconv.Itoa(count), func(t *testing.T) {

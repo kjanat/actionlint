@@ -1,4 +1,4 @@
-// Package codec converts YAML sources and Go values through an owned syntax graph.
+// Package codec parses YAML into Node trees and encodes Go values as Node trees and YAML.
 package codec
 
 import (
@@ -21,11 +21,11 @@ func fromParser(root *upstream.Node, seen map[*upstream.Node]*Node) (*Node, erro
 		if old := seen[n]; old != nil {
 			return old, nil
 		}
-		kind, err := ownedKind(n.Kind)
+		kind, err := codecKind(n.Kind)
 		if err != nil {
 			return nil, err
 		}
-		style, err := ownedStyle(n.Style)
+		style, err := codecStyle(n.Style)
 		if err != nil {
 			return nil, err
 		}
@@ -112,8 +112,7 @@ func translate(err error) error {
 	return err
 }
 
-// ParseYAML reads the first YAML document into an owned syntax graph.
-// Empty input returns a non-nil zero-kind node; malformed YAML returns nil and its parse error.
+// ParseYAML returns a non-nil zero-kind node for empty input.
 func ParseYAML(data []byte) (*Node, error) {
 	var node upstream.Node
 	if err := upstream.Unmarshal(data, &node); err != nil {
@@ -125,9 +124,7 @@ func ParseYAML(data []byte) (*Node, error) {
 	return fromParser(&node, nil)
 }
 
-// FollowingDocument reports where a second YAML document starts. GitHub reads
-// a workflow as exactly one document. Malformed input reports none; Parse owns
-// that error.
+// FollowingDocument reports where a second YAML document starts, and GitHub reads a workflow as exactly one document.
 func FollowingDocument(data []byte) (Mark, bool) {
 	decoder := upstream.NewDecoder(bytes.NewReader(data))
 	var first, second upstream.Node

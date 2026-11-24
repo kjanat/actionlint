@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-// SourceKind distinguishes explicit empty file sets from repository discovery.
 type SourceKind uint8
 
 const (
@@ -18,14 +17,11 @@ const (
 	Prepared
 )
 
-// Request describes where sources come from. AllowEmptyRepository implements the
-// pre-commit convention; it still validates and records selected configuration.
 type Request struct {
 	Selection *workspace.FileSelection
 	Sources   []workspace.InputFile
 	Kind      SourceKind
-	// Paths selects files and directories relative to the process directory.
-	// The check working directory controls configuration and display paths instead.
+	// Paths are relative to the process directory.
 	Paths                []string
 	Directory            string
 	Reader               io.Reader
@@ -34,8 +30,6 @@ type Request struct {
 	AllowEmptyRepository bool
 }
 
-// FromFiles preserves literal-file intent after filesystem discovery, including
-// when a host partitions one search across independent repository plugin sets.
 func FromFiles(selection workspace.FileSelection) Request {
 	selection.Files = slices.Clone(selection.Files)
 	selection.Inputs = slices.Clone(selection.Inputs)

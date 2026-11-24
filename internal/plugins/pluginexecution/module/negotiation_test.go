@@ -20,7 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-// Build small guests directly so timeout tests need no external compiler.
 func negotiationFixture(t *testing.T, check, encoding, hang string, versions ...int) string {
 	t.Helper()
 	return negotiationFixtureWithShells(t, check, encoding, hang, nil, versions...)
@@ -157,7 +156,6 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	}
 }
 
-// runBody returns a run step whose body is text.
 func runBody(text string) *definition.ExecRun {
 	return &definition.ExecRun{Run: &definition.String{Value: text}}
 }

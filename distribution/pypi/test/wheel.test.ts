@@ -130,15 +130,18 @@ test('the CLI writes one wheel per platform tag and prints each path', async () 
 
 test('a wheel carries the launcher, the archived binary and licence, and its metadata', async () => {
 	const files = await readWheel('manylinux_2_17_x86_64');
-	assert.deepEqual([...files.keys()], [
-		'actionlint_kjanat/__init__.py',
-		'actionlint_kjanat/bin/actionlint',
-		`${info}/METADATA`,
-		`${info}/WHEEL`,
-		`${info}/entry_points.txt`,
-		`${info}/licenses/LICENSE.txt`,
-		`${info}/RECORD`,
-	]);
+	assert.deepEqual(
+		[...files.keys()],
+		[
+			'actionlint_kjanat/__init__.py',
+			'actionlint_kjanat/bin/actionlint',
+			`${info}/METADATA`,
+			`${info}/WHEEL`,
+			`${info}/entry_points.txt`,
+			`${info}/licenses/LICENSE.txt`,
+			`${info}/RECORD`,
+		],
+	);
 	assert.deepEqual(files.get('actionlint_kjanat/__init__.py'), launcher);
 	assert.equal(text(files, 'actionlint_kjanat/bin/actionlint'), stub);
 	assert.equal(text(files, `${info}/licenses/LICENSE.txt`), license);

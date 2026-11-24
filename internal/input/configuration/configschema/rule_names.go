@@ -8,8 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// RuleNameChoices projects declared names and aliases to individual JSON Schema
-// values. Deprecation annotates only the alias that declares it.
+// RuleNameChoices annotates deprecation only on the alias that declares it.
 func RuleNameChoices(descriptors []rule.Descriptor) []map[string]any {
 	var choices []map[string]any
 	for _, descriptor := range descriptors {

@@ -74,7 +74,7 @@ let nextMutation = 0;
 let rateLimitedUntil = 0;
 class RateLimitError extends Error {}
 
-/** Retry evidence reads only; dispatches and other mutations are never retried. */
+/** Retry evidence reads only, and run each mutation once. */
 export async function readWithRetry<T>(read: () => Promise<T>, wait = pause): Promise<T> {
 	for (let attempt = 0;; attempt++) {
 		try {
@@ -90,8 +90,7 @@ async function api(method: string, path: string, body?: unknown): Promise<Http> 
 	if (Date.now() < rateLimitedUntil) {
 		throw new RateLimitError('GitHub rate limit cooldown; collect/cleanup after it expires');
 	}
-	// Serial mutations stay below the general 80/minute secondary limit. A full
-	// corpus uses fewer than 500 mutations, including exact-ref cleanup.
+	// Serial mutations stay below the general 80/minute secondary limit.
 	if (method !== 'GET') {
 		await pause(Math.max(0, nextMutation - Date.now()));
 		nextMutation = Date.now() + 1100;
@@ -161,8 +160,8 @@ jobs:
             }
           }
           console.log('EXPR_PROBE_METADATA ' + JSON.stringify({ nonce: ${JSON.stringify(nonce)}, case: ${
-		JSON.stringify(probe.id)
-	}, node: process.version, os: process.env.RUNNER_OS, arch: process.env.RUNNER_ARCH, image: process.env.ImageOS, imageVersion: process.env.ImageVersion, raw, strictJson }));
+						JSON.stringify(probe.id)
+					}, node: process.version, os: process.env.RUNNER_OS, arch: process.env.RUNNER_ARCH, image: process.env.ImageOS, imageVersion: process.env.ImageVersion, raw, strictJson }));
           NODE
       - name: Evaluate expressions
         env:
@@ -173,8 +172,8 @@ ${env}
           const names = ${names};
           const values = Object.fromEntries(names.map((name, i) => [name, process.env['PROBE_' + i] ?? null]));
           console.log('EXPR_PROBE_RECORD ' + JSON.stringify({ nonce: ${JSON.stringify(nonce)}, case: ${
-		JSON.stringify(probe.id)
-	}, values }));
+						JSON.stringify(probe.id)
+					}, values }));
           NODE
 `;
 }
@@ -249,7 +248,7 @@ export function logRecord(log: string, marker: string, nonce: string, caseId: st
 			const record = jsonObject(line.slice(start + marker.length + 1));
 			if (record.nonce === nonce && record.case === caseId) matches.push(record);
 		} catch {
-			// Runner logs also echo script source, which is not a measurement.
+			// Runner logs also echo script source, which the measurement excludes.
 		}
 	}
 	if (matches.length > 1) throw new Error(`Ambiguous ${marker} records for ${caseId}`);
@@ -334,7 +333,6 @@ function digest(value: unknown, length: number): string {
 	return text;
 }
 
-/** Derive outcomes from captured dispatch evidence. */
 export function sessionForCollection(value: unknown, currentCorpusSha256: string): Session {
 	const saved = object(value);
 	const source = object(saved.source);
@@ -496,7 +494,6 @@ async function collect(session: Session, entry: Entry, output: string): Promise<
 	return true;
 }
 
-/** Drain every dispatched case even when a different case cannot be collected. */
 export async function collectPending(
 	session: Session,
 	output: string,
@@ -761,7 +758,7 @@ async function run(repository: string, output: string, selected: ProbeCase[]): P
 					? { ref: ref.slice('refs/heads/'.length), inputs: { value: probe.input.value } }
 					: { ref: ref.slice('refs/heads/'.length) };
 				await save(join(dir, 'dispatch-request.json'), request);
-				// Never retry a dispatch after an uncertain response: it may have run.
+				// Never retry a dispatch after an uncertain response. The dispatch may have run.
 				const dispatch = await api(
 					'POST',
 					`repos/${repository}/actions/workflows/${session.workflowId}/dispatches`,

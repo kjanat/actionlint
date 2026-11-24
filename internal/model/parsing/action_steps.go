@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-// actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
 func actionStep(metadata *actionmeta.CompositeStep, parser *parser.Parser) *definition.Step {
@@ -19,7 +18,6 @@ func actionStep(metadata *actionmeta.CompositeStep, parser *parser.Parser) *defi
 	if metadata.Run != nil && (metadata.Shell == nil || metadata.Uses != nil) {
 		return opaque
 	}
-	// Reuse the step decoder for scalar coercion and source mapping.
 	node, ok := cloneActionNode(metadata.Node, make(map[*codec.Node]bool), make(map[*codec.Node]*codec.Node))
 	if !ok {
 		return opaque

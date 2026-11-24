@@ -34,9 +34,7 @@ function fixture(
 	/** @type {Record<string, string>} */
 	const files = {
 		'go.mod': 'module test\n\ngo 1.26.0\n\ntoolchain go1.98.2\n',
-		'.mise.toml': '[tools]\ngo   = "1.98.2"\nnode = "26"\n',
 		'distribution/docker/Dockerfile': 'ARG GOLANG_VER=1.98.2\n# Keep other settings\n',
-		'CONTRIBUTING.md': 'docker build --build-arg GOLANG_VER=1.98.2 .\n',
 		'flake.nix': `inputs.nixpkgs.url = "github:NixOS/nixpkgs/${oldRevision}";\n# Keep other settings\n`,
 		'flake.lock': JSON.stringify({ nodes: { nixpkgs: { locked: { rev: oldRevision } } } }),
 	};
@@ -83,9 +81,7 @@ test('updates every toolchain surface after verifying all platform compilers', t
 	const f = fixture(t);
 	assert.equal(updateToolchain('go1.99.3', f), newRevision);
 	assert.match(readFileSync(join(f.root, 'go.mod'), 'utf8'), /go 1\.26\.0\n\ntoolchain go1\.99\.3/);
-	assert.equal(readFileSync(join(f.root, '.mise.toml'), 'utf8'), f.files['.mise.toml'].replace('1.98.2', '1.99.3'));
 	assert.match(readFileSync(join(f.root, 'distribution/docker/Dockerfile'), 'utf8'), /GOLANG_VER=1\.99\.3/);
-	assert.match(readFileSync(join(f.root, 'CONTRIBUTING.md'), 'utf8'), /GOLANG_VER=1\.99\.3/);
 	assert.equal(readFileSync(join(f.root, 'flake.nix'), 'utf8'), f.files['flake.nix'].replace(oldRevision, newRevision));
 	const evals = f.calls.filter(call => call[0] === 'nix' && call[1] === 'eval');
 	assert.equal(evals.length, 3);
@@ -126,8 +122,8 @@ for (
 ) {
 	test(`${name} restores every original file`, t => {
 		const f = fixture(t, options);
-		f.files['CONTRIBUTING.md'] += '\r\nKeep the contributor’s uncommitted notes.\r\n';
-		writeFileSync(join(f.root, 'CONTRIBUTING.md'), f.files['CONTRIBUTING.md']);
+		f.files['distribution/docker/Dockerfile'] += '\r\n# Keep the contributor’s uncommitted notes.\r\n';
+		writeFileSync(join(f.root, 'distribution/docker/Dockerfile'), f.files['distribution/docker/Dockerfile']);
 		assert.throws(() => updateToolchain('go1.99.3', f), message);
 		assert.ok(f.calls.some(call => call[0] === 'nix' && call[2] === 'lock'));
 		for (const [path, before] of Object.entries(f.files)) {
@@ -135,22 +131,6 @@ for (
 		}
 	});
 }
-
-test('mise matches the repository Go pin and Node release family with Bun enabled', () => {
-	const config = readFileSync(new URL('../../.mise.toml', import.meta.url), 'utf8');
-	const idiomatic = config.match(/^idiomatic_version_file_enable_tools\s*=\s*\[([^\]]*)\]/m)?.[1];
-	assert.ok(idiomatic, 'mise must enable idiomatic version files');
-	for (const tool of ['go', 'node', 'bun']) assert.ok(idiomatic.includes(`"${tool}"`), `mise must enable ${tool}`);
-	const tools = config.split('[tools]\n')[1].split('\n[')[0];
-	const go = readFileSync(new URL('../../go.mod', import.meta.url), 'utf8').match(/^toolchain go(\d+\.\d+\.\d+)$/m)
-		?.[1];
-	assert.ok(go, 'go.mod must declare the preferred toolchain');
-	assert.equal(tools.match(/^go\s*=\s*"(\d+\.\d+\.\d+)"$/m)?.[1], go, 'mise must use the preferred Go toolchain');
-	const node = readFileSync(new URL('../../.node-version', import.meta.url), 'utf8').trim().replace(/^v/, '');
-	const prefix = tools.match(/^node\s*=\s*"(\d+(?:\.\d+)*)"$/m)?.[1];
-	assert.ok(prefix, 'mise must declare its Node release family');
-	assert.ok(node === prefix || node.startsWith(`${prefix}.`), `mise Node ${prefix} excludes ${node}`);
-});
 
 test('a partial replacement write restores all files', t => {
 	const f = fixture(t);
@@ -185,7 +165,7 @@ test('incomplete rollback identifies every failed restoration and keeps restorin
 		assert.match(error.errors[2].message, /Could not restore flake.nix: write denied/);
 		return true;
 	});
-	for (const name of ['go.mod', '.mise.toml', 'CONTRIBUTING.md', 'flake.lock']) {
+	for (const name of ['go.mod', 'flake.lock']) {
 		assert.deepEqual(readFileSync(join(f.root, name)), Buffer.from(f.files[name]));
 	}
 });
@@ -229,17 +209,4 @@ test('invalid target rejects before external commands or file writes', t => {
 	const f = fixture(t);
 	assert.throws(() => updateToolchain('latest', f), /Invalid Go toolchain/);
 	assert.deepEqual(f.calls, []);
-});
-
-test('upkeep publishes all synchronized files and validates before creating the PR', () => {
-	const workflow = readFileSync(new URL('../../.github/workflows/upkeep.yml', import.meta.url), 'utf8');
-	const job = workflow.split('  go-toolchain:\n')[1].split('  shellcheck:\n')[0];
-	assert.match(job, /node tools\/toolchain\/update-go-toolchain\.mjs "\$\{version\}"/);
-	assert.match(
-		job,
-		/add-paths: \|\n\s+go\.mod\n\s+\.mise\.toml\n\s+distribution\/docker\/Dockerfile\n\s+CONTRIBUTING\.md\n\s+flake\.nix\n\s+flake\.lock/,
-	);
-	assert.ok(
-		job.indexOf('node tools/toolchain/update-go-toolchain.mjs') < job.indexOf('peter-evans/create-pull-request'),
-	);
 });

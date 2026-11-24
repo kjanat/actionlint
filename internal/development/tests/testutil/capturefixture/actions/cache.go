@@ -13,8 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 )
 
-// NewCache uses one source-capture store for metadata lookups and closes it when the test ends.
-// Without a supplied reader, lookups use the native filesystem reader.
 func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Reader) *localactions.ManifestCache {
 	tb.Helper()
 	reader := files.New(tb.Context(), nil, nil)

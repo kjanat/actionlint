@@ -6,7 +6,6 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// LiteralShellWord decodes shell words containing no expansions or substitutions.
 func LiteralShellWord(parts []syntax.WordPart) (string, bool) {
 	var out strings.Builder
 	for _, part := range parts {

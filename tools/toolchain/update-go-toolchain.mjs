@@ -66,9 +66,7 @@ export function updateToolchain(version, { root = process.cwd(), run, write = wr
 	// Validate every replacement before touching the repository.
 	const replacements = (/** @type {[string, RegExp, string][]} */ ([
 		['go.mod', /^toolchain go\d+\.\d+\.\d+$/m, `toolchain ${version}`],
-		['.mise.toml', /^go(\s*=\s*)"\d+\.\d+\.\d+"$/m, `go$1"${expected}"`],
 		['distribution/docker/Dockerfile', /^ARG GOLANG_VER=\d+\.\d+\.\d+$/m, `ARG GOLANG_VER=${expected}`],
-		['CONTRIBUTING.md', /--build-arg GOLANG_VER=\d+\.\d+\.\d+/g, `--build-arg GOLANG_VER=${expected}`],
 		[
 			'flake.nix',
 			/inputs\.nixpkgs\.url = "github:NixOS\/nixpkgs\/[^"]+";/,

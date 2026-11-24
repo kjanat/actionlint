@@ -5,7 +5,6 @@ import (
 	"strconv"
 )
 
-// ID is a hosting platform's numeric repository ID, which a lookup may not know.
 type ID struct {
 	value uint64
 	known bool

@@ -8,27 +8,17 @@ import (
 	"strings"
 )
 
-// ModuleLocation is a parsed WebAssembly module or tool provider package
-// location that is not an oci:// reference: a filesystem path, or a file,
-// http, https or sha256 URI. Parsing reads no files and makes no requests.
 type ModuleLocation struct {
-	// Endpoint is the URI without its fragment. It is nil for a filesystem
-	// path.
+	// Endpoint is the URI without its fragment, or nil for a filesystem path.
 	Endpoint *url.URL
-	// Local is the filesystem path the location names. It is empty for an
-	// http, https or sha256 URI.
+	// Local is empty for an http, https or sha256 URI.
 	Local string
-	// Pin is the lowercase hex SHA256 digest the location pins with
-	// #sha256=<hex>, or the digest a sha256 URI names. It is empty when the
-	// location pins nothing.
+	// Pin is the lowercase hex SHA256 digest from #sha256=<hex> or a sha256 URI.
 	Pin string
 }
 
-// ParseModuleLocation parses source as a filesystem path or a file, http,
-// https or sha256 URI. Only explicit :// locations are URIs, so drive paths
-// and colons in ordinary filenames stay paths on every host. It refuses
-// credentials in URIs, malformed digest pins and other schemes, including
-// oci.
+// ParseModuleLocation treats only explicit :// locations as URIs. It refuses
+// credentials in URIs, malformed digest pins and other schemes, including oci.
 func ParseModuleLocation(source string) (ModuleLocation, error) {
 	if !strings.Contains(source, "://") {
 		if source == "" {
@@ -83,9 +73,8 @@ func ParseModuleLocation(source string) (ModuleLocation, error) {
 	}
 }
 
-// File returns the local file the location names. A relative filesystem
-// path is rooted in directory and a filesystem path is cleaned; a file URI's
-// path is returned as parsed. File returns "" for a remote location.
+// File roots a relative filesystem path in directory and returns "" for a
+// remote location.
 func (l ModuleLocation) File(directory string) string {
 	if l.Endpoint != nil {
 		return l.Local

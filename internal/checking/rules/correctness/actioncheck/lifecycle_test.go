@@ -29,7 +29,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 	}
 	context := actionmeta.LifecycleContext{AsOf: date, Service: service}
 	caller := &sourcetext.Position{Line: 8, Column: 11}
-	exec := ownedActionFixture(&definition.ExecAction{Uses: &definition.String{Value: "example/script@v1", Pos: caller}})
+	exec := boundActionFixture(&definition.ExecAction{Uses: &definition.String{Value: "example/script@v1", Pos: caller}})
 	for _, tc := range []struct {
 		name     string
 		findings []*finding.Finding

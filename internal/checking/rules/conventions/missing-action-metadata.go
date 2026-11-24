@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// MissingActionMetadataRule is the single definition of the missing-action-metadata rule.
 var MissingActionMetadataRule = &define.Rule{
 	Name:        "missing-action-metadata",
 	Aliases:     []rule.Alias{{Name: "require-action-metadata", Deprecated: true}},
@@ -20,7 +19,7 @@ var MissingActionMetadataRule = &define.Rule{
 	Subcategory: "dependencies",
 	LegacyGroup: "policy",
 	Policy:      "require-action-metadata",
-	Explanation: "Report remote action metadata that could not be inspected. Disabled downloads and offline cache misses are recorded in coverage without a lint finding.",
+	Explanation: "Report remote actions whose metadata could not be inspected.",
 	Help:        "Check access to the referenced repository and its action.yml or action.yaml.",
 	Checks:      func(c define.RuleInputs) define.Checks { return MissingActionMetadataChecks(c.RemoteActions) },
 	Enabled: func(c define.RuleInputs) bool {
@@ -28,8 +27,6 @@ var MissingActionMetadataRule = &define.Rule{
 	},
 }
 
-// MissingActionMetadataChecks reads acquisition outcomes prepared by the host.
-// It does not start provider requests or depend on preceding step callbacks.
 func MissingActionMetadataChecks(remote *remote.ResolvedActions) define.Checks {
 	return define.Checks{Step: func(step workflows.BoundStep) []reporting.StepFinding {
 		return missingActionMetadata(step, remote)

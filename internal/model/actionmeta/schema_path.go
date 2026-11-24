@@ -12,8 +12,7 @@ type schemaPathSegment struct {
 	loose   bool
 }
 
-// schemaPath is an immutable sequence of mapping keys and sequence indexes.
-// Its zero value names the document root.
+// The zero schemaPath names the document root.
 type schemaPath struct{ segments []schemaPathSegment }
 
 func (p schemaPath) append(s schemaPathSegment) schemaPath {
@@ -23,20 +22,16 @@ func (p schemaPath) append(s schemaPathSegment) schemaPath {
 	return schemaPath{segments}
 }
 
-// Key appends a declared schema property.
 func (p schemaPath) Key(key string) schemaPath { return p.append(schemaPathSegment{key: key}) }
 
-// LooseKey adds a user-defined mapping key, represented by a schema wildcard.
 func (p schemaPath) LooseKey(key string) schemaPath {
 	return p.append(schemaPathSegment{key: key, loose: true})
 }
 
-// Index adds a sequence element, represented by a schema wildcard.
 func (p schemaPath) Index(index int) schemaPath {
 	return p.append(schemaPathSegment{index: index, isIndex: true})
 }
 
-// Schema renders the case-insensitive lookup key used by availability tables.
 func (p schemaPath) Schema() string {
 	var b strings.Builder
 	for i, s := range p.segments {
@@ -52,7 +47,6 @@ func (p schemaPath) Schema() string {
 	return b.String()
 }
 
-// Display renders a concrete path with quoted keys and terminal-safe escapes.
 func (p schemaPath) Display() string {
 	var b strings.Builder
 	for i, s := range p.segments {

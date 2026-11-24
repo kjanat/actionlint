@@ -29,9 +29,9 @@ func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {
 	}
 }
 
-// The canonical ABI checks only alignment and bounds on a realloc result, so a
-// null pointer is valid for a zero-size request, which TinyGo's cabi_realloc
-// returns. wacogo accepts it since partite-ai/wacogo#12 (partite-ai/wacogo#11).
+// The canonical ABI checks only alignment and bounds on a realloc result. A
+// null pointer is valid for a zero-size request, and TinyGo's cabi_realloc
+// returns it. wacogo accepts the null pointer since partite-ai/wacogo#12 (partite-ai/wacogo#11).
 func TestRuntimeAcceptsNullReallocForZeroSize(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "null-realloc.wasm"))

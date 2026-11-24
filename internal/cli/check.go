@@ -214,7 +214,6 @@ func writeCheckBuildIdentity(log io.Writer, c checkInvocation, r renderOptions) 
 	}
 }
 
-// checkAnalysisError carries collected findings to the existing failure report.
 type checkAnalysisError struct {
 	result *report.Analysis
 	err    error

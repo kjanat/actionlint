@@ -112,8 +112,6 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 			}
 			options := checking.Options{WorkingDir: workspace.Directory(), SkipProjectConfig: true, Tools: registry.Registrations(selections)}
 			options.ReadFile = (hostFilesystem{ctx: ctx, workspace: workspace, platform: platform}).ReadFile
-			// The browser selects no plugins; assembly still composes the
-			// bundled tools as it does for the native entry points.
 			session, err := assembly.Open(ctx, options, pluginselection.Sources{})
 			if err != nil {
 				return lsp.Analysis{}, err

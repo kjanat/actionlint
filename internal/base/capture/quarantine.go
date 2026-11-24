@@ -5,10 +5,7 @@ import (
 	"strings"
 )
 
-// Quarantine makes contradictory consumer evidence a sticky document conflict.
-// It performs no IO and retains the private bytes unchanged. Consumers supply a
-// deterministic reason; declaration or other domain policy stays outside Store.
-// A sealed table cannot be changed by late consumer evidence.
+// Quarantine performs no IO, and late consumer evidence cannot change a sealed table.
 func (s *Store) Quarantine(snapshot CapturedDocument, reason string) error {
 	if strings.TrimSpace(reason) == "" {
 		return errors.New("source quarantine requires a reason")

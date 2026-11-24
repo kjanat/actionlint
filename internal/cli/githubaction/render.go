@@ -41,10 +41,8 @@ func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, 
 	case formatMarkdown:
 		template = actionMarkdown
 	case formatGitHub:
-		// Only annotation serialization uses workspace-relative paths.
 		return actionAnnotations(workspaceReportAnalysis(analysis, workingDir, workspaceDir)), nil
 	case formatJSON, formatJSONLines, formatSARIF:
-		// Structured formats are serialized without templates.
 		fallthrough
 	default:
 		return "", fmt.Errorf("format %q has no compatibility renderer", format)
@@ -60,8 +58,6 @@ func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, 
 	return rendered.String(), nil
 }
 
-// actionAnnotations writes one workflow command per finding. The title names
-// the rule and code; the body appends the source excerpt to the message.
 func actionAnnotations(analysis *report.Analysis) string {
 	var annotations strings.Builder
 	for _, finding := range analysis.Diagnostics {

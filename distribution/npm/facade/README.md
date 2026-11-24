@@ -1,12 +1,8 @@
 # @kjanat/actionlint
 
 [![NPM Version](https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black)](https://npm.im/@kjanat/actionlint)
-[![pkg.pr.new](https://pkg.pr.new/badge/kjanat/actionlint)](https://pkg.pr.new/~/kjanat/actionlint)
 
-Check GitHub Actions workflows, action manifests and embedded scripts with
-[`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of
-[rhysd/actionlint](https://github.com/rhysd/actionlint). This package installs the
-`actionlint` command without requiring Go.
+This package installs the `actionlint` command of [`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of [rhysd/actionlint](https://github.com/rhysd/actionlint).
 
 ## Install
 
@@ -14,7 +10,7 @@ Check GitHub Actions workflows, action manifests and embedded scripts with
 npm install --save-dev @kjanat/actionlint
 ```
 
-Or run it without adding it to the project:
+Or run it once:
 
 ```sh
 npx @kjanat/actionlint
@@ -22,58 +18,19 @@ npx @kjanat/actionlint
 
 ## Usage
 
-Run this command from your Git repository to check its workflows and actions:
+Check your repository:
 
 ```sh
 npx actionlint check
 ```
 
-As a package script:
-
-```json
-{
-  "scripts": {
-    "lint:workflows": "actionlint check"
-  }
-}
-```
-
-`actionlint` exits `0` when checks finish without findings, `1` when they report
-problems, `2` for a usage error and `3` when checking cannot complete. CI can use
-these exit codes to fail a check.
-
-See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) for the full command line,
-and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md) for what it looks for.
-
-If your system has the `man` command, read the included manual with:
+See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md). Read the manual:
 
 ```sh
 man ./node_modules/@kjanat/actionlint/man/actionlint.1
 ```
 
 ### Pre-commit hooks
-
-With [Husky](https://typicode.github.io/husky/get-started.html), check the whole repository before each commit:
-
-```sh
-npm install --save-dev husky
-npx husky init
-```
-
-Set `.husky/pre-commit` to:
-
-```sh
-npm run lint:workflows
-```
-
-This uses the package script above and checks working-tree files, including unstaged changes.
-
-To check only staged workflows and action manifests, install
-[lint-staged](https://github.com/lint-staged/lint-staged):
-
-```sh
-npm install --save-dev lint-staged
-```
 
 Add to `package.json`:
 
@@ -86,39 +43,17 @@ Add to `package.json`:
 }
 ```
 
-Replace `.husky/pre-commit` with:
-
-```sh
-npx lint-staged
-```
-
-This does not recheck every workflow that calls a changed action. Run the full check in CI too.
-
-### Configuration schema
-
-Use the npm package's schema through jsDelivr:
-
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint@2/actionlint.schema.json
-```
-
-Match the installed major version (`@1` or `@2`), pin a release (`@1.17.0`), or omit the version to follow the latest release.
+Run the full check in CI too.
 
 ### Shell and Python checks
-
-For a new project, install the default ShellCheck and Ruff plugins:
 
 ```sh
 npx actionlint config init
 ```
 
-These plugins check scripts in workflow steps without requiring native ShellCheck,
-Ruff or Python executables. For an existing configuration, follow the
-[configuration migration guide](https://github.com/kjanat/actionlint/blob/master/docs/config-migration.md).
+For an existing configuration, follow the [configuration migration guide](https://github.com/kjanat/actionlint/blob/master/docs/config-migration.md).
 
 ## Preview builds
-
-Run the latest preview from `master` without installing it in your project:
 
 ```sh
 npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@master check
@@ -128,13 +63,9 @@ npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<commit-sha>' check
 npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<branch-name>' check
 ```
 
-You can also replace `master` with a pull request number.
-
-Previews support macOS, Linux and Windows on x64 and ARM64.
+A pull request number also works. Previews support macOS, Linux and Windows on x64 and ARM64.
 
 ## Supported platforms
-
-Your package manager installs the binary for your operating system and CPU:
 
 | Operating system | CPU architectures                       |
 | ---------------- | --------------------------------------- |
@@ -143,38 +74,20 @@ Your package manager installs the binary for your operating system and CPU:
 | Windows          | x64, ARM64, 32-bit x86                  |
 | FreeBSD          | x64, 32-bit x86                         |
 
-Linux builds support both glibc and musl, including Alpine Linux.
+Linux builds support glibc and musl.
 
-## Troubleshooting
-
-### If the binary is not found
-
-The launcher fails with an explanation, but the usual cause is a package manager that skipped optional dependencies.
-Reinstall without `--no-optional` or `--omit=optional`.
+If the binary is not found, reinstall without `--no-optional` or `--omit=optional`.
 
 ## JSON output
-
-To read findings from another program:
 
 ```sh
 npx actionlint check --json
 ```
 
-TypeScript types are included:
+The package includes TypeScript types:
 
 ```typescript
 import type { CheckResult, DiagnosticRecord } from '@kjanat/actionlint/result';
 ```
 
-`CheckResult` describes JSON output; `DiagnosticRecord` describes one JSONL record.
-For runtime validation, use `@kjanat/actionlint/result.schema.json`.
-See the [output fields](https://github.com/kjanat/actionlint/blob/master/docs/results.md).
-
-## Other ways to install
-
-Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all covered in
-[the installation documentation](https://github.com/kjanat/actionlint/blob/master/docs/install.md).
-
-## License
-
-MIT. See [LICENSE.txt](./LICENSE.txt).
+Validate at run time with `@kjanat/actionlint/result.schema.json`. See the [output fields](https://github.com/kjanat/actionlint/blob/master/docs/results.md).

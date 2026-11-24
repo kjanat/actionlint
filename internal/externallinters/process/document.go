@@ -28,10 +28,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// DocumentRequest is what a document process tool receives: only captured
-// document data and explicitly requested facts. Positions in dependencies use
-// the captured document's YAML coordinates. Directory names the analysis
-// root; it carries no filesystem handle.
+// DocumentRequest positions in dependencies use the captured document's YAML coordinates.
 type DocumentRequest struct {
 	Source       string             `json:"source"`
 	Filename     string             `json:"filename"`
@@ -41,8 +38,7 @@ type DocumentRequest struct {
 	Dependencies []facts.Dependency `json:"dependencies,omitempty"`
 }
 
-// DocumentAnalyzer runs the same process transport against captured documents.
-// It never admits a finding or edit in a different, uncaptured file.
+// DocumentAnalyzer never admits a finding or edit in an uncaptured file.
 type DocumentAnalyzer struct {
 	backend    *Backend
 	descriptor checkinputs.Descriptor
@@ -121,7 +117,7 @@ func (d *DocumentAnalyzer) AnalyzeDocument(ctx context.Context, input checkinput
 	result, err := d.backend.run(ctx, transport, nil, &request)
 	if d.directory {
 		if freshness := currentDocument(ctx, input); freshness != nil {
-			return nil, errors.Join(owned(ctx, err), freshness)
+			return nil, errors.Join(detachError(ctx, err), freshness)
 		}
 	}
 	findings := make([]results.Diagnostic, 0, len(result.Diagnostics))
@@ -133,10 +129,10 @@ func (d *DocumentAnalyzer) AnalyzeDocument(ctx context.Context, input checkinput
 		}
 		findings = append(findings, finding)
 	}
-	return findings, owned(ctx, err)
+	return findings, detachError(ctx, err)
 }
 
-// A directory-capable process can read the file instead of stdin. Refuse stale
+// A directory-capable process can read the file and ignore stdin. Refuse stale
 // disk content before running it and before binding its output to this capture.
 func currentDocument(ctx context.Context, input checkinputs.AnalyzerInput) (err error) {
 	path := input.Revision.Document()
@@ -155,8 +151,6 @@ func currentDocument(ctx context.Context, input checkinputs.AnalyzerInput) (err 
 	return nil
 }
 
-// documentFindings filters repository-wide results before snippet review, which
-// then validates and normalizes only the current document's diagnostics.
 func documentFindings(findings []scriptengine.Diagnostic, request scriptengine.Request, directory string) []scriptengine.Diagnostic {
 	selected := make([]scriptengine.Diagnostic, 0, len(findings))
 	for _, finding := range findings {

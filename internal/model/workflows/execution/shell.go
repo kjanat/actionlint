@@ -50,7 +50,6 @@ func executableShellText(candidate value.Value) (string, bool) {
 	return text, true
 }
 
-// DefaultShell projects the shell property from a canonical defaults.run value.
 func DefaultShell(semantic value.Value) value.Value {
 	if semantic.State() == value.Missing {
 		return value.Value{}

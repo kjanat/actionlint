@@ -28,7 +28,6 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 	}
 	args := os.Args[index+2:]
 	if args[0] == "--version" {
-		// The bundled Ruff provider checks the minimum version first.
 		fmt.Print("ruff 0.17.0\n")
 		os.Exit(0)
 	}

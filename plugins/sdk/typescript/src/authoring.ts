@@ -20,11 +20,7 @@ import type {
 import { isRuleCategory } from '#index';
 
 /**
- * Compile an authored TypeScript definition into its distributable JSON manifest.
- * jq files resolve beside the definition and are embedded unchanged. Callback
- * bundling uses tsdown; no wrapped linter is executed and no package files change.
- * The trusted definition and its imports execute through jiti in ESM or CommonJS
- * projects, without retaining previous module values or writing a source cache.
+ * jq files resolve beside the definition. Compilation executes the trusted definition and its imports.
  * Validate the result with validateManifest before distributing it.
  *
  * @example

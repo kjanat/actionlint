@@ -4,13 +4,12 @@ import "regexp"
 
 var deprecatedCommandPattern = regexp.MustCompile(`(?:::(save-state|set-output|set-env)\s+name=[a-zA-Z][a-zA-Z_-]*::\S+|::(add-path)::\S+)`)
 
-// DeprecatedCommandFinding identifies the command name by a half-open byte range in script text.
+// DeprecatedCommandFinding names the command by a half-open byte range in script text.
 type DeprecatedCommandFinding struct {
 	Start, End           int
 	Command, Replacement string
 }
 
-// DeprecatedCommands finds deprecatedCommandPattern workflow commands in script text.
 func DeprecatedCommands(script string) []DeprecatedCommandFinding {
 	matches := deprecatedCommandPattern.FindAllStringSubmatchIndex(script, -1)
 	findings := make([]DeprecatedCommandFinding, 0, len(matches))

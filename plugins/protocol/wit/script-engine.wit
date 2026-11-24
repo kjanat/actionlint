@@ -1,7 +1,8 @@
 package kjanat:actionlint@0.2.0;
 
-/// A snippet engine. The host owns shell selection, expression masking, source
-/// mapping, suppression and scheduling. No document or filesystem access is implied.
+/// A snippet engine. The host selects the shell, masks expressions, maps source
+/// positions, applies suppressions and schedules calls. No document or filesystem
+/// access is implied.
 interface script-engine {
     /// One-based Unicode scalar coordinates; range ends are exclusive.
     record position {

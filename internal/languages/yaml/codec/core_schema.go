@@ -8,14 +8,12 @@ import (
 	"strings"
 )
 
-// The integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
+// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L474-L717
 var (
 	reCoreSchemaInt   = regexp.MustCompile(`^(?:[0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
 	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 )
 
-// IsCoreSchemaBool recognizes the YAML 1.2 core boolean production.
-// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L474-L717
 func IsCoreSchemaBool(s string) bool {
 	switch s {
 	case "true", "True", "TRUE", "false", "False", "FALSE":
@@ -44,9 +42,6 @@ func IsCoreSchemaFloat(s string) bool {
 	return reCoreSchemaFloat.MatchString(s)
 }
 
-// IsCoreSchemaNumber recognizes core integer and float productions.
-// The YAML library resolves a plain scalar more permissively than the core schema, and the runner
-// matches it against the integer production first and the float production second.
 func IsCoreSchemaNumber(s string) bool {
 	return IsCoreSchemaInt(s) || IsCoreSchemaFloat(s)
 }
@@ -54,10 +49,7 @@ func IsCoreSchemaNumber(s string) bool {
 func IsCoreSchemaDecimal(s string) bool { return reCoreSchemaFloat.MatchString(s) }
 
 // CoreSchemaNumber converts a core integer or float scalar to the number the
-// runner reads from it. Infinities and NaN keep their YAML meaning, and 0x and
-// 0o integers pass through the runner's signed 32-bit representation. It
-// reports false for text outside those productions and for decimals beyond
-// the float64 range.
+// runner reads from it.
 func CoreSchemaNumber(s string) (float64, bool) {
 	if !IsCoreSchemaNumber(s) {
 		return 0, false
@@ -79,8 +71,8 @@ func CoreSchemaNumber(s string) (float64, bool) {
 }
 
 // CoreSchemaRadixInt converts a 0x hexadecimal or 0o octal core integer the
-// way the runner does: through an unsigned 32-bit value read as a signed
-// two's-complement integer, so 0xffffffff is -1. Values wider than 32 bits are
+// way the runner does. The runner reads an unsigned 32-bit value as a signed
+// two's-complement integer, and 0xffffffff is -1. Values wider than 32 bits are
 // errors.
 func CoreSchemaRadixInt(s string) (int, error) {
 	base := 0
@@ -97,8 +89,6 @@ func CoreSchemaRadixInt(s string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	// Decode the two's-complement representation without narrowing an
-	// unsigned value into a signed type. Both branches fit a 32-bit int.
 	if n <= math.MaxInt32 {
 		return int(n), nil
 	}

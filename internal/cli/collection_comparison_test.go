@@ -87,8 +87,6 @@ func TestCollectionComparisonSeverity(t *testing.T) {
 
 func TestCollectionComparisonAcceptsAutofixWorkflow(t *testing.T) {
 	t.Parallel()
-	// actionlint f03a587da066c821a400d81e5990662b36754dae uses null checks
-	// to choose how fixes are published for stacked pull requests.
 	const path = ".github/workflows/autofix.yml"
 	source, err := os.ReadFile(path)
 	if err != nil {

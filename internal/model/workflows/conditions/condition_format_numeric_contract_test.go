@@ -34,7 +34,7 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 	}
 }
 
-// TestFormatCompositeReference checks these values against Runny at runner
+// TestConstantFormatCompositeArguments checks against Runny at runner
 // 1ba885c2065fd9be317808ab3fd406f392635cf7 in the expression package.
 func TestConstantFormatCompositeArguments(t *testing.T) {
 	t.Parallel()

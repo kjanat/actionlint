@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
-// DiagnosticOrigin distinguishes selected project files from imported remote dependencies.
 type DiagnosticOrigin string
 
 const (
@@ -15,7 +14,6 @@ const (
 	DependencyOrigin DiagnosticOrigin = "dependency"
 )
 
-// Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
 	Origin DiagnosticOrigin `json:"origin,omitempty"`
 	// NonBlocking findings remain visible but do not make the check exit with status 1.
@@ -28,8 +26,7 @@ type Diagnostic struct {
 	Lifecycle        *LifecycleReport      `json:"lifecycle,omitempty"`
 
 	Rule string `json:"rule"`
-	// Code identifies a diagnostic kind within Rule, for native and external checks.
-	// Severity records its effective level. Empty values mean metadata was not supplied.
+	// Empty Code and Severity values mean metadata was not supplied.
 	Code     string              `json:"code,omitempty"`
 	Severity severity.Severity   `json:"severity,omitempty"`
 	Message  string              `json:"message"`
@@ -40,7 +37,6 @@ type Diagnostic struct {
 	Fixes    []Fix               `json:"fixes,omitempty"`
 }
 
-// LifecycleReport describes the lifecycle event and the policies that matched it.
 type LifecycleReport struct {
 	Subject     string                  `json:"subject"`
 	Name        string                  `json:"name"`
@@ -52,7 +48,6 @@ type LifecycleReport struct {
 	Policies    []LifecyclePolicyReport `json:"policies"`
 }
 
-// LifecyclePolicyReport describes a policy that matched a lifecycle event.
 type LifecyclePolicyReport struct {
 	ID          string            `json:"id"`
 	Description string            `json:"description"`
@@ -62,9 +57,9 @@ type LifecyclePolicyReport struct {
 	Enforced    bool              `json:"enforced"`
 }
 
-// Fix is one complete suggested change. Apply all edits together.
+// Fix edits must be applied together.
 type Fix struct {
-	// Applicability belongs to this alternative, not its rule. Missing values require review.
+	// Missing values require review.
 	Applicability applicability.Applicability `json:"applicability,omitempty"`
 	// Revisions bind edits to the source snapshots the analyzer checked.
 	Revisions map[string]string `json:"revisions,omitempty"`
@@ -81,7 +76,6 @@ type Edit struct {
 	Replacement string              `json:"replacement"`
 }
 
-// Related identifies another declaration relevant to a finding.
 type Related struct {
 	Revision    sourcetext.Revision    `json:"revision,omitzero"`
 	Coordinates sourcetext.Coordinates `json:"coordinates,omitempty"`

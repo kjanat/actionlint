@@ -15,9 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// CheckProjects discovers inputs once, then loads each repository's plugins in
-// its own analysis session. Reports share output destinations, never runtimes or
-// configuration. Explicit --config/--plugin selections still apply to every batch.
+// CheckProjects applies explicit --config and --plugin selections to every repository batch.
 func CheckProjects(ctx context.Context, options checking.Options, input checkrequest.Request, selection pluginselection.PluginSelection) (*report.Analysis, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

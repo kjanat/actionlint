@@ -8,10 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/applicability"
 )
 
-// wireDiagnostic is the JSON form of Diagnostic. Core JSON engines, native
-// process engines and plugin authoring fixtures spell positions as
-// {"row", "column"} and replacements as row/end_row/column/end_column, so
-// those names exist only here.
 type wireDiagnostic struct {
 	Filename       string         `json:"filename"`
 	Code           string         `json:"code"`

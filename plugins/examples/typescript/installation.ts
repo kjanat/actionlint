@@ -18,7 +18,6 @@ jobs:
           echo example${'  '}
 `;
 
-/** Prepare an isolated project for the registry's candidate and delivery checks. */
 export async function prepare({ directory }: Pick<Context, 'directory'>): Promise<void> {
 	await mkdir(join(directory, '.github'), { recursive: true });
 	await writeFile(join(directory, '.github', 'actionlint.yaml'), 'tools:\n  ruff: false\n  shellcheck: false\n');
@@ -30,7 +29,6 @@ function object(value: unknown): Record<string, unknown> {
 	return Object.fromEntries(Object.entries(value));
 }
 
-/** Verify execution, source mapping and a correction through the installed plugin. */
 export async function verify({ directory, run }: Context): Promise<{ checks: string[]; probe: string[] }> {
 	const probe = ['check', '--json', 'workflow.yml'];
 	const result = object(JSON.parse(await run(probe, 1)));

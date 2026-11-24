@@ -290,10 +290,10 @@ test('reference report groups inputs and errors by stable case anchors without l
 		group: 'from-json',
 		mode: 'runner',
 		input: { type: 'string', value: '<a>|`&\n' },
-		checks: [{ name: 'value', expression: 'fromJSON(inputs.value)' }, {
-			name: 'n',
-			expression: 'fromJSON(inputs.value).n',
-		}],
+		checks: [
+			{ name: 'value', expression: 'fromJSON(inputs.value)' },
+			{ name: 'n', expression: 'fromJSON(inputs.value).n' },
+		],
 	};
 	payload.outcome = {
 		...literal.outcome,

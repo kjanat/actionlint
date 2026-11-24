@@ -290,8 +290,6 @@ func runShellCheck(t *testing.T, bin string, check func() ([]byte, error)) ([]by
 	return out, err
 }
 
-// checkerCrashed reports whether a syntax checker was killed by a signal
-// instead of exiting with a status of its own.
 func checkerCrashed(err error) bool {
 	exit, ok := errors.AsType[*exec.ExitError](err)
 	return ok && !exit.Exited()

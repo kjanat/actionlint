@@ -8,7 +8,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -338,7 +337,7 @@ func TestCompositeForksShareCapturedSourcesEvenWhenEffectsAreSkipped(t *testing.
 	if !cached || bad.Status() != MetadataParseFailed || bad.Err() == nil {
 		t.Fatalf("fork parse failure was not shared through cache: status=%v cached=%t error=%v", bad.Status(), cached, bad.Err())
 	}
-	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Provenance() == (parsing.Provenance{}) {
+	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Parsed() == nil {
 		t.Fatal("failed metadata lost its captured parse record")
 	}
 	separate := NewResolver(cache, nil)

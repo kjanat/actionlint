@@ -23,8 +23,6 @@ func OrdinalIgnoreCaseKey(s string) string {
 	}, s)
 }
 
-// JSONMemberCollisions finds case-insensitive duplicate keys in the first value
-// read by fromJSON. Invalid input is diagnosed by the shared reader instead.
 func JSONMemberCollisions(source string) []MemberCollision {
 	_, collisions, err := Read(source)
 	if err != nil && !errors.Is(err, ErrUnsupportedValue) {

@@ -12,16 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// Provenance is the parse origin of decoded metadata: the exact text Parse
-// decoded and a lazily built index from decoded scalars back to that text.
-// It owns its snapshot, so edits to a Metadata's exported fields never change
-// what its provenance reports. Copies share one index. The zero value marks
-// metadata without source provenance, such as catalog or JSON metadata.
-type Provenance struct{ parsed *parsedSource }
-
-// parsedSource is shared by every copy of a Provenance. The text is immutable;
-// the index is built from it on first lookup.
-type parsedSource struct {
+type manifest struct {
 	text    string
 	mu      sync.Mutex
 	indexed bool
@@ -29,28 +20,10 @@ type parsedSource struct {
 	parser  *parser.Parser
 }
 
-func newProvenance(text string) Provenance {
-	return Provenance{parsed: &parsedSource{text: text}}
-}
-
-// Text returns the exact source decoded by Parse; ok is false without provenance.
-func (p Provenance) Text() (text string, ok bool) {
-	if p.parsed == nil {
-		return "", false
-	}
-	return p.parsed.text, true
-}
-
-// source maps a decoded value to its original scalar. It returns nil without
-// provenance or when no scalar at the value's position decodes to its text.
-func (p Provenance) source(value *ExprString) *definition.ScriptSource {
-	if p.parsed == nil {
+func (s *manifest) scriptSource(value *ExprString) *definition.ScriptSource {
+	if s == nil {
 		return nil
 	}
-	return p.parsed.source(value)
-}
-
-func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.indexed {
@@ -64,9 +37,7 @@ func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 	return s.parser.ScriptSource(scalar)
 }
 
-// index reparses the owned text rather than reading Metadata.Root, which
-// callers may edit after Parse.
-func (s *parsedSource) index() {
+func (s *manifest) index() {
 	s.indexed = true
 	s.scalars = make(map[sourcetext.Position]*codec.Node)
 	root, err := codec.ParseYAML([]byte(s.text))
@@ -94,14 +65,13 @@ func (s *parsedSource) index() {
 	visit(root)
 }
 
-// ExpressionPosition maps a decoded expression offset to its YAML source position.
-// If the offset cannot be mapped, it returns the start of the value.
+// ExpressionPosition returns the start of the value when the offset cannot be mapped.
 func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *sourcetext.Position {
 	fallback := new(value.Position)
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}
-	source := meta.Provenance.source(value)
+	source := meta.manifest.scriptSource(value)
 	prefix := value.Value[:offset-1]
 	line := strings.Count(prefix, "\n") + 1
 	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1

@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// AmbiguousPathError identifies multiple filesystem entries matching one runner path.
 type AmbiguousPathError string
 
 func (e AmbiguousPathError) Error() string {

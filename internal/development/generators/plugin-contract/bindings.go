@@ -14,8 +14,6 @@ import (
 	"mvdan.cc/gofumpt/format"
 )
 
-// Stage the WIT generator output so only .gen.go files
-// reach the bindings tree, including after subsequent regeneration.
 func generateBindings(ctx context.Context) error {
 	temporary, err := os.MkdirTemp("", "actionlint-wit-bindings-")
 	if err != nil {

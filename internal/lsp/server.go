@@ -23,9 +23,7 @@ type incoming struct {
 	err     error
 }
 
-// Serve uses full or ranged document updates, cancels superseded analyses, and
-// republishes all open dependants after changes. Analyze must honor cancellation.
-// When input is closable, Serve closes it on exit to interrupt a pending read.
+// Serve requires Analyze to honor cancellation and closes a closable input on exit.
 func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, completions ...Complete) error {
 	options := Options{Analyze: analyze}
 	if len(completions) > 0 {
@@ -34,9 +32,8 @@ func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, co
 	return ServeWithOptions(ctx, in, out, options)
 }
 
-// Options supplies analysis and document addressing for a language-server host.
-// Nil URI converters use local file URIs. Initialize runs before any document
-// request, so a host can configure its virtual workspace from client parameters.
+// Options with nil URI converters use local file URIs. Initialize runs before
+// any document request.
 type Options struct {
 	Discover    func(context.Context, []string, bool) ([]string, error)
 	Analyze     Analyze
@@ -46,7 +43,6 @@ type Options struct {
 	URIFromPath func(string) string
 }
 
-// ServeWithOptions runs the same protocol handlers for local and virtual workspaces.
 func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options Options) error {
 	analyze := options.Analyze
 	if analyze == nil {
@@ -150,7 +146,6 @@ serve:
 				continue
 			}
 			latest = map[string][]results.Diagnostic{}
-			// Editor metadata supplies URI/version; captured text supplies ranges.
 			sources := make(map[string]Document, len(analysis.Sources))
 			for path, captured := range analysis.Sources {
 				if !captured.valid() {

@@ -1,7 +1,7 @@
 import type { Environment } from '#runtime';
 
-// Normalize before adding overrides: Windows treats every environment key alike,
-// but plain JavaScript objects and Node's duplicate-key selection do not.
+// Normalize before adding overrides. Windows treats every environment key alike.
+// Plain JavaScript objects and Node's duplicate-key selection treat keys differently.
 export function normalizeEnvironment(
 	environment: NodeJS.ProcessEnv,
 	platform: NodeJS.Platform = process.platform,

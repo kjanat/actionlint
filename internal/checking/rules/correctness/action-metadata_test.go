@@ -147,8 +147,6 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	// The missing description is positioned at each caller; the composite step
-	// without a shell is positioned in the metadata and carries an ignore origin.
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := actions.NewCache(t, root, nil)
 	rule := NewRuleAction(t.Context(), InvalidActionReferenceRule.Base(), cache, nil)
@@ -177,8 +175,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	if described != 3 || originated != 3 {
 		t.Fatalf("description findings=%d origin findings=%d", described, originated)
 	}
-	// Annotation is the only write path into recorded findings; it must not
-	// reach the cached templates the next visit replays.
+	// Annotation must not reach the cached templates the next visit replays.
 	rule.AnnotateSince(0, func(finding *finding.Finding) {
 		finding.Message = "mutated caller"
 		if finding.IgnoreOrigin != nil {

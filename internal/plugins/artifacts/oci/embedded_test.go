@@ -11,8 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// The package embeds both its platform manifest and primary layer. A registry
-// serves only the root; correct consumers need no separate child downloads.
 func TestEmbeddedOCIManifestsAndPrimaryLayers(t *testing.T) {
 	t.Parallel()
 	for _, cache := range []bool{false, true} {

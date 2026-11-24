@@ -8,8 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// WriteJSON writes the complete result, or one versioned diagnostic per line.
-// JSONL is a findings stream; completion and failure status belong to the result document.
+// WriteJSON emits findings only in JSONL mode.
 func WriteJSON(out io.Writer, r report.CheckResult, lines bool) error {
 	enc := json.NewEncoder(out)
 	if !lines {

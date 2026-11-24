@@ -62,7 +62,6 @@ function snapshotFixture(t) {
 
 test('workflow extracts both Docker binaries after checking their exact archive digests', t => {
 	const fixture = snapshotFixture(t);
-	// SBOMs and other snapshot artifacts need not be downloaded for this consumer.
 	writeFileSync(fixture.checksums, `${fixture.complete}${'0'.repeat(64)}  absent.sbom.json\n`);
 	const result = fixture.extract();
 	assert.equal(result.status, 0, result.stderr);

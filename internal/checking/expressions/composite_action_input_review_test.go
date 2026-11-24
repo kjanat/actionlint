@@ -16,7 +16,7 @@ func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 		t.Fatal(errors)
 	}
 	rule := newTestChecker()
-	view := ownedWorkflowFixture(workflow)
+	view := boundWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
 	rule.BeginComposite(workflows.ActionBody{})
 	rule.Error(&sourcetext.Position{Line: 1, Column: 1}, "existing finding")

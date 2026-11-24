@@ -78,7 +78,6 @@ jobs:
 permissions: {}
 `
 
-// testRunCommand disables summaries for diagnostic transcript tests.
 func testRunCommand(input string, args ...string) commandTranscript {
 	return testRunCommandDefaults(input, append([]string{"--summary=false"}, args...)...)
 }

@@ -1,5 +1,4 @@
-// Package integrationconfig validates integration settings and runs their declared
-// transformation before a process or component receives them.
+// Package integrationconfig validates integration settings and runs their declared transformation.
 package integrationconfig
 
 import (
@@ -18,15 +17,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-// ReadAccess identifies configured directories. The host separately checks that
-// each requested directory is inside the workspace before opening it.
+// ReadAccess directories still need the host's workspace check before opening.
 type ReadAccess struct {
 	Enabled     *bool    `json:"enabled,omitempty"`
 	Directories []string `json:"directories,omitempty"`
 }
 
-// ResolvedSettings contains the tool options, generated comments and read-access
-// requests returned by an integration.
 type ResolvedSettings struct {
 	Options    json.RawMessage `json:"options"`
 	Prefix     string          `json:"source_prefix,omitempty"`
@@ -34,9 +30,6 @@ type ResolvedSettings struct {
 	ReadAccess ReadAccess      `json:"read_access"`
 }
 
-// SettingsResolver validates integration settings against the manifest's
-// schema, expands its configuration paths and runs its
-// configuration_transform program.
 type SettingsResolver struct {
 	schema  *toolsettings.Schema
 	paths   []string
@@ -71,9 +64,7 @@ func New(m toolmanifest.Manifest, programs toolmanifest.Programs) (*SettingsReso
 	return t, nil
 }
 
-// Resolve validates settings and expands the path options declared in the
-// manifest. The configuration_transform program receives config and
-// config_file.
+// Resolve passes config and config_file to the configuration_transform program.
 func (t *SettingsResolver) Resolve(ctx context.Context, inline json.RawMessage, file string, expand func(string) (string, error)) (ResolvedSettings, error) {
 	if err := ctx.Err(); err != nil {
 		return ResolvedSettings{}, err
@@ -123,8 +114,6 @@ func (t *SettingsResolver) Resolve(ctx context.Context, inline json.RawMessage, 
 	return settings, nil
 }
 
-// expandOption follows a JSON pointer into validated options. An absent optional
-// property needs no expansion; each selected value must be a string or array.
 func expandOption(value any, pointer string, expand func(string) (string, error)) error {
 	parts := slices.Collect(jsontext.Pointer(pointer).Tokens())
 	for position, token := range parts {

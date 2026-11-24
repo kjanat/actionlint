@@ -12,8 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-// declaration holds the inputs to pluginreference.New so a test case can change one
-// of them before the Reference is built.
 type declaration struct{ name, version, registry string }
 
 func TestResolvedRegistryOverride(t *testing.T) {

@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-// The index leaves out providers whose embedded manifest is invalid instead
-// of panicking, so this test is what keeps such a defect from shipping.
 func TestBundledToolProvidersLoad(t *testing.T) {
 	t.Parallel()
 	if err := BundledToolProvidersError(); err != nil {
@@ -18,8 +16,6 @@ func TestBundledToolProvidersLoad(t *testing.T) {
 	}
 }
 
-// Configuration indexes the validated bundled manifests; each entry keeps
-// its manifest's scope, config files, schema and shorthands.
 func TestToolProvidersMatchManifests(t *testing.T) {
 	t.Parallel()
 	manifests, err := toolmanifest.Bundled()

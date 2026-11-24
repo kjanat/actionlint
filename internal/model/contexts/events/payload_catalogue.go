@@ -25,12 +25,10 @@ type PayloadShape struct {
 	Alternatives []int                      `json:"alternatives"`
 	Literal      string                     `json:"literal"`
 	Required     []string                   `json:"required"`
-	// AdditionalProperties records the explicit source policy; empty means the
-	// schema default (allowed), independently of the Actions lookup projection.
+	// An empty AdditionalProperties means the schema default, which allows them.
 	AdditionalProperties string `json:"additionalProperties"`
 }
 
-// PayloadProvenance records the input actually used to generate these observations.
 type PayloadProvenance struct {
 	Package string `json:"package"`
 	Version string `json:"version"`
@@ -52,15 +50,12 @@ var data = sync.OnceValue(func() catalogue {
 	return c
 })
 
-// PayloadVariants returns an isolated event/action index. Names are upstream names;
-// Actions aliases belong to the workflow adapter.
+// PayloadVariants takes webhook event names, and callers map pull_request_target to pull_request.
 func PayloadVariants(event string) (map[string]int, bool) {
 	variants, ok := data().Events[event]
 	return maps.Clone(variants), ok
 }
 
-// PayloadNode returns an isolated observation, preserving optionality, descriptions and
-// literal values. Consumers decide how to interpret those observations.
 func PayloadNode(id int) PayloadShape {
 	n := data().Nodes[id]
 	n.Properties = maps.Clone(n.Properties)
@@ -72,5 +67,4 @@ func PayloadNode(id int) PayloadShape {
 	return n
 }
 
-// PayloadSource reports catalogue provenance independently of dependency constraints.
 func PayloadSource() PayloadProvenance { return data().Source }

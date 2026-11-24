@@ -40,7 +40,6 @@ function ruleNameChoice(value) {
 	assert.ok(description === undefined || typeof description === 'string', 'Expected a rule description');
 	return { const: name, deprecated, description };
 }
-// An optional snapshot lets the same editor checks compare generated revisions.
 if (process.argv[2]) schemas.set(schemaKey(schemaURI), await readFile(process.argv[2], 'utf8'));
 const service = getLanguageService({
 	workspaceContext: {
@@ -120,7 +119,7 @@ for (const override of [false, true]) {
 				'lint:\n  rules:\n    conventions:\n      forbidden-suppression:\n        level: on\n        options:\n          rules:\n            - ',
 		})
 	) {
-		if (override && selector === 'ignore') continue; // Ignores are declared at the root.
+		if (override && selector === 'ignore') continue;
 		const text = override
 			? `overrides:\n  - includes: ["**"]\n${entry.split('\n').map(line => `    ${line}`).join('\n')}`
 			: entry;
@@ -201,7 +200,6 @@ console.log(
 	'YAML language service: safe selector completions, engine-independent targets, and wrapper validation passed',
 );
 
-// Cursor markers exercise the original quoted-key and quoted-value editor cases.
 for (
 	const [text, expected] of [
 		['lint:\n  rules:\n    "s|": on\n', 'security'],

@@ -19,10 +19,10 @@ func start(node *codec.Node) sourcetext.Position {
 	return sourcetext.Position{Line: node.Line, Column: node.Column}
 }
 
-// Index records concrete YAML job and step ranges, without following aliases.
+// Index records concrete YAML job and step ranges without following aliases.
 type Index []context
 
-// Contexts indexes the first YAML document. Invalid YAML has no structural scopes.
+// Contexts indexes the first YAML document and returns no scopes for invalid YAML.
 func Contexts(source []byte, resolve func(string) *string) Index {
 	document, err := codec.ParseYAML(source)
 	if err != nil || len(document.Content) == 0 {
@@ -120,8 +120,7 @@ func (index Index) Match(line, column int, job, step, uses string) bool {
 		contains := !pos.IsBefore(location.first) && pos.IsBefore(location.end)
 		if column == 0 {
 			contains = location.first.Line <= line && (line < location.end.Line || line == location.end.Line && location.end.Column > 1)
-			// A sourced finding records the invoking line but no column. Do not
-			// choose between distinct flow-style constructs on that same line.
+			// A sourced finding records the invoking line but no column.
 			for _, other := range index {
 				if other.first.Line > line || other.end.Line < line || other.end.Line == line && location.first.Line == line && location.startsLine {
 					continue

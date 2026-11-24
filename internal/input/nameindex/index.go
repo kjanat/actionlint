@@ -26,8 +26,6 @@ type Index struct {
 	cache map[string]func() (names.Inventory, error)
 }
 
-// NewIndex inventories workflow names under each root through reader, adding
-// the source paths, which may exist only in memory. load reads one workflow's name.
 func NewIndex(paths []string, reader *files.Reader, load func(string) (names.Declared, error)) *Index {
 	return &Index{load: load, reader: reader, paths: slices.Clone(paths)}
 }

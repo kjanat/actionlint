@@ -6,8 +6,7 @@ import (
 	"sync"
 )
 
-// Scope joins resources created for one analysis, including on early failures.
-// Register before Finish. Every join runs even if an earlier join fails.
+// Scope runs every join even if an earlier join fails. Register before Finish.
 // Concurrent Finish calls wait for the same completion and return the same error.
 type Scope struct {
 	mu    sync.Mutex

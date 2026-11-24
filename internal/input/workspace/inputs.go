@@ -10,9 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// InputFiles collects the absolute paths and remote addresses of the files an
-// analysis reads, such as configuration files and local WebAssembly modules.
-// It is safe for concurrent use.
+// InputFiles is safe for concurrent use.
 type InputFiles struct {
 	mu    sync.Mutex
 	paths map[string]struct{}

@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// RunnerLabelRule is the single definition of the runner-label rule.
 var RunnerLabelRule = &define.Rule{
 	Name:         "runner-label",
 	Description:  "Report unknown or incompatible runner labels",
@@ -28,8 +27,6 @@ var RunnerLabelRule = &define.Rule{
 	},
 }
 
-// RunnerLabelChecks reports prepared runner rejections. Without prepared knowledge,
-// it checks labels against the supplied repository label set.
 func RunnerLabelChecks(knownRunners *runners.Knowledge, labels runners.LabelSet) define.Checks {
 	return define.Checks{
 		Job: func(job workflows.BoundJob) []reporting.StepFinding {

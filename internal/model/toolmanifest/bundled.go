@@ -7,10 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 )
 
-// Bundled returns every provider shipped inside actionlint in directory order.
-// Each manifest's rule name must equal its directory and each transform
-// digest must name a bundled program. The embedded data is decoded once per
-// process; each call returns copies the caller owns.
+// Bundled returns copies that belong to the caller, in directory order.
 func Bundled() ([]Manifest, error) {
 	decoded, err := bundled()
 	if err != nil {

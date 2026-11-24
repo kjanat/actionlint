@@ -13,7 +13,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// referenceFinding sets every reference field of a finding.
 func referenceFinding() *Finding {
 	return &Finding{
 		Reference: &sourcetext.Reference{Document: "doc", Node: "node"},
@@ -28,7 +27,7 @@ func referenceFinding() *Finding {
 		Source:            results.DiagnosticSource{Content: []byte("source"), Suppression: &results.SuppressionOrigin{Path: "target", Lines: sourcetext.LineRange{First: 1, Last: 2}}},
 		SuppressionOrigin: &results.SuppressionOrigin{Path: "path"},
 		IgnoreOrigin:      &workflows.IgnoreOrigin{StepPosition: &sourcetext.Position{Line: 3}, Job: "job"},
-		Owner:             &Owner{Job: "job", Step: &sourcetext.Position{Line: 4}},
+		Site:              &Site{Job: "job", Step: &sourcetext.Position{Line: 4}},
 		MetadataIdentity:  &MetadataIdentity{Visit: 5},
 	}
 }
@@ -51,7 +50,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 	clone.SuppressionOrigin.Path = "changed"
 	clone.Source.Suppression.Path = "changed"
 	clone.IgnoreOrigin.StepPosition.Line = 99
-	clone.Owner.Step.Line = 99
+	clone.Site.Step.Line = 99
 	clone.MetadataIdentity.Visit = 99
 	if diff := cmp.Diff(want, original, cloneComparison); diff != "" {
 		t.Fatalf("annotating the clone changed the original:\n%s", diff)

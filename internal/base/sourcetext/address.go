@@ -12,11 +12,10 @@ func RemoteAddress(address string) bool {
 	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.RawQuery == "" && u.Fragment == ""
 }
 
-// FileURI converts an absolute local path to a file URI, following
-// https://www.rfc-editor.org/rfc/rfc8089. On Windows, drive paths become
-// file:///C:/... and UNC paths become file://host/share/..., including their
-// \\?\ spellings. It returns "" for a path no file URI names: a relative
-// path, or a Windows device path such as \\.\NUL.
+// FileURI follows https://www.rfc-editor.org/rfc/rfc8089. On Windows, drive
+// paths become file:///C:/... and UNC paths become file://host/share/...,
+// including their \\?\ spellings. It returns "" for a relative path or a
+// Windows device path such as \\.\NUL.
 func FileURI(path string) string {
 	path = filepath.ToSlash(path)
 	u := url.URL{Scheme: "file"}

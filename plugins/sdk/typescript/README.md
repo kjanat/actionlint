@@ -1,13 +1,6 @@
 # @kjanat-actionlint/plugin-sdk
 
-Use this SDK to write actionlint providers in TypeScript. Its root export defines
-provider types and constructors, validates JSON values and diagnostics, converts
-columns, and runs callbacks against serialized requests. These functions work in
-web runtimes without accessing files, processes, stdin or stdout. Separate
-subpaths provide authoring tools, fixture tests, the CLI, subprocess execution,
-SARIF decoding, YAML helpers and stdio handling.
-
-The SDK is not published to npm yet. In this repository, examples use the root Bun workspace. For local use outside the workspace, build and pack the SDK, then install that tarball in the author package:
+The SDK is unpublished. Outside this repository's Bun workspace, build and pack it:
 
 ```sh
 bun install
@@ -16,103 +9,20 @@ cd plugins/sdk/typescript
 bun pm pack --filename plugin-sdk-0.1.0.tgz
 ```
 
-Copy the resulting tarball into the author package and run `bun add --dev file:./plugin-sdk-0.1.0.tgz`. A normal registry version range is not installable until publication. Pull requests also run the repository's `pkg-pr-new` package preview workflow; use the preview links it reports after that workflow completes.
+Copy the tarball into the author package and run `bun add --dev file:./plugin-sdk-0.1.0.tgz`. Each pull request's `pkg-pr-new` report also links a preview package.
 
-For `validate`, `test`, and `pack`, use a matching actionlint CLI. The CI release-snapshot job uploads native archives and SHA-256 checksums as `actionlint-cli-preview`. Find the CI run for the SDK preview's commit, then download its CLI archives:
+`validate`, `test` and `pack` need a matching actionlint CLI. Download the `actionlint-cli-preview` archives from the CI run for the preview's commit. They expire after seven days.
 
 ```sh
 gh run list --repo kjanat/actionlint --workflow ci.yml --commit <preview-commit>
 gh run download <run-id> --repo kjanat/actionlint --name actionlint-cli-preview --dir actionlint-host
 ```
 
-Extract the archive for your operating system and CPU, then set `ACTIONLINT` to the extracted executable or pass `--actionlint` to the SDK CLI. The preview artifacts are available for seven days. To build actionlint from a source checkout, run `go build -o actionlint ./cmd/actionlint`.
-
-## Public exports and runtimes
-
-The package exports ESM JavaScript and TypeScript declarations at `.`, `/stdio`, `/authoring`, `/testing`, `/config`, `/files`, `/process`, `/sarif`, and `/images`. Bun is used for development and builds; tsdown produces the distributable files.
-
-The root export has no Node imports or globals. `executeScriptCheck` and `executeDocumentCheck` use `TextEncoder` for UTF-8 byte limits, so callbacks and protocol validation can run in a browser bundle or another web runtime. That does not make the entire SDK or its CLI web-compatible: `/stdio`, `/authoring`, `/testing`, `/process`, and `/files` use native runtime facilities. `/images` and `/sarif` have their own package dependencies and should be bundled only where those dependencies are supported.
-
-Callback providers are packaged as native programs that communicate through
-stdin and stdout. Their `runtime` defaults to `node`; choose `bun` or `deno`
-explicitly to use either. The SDK places `runtimeArgs` before the generated
-program filename and inserts `deno run` automatically.
-
-The bundler resolves dependencies with `bundle: { platform: 'neutral' }` by
-default, independently of the selected runtime. Set
-`bundle: { platform: 'node' }` when dependencies need Node/CommonJS resolution.
-Choosing `browser` changes dependency resolution but still produces a process
-manifest that expects native stdin and stdout. The current web host cannot run
-that artifact unchanged. Choose a runtime and dependencies available on the
-host that will run the provider. Bundling does not install Node, Bun, Deno or
-native scanner executables.
-
-## Interpreter and wrapper validation
-
-Add `invocationDefinitions` to a provider to describe the command used in a
-workflow's `shell:` field. These definitions register option validation; they do
-not install an interpreter or execute the command. The `shell-name` rule reports
-invalid options and declared option warnings. Script preparation uses the same
-option model for its startup settings.
-
-For example, a Python plugin can publish its argument grammar, and a wrapper
-plugin can delegate to that grammar:
-
-```ts
-// In the Python provider:
-invocationDefinitions: [{
- id: 'python-plugin/python',
- executables: ['python', 'python3'],
- language: 'python',
- options: [{ short: 'u' }],
- unknown_options: true,
-}],
-
-// In a separate wrapper provider:
-invocationDefinitions: [{
- id: 'wrapper-plugin/python',
- executables: ['actions-shell', 'actions-shells'],
- prefix: ['python'],
- delegate: 'python-plugin/python',
-}],
-```
-
-Both plugins must be loaded for delegation to work. A missing definition or an
-option outside an explicitly incomplete grammar produces an unknown result;
-this does not prove that the invocation is valid. `unknown_options: true` suits
-partial grammars such as the Python example above. Omit it only when the listed
-options cover the interpreter's complete argument grammar.
-
-Use `extends` to borrow another definition's options and language while adding
-or replacing options. An option can set `warning: 'Explain the consequence here.'`
-to report a warning when it occurs. An unregistered command does not imply Bash.
-
-The compiled process manifest carries these definitions in
-`invocation_definitions`. A document-analysis WebAssembly component can declare
-the same field in its `actionlint.plugin` metadata section. Definition IDs must
-be unique across loaded plugins and built-in interpreters. Conflicting command
-selectors produce an unknown result instead of selecting a plugin by load order.
-
-## Build and test
-
-From the repository root:
-
-```sh
-bun install
-bun run --filter @kjanat-actionlint/plugin-sdk build
-bun run --filter @kjanat-actionlint/plugin-sdk typecheck
-bun run --filter @kjanat-actionlint/plugin-sdk test
-```
-
-The SDK test script builds `cmd/actionlint` once, then runs Bun tests against SDK
-source. It removes the executable and its temporary directory when the tests finish.
-Set `ACTIONLINT` to an existing actionlint executable to skip the Go build. Running
-`bun test` directly does not build actionlint; for authoring integration tests, set
-`ACTIONLINT` to an executable with `plugin validate/test` support.
+Set `ACTIONLINT` to the extracted executable or pass `--actionlint`. From a source checkout, run `go build -o actionlint ./cmd/actionlint`.
 
 ## Author a process provider
 
-A process provider wraps an installed tool whose captured output can be decoded. The source and JSON output below show a small complete definition; `output.jq` maps the tool's recorded JSON into actionlint diagnostics.
+A process provider wraps an installed tool:
 
 ```ts
 // actionlint.plugin.ts
@@ -147,10 +57,9 @@ export default defineProcessProvider({
 });
 ```
 
-Host-provided values such as the virtual filename and exit status are available in jq as `$vars.filename` and `$vars.exit_code`; read them through `$vars`.
+The jq program reads the virtual filename and exit status from `$vars.filename` and `$vars.exit_code`.
 
 ```jq
-# output.jq: input is the scanner's JSON array; filename is supplied by actionlint.
 map({
   filename: $vars.filename,
   code: .rule,
@@ -160,23 +69,11 @@ map({
 })
 ```
 
-`entry` names a host-installed executable. `args` are separate tokens without shell interpolation. `stdin: 'request'` sends JSON containing captured `source`, `filename`, and transformed `config`; `stdin: 'source'` sends only source text. `config.render` supports `none`, `json-stdin`, `json-file`, `toml-file`, and `toml-pairs`; `forbidden` rejects selected dotted config keys after transformation. A jq config transform typically returns `{config, vars}`. Output formats are `script-diagnostics@1`, `json`, `text`, and `sarif@2.1.0`. Arbitrary JSON uses an output jq transform; SARIF and tool JSON can declare coordinate rows, columns, and exclusive/inclusive ends when they differ from the default.
+The manifest also accepts `env`, `env_unset`, `exit_codes`, `concurrency` and a `versionProbe`. `env_passthrough` copies named host variables, such as `PATH` or `PSModulePath`. The SDK does not sandbox native processes. A repository config that selects one requires `actionlint --allow-config-processes`.
 
-Script requests also carry `environment`: one record per possible OS, with scoped
-names and separate comparisons for runner merging and shell lookup. No values
-or secrets are included. Windows runner merging ignores case; Bash lookup does
-not. `unknown_names` marks unresolved declarations. A name missing from the list
-could still come from the runner or an earlier command through `GITHUB_ENV`.
+`configurationTransform` converts user settings after actionlint validates them against `configSchema`. Its jq program receives `{config, config_file}` and returns `{options, source_prefix?, language?, read_access?}`. List path options as JSON pointers in `configurationPaths` to expand configuration variables in them.
 
-The process manifest can also declare fixed `env`, removed `env_unset`, accepted `exit_codes`, serial `concurrency`, and a `versionProbe` with literal arguments and one captured version group. `env_passthrough` selects host environment names; it does not install tools. Declare only what the command needs (for example PATH, or `PSModulePath` for PowerShell modules). Native processes are not sandboxed by this SDK. Repository-selected native processes require `actionlint --allow-config-processes`; explicit invocation uses `--plugin`.
-
-Use `configurationTransform` to convert user settings before execution. The jq program receives
-`{config, config_file}` and returns `{options, source_prefix?, language?, read_access?}`.
-Actionlint validates user settings against `configSchema` first. Declare path options in
-`configurationPaths` as JSON pointers when their values need configuration-variable expansion.
-
-Use `preparationTransform` when preparation depends on interpreter or environment facts.
-For example, this program adds a tool directive and passes the normalized options to the process:
+`preparationTransform` adjusts preparation from interpreter or environment facts:
 
 ```ts
 preparationTransform: {
@@ -185,24 +82,19 @@ preparationTransform: {
 },
 ```
 
-The program can also return `variables`, `excluded` or a `skip` reason.
-See the [preparation fields](../../../docs/plugins.md#local-tool-provider-manifests) for the supplied facts.
+The program can also return `variables`, `excluded` or a `skip` reason. The [preparation fields](../../../docs/plugins.md#local-tool-provider-manifests) list the supplied facts.
 
-For a process-wrapper example, see [`plugins/examples/psscriptanalyzer/actionlint.plugin.ts`](../../examples/psscriptanalyzer/actionlint.plugin.ts), its [`output.jq`](../../examples/psscriptanalyzer/output.jq), and its [`manifest.test.ts`](../../examples/psscriptanalyzer/manifest.test.ts). It demonstrates a config schema, a PowerShell version probe, UTF-16 coordinates, suggested fixes, and captured output. Run its actionlint-backed tests from the repository root with `bun run --filter @kjanat-actionlint/plugin-psscriptanalyzer test`; set `ACTIONLINT` to a compatible actionlint executable.
-
-Its [`installation.ts`](../../examples/psscriptanalyzer/installation.ts) is a separate registry fixture: it runs the installed PSScriptAnalyzer over both PowerShell shells, checks Unicode source ranges, and verifies that corrected snippets pass. Unlike recorded-output tests, it requires `pwsh` and PSScriptAnalyzer 1.25.0 or newer on the test host. The registry harness uses a fresh home and omits the caller's `PSModulePath`; install the module in a standard system module location when running that harness.
+[`plugins/examples/psscriptanalyzer`](../../examples/psscriptanalyzer/actionlint.plugin.ts) is a complete process wrapper. Run its tests with `bun run --filter @kjanat-actionlint/plugin-psscriptanalyzer test`. Its registry fixture needs `pwsh` and PSScriptAnalyzer 1.25.0 or newer in a standard system module location.
 
 ## Validate and test captured fixtures
 
-`actionlint-plugin init ./plugins/my-check` creates a scaffold. In an existing package it preserves metadata, existing scripts, README, and the installed SDK dependency specifier. It adds `plugin:validate`, `plugin:test`, and `plugin:pack` scripts where those names are free, extends existing ignore rules, and includes the manifest in an existing package `files` list. Source/fixture collisions fail before modifying the project.
-
-When initializing before installing a preview or local SDK, supply its dependency specifier explicitly:
+`actionlint-plugin init ./plugins/my-check` creates a scaffold. Before the SDK is installed, pass its specifier:
 
 ```sh
 actionlint-plugin init --sdk file:./plugin-sdk-0.1.0.tgz
 ```
 
-Otherwise the CLI keeps an installed SDK dependency (including `workspace:*` or a preview URL); a new dependency defaults to the CLI package's version. After editing the TypeScript definition and adding fixture data, use:
+Then run:
 
 ```sh
 actionlint-plugin validate ./plugins/my-check/actionlint.plugin.ts
@@ -210,13 +102,9 @@ actionlint-plugin test ./plugins/my-check/actionlint.plugin.ts ./plugins/my-chec
 actionlint-plugin pack ./plugins/my-check/actionlint.plugin.ts
 ```
 
-`validate` and `test` require a kjanat/actionlint executable with `plugin validate/test` support. `pack` requires actionlint manifest validation. Select the executable with `ACTIONLINT` or `--actionlint`. `validate` and `test` accept TypeScript definitions or packed JSON manifests; `test --json` prints the machine-readable report. `pack` validates before writing provider outputs.
+`validate` and `test` accept TypeScript definitions or packed manifests. `test --json` prints a machine-readable report. Loading a TypeScript definition executes its code.
 
-TypeScript definitions load through jiti in both ESM and CommonJS projects, without changing the project's module type. Loading executes the author's module code; jq fixture evaluation then runs in actionlint without launching the declared scanner. Each compilation reloads the definition and its imports without writing a transpilation cache into the author project.
-
-`bun run --filter @kjanat-actionlint/plugin-sdk test:package` separately checks the built SDK tarball from a standalone installed consumer, including the Node CLI, fixtures, and the resulting provider tarball. Normal SDK tests run against TypeScript source.
-
-Fixture tests record scanner stdout and request source/config; they exercise the actual actionlint schema and jq transforms without launching the wrapped scanner or accessing the network. They do not prove installed scanner compatibility. A JSON fixture case has a unique `name`, a `request` with `source` and `filename` (optional `config`), recorded `stdout`, and at least one assertion:
+Fixture tests replay recorded scanner stdout without launching the scanner. Each case has a unique `name`, a `request`, recorded `stdout` and at least one assertion:
 
 ```json
 [
@@ -237,15 +125,9 @@ Fixture tests record scanner stdout and request source/config; they exercise the
 ]
 ```
 
-Use optional `variables` to add test variables. The `exit_code` defaults to zero
-and must be accepted by the manifest. Assertions can check decoded diagnostics
-with `expect`, transformed configuration with `expect_config`, the complete jq
-variable map with `expect_vars`, generated source with `expect_source`, a preparation
-plan with `expect_preparation`, or an expected processing failure with
-`expect_error`. Actionlint rejects empty suites, duplicate names and cases without
-assertions.
+The assertions are `expect`, `expect_config`, `expect_vars`, `expect_source`, `expect_preparation` and `expect_error`. `exit_code` defaults to zero and must be one the manifest accepts. Cases can add `variables`.
 
-For providers with `preparationTransform`, include `preparation` facts in each fixture:
+Providers with `preparationTransform` need `preparation` facts in each fixture:
 
 ```ts
 {
@@ -256,10 +138,7 @@ For providers with `preparationTransform`, include `preparation` facts in each f
 }
 ```
 
-Actionlint supplies `source` and normalized `settings` from the fixture request. It then evaluates
-the preparation program and checks any recorded scanner output against the generated source.
-
-For typed fixtures, `createPluginTester` works with Bun, Node, Deno, Vitest, or another test runner. It loads the trusted author definition, compiles the manifest, then sends captured cases to actionlint:
+`createPluginTester` runs typed fixtures under any test runner:
 
 ```ts
 import { test } from 'bun:test';
@@ -288,42 +167,69 @@ test('captured warning output maps to a finding', async () => {
 });
 ```
 
-`plugin.validate()` checks actionlint schemas and jq compilation. `plugin.test(cases)` returns case reports; `plugin.assert(cases)` throws `ProviderTestError` when validation or an assertion fails. The actionlint executable defaults to `ACTIONLINT`, then `actionlint` on PATH; subprocess timeout defaults to 30 seconds.
+`plugin.validate()` checks schemas and jq compilation. `plugin.test(cases)` returns reports. `plugin.assert(cases)` throws `ProviderTestError` on failure. The tester uses `ACTIONLINT`, then `actionlint` on `PATH`, with a 30-second timeout.
 
-## Pack and distribute
+## Pack
 
-`actionlint-plugin pack` writes `actionlint-provider.json`. For callback
-providers it also writes a bundled `actionlint.js` in ESM packages or
-`actionlint.mjs` in CommonJS packages and adds a bin entry. It adds an
-`./actionlint` subpath to existing export maps. Packages without an export map
-keep their existing main and subpath resolution. Existing executables are
-preserved, including the single-string `bin` shorthand. Process-only
-definitions embed jq without producing a callback bundle. Bundles are limited
-to 512 KiB and manifests to 1 MiB.
+`actionlint-plugin pack` writes `actionlint-provider.json`. For callback providers it also writes `actionlint.js`, or `actionlint.mjs` in CommonJS packages, adds a bin entry and adds an `./actionlint` subpath to an existing export map. Bundles may be at most 512 KiB and manifests at most 1 MiB.
 
-Packing creates files for distribution. Publishing an npm package or release
-asset, registering its identity and digest, and verifying compatibility with an
-installed scanner are separate steps. Registry maintainers decide whether to
-accept a package and its host-specific compatibility evidence.
+## Runtimes
 
-## Other subpaths
+Callback providers run as native processes. `runtime` defaults to `node` and also accepts `bun` and `deno`. The SDK places `runtimeArgs` before the program filename.
 
-- `/stdio` provides native `serveScriptEngine` and `serveDocumentEngine`. Each reads one request from stdin and writes a JSON response to stdout. Send logs to stderr so stdout contains only protocol JSON.
-- `/authoring` compiles TypeScript definitions and embeds provider-relative jq files.
-- `/testing` uses actionlint to validate manifests and fixtures.
+The bundler uses `bundle: { platform: 'neutral' }` by default. Set `bundle: { platform: 'node' }` when dependencies need Node or CommonJS resolution.
+
+## Interpreter and wrapper validation
+
+Add `invocationDefinitions` to describe the command in a workflow's `shell:` field. The `shell-name` rule then reports invalid options and declared option warnings. A wrapper can delegate to another plugin's grammar:
+
+```ts
+// In the Python provider:
+invocationDefinitions: [{
+ id: 'python-plugin/python',
+ executables: ['python', 'python3'],
+ language: 'python',
+ options: [{ short: 'u' }],
+ unknown_options: true,
+}],
+
+// In a separate wrapper provider:
+invocationDefinitions: [{
+ id: 'wrapper-plugin/python',
+ executables: ['actions-shell', 'actions-shells'],
+ prefix: ['python'],
+ delegate: 'python-plugin/python',
+}],
+```
+
+Delegation needs both plugins loaded. Set `unknown_options: true` unless the listed options cover the interpreter's complete grammar. `extends` borrows another definition's options and language. An option can set `warning` text to report when it occurs.
+
+Definition IDs must be unique across loaded plugins and built-in interpreters. Wasm components declare the same `invocation_definitions` field in their `actionlint.plugin` metadata.
+
+## Subpaths
+
+The root export runs in browsers and other web runtimes. `/stdio`, `/authoring`, `/testing`, `/process` and `/files` need a native runtime.
+
+- `/stdio` provides `serveScriptEngine` and `serveDocumentEngine`. Each reads one request from stdin and writes a JSON response to stdout. Send logs to stderr.
+- `/authoring` compiles TypeScript definitions and embeds jq files.
+- `/testing` validates manifests and fixtures with actionlint.
 - `/config` reads optional JSON settings with type and allowed-value checks.
-- `/files` materializes captured documents in a temporary directory for file-based tools.
-- `/process` runs commands without a shell and includes JSON response decoding helpers.
-- `/sarif` decodes active SARIF 2.1.0 findings with a caller-supplied URI allowlist. The reader honors applied or accepted native suppressions and reports findings whose suppression requests were rejected or are under review.
-- `/images` extracts static OCI references from workflow/action YAML and builds image findings.
+- `/files` writes captured documents to a temporary directory for file-based tools.
+- `/process` runs commands without a shell and decodes JSON responses.
+- `/sarif` decodes active SARIF 2.1.0 findings with a URI allowlist. It drops findings with applied or accepted suppressions.
+- `/images` extracts static OCI references from workflow and action YAML.
 
-These helpers do not install scanners, register packages, fetch images or
-sandbox native tools. The source JSDoc for each subpath documents function
-imports and examples.
+Your callback or wrapped linter handles its own native suppression syntax and returns active diagnostics. actionlint applies its YAML and config ignores afterwards. See [suppression directives](../../../docs/plugins.md#suppression-directives).
 
-Native suppression syntax belongs to your callback or wrapped linter: process it
-from the supplied source and return active diagnostics. Actionlint applies its
-own YAML/config ignores after mapping those diagnostics. Its
-`forbidden-suppression` rule does not audit directives or filters inside an
-external tool. See [suppression ownership](../../../docs/plugins.md#suppression-ownership)
-for the contract shared by process, component and embedded plugins.
+## Build and test
+
+From the repository root:
+
+```sh
+bun install
+bun run --filter @kjanat-actionlint/plugin-sdk build
+bun run --filter @kjanat-actionlint/plugin-sdk typecheck
+bun run --filter @kjanat-actionlint/plugin-sdk test
+```
+
+The test script builds `cmd/actionlint` unless `ACTIONLINT` names an executable. A bare `bun test` builds nothing and needs `ACTIONLINT` for the integration tests. `bun run --filter @kjanat-actionlint/plugin-sdk test:package` checks the built tarball from a standalone consumer.

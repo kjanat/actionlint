@@ -9,7 +9,6 @@ import (
 )
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions
-// Check the analyzer's reachability decisions, not actual runner execution.
 func TestGitHubReferenceStatusChecks(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -34,8 +33,6 @@ func TestGitHubReferenceStatusChecks(t *testing.T) {
 			if got := CanRunAfterFailure(value.Condition(tc.input, value.Origin{})); got != tc.afterFailure {
 				t.Errorf("can run after failure=%t, want %t", got, tc.afterFailure)
 			}
-			// Cancellation and step/action status are separate inputs, including
-			// cancellation during composite cleanup after earlier steps succeeded.
 			if got := CanRunDuringCancellation(node); got != tc.whenCancelled {
 				t.Errorf("can run during cancellation=%t, want %t", got, tc.whenCancelled)
 			}

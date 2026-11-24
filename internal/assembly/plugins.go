@@ -1,11 +1,6 @@
-// Package assembly builds a check from its parts: it loads the plugins an
-// invocation selects through internal/plugins and registers their analyzers,
-// script engines, tool providers, runners and reference resolvers in the
-// checking options. Package checking runs rules and knows nothing about
-// plugin files; package plugins finds, fetches and instantiates plugins and
-// knows nothing about checking. The command line, the GitHub Action and both
-// language servers build their checks through [Open] and connect to GitHub
-// through [ConnectGitHub].
+// Package assembly loads the plugins selected by an invocation through
+// internal/plugins and registers their analyzers, script engines, tool
+// providers, runners and reference resolvers in the checking options.
 package assembly
 
 import (
@@ -34,7 +29,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
 func CheckWithPluginPaths(ctx context.Context, options checking.Options, input checkrequest.Request, paths []string, acquisition dependencycache.Acquisition) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
@@ -43,7 +37,6 @@ func CheckWithPluginPaths(ctx context.Context, options checking.Options, input c
 	return CheckWithPlugins(ctx, options, input, sources)
 }
 
-// CheckWithPlugins loads the selected plugins and checks the input.
 func CheckWithPlugins(ctx context.Context, options checking.Options, input checkrequest.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
 	session, err := Open(ctx, options, sources)
 	if err != nil {
@@ -65,8 +58,6 @@ func CheckWithPlugins(ctx context.Context, options checking.Options, input check
 	return result, err
 }
 
-// RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
-// must be provisioned. It shares plugin validation and lifetime with Check.
 func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition dependencycache.Acquisition) (needed workspace.ExternalToolRequirements, err error) {
 	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
@@ -75,8 +66,6 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options,
 	return RequiredToolsWithPlugins(ctx, options, paths, sources)
 }
 
-// RequiredToolsWithPlugins applies the selected plugins before checking which
-// native tools are needed. Plugin warnings and logs are discarded.
 func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, paths []string, sources pluginselection.Sources) (needed workspace.ExternalToolRequirements, err error) {
 	options.LogWriter, options.Debug = io.Discard, false
 	session, err := Open(ctx, options, sources)
@@ -87,8 +76,6 @@ func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, pat
 	return checking.RequiredTools(ctx, session.Options, paths)
 }
 
-// ConfigureManagedPlugins configures the built-in tool integrations, leaving
-// out the tools whose script engine a loaded plugin replaces.
 func ConfigureManagedPlugins(l *pluginexecution.Loaded, options checking.Options) (checking.Options, error) {
 	occupied := make([]string, 0, len(l.ScriptEngines))
 	for _, engine := range l.ScriptEngines {
@@ -101,8 +88,6 @@ func ConfigureManagedPlugins(l *pluginexecution.Loaded, options checking.Options
 	return configured, nil
 }
 
-// ConfigurePlugins registers the loaded plugins' reference resolver, script
-// engines, tool providers, analyzers and runner providers in options.
 func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options checking.Options) (checking.Options, error) {
 	if options.ConfigConnections.Transport == nil {
 		options.ConfigConnections.Transport = l.Acquisition.Connections.Transport
@@ -181,7 +166,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			return options, &pluginexecution.LoadError{Err: fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.Files.Source)}
 		}
 		if local.Files.Source != "" {
-			// Only now, after the check above, download the executable.
+			// Download the executable only after the trust check above.
 			artifactOptions := pluginacquisition.ArtifactOptions(l.Acquisition)
 			artifactOptions.Network = local.Network
 			fetched, err := local.Files.Materialize(ctx, artifactOptions)
@@ -233,8 +218,6 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 	return options, checkPluginTools(l, options.Tools)
 }
 
-// checkPluginTools reports the tool ids named by --tool or --no-tool that match no
-// tool registration, no loaded plugin and no skipped plugin.
 func checkPluginTools(l *pluginexecution.Loaded, registrations []contract.Registration) error {
 	known := slices.Concat(l.SkippedTools, l.ToolIDs)
 	for _, registration := range registrations {
@@ -252,23 +235,17 @@ func checkPluginTools(l *pluginexecution.Loaded, registrations []contract.Regist
 	return NewUnknownToolError(unknown, known)
 }
 
-// UnknownToolError reports tool ids that name no tool provider.
 type UnknownToolError struct {
-	// ids are the unknown ids in the order they were named.
-	ids []string
-	// known lists every id that names a provider, sorted and unique.
+	ids   []string
 	known []string
 }
 
-// NewUnknownToolError reports the unknown tool ids ids, listing the ids in
-// known as the valid choices.
 func NewUnknownToolError(ids, known []string) *UnknownToolError {
 	known = slices.Clone(known)
 	slices.Sort(known)
 	return &UnknownToolError{ids: slices.Clone(ids), known: slices.Compact(known)}
 }
 
-// IDs returns the unknown ids in the order they were named.
 func (e *UnknownToolError) IDs() []string { return slices.Clone(e.ids) }
 
 func (e *UnknownToolError) Error() string {

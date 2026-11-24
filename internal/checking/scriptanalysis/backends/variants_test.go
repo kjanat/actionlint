@@ -14,8 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-// Each variant runs once. Diagnostics map to the templates, merge across
-// variants, and name the values of the variants that report them.
 func TestVariantRunsMergeFindings(t *testing.T) {
 	t.Parallel()
 	exclude := "${{ github.ref != 'main' && '--exclude=.[^/]*' || '' }}"

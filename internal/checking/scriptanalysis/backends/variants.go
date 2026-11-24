@@ -11,16 +11,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 )
 
-// diagnosticKey identifies a diagnostic that several variants report.
 type diagnosticKey struct {
 	filename, code, message, severity, source string
 	effect                                    scriptengine.TemplateEffect
 	start, end                                sourcetext.Position
 }
 
-// mergeVariants merges the outcomes of the variants of prepared into one
-// outcome in the coordinates of its Source. A diagnostic that only some
-// variants report names their values in its message.
+// A diagnostic that only some variants report names their values in its message.
 func mergeVariants(prepared preparation.Prepared, results []outcome) outcome {
 	if len(prepared.Variants) == 0 {
 		return results[0]
@@ -81,8 +78,6 @@ func mergeVariants(prepared preparation.Prepared, results []outcome) outcome {
 	return merged
 }
 
-// variantDiagnostic maps the columns of a snippet diagnostic from variant to
-// the script.
 func variantDiagnostic(variant preparation.Variant, lines func(int) preparation.Line, d scriptengine.Diagnostic) scriptengine.Diagnostic {
 	if d.Source != "" {
 		return d
@@ -97,8 +92,6 @@ func variantDiagnostic(variant preparation.Variant, lines func(int) preparation.
 	return d
 }
 
-// diagnosticRows are the script rows a snippet diagnostic spans. A
-// diagnostic elsewhere spans no row.
 func diagnosticRows(lines func(int) preparation.Line, d scriptengine.Diagnostic) func(int) bool {
 	row := scriptRow(lines)
 	first, ok := row(d.Location.Line)
@@ -112,9 +105,6 @@ func diagnosticRows(lines func(int) preparation.Line, d scriptengine.Diagnostic)
 	return func(r int) bool { return r >= first && r <= last }
 }
 
-// variantCondition names the values the reporting variants give templates
-// with several values on the rows of the diagnostic, or on every row when
-// none of those templates is there.
 func variantCondition(variants []preparation.Variant, reporting []int, rows func(int) bool) string {
 	near := false
 	for _, s := range variants[reporting[0]].Substitutions {
@@ -135,7 +125,6 @@ func variantCondition(variants []preparation.Variant, reporting []int, rows func
 	return strings.Join(conditions, " or ")
 }
 
-// scriptRow maps a prepared row to the script row it holds.
 func scriptRow(lines func(int) preparation.Line) func(int) (int, bool) {
 	return func(line int) (int, bool) {
 		if lines == nil {

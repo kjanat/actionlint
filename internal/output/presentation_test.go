@@ -248,7 +248,6 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 	}
 }
 
-// Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcetext.Position{Line: 1, Column: 9999}, "kind", "this is message")
@@ -522,12 +521,10 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 	}
 }
 
-// Fixtures construct presentation inputs directly; no engine or compatibility API is involved.
 func testFinding(pos *sourcetext.Position, kind, message string) *results.PublishedDiagnostic {
 	return &results.PublishedDiagnostic{Start: *pos, Rule: kind, Message: message}
 }
 
-// publishedFinding publishes d with content as the text its positions refer to.
 func publishedFinding(d results.Diagnostic, content []byte) results.PublishedDiagnostic {
 	return results.Publish(d, results.DiagnosticSource{Content: content})
 }

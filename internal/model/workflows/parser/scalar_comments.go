@@ -19,8 +19,7 @@ type scalarCommentNodes struct {
 	scalar      *codec.Node
 }
 
-// Index physical comment attachments before building the parser projection. Source
-// lines only recover positions of comments already classified by the YAML parser.
+// Comment attachments must be indexed before building the parser projection.
 func (p *Parser) indexScalarComments(root *codec.Node) {
 	p.scalarComments = make(map[sourcetext.Position]scalarCommentNodes)
 	p.scalarDeclarations = make(map[sourcetext.Position]scalarCommentNodes)
@@ -72,8 +71,7 @@ func (p *Parser) indexScalarComments(root *codec.Node) {
 	visit(root, nil)
 }
 
-// ScriptSourceForDeclaration attaches comments at the alias use to source spans
-// from the anchored scalar.
+// ScriptSourceForDeclaration attaches comments at the alias use to source spans from the anchored scalar.
 func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *sourcetext.Position) *definition.ScriptSource {
 	scriptSource := p.ScriptSource(node)
 	if scriptSource == nil || declaration == nil {
@@ -123,8 +121,7 @@ func (nodes scalarCommentNodes) comments(lines []string, scriptSource *definitio
 			}
 			prefix, _, _ := strings.CutLast(physical, text)
 			pos := sourcetext.Position{Line: line, Column: utf8.RuneCountInString(prefix) + 1}
-			// Trailing comments lie before block/quoted content or after its closing token.
-			// Matching text inside a scalar is not another attachment.
+			// Trailing comments lie before block or quoted content or after its closing token.
 			before := line < scriptSource.ContentStart.Line || line == scriptSource.ContentStart.Line && (nodes.block || pos.Column < scriptSource.ContentStart.Column)
 			after := line > scriptSource.ScalarEnd.Line || line == scriptSource.ScalarEnd.Line && pos.Column >= scriptSource.ScalarEnd.Column
 			if before || after {

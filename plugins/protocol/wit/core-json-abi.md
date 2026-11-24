@@ -1,92 +1,47 @@
 # Core JSON transport
 
-This transport is independent of plugin package identity. Its memory ABI is
-version 1; operation payloads are negotiated separately. Component consumers use
-the adjacent WIT interfaces instead.
+Component consumers use the adjacent WIT interfaces.
 
 ## Memory ABI 1
 
-Exports: `memory`, `abi_version() -> i32`, `alloc(i32) -> i32`,
+The guest exports `memory`, `abi_version() -> i32`, `alloc(i32) -> i32`,
 `dealloc(i32)`, `metadata() -> i64`, `check(i32,i32) -> i64`, and
-`validate_config(i32,i32) -> i64`. `abi_version` returns 1. Integers are unsigned
-bit patterns. Requests and responses are UTF-8 JSON.
+`validate_config(i32,i32) -> i64`. `abi_version` returns 1. Integers are unsigned. Payloads are UTF-8 JSON.
 
-The host allocates and writes each request. Zero from `alloc` refuses allocation.
-A response packs its pointer into
-the high 32 bits and byte length into the low 32 bits. The guest owns a distinct
-response allocation; the host copies its bytes and calls `dealloc` for both
-allocations. The guest must not invalidate a buffer before `dealloc`. No import or filesystem
-access is implied. A trap invalidates that invocation. The host bounds requests,
-responses, memory and execution time independently of advertised limits.
+The host allocates and writes each request. `alloc` returns zero to refuse. A response sits in its own allocation and returns its pointer in the high 32 bits and its length in the low 32 bits. The host copies it and calls `dealloc` on both allocations. Buffers must stay valid until `dealloc`. The guest gets no imports or filesystem access. A trap invalidates the invocation. The host enforces its own size, memory and time limits.
 
 ## Discovery 1
 
 `metadata` returns an object with `metadata_version: 1`, `abi_version: 1`,
 `transport: "wasm-core-json"`, plugin `id`, `name`, `plugin_version`,
 `engine: {name,version}`, `rules`, `config_schema`, `capabilities`, and
-`interfaces`. Each operation maps to an ordered array of `{version,export}`.
-Exports must have the ABI signatures above. Identifiers select declared
-contracts; they never select package-specific behavior.
+`interfaces`. Each operation maps to an ordered array of `{version,export}`. Exports must have the signatures above.
 
 ## Check 1
 
-Request: `{source,filename,config}`. Source is a sanitized snippet; filename is
-virtual; config is an engine-owned JSON object. Response:
-`{ok,diagnostics,errors}`. Diagnostics use script-engine WIT field semantics,
-with JSON `end_location` for `end-location`, Unicode scalar coordinates,
-exclusive ends, string severity, and optional name/url. The host validates diagnostics
-even when `ok` is false. No template effects may be inferred from
-message text or rule codes.
+The request `{source,filename,config}` carries a sanitized snippet, a virtual filename and the engine's configuration object. The response is `{ok,diagnostics,errors}`. Diagnostics use script-engine WIT semantics with `end_location`, Unicode scalar coordinates, exclusive ends, string severity and optional name and url. The host validates diagnostics even when `ok` is false.
 
 ## Check 2
 
-Same request and response envelope as check 1. Every diagnostic additionally
-requires `template_effect`, a kebab-case case of the enum in
-[`template-effects.wit`](template-effects.wit). Discovery must declare
-`template_contract: "kjanat:actionlint/template-effects@0.1.0"`. A host supporting
-this contract selects check 2 and rejects missing or unknown effects. Check 1
-consumers do not apply provenance filtering.
-Template-aware engines must declare `capabilities.script_shells` or
-`capabilities.script_inputs` routes. Engines without route metadata use the
-explicitly selected native adapter's routing defaults.
+Every check 2 diagnostic requires `template_effect`, a kebab-case case of the [`template-effects.wit`](template-effects.wit) enum. Discovery must declare `template_contract: "kjanat:actionlint/template-effects@0.1.0"`. A supporting host selects check 2 and rejects missing or unknown effects. Check 1 hosts skip provenance filtering.
+
+Template-aware engines must declare `capabilities.script_shells` or `capabilities.script_inputs` routes.
 
 ## Check 3
 
-Check 3 adds what script-engine 0.3.0 adds to the component interface: fixes,
-findings in files the engine read, excluded codes and the request directory. A
-host supporting it selects check 3 whenever discovery advertises it and checks
-1 or 2 otherwise. Without `template_contract`, check 3 extends check 1; with it,
-it extends check 2 and every diagnostic requires `template_effect`.
+Check 3 adds fixes, findings in other files, excluded codes and the request directory. It extends check 2 with `template_contract` and check 1 without it. A supporting host selects check 3 whenever discovery advertises it.
 
-Discovery declares the capabilities in `capabilities`: `fixes` (boolean),
-`reported_sources` (boolean) and `resources`, a list whose only allowed entry is
-`"directory"`. They take effect only with check 3.
+Discovery `capabilities` declares the booleans `fixes` and `reported_sources` and the list `resources`. The only allowed `resources` entry is `"directory"`. These capabilities apply only to check 3.
 
-Request: `{source,filename,config,excluded,directory}`. `excluded` is always
-present: a list of diagnostic codes, such as `"SC1091"`, the host's preparation
-excludes; the engine must not report them. `directory` is present only when the
-engine requests the `directory` resource and the script's working directory is
-known, exists and lies inside the workspace; a working directory outside the
-workspace fails the check. It is the host path of that directory and grants no access, because core
-modules import nothing; it anchors reported sources.
+The request adds `excluded` and `directory`. `excluded` is always present and lists the codes, such as `"SC1091"`, that the engine must not report. `directory` is the script's working directory as a host path and grants no access. The host sends it only when the engine requests the `directory` resource and the directory is known, exists and lies in the workspace. A directory outside the workspace fails the check.
 
-Each diagnostic may add `fixes` and `source`:
+A diagnostic may add these members:
 
-- `fixes` is a list of `{description,replacements}`; each replacement is
-  `{row,end_row,column,end_column,text}` in snippet coordinates with an
-  exclusive end. A fix has at least one replacement. Fixes require
-  `capabilities.fixes`.
-- `source` names a file the engine read besides the snippet, as a relative
-  slash-separated path below the request directory, with no `.` or `..`
-  elements, backslashes or colons. The diagnostic's positions are then that
-  file's, and it has no fixes. Sources require `capabilities.reported_sources`
-  and a request that carried `directory`.
+- `fixes` lists `{description,replacements}` and requires `capabilities.fixes`. Each fix has at least one `{row,end_row,column,end_column,text}` replacement in snippet coordinates with an exclusive end.
+- `source` is the relative, slash-separated path of another file below the request directory, without `.` or `..` elements, backslashes or colons. Positions then refer to that file, and the diagnostic may carry no fixes. `source` requires `capabilities.reported_sources` and a request with `directory`.
 
-The host drops a diagnostic that uses an undeclared capability and reports an
-error. Check 1 and check 2 define neither member; a host ignores them there.
+The host drops a diagnostic that uses an undeclared capability and reports an error. Check 1 and check 2 hosts ignore both members.
 
 ## Validate-config 1
 
-Request is the engine-owned configuration JSON object. Response uses
-`{ok,errors}`; diagnostics are not needed. A missing advertised operation means
-the engine does not provide configuration validation.
+The request is the engine's configuration object. The response is `{ok,errors}`. Engines without this operation skip configuration validation.

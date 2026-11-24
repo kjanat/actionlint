@@ -1,5 +1,4 @@
-// Package parsing decodes workflow and action sources into analysis inputs.
-// It has no configuration, runtime, registration or policy dependencies.
+// Package parsing decodes workflow and action sources and depends on no configuration, runtime, registration or policy package.
 package parsing
 
 import (
@@ -14,59 +13,45 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// Document is one decode of a source's bytes. Over the captured bytes it adds
-// the decoded workflow or action metadata, syntax and admission failures, and
-// the sealed Provenance that SourceSnapshots binds on admission. It names no
-// document: identity comes from the capture at admission. Declaration fields
-// belong to the caller.
 type Document struct {
-	kind DocumentKind
-	// Workflow is the decoded workflow; nil for action documents.
-	Workflow *definition.Workflow
-	// Metadata is the decoded action manifest; nil for workflow documents.
+	kind         DocumentKind
+	Workflow     *definition.Workflow
 	Metadata     *actionmeta.Metadata
 	SyntaxErrors []*parser.SyntaxError
-	// Facts supplies declaration projections: the workflow itself, or the
-	// projection of an action's steps. Action projections are never workflow
-	// traversal inputs. It is nil when decoding recovered no semantic input.
-	Facts *definition.Workflow
-	// ParseError holds action decode and admission failures, preserving their causes.
+	// Facts is nil when decoding recovered no semantic input, and an action's Facts are never workflow traversal inputs.
+	Facts      *definition.Workflow
 	ParseError error
-	// Provenance is the parse record SourceSnapshots binds on admission.
-	Provenance Provenance
+	Parsed     *ParsedSource
 }
 
-// Provenance associates source text with the declarations decoded from it.
-// SourceSnapshots binds it to a workflows.BoundDocument during admission.
-type Provenance struct {
-	parsed   bool
+type ParsedSource struct {
 	text     string
 	workflow *definition.Workflow
 	action   bool
 	using    string
 }
 
-func (p Provenance) bind(identity string) *workflows.BoundDocument {
+func (p *ParsedSource) bind(identity string) *workflows.BoundDocument {
 	return workflows.Bind(identity, p.text, p.workflow, p.action, p.using)
 }
 
 func Workflow(content []byte) Document {
-	owned := bytes.Clone(content)
-	w, issues := parser.ParseWorkflow(owned)
+	cloned := bytes.Clone(content)
+	w, issues := parser.ParseWorkflow(cloned)
 	return Document{
 		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
-		Provenance: Provenance{parsed: true, text: string(owned), workflow: w},
+		Parsed: &ParsedSource{text: string(cloned), workflow: w},
 	}
 }
 
 func Action(sourcePath string, content []byte) Document {
-	owned := bytes.Clone(content)
-	metadata, err := actionmeta.ParseActionMetadata(sourcePath, owned)
+	metadata, err := actionmeta.ParseActionMetadata(sourcePath, content)
 	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
-	var provenance *definition.Workflow
+	text, parsed := metadata.Text()
+	var traversal *definition.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)
-	if metadata != nil && !rejected {
-		provenance = actionFacts(metadata)
+	if parsed && !rejected {
+		traversal = actionFacts(metadata, text)
 	}
 	if err != nil {
 		document.SyntaxErrors = parser.HandleYAMLUnmarshalError(err)
@@ -74,20 +59,16 @@ func Action(sourcePath string, content []byte) Document {
 			issue.Position.Line, issue.Position.Column = max(1, issue.Position.Line), max(1, issue.Position.Column)
 		}
 	} else {
-		document.Facts = provenance
+		document.Facts = traversal
 	}
-	if metadata != nil {
-		document.Provenance = Provenance{parsed: true, text: string(owned), workflow: provenance, action: true, using: metadata.Runs.Using}
+	if parsed {
+		document.Parsed = &ParsedSource{text: text, workflow: traversal, action: true, using: metadata.Runs.Using}
 	}
 	return document
 }
 
-// Kind returns the language selected when parsing started, even when parsing
-// produced no declarations.
 func (d Document) Kind() DocumentKind { return d.kind }
 
-// ParseStatus reports whether parsing produced complete, partial or no declarations.
-// It does not establish whether the declared workflow or action can execute.
 func (d Document) ParseStatus() string {
 	switch d.kind {
 	case KindWorkflow:
@@ -110,18 +91,16 @@ func (d Document) ParseStatus() string {
 	return "complete"
 }
 
-// CanAnalyze reports whether decoding recovered a semantic input for either language.
 func (d Document) CanAnalyze() bool { return d.Facts != nil }
 
-func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
-	parser := parser.NewSourceParser(metadata.Source)
+func actionFacts(metadata *actionmeta.Metadata, text string) *definition.Workflow {
+	parser := parser.NewSourceParser([]byte(text))
 	parser.IndexScalarSources(metadata.Root)
 	job := &definition.Job{}
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, actionStep(step, parser))
 	}
 	// Composite output values are evaluated after its steps, like job outputs.
-	// Reuse the validated fields so schema recovery and source positions agree.
 	for _, field := range actionmeta.Validate(metadata).ExpressionFields {
 		if field.SchemaPath != "outputs.*.value" || field.IsKey {
 			continue

@@ -1,7 +1,4 @@
-// Package toolproviders reads, validates and materializes tool provider
-// plugins: process-transport manifests distributed as local files or OCI
-// artifacts, together with their transform programs and executables. It
-// fetches and checks the files; package externallinters/process runs them.
+// Package toolproviders fetches and checks tool provider plugin files, and package externallinters/process runs them.
 package toolproviders
 
 import (
@@ -17,8 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// ProviderFiles describes a process plugin's manifest, transforms and executable path.
-// Source is the OCI source when files are distributed as image layers.
 type ProviderFiles struct {
 	Manifest   toolmanifest.Manifest
 	Programs   toolmanifest.Programs
@@ -26,7 +21,6 @@ type ProviderFiles struct {
 	Source     string
 }
 
-// Materialize loads transform programs and prepares the executable selected for this host.
 func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Options) (ProviderFiles, error) {
 	layer := func(digest string) ([]byte, error) {
 		return oci.Layer(ctx, p.Source, strings.TrimPrefix(digest, "sha256:"), options)
@@ -50,7 +44,6 @@ func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Option
 	store := artifacts.Store{Dir: options.CacheDir}
 	p.Executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)
 	if errors.Is(err, os.ErrNotExist) || errors.Is(err, artifacts.ErrCorrupt) {
-		// Fetch a missing or half-written executable, then copy it again.
 		if _, err = layer(executable.Digest); err == nil {
 			p.Executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)
 		}
@@ -61,6 +54,4 @@ func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Option
 	return p, nil
 }
 
-// artifactMaxBytes bounds a stored transform program or executable, as
-// pluginartifact.Options.MaxBytes bounds a download by default.
 const artifactMaxBytes = 128 << 20

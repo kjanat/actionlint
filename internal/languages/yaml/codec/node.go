@@ -1,6 +1,5 @@
 package codec
 
-// NodeKind is the syntactic role of a YAML node: document, sequence, mapping, scalar or alias.
 type NodeKind uint32
 
 const (
@@ -22,8 +21,7 @@ const (
 	FlowStyle
 )
 
-// Node records resolved tags and one-based physical YAML coordinates. TaggedStyle
-// marks an explicit tag; Alias points to its anchor within the same graph.
+// Node records one-based physical YAML coordinates.
 type Node struct {
 	Kind                                  NodeKind
 	Style                                 Style

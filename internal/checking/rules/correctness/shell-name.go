@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-// ShellNameRule is the single definition of the shell-name rule.
 var ShellNameRule = &define.Rule{
 	SupportsActions: true,
 	Name:            "shell-name",
@@ -18,17 +17,15 @@ var ShellNameRule = &define.Rule{
 	Category:        "correctness",
 	Subcategory:     "scripts",
 	Recommended:     true,
-	Explanation:     "Validate shell names for the selected runner and interpreter options supplied by built-in or plugin definitions. The rule cannot validate options when no interpreter definition matches or an argument contains an unresolved expression.",
-	Help:            "Select a supported interpreter, include {0} for the script filename in custom commands, and correct invalid options. Bash uses -o for set options and -O for shopt options.",
-	Examples: []rule.Example{rule.WorkflowExample("Correct the shell name.",
+	Help:            "Use a supported shell, include {0} for the script filename in custom commands, and fix invalid options. Bash takes -o for set options and -O for shopt options.",
+	Examples: []rule.Example{rule.WorkflowExample("",
 		"    steps:\n      - shell: bashh\n        run: echo ok\n", "    steps:\n      - shell: bash\n        run: echo ok\n")},
 	Checks: func(c define.RuleInputs) define.Checks {
 		return ShellNameChecks(c.Runners, commands.FromContext(c.Context))
 	},
 }
 
-// ShellNameChecks validates shell declarations against their declaring job's
-// prepared platform. Without a known job platform, it accepts any supported shell.
+// ShellNameChecks accepts any supported shell when the job platform is unknown.
 func ShellNameChecks(knownRunners *runners.Knowledge, registries ...*commands.Registry) define.Checks {
 	platform := func(job workflows.BoundJob) runners.Platform {
 		if knownRunners == nil || !job.Present() {

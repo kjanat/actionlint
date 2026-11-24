@@ -16,7 +16,7 @@ func TestNamesResolveDeclaredAliases(t *testing.T) {
 	}
 	descriptors[0].Aliases[0].Name = "changed"
 	if names.ResolveAlias("shortcut") != "check" || names.ResolveAlias("unregistered") != "unregistered" {
-		t.Fatal("name index depends on caller-owned data")
+		t.Fatal("name index reflects edits to the descriptors")
 	}
 	cloned := descriptors[0].Clone()
 	cloned.Aliases[0].Name = "mutated"

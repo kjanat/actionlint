@@ -15,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// visitStandaloneAction validates a manifest without a workflow caller or supplied
-// inputs. For composite actions, it also visits the action's steps.
 func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptanalysis.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
 	snapshot := analysis.sourceSnapshot
 	if snapshot.Kind() != parsing.KindAction {
@@ -26,7 +24,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptanalysis.
 	if !available {
 		return errors.New("action declaration is unavailable")
 	}
-	original, hasOriginal := meta.OriginalSource()
+	original, hasOriginal := meta.Text()
 	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
 		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptanalysis.ErrInvalidBatch)
 	}

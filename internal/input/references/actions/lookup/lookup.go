@@ -12,23 +12,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 )
 
-// Resolver reads workspace metadata and already-acquired repository metadata.
-// It projects both sources into the same immutable action definition.
 type Resolver struct {
 	ctx    context.Context
 	local  localactions.ActionMetadataLookup
 	remote *remote.ResolvedActions
 }
 
-// New binds action-definition lookup to one request and workspace execution scope.
-// A nil metadata source leaves its references unresolved.
+// New leaves references unresolved for a nil metadata source.
 func New(ctx context.Context, local localactions.ActionMetadataLookup, remote *remote.ResolvedActions) *Resolver {
 	return &Resolver{ctx: ctx, local: local, remote: remote}
 }
 
-// Lookup returns an absent definition when its metadata is unavailable.
-// Resolution diagnostics and source provenance belong to the metadata sources.
-// Repository lookups never start a network request.
+// Lookup starts no network request for repository references.
 func (r *Resolver) Lookup(spec string) (actionmeta.Definition, error) {
 	if err := r.ctx.Err(); err != nil {
 		return actionmeta.Definition{}, err

@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// CapturedSource binds test content to its source revision and coordinate system.
 func CapturedSource(tb testing.TB, path string, content []byte, model sourcetext.Coordinates) report.CapturedSource {
 	tb.Helper()
 	revision, err := sourcetext.NewRevision(sourcetext.DocumentID(path), sha256hex.Digest(content))

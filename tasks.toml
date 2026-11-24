@@ -100,17 +100,20 @@ env      = { GOOS = "js", GOARCH = "wasm" }
 ["lint:vulnerabilities"]
 run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."
 
-["lint:owned-copies"]
-run = "go generate -run owned-copies ./..."
-env = { OWNED_COPIES_CHECK = "1" }
+["lint:deep-copies"]
+run = "go generate -run deep-copies ./..."
+env = { DEEP_COPIES_CHECK = "1" }
 
 ["lint:analysis-merge"]
 run = "go generate -run analysis-merge ./..."
 env = { ANALYSIS_MERGE_CHECK = "1" }
 
 ["lint"]
-depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground", "lint:owned-copies", "lint:analysis-merge"]
+depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground", "lint:deep-copies", "lint:analysis-merge", "lint:go-forks"]
 description = "Run Go, generated-code, vulnerability and browser checks"
+
+["lint:go-forks"]
+run = "go run ./internal/development/generators/go-forks -check"
 
 ["lint-docs"]
 run = "go run ./internal/development/tests/integration/documentation -quiet ./docs/checks.md"
@@ -156,8 +159,8 @@ run     = [
   "go run ./internal/development/generators/action-metadata -output internal/model/actionmeta/availability.gen.go"
 ]
 
-["generate:owned-copies"]
-run = "go generate -run owned-copies ./..."
+["generate:deep-copies"]
+run = "go generate -run deep-copies ./..."
 
 ["generate:analysis-merge"]
 run = "go generate -run analysis-merge ./..."
@@ -169,9 +172,12 @@ depends = [
   "generate:contexts",
   "generate:events",
   "generate:actions",
-  "generate:owned-copies",
+  "generate:deep-copies",
   "generate:analysis-merge"
 ]
+
+["generate:go-forks"]
+run = "go run ./internal/development/generators/go-forks"
 
 ["contract"]
 extends = "plugin-contract"
@@ -184,7 +190,7 @@ outputs = ["internal/plugins/pluginexecution/component/*.gen.go", "internal/plug
 run     = "go generate ./internal/plugins/pluginexecution/component"
 
 ["generate"]
-depends = ["protocol:sdk", "protocol:go", "generate:go", "bindings"]
+depends = ["protocol:sdk", "protocol:go", "generate:go", "bindings", "generate:go-forks"]
 
 ["build"]
 description = "Build actionlint with its Git version"

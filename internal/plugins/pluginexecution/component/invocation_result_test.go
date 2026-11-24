@@ -46,7 +46,6 @@ func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {
 			}
 		})
 	}
-	// Reusing the transport implementation must not retain the previous graph.
 	ctx := context.Background()
 	for _, result := range []any{
 		requireInvocationResult(api.Describe(ctx)),

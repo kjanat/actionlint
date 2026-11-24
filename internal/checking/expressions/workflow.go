@@ -62,8 +62,7 @@ func (rule *Visitor) VisitWorkflowPre(n workflows.BoundWorkflow) error {
 			rule.checkStrings(e.Types, "")
 		} else if e, ok := event.(*definition.WorkflowCallEvent); ok {
 			var inputs exprtypes.ObjectBuilder
-			// Defaults can use earlier inputs, but cannot refer to their own
-			// definition, so rule.inputsTy is rebuilt after each input is added.
+			// Defaults can use earlier inputs and cannot refer to their own definition.
 			rule.inputsTy = new(inputs.Build())
 			for _, input := range e.Inputs {
 				rule.checkString(input.Description, "")

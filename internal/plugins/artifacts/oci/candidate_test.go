@@ -30,8 +30,6 @@ type ociCandidateFixture struct {
 	options  artifacts.Options
 }
 
-// Candidate wire data is built here so the transport test exercises the public
-// registry client without importing private catalogue representations.
 type candidateRecord struct {
 	Source   string      `json:"source"`
 	Artifact declaration `json:"artifact"`

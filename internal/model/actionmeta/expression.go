@@ -26,7 +26,6 @@ type actionExpressionAvailability struct {
 	functions map[string]actionFunctionLimits
 }
 
-// ExpressionProblem identifies invalid expression syntax or unavailable names.
 type ExpressionProblem struct {
 	Code    ProblemCode
 	Context string
@@ -37,26 +36,22 @@ type ExpressionProblem struct {
 	EndOffset int
 }
 
-// ParsedExpression contains one parsed expression and its decoded scalar offset.
-// Offset is one-based; zero means folding changed its source positions.
+// ParsedExpression Offset is one-based, and zero means folding changed its source positions.
 type ParsedExpression struct {
 	Node   syntax.Node
 	Offset int
 }
 
-// ExpressionReadResult separates parsed expressions from syntax and availability problems.
-// Each call owns its returned syntax trees and slices.
+// ExpressionReadResult syntax trees and slices belong to the call that returned them.
 type ExpressionReadResult struct {
 	Expressions []ParsedExpression
 	Problems    []ExpressionProblem
 }
 
-// ValidateExpression checks syntax and availability without assuming invocation-specific types.
 func ValidateExpression(s string, bare bool, field string, inputs calls.Inputs) []ExpressionProblem {
 	return ReadExpressions(s, bare, field, inputs).Problems
 }
 
-// ReadExpressions parses the expressions allowed in an action field and checks available names.
 func ReadExpressions(s string, bare bool, field string, inputs calls.Inputs) ExpressionReadResult {
 	var parsed []ParsedExpression
 	avail, ok := actionMetadataAvailability[field]
@@ -217,10 +212,8 @@ func actionFunctionArityMatches(signatures []*functions.FuncSignature, count int
 	return false
 }
 
-// AllowedContexts returns the contexts available to an action field.
 func AllowedContexts(field string) []string {
 	return slices.Clone(actionMetadataAvailability[field].contexts)
 }
 
-// StepKeys returns the manifest keys accepted by a run-step or uses-step.
 func StepKeys(kind string) []string { return slices.Clone(actionMetadataKeys[kind]) }

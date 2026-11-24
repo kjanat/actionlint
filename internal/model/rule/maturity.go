@@ -7,12 +7,10 @@ const (
 	NurseryMaturity = "nursery"
 )
 
-// Maturities lists accepted nonempty rule maturity values.
 func Maturities() []string {
 	return []string{StableMaturity, NurseryMaturity}
 }
 
-// ValidMaturity accepts declared maturity or an unspecified value.
 func ValidMaturity(maturity string) bool {
 	return maturity == "" || slices.Contains(Maturities(), maturity)
 }

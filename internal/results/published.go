@@ -5,40 +5,32 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
-// PublishedDiagnostic contains a diagnostic, its source and its display excerpt.
-// Publish resolves End, Snippet and Excerpt together.
 type PublishedDiagnostic struct {
 	Diagnostic
 	Source  DiagnosticSource `json:"-"`
 	Excerpt Excerpt          `json:"-"`
 }
 
-// ExcerptKind tells whether a diagnostic's start line was found, and whether
-// it was found in source text or only as the one line of an empty source.
 type ExcerptKind uint8
 
 const (
-	// ExcerptAbsent means the start line is not available.
 	ExcerptAbsent ExcerptKind = iota
 	// ExcerptEmptySource means the diagnostic starts on the only line of an
 	// empty source, with no captured snippet.
 	ExcerptEmptySource
-	// ExcerptText means Line is a line of the source or the captured snippet.
 	ExcerptText
 )
 
-// Excerpt is the line a diagnostic starts on and the inclusive column at
-// which the indicator under that line ends.
+// Excerpt is the line where a diagnostic starts and the inclusive column where
+// the indicator under that line ends.
 type Excerpt struct {
 	Kind      ExcerptKind
 	Line      string
 	EndColumn int
 }
 
-// Publish pairs a canonical diagnostic with its source. It reads the start line
-// once and uses it to resolve a missing End, the published Snippet, and the
-// displayed Excerpt. A Snippet already on the diagnostic is kept when the source
-// supplies no start line text.
+// Publish keeps a Snippet already on the diagnostic when the source supplies
+// no start line text.
 func Publish(d Diagnostic, source DiagnosticSource) PublishedDiagnostic {
 	line, found := sourcemap.DiagnosticLine(source.Content, d.Start.Line, source.RawScript)
 	unavailable := source.Unavailable.Present()
@@ -73,8 +65,7 @@ func Publish(d Diagnostic, source DiagnosticSource) PublishedDiagnostic {
 	return PublishedDiagnostic{Diagnostic: d, Source: source, Excerpt: excerpt}
 }
 
-// Diagnostics returns the canonical diagnostics of published, in order. The
-// result is nil only when published is nil.
+// Diagnostics returns nil only when published is nil.
 func Diagnostics(published []PublishedDiagnostic) []Diagnostic {
 	if published == nil {
 		return nil
@@ -86,8 +77,6 @@ func Diagnostics(published []PublishedDiagnostic) []Diagnostic {
 	return diagnostics
 }
 
-// inclusiveEndColumn returns the column where the indicator under line ends.
-// An End on the start line bounds it; otherwise the token at Start does.
 func inclusiveEndColumn(d Diagnostic, line string, unavailable bool) int {
 	explicit := 0
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {

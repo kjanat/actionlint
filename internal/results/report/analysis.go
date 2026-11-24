@@ -14,34 +14,27 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
-// Analysis is the completed or partial result of an analysis session. It contains
-// values only: no live rules, parser nodes, process handles, or rendering policy.
-// Each published diagnostic carries the analyzed text it was reported for.
+// Analysis is the completed or partial result of an analysis session.
 type Analysis struct {
 	IncompleteChecks []IncompleteCheck             `merge:"append"`
 	ActionMetadata   []actions.Coverage            `merge:"append"`
 	RunnerResults    []runnerapi.Report            `merge:"append"`
 	FileCount        int                           `merge:"sum"`
 	Diagnostics      []results.PublishedDiagnostic `merge:"append"`
-	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource `merge:"captured"`
 	Documents       outline.Outlines          `merge:"append"`
 	Configurations  []configreport.Report     `merge:"append"`
 	Inputs          []string                  `merge:"append"`
 	Rules           []rule.Descriptor         `merge:"rules"`
-	// LintedFiles lists each selected entry document with the digest of the
-	// content its rules analyzed.
-	LintedFiles []LintedFile `merge:"append"`
+	LintedFiles     []LintedFile              `merge:"append"`
 	// CollectedByRule counts, per rule that ran, the findings collected before
 	// inline suppressions, rule levels and ignore settings were applied.
 	CollectedByRule []RuleCollection `merge:"append"`
 	// InlineSuppressions lists the rules that inline directives in analyzed
 	// sources name, whether or not a finding matched them.
 	InlineSuppressions []InlineSuppression `merge:"append"`
-	// Providers lists the plugins and tool providers selected for the analysis
-	// and whether each one took part.
-	Providers []ProviderStatus `merge:"append"`
+	Providers          []ProviderStatus    `merge:"append"`
 }
 
 // LintedFile identifies one entry document by its selected path and the
@@ -51,10 +44,6 @@ type LintedFile struct {
 	Digest string
 }
 
-// RuleCollection counts the findings one rule collected in one analysis,
-// before publication policy. A rule that ran without findings has Findings 0.
-// Completed counts entry documents where the rule completed analysis, or a tool
-// completed at least one script check even if another check was incomplete.
 type RuleCollection struct {
 	Rule      string
 	Findings  int
@@ -62,14 +51,12 @@ type RuleCollection struct {
 }
 
 // InlineSuppression is one rule named by an inline suppression directive.
-// Path is the source as policy evaluated it; Line is 1-based.
 type InlineSuppression struct {
 	Path string
 	Line int
 	Rule string
 }
 
-// ProviderKind distinguishes plugins from the tool providers that analyze scripts.
 type ProviderKind string
 
 const (
@@ -79,10 +66,7 @@ const (
 
 // ProviderStatus records whether one plugin or tool provider took part in an
 // analysis. Version and Digest identify a registry release or artifact when
-// known. OnDemand marks a plugin loaded only when a script needs it. Inactive
-// is empty for a provider that took part, and otherwise says why it did not,
-// for example "disabled in configuration". Incomplete lists, once each, the
-// reasons its incomplete checks gave, whether or not it took part elsewhere.
+// known. OnDemand marks a plugin loaded only when a script needs it.
 type ProviderStatus struct {
 	Kind       ProviderKind
 	Name       string
@@ -103,8 +87,7 @@ type IncompleteCheck struct {
 	Reason     string               `json:"reason"`
 }
 
-// CheckInvocation identifies one call within a captured entry revision. Its zero
-// value means the failure occurred before an invocation could be identified.
+// CheckInvocation identifies one call within a captured entry revision.
 type CheckInvocation struct {
 	Entry sourcetext.Reference `json:"entry"`
 	ID    invocation.ID        `json:"id"`

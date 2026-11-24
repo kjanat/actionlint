@@ -16,26 +16,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
-// Process invokes a literal executable using the bounded JSON protocol. No shell
-// interpolation or credential discovery occurs. Each session caches exact
-// requests, including consumer kind and expected repository identity.
+// Process runs a literal executable without shell interpolation or credential
+// discovery, and each session caches exact requests.
 type Process struct {
 	command processCommand
 	cached  *references.CachedResolver
 }
 
-// processCommand runs one provider process per resolution, without caching.
 type processCommand struct {
 	executable string
 	arguments  []string
 	timeout    time.Duration
 }
 
-// defaultProcessTimeout bounds one provider run when NewProcess gets no timeout.
 const defaultProcessTimeout = 30 * time.Second
 
-// NewProcess returns a resolver that runs executable with a copy of arguments.
-// A zero timeout means 30 seconds per provider run.
+// NewProcess treats a zero timeout as 30 seconds per provider run.
 func NewProcess(executable string, arguments []string, timeout time.Duration) *Process {
 	if timeout == 0 {
 		timeout = defaultProcessTimeout
@@ -47,8 +43,6 @@ func newProcess(command processCommand) *Process {
 	return &Process{command: command, cached: references.NewCachedResolver(command)}
 }
 
-// boundedOutput collects provider stdout and fails the write that would take
-// it past limit bytes.
 type boundedOutput struct {
 	data  []byte
 	limit int
@@ -66,7 +60,6 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 	return p.cached.Resolve(ctx, request)
 }
 
-// NewSession returns a resolver for the same command with an empty cache.
 func (p *Process) NewSession() references.Resolver {
 	command := p.command
 	command.arguments = slices.Clone(command.arguments)

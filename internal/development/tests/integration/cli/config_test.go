@@ -199,8 +199,6 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	acquisition := registryAcquisition(registry)
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
-	// Outside a repository, a bare invocation shows help. Importing the test binary's flags
-	// instead would end in a usage error.
 	for _, args := range [][]string{nil, {"actionlint"}} {
 		var out, errout bytes.Buffer
 		cmd := cli.Command{Stdout: &out, Stderr: &errout, Acquisition: acquisition}

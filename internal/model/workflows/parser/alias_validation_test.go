@@ -267,7 +267,6 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 	}
 	assertAliasTestSourceUnchanged(t, before)
 
-	// Raw-value parsing is a separate leaf-parser contract, with fresh error state.
 	parser := NewSourceParser([]byte(source))
 	projected := projectAliasTestInput(parser, root)
 	if len(parser.aliases) != 0 {
@@ -389,7 +388,6 @@ func projectAliasTestGraph(root *codec.Node, report func(*codec.Node, YamlAliasD
 	return projectYAMLAliases(root, inspectYAMLAliases(root, report))
 }
 
-// Leaf-parser fixtures opt into projection; production construction belongs to parseDocument.
 func projectAliasTestInput(parser *Parser, root *codec.Node) *codec.Node {
 	projected, aliases := projectAliasTestGraph(root, func(node *codec.Node, _ YamlAliasDiagnostic, message string) { parser.error(node, CodeAlias, message) })
 	parser.aliases = aliases

@@ -213,15 +213,18 @@ Example: node tools/release/prepare-version.mjs --check`);
 		return;
 	}
 	if (positionals.length > 1) throw new Error('Specify only one release version');
-	await prepareVersion({
-		root: values.root,
-		version: positionals[0],
-		check: values.check,
-		commit: values.commit,
-		push: values.push,
-		nixProgram: values['nix-program'],
-		nixArguments: values['nix-arg'],
-	}, { signal });
+	await prepareVersion(
+		{
+			root: values.root,
+			version: positionals[0],
+			check: values.check,
+			commit: values.commit,
+			push: values.push,
+			nixProgram: values['nix-program'],
+			nixArguments: values['nix-arg'],
+		},
+		{ signal },
+	);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

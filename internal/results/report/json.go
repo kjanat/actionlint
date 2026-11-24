@@ -10,9 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
-// CheckResult is the versioned JSON document shared by CLI and Action checks.
-// ExitCode describes analysis, even when a caller chooses not to fail on findings.
-// Consumers should tolerate unknown fields within a supported schema version.
+// CheckResult consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
 	IncompleteChecks []IncompleteCheck        `json:"incomplete_checks,omitempty"`
 	ActionMetadata   []actions.MetadataReport `json:"action_metadata"`
@@ -30,7 +28,6 @@ type CheckResult struct {
 	Error            string                   `json:"error,omitempty"`
 }
 
-// ResultConfig identifies the configuration used for a project, including overlays.
 type ResultConfig struct {
 	File      string                         `json:"file"`
 	Project   string                         `json:"project"`
@@ -39,7 +36,6 @@ type ResultConfig struct {
 	Warnings  []configreport.Warning         `json:"warnings,omitempty"`
 }
 
-// FromAnalysis projects captured analysis data without deciding command status.
 func FromAnalysis(analysis Analysis) CheckResult {
 	r := CheckResult{SchemaVersion: 1, Diagnostics: []results.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}, ActionMetadata: []actions.MetadataReport{}}
 	count := analysis.FileCount
@@ -58,7 +54,6 @@ func FromAnalysis(analysis Analysis) CheckResult {
 	return r
 }
 
-// AddConfiguration preserves selection provenance without serializing internal config state.
 func (r *CheckResult) AddConfiguration(config configreport.Report) {
 	r.Configs = append(r.Configs, ResultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
 }

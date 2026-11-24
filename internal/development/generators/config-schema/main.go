@@ -27,9 +27,7 @@ func reflector() *jsonschema.Reflector {
 	r := &jsonschema.Reflector{
 		FieldNameTag:               "yaml",
 		RequiredFromJSONSchemaTags: true,
-		// Shared wire shapes use explicit, stable $defs through mapYAMLType.
-		// Other reflected wrappers do not need generated Go type definitions.
-		DoNotReference: true,
+		DoNotReference:             true,
 	}
 	r.Mapper = func(t reflect.Type) *jsonschema.Schema {
 		return mapYAMLType(t, r.LookupComment)
@@ -37,8 +35,6 @@ func reflector() *jsonschema.Reflector {
 	return r
 }
 
-// mapYAMLType describes the wire format of types with custom UnmarshalYAML
-// methods. Ordinary fields, including future config settings, use reflection.
 func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string) *jsonschema.Schema {
 	reflectMapping := func(value any) *jsonschema.Schema {
 		r := reflector()
@@ -70,7 +66,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			SHA256   string `yaml:"sha256,omitempty" jsonschema:"pattern=^[a-fA-F0-9]{64}$,description=Verified SHA256 digest binding an exact version from a local file candidate registry. Not accepted for HTTPS registries."`
 		}{})
 		direct := reflectMapping(struct {
-			Source string `yaml:"source" jsonschema:"required,minLength=1,description=Independent artifact URL with a mandatory SHA256 pin, or an OCI digest reference. Cannot be combined with registry declaration fields."`
+			Source string `yaml:"source" jsonschema:"required,minLength=1,description=Artifact URL with a mandatory SHA256 pin or an OCI digest reference. Cannot be combined with registry declaration fields."`
 		}{})
 		source, _ := direct.Properties.Get("source")
 		source.Pattern = `^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$`
@@ -143,7 +139,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return definitionRef("preset")
 	case reflect.TypeFor[configuration.LintRulesConfig]():
 		mapping := reflectMapping(struct {
-			Preset  ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
+			Preset  ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection of recommended rules or all stable rules or none. Explicit rules override presets."`
 			Disable []string          `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
@@ -163,7 +159,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		for _, category := range categories {
 			group := reflectMapping(struct {
-				Preset ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
+				Preset ruleconfig.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended or all or none."`
 				Level  ruleconfig.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
 			}{})
 			group.Version, group.ID = "", ""
@@ -222,7 +218,6 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
 	case reflect.TypeFor[configuration.IgnorePatterns]():
-		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
 	case reflect.TypeFor[map[string]configuration.IgnorePatterns]():
 		return &jsonschema.Schema{
@@ -269,8 +264,6 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		})
 		return mapping
 	case reflect.TypeFor[configuration.JobTimeoutPolicy]():
-		// The runtime type stores private state and accepts either a boolean or
-		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
 		mapping := reflectMapping(struct {
 			MinMinutes float64 `yaml:"min-minutes" jsonschema:"exclusiveMinimum=0,description=Smallest allowed job timeout in minutes. Must not exceed max-minutes."`
 			MaxMinutes float64 `yaml:"max-minutes" jsonschema:"exclusiveMinimum=0,description=Largest allowed job timeout in minutes."`
@@ -279,14 +272,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[ruleconfig.CommitHashOptions]():
-		// The runtime type keeps validated patterns private. Keep this in sync
-		// with CommitHashOptions.UnmarshalYAML.
 		mapping := reflectMapping(struct {
 			Exclude []string `yaml:"exclude" jsonschema:"nullable"`
 		}{})
 		exclude, _ := mapping.Properties.Get("exclude")
-		exclude.Description = "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref."
-		mapping.Description = "Selects exceptions to immutable action references."
+		exclude.Description = "Repository, action-path or docker://image glob patterns to exempt. A repository pattern such as my-org/* also covers actions and workflows in matching repositories. Add @ref to exempt only that ref."
+		mapping.Description = "References exempt from pinning."
 		mapping.Version = ""
 		mapping.ID = ""
 		return mapping
@@ -298,7 +289,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			values = append(values, string(location))
 		}
 		location := &jsonschema.Schema{Type: "string", Enum: values}
-		return &jsonschema.Schema{AnyOf: []*jsonschema.Schema{location, {Type: "array", MinItems: new(uint64(1)), Items: location}}, Description: "Require permissions at every listed location. Use workflow, every-job, or a nonempty array. Omit require-at to accept permissions on the workflow or on every job. Set missing-permissions to off to disable the rule."}
+		return &jsonschema.Schema{AnyOf: []*jsonschema.Schema{location, {Type: "array", MinItems: new(uint64(1)), Items: location}}, Description: "Require permissions at every listed location. Use workflow, every-job or a nonempty array of them. Without require-at, permissions on the workflow or on every job satisfy the rule."}
 	case reflect.TypeFor[configuration.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
@@ -308,8 +299,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[configuration.SuppressionsPolicy]():
 		mapping := reflectMapping(struct {
-			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
-			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Select suppression comments, original violations, or both for reporting."`
+			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rules whose inline suppressions are forbidden. Omit to select all suppressible rules."`
+			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report suppression comments or original violations or both."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
 		rules.Items = definitionRef("rule-name")
@@ -333,7 +324,6 @@ func visitSchemaType(schema *jsonschema.Schema, kind string, visit func(*jsonsch
 }
 
 func backendSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
-	// This schema describes the process and wasm fields read by Backend.DecodeConfig.
 	mapping := reflectMapping(struct {
 		Process *struct {
 			Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
@@ -376,8 +366,6 @@ func backendSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Sche
 	return mapping
 }
 
-// documentFields keeps property documentation visible regardless of which
-// nullable branch matches, including a null value or an unfinished YAML value.
 func documentFields(s *jsonschema.Schema) {
 	if s == nil {
 		return
@@ -472,7 +460,6 @@ func encodeSchema(s *jsonschema.Schema) ([]byte, error) {
 	return append(b, '\n'), nil
 }
 
-// generate runs from the repository root, as go generate does.
 func generate() ([]byte, error) {
 	r, err := documentedReflector()
 	if err != nil {
@@ -502,7 +489,6 @@ func generate() ([]byte, error) {
 	s.PatternProperties = map[string]*jsonschema.Schema{
 		`^\$schema$`: {Type: "string", Description: "Schema reference for editors. actionlint ignores it."},
 	}
-	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"
 	s.Extras = map[string]any{

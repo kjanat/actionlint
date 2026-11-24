@@ -7,7 +7,7 @@ import (
 )
 
 var kinds = [...]struct {
-	owned  NodeKind
+	codec  NodeKind
 	parser upstream.Kind
 }{
 	{0, 0},
@@ -19,7 +19,7 @@ var kinds = [...]struct {
 }
 
 var styles = [...]struct {
-	owned  Style
+	codec  Style
 	parser upstream.Style
 }{
 	{TaggedStyle, upstream.TaggedStyle},
@@ -30,10 +30,10 @@ var styles = [...]struct {
 	{FlowStyle, upstream.FlowStyle},
 }
 
-func ownedKind(kind upstream.Kind) (NodeKind, error) {
+func codecKind(kind upstream.Kind) (NodeKind, error) {
 	for _, pair := range kinds {
 		if kind == pair.parser {
-			return pair.owned, nil
+			return pair.codec, nil
 		}
 	}
 	return 0, fmt.Errorf("unsupported parser YAML node kind %d", kind)
@@ -41,18 +41,18 @@ func ownedKind(kind upstream.Kind) (NodeKind, error) {
 
 func parserKind(kind NodeKind) (upstream.Kind, error) {
 	for _, pair := range kinds {
-		if kind == pair.owned {
+		if kind == pair.codec {
 			return pair.parser, nil
 		}
 	}
 	return 0, fmt.Errorf("unsupported YAML node kind %d", kind)
 }
 
-func ownedStyle(style upstream.Style) (Style, error) {
+func codecStyle(style upstream.Style) (Style, error) {
 	var result Style
 	for _, pair := range styles {
 		if style&pair.parser != 0 {
-			result |= pair.owned
+			result |= pair.codec
 			style &^= pair.parser
 		}
 	}
@@ -65,9 +65,9 @@ func ownedStyle(style upstream.Style) (Style, error) {
 func parserStyle(style Style) (upstream.Style, error) {
 	var result upstream.Style
 	for _, pair := range styles {
-		if style&pair.owned != 0 {
+		if style&pair.codec != 0 {
 			result |= pair.parser
-			style &^= pair.owned
+			style &^= pair.codec
 		}
 	}
 	if style != 0 {

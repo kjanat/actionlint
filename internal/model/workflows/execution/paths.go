@@ -23,8 +23,6 @@ type Directory struct {
 	Path string
 }
 
-// Paths relates runner checkout paths to local analysis paths for one execution
-// scope. Input acquisition resolves these paths against the filesystem separately.
 type Paths struct {
 	Platform          runners.Platform
 	Workspace         string
@@ -153,7 +151,6 @@ func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
 }
 
 // AnalysisPath maps a runner checkout path to a local path without reading it.
-// Input acquisition or captured repository facts establish filesystem spelling.
 func (paths Paths) AnalysisPath(value string) (string, bool) {
 	relativePath, known := LocalDirectoryPath(value, paths.Platform)
 	if !known {
@@ -182,11 +179,9 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 
 func RunnerRelativePath(value string, platform runners.Platform) (string, bool) {
 	value, known := RunnerDirectoryPath(value, platform)
-	// Resolve only paths relative to the checkout on the runner.
 	return value, known && !filepath.IsAbs(value) && !strings.HasPrefix(value, "/") && !strings.ContainsRune(value, '\x00')
 }
 
-// JoinPath preserves path components until indexed symlink traversal is checked.
 func JoinPath(base, relative string) string {
 	if base == "" {
 		return relative

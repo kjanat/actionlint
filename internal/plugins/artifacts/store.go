@@ -14,21 +14,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
-// ErrCorrupt reports a stored blob whose bytes no longer match its digest,
-// such as one left half-written by an interrupted download.
 var ErrCorrupt = errors.New("stored artifact SHA256 mismatch")
 
 // Store is the content-addressed artifact cache. The blob with SHA256 digest
 // <hex> lives at Dir/<hex>; executables materialized from blobs live at
 // Dir/exec/<hex>/<filename>. Every read re-hashes the bytes.
 type Store struct {
-	// Dir is the cache directory, Options.CacheDir.
 	Dir string
 }
 
-// Read returns the blob with the SHA256 digest hex. It returns an error
-// wrapping os.ErrNotExist when the blob is absent and ErrCorrupt when its
-// bytes do not match the digest.
 func (s Store) Read(ctx context.Context, digest string, limit int64) ([]byte, error) {
 	if err := pluginreference.CheckDigest(digest); err != nil {
 		return nil, err
@@ -46,9 +40,6 @@ func (s Store) Read(ctx context.Context, digest string, limit int64) ([]byte, er
 	return data, nil
 }
 
-// Publish adds data to the store under the SHA256 digest hex. It refuses
-// bytes that do not match the digest, so they are never stored, and replaces
-// a corrupt blob atomically.
 func (s Store) Publish(ctx context.Context, digest string, data []byte) error {
 	if err := pluginreference.CheckDigest(digest); err != nil {
 		return err
@@ -66,11 +57,6 @@ func (s Store) Publish(ctx context.Context, digest string, data []byte) error {
 	return cacheFile(ctx, path, data)
 }
 
-// Materialize returns the path of an executable copy of the stored blob with
-// the SHA256 digest hex, at Dir/exec/<hex>/<filename> with mode 0o755. On
-// Windows it adds ".exe" to a filename without it, so os/exec runs the file.
-// It re-hashes the stored blob and any existing copy on every call and
-// rewrites a copy whose bytes changed.
 func (s Store) Materialize(ctx context.Context, digest, filename string, limit int64) (string, error) {
 	if filename == "" || filename == "." || filename == ".." || filepath.Base(filename) != filename || strings.ContainsAny(filename, `/\:`) {
 		return "", fmt.Errorf("invalid executable filename %q", filename)
@@ -108,6 +94,4 @@ func (s Store) Materialize(ctx context.Context, digest, filename string, limit i
 	return path, nil
 }
 
-// errDigestMismatch reports bytes that do not match the digest they were
-// fetched or imported under.
 var errDigestMismatch = errors.New("SHA256 mismatch")

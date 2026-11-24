@@ -8,8 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
-// YamlAliasDiagnostic classifies physical-source alias problems. Rejected uses
-// remain aliases in the parser projection; unused anchors do not prevent projection.
 type YamlAliasDiagnostic int
 
 const (
@@ -19,16 +17,13 @@ const (
 	yamlAliasDiagnosticUndeclared
 )
 
-// A nil node is a broken internal graph, not a YAML diagnostic. Panic
-// explicitly instead of relying on an OS fault from a nil dereference.
 func requireYAMLAliasNode(node *codec.Node) {
 	if node == nil {
 		panic("parser: nil node in YAML alias graph")
 	}
 }
 
-// projectYAMLAliases builds a detached parser graph and alias-use provenance.
-// Shared declarations remain shared within the projection; source nodes never change.
+// projectYAMLAliases builds a detached parser graph and leaves source nodes unchanged.
 // root must be a complete, non-nil, structurally valid graph from codec.Parse.
 func projectYAMLAliases(root *codec.Node, uses []yamlAliasUse) (*codec.Node, map[*codec.Node]*codec.Node) {
 	copies := map[*codec.Node]*codec.Node{}
@@ -64,7 +59,6 @@ func projectYAMLAliases(root *codec.Node, uses []yamlAliasUse) (*codec.Node, map
 }
 
 // AdmitYAMLAliases applies the codec's resource limit to dialect-approved uses.
-// It neither constructs semantic values nor changes the physical source graph.
 func AdmitYAMLAliases(root *codec.Node) error {
 	uses := inspectYAMLAliases(root, func(*codec.Node, YamlAliasDiagnostic, string) {})
 	return admitYAMLAliasUses(root, uses)
@@ -87,9 +81,8 @@ func acceptedYAMLAliasUses(uses []yamlAliasUse) func(*codec.Node, int) bool {
 	}
 }
 
-// ValidateYAMLAliases only reports diagnostics on a complete, non-nil, structurally valid
-// source graph from codec.Parse. Content order defines declarations; shared concrete
-// nodes are inspected once and alias diagnostics follow parent slots.
+// ValidateYAMLAliases requires a complete, non-nil, structurally valid source
+// graph from codec.Parse.
 func ValidateYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAliasDiagnostic, m string)) {
 	inspectYAMLAliases(root, report)
 }
@@ -139,8 +132,7 @@ func inspectYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAlias
 				if u.defined {
 					uses = append(uses, yamlAliasUse{n, i})
 				} else {
-					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
-					// `RawYAMLValue`. (#610)
+					// Resolving a recursive alias overflows the stack when the tree is parsed as RawYAMLValue.
 					report(c, yamlAliasDiagnosticRecursive, fmt.Sprintf("recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column))
 				}
 			} else {

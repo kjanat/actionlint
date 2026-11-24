@@ -1,7 +1,5 @@
 package exprvalues
 
-// EvaluationState distinguishes values, unknown results, runtime failures and
-// expressions whose static validation prevented evaluation.
 type EvaluationState uint8
 
 const (
@@ -18,7 +16,7 @@ type EvaluationResult struct {
 	Value any
 }
 
-// Clone copies arrays and objects so callers can edit the returned runtime value.
+// Clone returns arrays and objects that callers can edit.
 func (result EvaluationResult) Clone() EvaluationResult {
 	result.Value = cloneRuntimeValue(result.Value)
 	return result

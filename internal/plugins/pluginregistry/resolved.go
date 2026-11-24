@@ -10,7 +10,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// ResolvedPlugins contains verified releases selected for an invocation.
 type ResolvedPlugins struct {
 	Plugins []Pin `json:"plugins"`
 }

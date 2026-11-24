@@ -62,7 +62,6 @@ func compareConditionNumbers(kind syntax.CompareOpNodeKind, a, b float64) bool {
 	case syntax.CompareOpNodeKindGreaterEq:
 		return a >= b
 	case syntax.CompareOpNodeKindInvalid:
-		// An invalid operator never holds.
 		fallthrough
 	default:
 		return false

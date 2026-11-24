@@ -46,7 +46,6 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	if err := os.Remove(filepath.Join(pluginacquisition.ArtifactOptions(acquisition).CacheDir, pin.SHA256)); err != nil {
 		t.Fatal(err)
 	}
-	// Remove the remote bytes: every later consumer must use the verified snapshot.
 	registry.DeleteFile(pin.URL)
 	if _, err := assembly.RulesWithPlugins(t.Context(), sources); err != nil {
 		t.Fatal(err)
