@@ -49,7 +49,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
-			c := newCapturedWorkflowCache(t, "", "", nil)
+			c := newCapturedWorkflowCache(t, "", nil)
 			r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), c, repository.Settings{})
 			j := &definition.Job{
 				WorkflowCall: &definition.WorkflowCall{
@@ -95,7 +95,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 		},
 	}
 
-	c := newCapturedWorkflowCache(t, "", "", nil)
+	c := newCapturedWorkflowCache(t, "", nil)
 	r := workflowCallVisitor(t, declarations.Workflow(w), c, repository.Settings{})
 
 	if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {

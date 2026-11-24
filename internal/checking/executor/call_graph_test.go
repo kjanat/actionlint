@@ -23,7 +23,6 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	first := testAnalyzer{checkinputs.Descriptor{Name: "mutator"}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.SelectedScripts[0] = "changed"
 		in.Invoked[0].Occurrence.Owner = "changed"
-		in.CallGraph = invocation.Graph{}
 		close(changed)
 		return nil, nil
 	}}

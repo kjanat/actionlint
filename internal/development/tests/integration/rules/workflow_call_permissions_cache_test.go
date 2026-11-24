@@ -78,7 +78,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		return msgs
 	}
 
-	fromFile := run(t, newCapturedWorkflowCache(t, root, root, nil))
+	fromFile := run(t, newCapturedWorkflowCache(t, root, nil))
 
 	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
 	if err != nil {
@@ -97,7 +97,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
+	astCache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, nil)
 	path := filepath.Join(root, "permissions.yaml")
 	snapshot, err := snapshots.Document(path, src, parsing.Workflow(src))
 	if err != nil {
@@ -316,7 +316,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			cwd := filepath.Join("path", "to", "project")
-			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
+			cache := newCapturedWorkflowCache(t, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &definition.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
