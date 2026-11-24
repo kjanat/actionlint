@@ -80,6 +80,14 @@
         "go"
       ],
       "matchPackageNames": [
+        "github.com/kjanat/go-modules/cm"
+      ],
+      "enabled": true,
+      "groupName": "github.com/kjanat/go-modules/cm",
+      "minimumGroupSize": 2
+    },
+    {
+      "matchDepNames": [
         "go.bytecodealliance.org/cm"
       ],
       "enabled": true,

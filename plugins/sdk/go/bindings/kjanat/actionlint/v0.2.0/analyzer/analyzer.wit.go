@@ -10,7 +10,7 @@ package analyzer
 
 import (
 	invocationcontext "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/invocation-context"
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // SourceReference represents the type alias "kjanat:actionlint/analyzer@0.2.0#source-reference".

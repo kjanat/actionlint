@@ -3,7 +3,7 @@
 package environments
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // This file contains wasmimport and wasmexport declarations for "kjanat:actionlint-script@0.3.0".

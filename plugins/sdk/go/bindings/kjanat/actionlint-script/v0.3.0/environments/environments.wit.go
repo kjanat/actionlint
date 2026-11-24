@@ -8,7 +8,7 @@
 package environments
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // OperatingSystem represents the enum "kjanat:actionlint-script/environments@0.3.0#operating-system".
