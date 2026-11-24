@@ -373,6 +373,11 @@ jobs:
         run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
         run: mise run --force plugins
+      - name: Test the C example through the CLI
+        run: mise run test:example:no-sudo
+      - name: Install PSScriptAnalyzer for the PowerShell example
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
       - name: Load the Rust, C and TinyGo examples
         run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/pluginexecution/component/testdata/plugins/pipe-to-shell.wasm
@@ -380,7 +385,10 @@ jobs:
           --plugin internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm
           internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
       - name: Test plugins including Wasmtime runner parity
-        env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
+        env: {
+          ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host",
+          ACTIONLINT_TEST_PSSCRIPTANALYZER: "1",
+        }
         run: test -x "${ACTIONLINT_RUNNER_HOST}";
           go test -count=1 -v ./internal/plugins/pluginexecution/component ./internal/plugins/pluginexecution/module ./internal/development/tests/integration/plugins
       - name: Test Rust SDK consumers through the Go host
