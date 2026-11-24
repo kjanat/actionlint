@@ -204,8 +204,7 @@ func (v *globValidator) validate(pat string) {
 }
 
 func Validate(pat string, isRef bool) []InvalidGlobPatternError {
-	v := globValidator{}
-	v.isRef = isRef
+	v := globValidator{isRef: isRef}
 	v.validate(pat)
 	return v.errs
 }

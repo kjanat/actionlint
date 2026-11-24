@@ -242,8 +242,7 @@ func (r runner) prepare(ctx context.Context, batch scriptanalysis.Batch) ([]chec
 				continue
 			}
 		}
-		request := scriptengine.Request{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
-		request.Environment = script.Environment
+		request := scriptengine.Request{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded, Environment: script.Environment}
 		if directory, known := script.WorkingDirectory(); (reporting || r.directory) && known {
 			request.Directory = directory
 		}

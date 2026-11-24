@@ -21,8 +21,7 @@ func TestOCIResolutionHookSnapshots(t *testing.T) {
 	module := []byte("module")
 	blobs := []string{strings.Repeat("b", 64)}
 	calls := 0
-	options := artifacts.Options{CacheDir: cache, Timeout: time.Second, MaxBytes: 4096}
-	options.PullOCI = func(ctx context.Context, ref pluginreference.OCIReference, bounds artifacts.Options) (*artifacts.Artifact, error) {
+	options := artifacts.Options{CacheDir: cache, Timeout: time.Second, MaxBytes: 4096, PullOCI: func(ctx context.Context, ref pluginreference.OCIReference, bounds artifacts.Options) (*artifacts.Artifact, error) {
 		calls++
 		if ref.String() != source || ref.Host() != "registry.example" || ref.Repository() != "tools/echo" || ref.Digest() != digest || ref.Tag() != "" {
 			t.Fatalf("wrong reference: %s", ref)
@@ -34,7 +33,7 @@ func TestOCIResolutionHookSnapshots(t *testing.T) {
 			t.Fatal("hook has no acquisition deadline")
 		}
 		return &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Source: source, Kind: artifacts.Core, SHA256: digest, Size: 12, ModuleSize: 10, Metadata: metadata, Platform: "any", Manifest: digest, Blobs: blobs}, Bytes: module}, nil
-	}
+	}}
 	resolved, err := artifacts.Resolve(context.Background(), source, options)
 	if err != nil {
 		t.Fatal(err)

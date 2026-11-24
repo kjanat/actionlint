@@ -643,8 +643,8 @@ func (b *Builder) Publish() (Graph, error) {
 		stop:        b.stop,
 		hasStop:     b.hasStop,
 		entryStop:   b.entryStop,
+		incomplete:  b.hasStop || b.entryStop.Valid(),
 	}
-	g.incomplete = b.hasStop || b.entryStop.Valid()
 	if len(b.scripts) != 0 {
 		g.scripts = slices.Clone(b.scripts)
 		g.scriptIndex = make(map[ID]int, len(g.scripts))

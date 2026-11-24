@@ -243,9 +243,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		finding.Binding = scope.Rule(finding.Rule).ID()
 	}
-	resultPolicy := policy.DocumentInputs{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
-	resultPolicy.IgnoreSelectors = s.ignoreSelectors
+	resultPolicy := policy.DocumentInputs{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats, EnforcedLifecycle: s.environment.EnforcedLifecycle, IgnoreSelectors: s.ignoreSelectors}
 	reported := maps.Clone(references)
 	for document, index := range references {
 		if relative, err := filepath.Rel(s.workingDir, document); err == nil {
@@ -312,11 +310,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.SetRunners(runners)
-	context := define.RuleInputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
-	context.Runners = runners
-	context.Lifecycle = actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}
-	context.Debug = s.debugWriter()
-	context.Repository = host
+	context := define.RuleInputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames, Runners: runners, Lifecycle: actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}, Debug: s.debugWriter(), Repository: host}
 	remoteActions := s.remoteActions[cfg.MetadataMirrorAccess()]
 	context.RemoteActions = remoteActions.Resolved()
 	if s.gitModes != nil {
@@ -332,8 +326,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		if s.logOut != nil {
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
 		}
-	}}
-	toolContext.Document = executor.SourceInput(document, path, content, snapshot.Reference())
+	}, Document: executor.SourceInput(document, path, content, snapshot.Reference())}
 	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
 	defer func() {

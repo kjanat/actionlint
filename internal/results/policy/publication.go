@@ -120,8 +120,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 	}
 	usage.discardUnproven(files, incomplete)
 	addUnusedSuppressionFixes(files)
-	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*finding.Finding, len(files)), IncompleteChecks: incomplete}
-	result.InlineSuppressions = slices.SortedFunc(maps.Keys(declared), compareInlineSuppressions)
+	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*finding.Finding, len(files)), IncompleteChecks: incomplete, InlineSuppressions: slices.SortedFunc(maps.Keys(declared), compareInlineSuppressions)}
 	for i, file := range files {
 		result.Findings[i] = file.Findings
 	}
