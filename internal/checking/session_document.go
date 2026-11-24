@@ -151,7 +151,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 	all := correctness.SyntaxCheckFindings(document.SyntaxErrors)
 	var analysisErr error
-	snapshot, err := s.snapshots.Document(captured, document)
+	snapshot, err := s.snapshots.Admit(captured, document.Parsed)
 	if err != nil {
 		return all, outline, nil, err
 	}

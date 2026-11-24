@@ -68,7 +68,6 @@ func TestActionRunKindIgnoresMetadataCallbackMutation(t *testing.T) {
 	}, nil)
 	f.mutateMeta = func(metadata *actionmeta.Metadata) {
 		metadata.Runs.Using = "composite"
-		metadata.Source[0] = 'X'
 	}
 	result, err := Workflow(f.options, f.root)
 	if err != nil {

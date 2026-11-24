@@ -54,7 +54,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 		store.templates[path] = templates
 	}
 	if len(templates) != 0 {
-		original, present := meta.OriginalSource()
+		original, present := meta.Text()
 		if !source.Capture().Valid() || !present || original != string(source.Content()) {
 			return fmt.Errorf("metadata source %q has no matching captured revision", path)
 		}

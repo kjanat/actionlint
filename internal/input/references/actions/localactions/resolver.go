@@ -60,11 +60,11 @@ type resolverDocuments struct {
 }
 
 type SourceDocument struct {
-	path       string
-	address    string
-	captured   capture.CapturedDocument
-	provenance parsing.Provenance
-	files      actionmeta.ReferencedFiles
+	path     string
+	address  string
+	captured capture.CapturedDocument
+	parsed   *parsing.ParsedSource
+	files    actionmeta.ReferencedFiles
 }
 
 func (d SourceDocument) Path() string { return d.path }
@@ -77,8 +77,7 @@ func (d SourceDocument) ReferencedFiles() actionmeta.ReferencedFiles { return d.
 
 func (d SourceDocument) Capture() capture.CapturedDocument { return d.captured }
 
-// Provenance is zero when the manifest was never parsed.
-func (d SourceDocument) Provenance() parsing.Provenance { return d.provenance }
+func (d SourceDocument) Parsed() *parsing.ParsedSource { return d.parsed }
 
 func NewResolver(cache *ManifestCache, checkoutMappings map[string]string) *Resolver {
 	return &Resolver{base: cache, sourceMappings: maps.Clone(checkoutMappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
@@ -189,7 +188,7 @@ func (c *Resolver) lookupRepositorySource(spec string) MetadataResult {
 		return MetadataResult{status: MetadataNotFetched}
 	}
 	address := captured.Revision().Document()
-	document := SourceDocument{path: address, address: address, captured: captured, provenance: parsed.Provenance}
+	document := SourceDocument{path: address, address: address, captured: captured, parsed: parsed.Parsed}
 	owner := c.documentOwner()
 	owner.mu.Lock()
 	owner.used[address] = document

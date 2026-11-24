@@ -13,8 +13,8 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	value := &actionmeta.ExprString{Value: "example", Position: sourcetext.Position{Line: 2, Column: 3}}
 	checkSourceLess := func(meta *actionmeta.Metadata) {
 		t.Helper()
-		if _, parsed := meta.OriginalSource(); parsed {
-			t.Fatal("source-less metadata has source provenance")
+		if _, parsed := meta.Text(); parsed {
+			t.Fatal("source-less metadata has manifest text")
 		}
 		for range 2 {
 			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (sourcetext.Position{Line: 2, Column: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.ExpressionProblem{Offset: 1, EndOffset: 2}) != nil {
@@ -79,7 +79,9 @@ func TestMappedMetadataRetainsLookupState(t *testing.T) {
 			first = meta
 			continue
 		}
-		if meta.Root != first.Root || meta.Path() != first.Path() || string(meta.Source) != string(first.Source) {
+		text, _ := meta.Text()
+		firstText, _ := first.Text()
+		if meta.Root != first.Root || meta.Path() != first.Path() || text != firstText {
 			t.Fatalf("lookup %q lost its shared declaration snapshot", spec)
 		}
 	}

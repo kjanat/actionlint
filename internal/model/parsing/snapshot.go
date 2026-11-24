@@ -140,24 +140,23 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 	return previous, nil
 }
 
-func (s *SourceSnapshots) Document(captured capture.CapturedDocument, document Document) (SourceSnapshot, error) {
-	provenance := document.Provenance
-	if !provenance.parsed {
-		return SourceSnapshot{}, errors.New("source document has no parse provenance")
+func (s *SourceSnapshots) Admit(captured capture.CapturedDocument, parsed *ParsedSource) (SourceSnapshot, error) {
+	if parsed == nil {
+		return SourceSnapshot{}, errors.New("source document was not parsed")
 	}
-	if err := s.verify(captured, []byte(provenance.text)); err != nil {
+	if err := s.verify(captured, []byte(parsed.text)); err != nil {
 		return SourceSnapshot{}, err
 	}
-	return s.bind(captured, provenance)
+	return s.bind(captured, parsed)
 }
 
 func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
 	if metadata == nil {
 		return SourceSnapshot{}, errors.New("action metadata is unavailable")
 	}
-	text, parsed := metadata.OriginalSource()
+	text, parsed := metadata.Text()
 	if !parsed {
-		return SourceSnapshot{}, errors.New("action source has no parse provenance")
+		return SourceSnapshot{}, errors.New("action metadata was not parsed")
 	}
 	if err := s.verify(captured, []byte(text)); err != nil {
 		return SourceSnapshot{}, err
@@ -176,9 +175,9 @@ func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *ac
 	recovered, parseErr := actionmeta.ParseActionMetadata(metadata.Path(), []byte(text))
 	var traversal *definition.Workflow
 	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
-		traversal = actionFacts(recovered)
+		traversal = actionFacts(recovered, text)
 	}
-	return s.bind(captured, Provenance{parsed: true, text: text, workflow: traversal, action: true, using: recovered.Runs.Using})
+	return s.bind(captured, &ParsedSource{text: text, workflow: traversal, action: true, using: recovered.Runs.Using})
 }
 
 func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []byte) error {
@@ -194,12 +193,12 @@ func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []by
 	return nil
 }
 
-func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Provenance) (SourceSnapshot, error) {
-	if err := s.verify(captured, []byte(provenance.text)); err != nil {
+func (s *SourceSnapshots) bind(captured capture.CapturedDocument, parsed *ParsedSource) (SourceSnapshot, error) {
+	if err := s.verify(captured, []byte(parsed.text)); err != nil {
 		return SourceSnapshot{}, err
 	}
 	document, revision := captured.Revision().Document(), captured.Revision().Digest()
-	action := provenance.action
+	action := parsed.action
 	s.mu.Lock()
 	previous, err := s.storedLocked(document, revision, action)
 	s.mu.Unlock()
@@ -209,7 +208,7 @@ func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Pro
 	if previous != nil {
 		return SourceSnapshot{previous}, nil
 	}
-	bound := provenance.bind(document)
+	bound := parsed.bind(document)
 	references := bound.SourceIndex()
 	admitted := &admission{registry: s, captured: captured, bound: bound, action: action}
 	seen := make(map[sourcetext.Reference]struct{}, len(references.Steps))

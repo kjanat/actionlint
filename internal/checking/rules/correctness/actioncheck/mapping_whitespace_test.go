@@ -35,7 +35,7 @@ runs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				meta.Filename, meta.Source = "action.yml", source
+				meta.Filename = "action.yml"
 				findings := actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 				errs := findings
 				if tc.invalid {

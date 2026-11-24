@@ -61,7 +61,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			snapshot, err := registry.Document(captured, parsing.Workflow(content))
+			snapshot, err := registry.Admit(captured, parsing.Workflow(content).Parsed)
 			if err != nil {
 				t.Fatal(err)
 			}

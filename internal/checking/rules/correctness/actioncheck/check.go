@@ -30,6 +30,7 @@ import (
 type validator struct {
 	standalone *actionmeta.Metadata
 	metadata   *actionmeta.Metadata
+	content    []byte
 	errs       []*finding.Finding
 	advisories bool
 	files      actionmeta.ReferencedFiles
@@ -172,7 +173,7 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 	err := finding.At(&sourcetext.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
-	err.Source.Content = meta.Source
+	err.Source.Content = rule.content
 	err.EndAt(end)
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
@@ -201,7 +202,7 @@ func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int
 	err := finding.Errorf(&sourcetext.Position{Line: line, Column: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
-	err.Source.Content = meta.Source
+	err.Source.Content = rule.content
 	err.EndAt(end)
 	err.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 	rule.errs = append(rule.errs, err)
@@ -402,6 +403,9 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *sour
 
 func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *sourcetext.Position) {
 	rule.metadata = meta
+	if text, ok := meta.Text(); ok {
+		rule.content = []byte(text)
+	}
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
 		rule.Errorf(rule.metadataFieldPosition(caller, "name"), actionmeta.CodeMissingField, "name is required in action metadata %q", meta.Path())
@@ -515,7 +519,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 			Rule: ruleName, Code: diagnosticCode, Path: problem.Path,
 			Message: problem.Message, Start: problem.Start, End: problem.End,
 		})
-		item.Source.Content = meta.Source
+		item.Source.Content = rule.content
 		item.IgnoreOrigin = &workflows.IgnoreOrigin{Metadata: true}
 		rule.errs = append(rule.errs, item)
 	}

@@ -12,7 +12,7 @@ func ExpressionEndPosition(meta *Metadata, value *ExprString, violation Expressi
 	if violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
 		return nil
 	}
-	source := meta.Provenance.source(value)
+	source := meta.manifest.scriptSource(value)
 	coordinates := func(offset int) (int, int) {
 		prefix := value.Value[:offset-1]
 		return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1

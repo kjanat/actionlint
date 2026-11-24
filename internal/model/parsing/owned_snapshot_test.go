@@ -19,7 +19,7 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 		t.Fatal("accepted bytes unrelated to parsed document")
 	}
 	if _, err := snapshots.Document("ci.yml", content, Document{Workflow: document.Workflow}); err == nil {
-		t.Fatal("accepted hand-built document without parse provenance")
+		t.Fatal("accepted hand-built document that was not parsed")
 	}
 }
 
@@ -32,7 +32,6 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	}
 	original := string(content)
 	content[0] = '!'
-	metadata.Source[0] = '?'
 	metadata.Root.Content = nil
 	metadata.Runs.Steps = nil
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))

@@ -123,11 +123,10 @@ func Fields(node *codec.Node) *codec.Node {
 }
 
 type Metadata struct {
-	Provenance   Provenance   `yaml:"-" json:"-"`
+	manifest     *manifest
 	SourceMapped bool         `yaml:"-" json:"-"`
 	Directory    string       `yaml:"-" json:"-"`
 	Filename     string       `yaml:"-" json:"-"`
-	Source       []byte       `yaml:"-" json:"-"`
 	Root         *codec.Node  `yaml:"-" json:"-"`
 	Name         string       `yaml:"name" json:"name"`
 	Description  string       `yaml:"description" json:"-"`
@@ -171,8 +170,8 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 			}
 		}
 	}
-	metadata.Provenance = newProvenance(string(owned))
-	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
+	metadata.manifest = &manifest{text: string(owned)}
+	metadata.Directory, metadata.Filename = filepath.Dir(path), filepath.Base(path)
 	if sourcetext.RemoteAddress(path) {
 		metadata.Directory, metadata.Filename = remotePathParts(path)
 	}
@@ -183,10 +182,9 @@ func remotePathParts(address string) (string, string) {
 	return strings.TrimSuffix(address, "/"+path.Base(address)), path.Base(address)
 }
 
-// OriginalSource reports false for hand-built metadata, even when its Source field is set.
-func (md *Metadata) OriginalSource() (string, bool) {
-	if md == nil {
+func (md *Metadata) Text() (string, bool) {
+	if md == nil || md.manifest == nil {
 		return "", false
 	}
-	return md.Provenance.Text()
+	return md.manifest.text, true
 }

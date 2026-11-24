@@ -125,7 +125,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 	}
 }
 
-func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
+func TestMissingParsedDocumentReportsCanonicalResolutionFailure(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	store, _ := capturefixture.NewCapturedSources(t, root)
@@ -134,7 +134,7 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	session := analysisSession{ctx: ctx, captures: store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
 	rejected, err := session.admitSourceDocuments(composites.Composition{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]facts.SourceIndex{})
-	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
+	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "has no parsed document") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
 	if _, state, err := store.Lookup(filepath.Join(root, path)); err != nil || state != capture.Absent {
@@ -142,10 +142,10 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	}
 }
 
-func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *testing.T) {
+func TestMetadataSourceAdmissionRejectsMissingDocumentAndVerifyMismatch(t *testing.T) {
 	t.Parallel()
 	for _, missing := range []bool{false, true} {
-		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parse provenance"}[missing], func(t *testing.T) {
+		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parsed document"}[missing], func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")

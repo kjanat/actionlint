@@ -41,7 +41,7 @@ func testGetWantedActionMetadata() *actionmeta.Metadata {
 
 func testDiffActionMetadata(t *testing.T, want, have *actionmeta.Metadata, opts ...cmp.Option) {
 	t.Helper()
-	opts = append(opts, cmpopts.IgnoreFields(actionmeta.Metadata{}, "Provenance", "SourceMapped", "Directory", "Filename", "Source", "Root"))
+	opts = append(opts, cmpopts.IgnoreFields(actionmeta.Metadata{}, "manifest", "SourceMapped", "Directory", "Filename", "Root"))
 	if diff := cmp.Diff(want, have, opts...); diff != "" {
 		t.Fatal(diff)
 	}

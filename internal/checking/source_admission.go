@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -30,7 +29,7 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Composition, 
 	for path, content := range composed.Sources {
 		document, exists := composed.SourceDocuments[path]
 		if !exists {
-			failure = errors.Join(failure, fmt.Errorf("source %q has no admitted parse provenance", path))
+			failure = errors.Join(failure, fmt.Errorf("source %q has no parsed document", path))
 			sourceRejected(rejected, path, capture.CapturedDocument{})
 			address := path
 			if path != "<stdin>" && !filepath.IsAbs(path) {
@@ -49,9 +48,9 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Composition, 
 			sourceRejected(rejected, path, document.Capture())
 			continue
 		}
-		nested, err := s.snapshots.Document(document.Capture(), parsing.Document{Provenance: document.Provenance()})
+		nested, err := s.snapshots.Admit(document.Capture(), document.Parsed())
 		if err != nil {
-			failure = errors.Join(failure, fmt.Errorf("admit source %q parse provenance: %w", path, err))
+			failure = errors.Join(failure, fmt.Errorf("admit source %q: %w", path, err))
 			sourceRejected(rejected, path, document.Capture())
 			continue
 		}

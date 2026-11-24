@@ -36,7 +36,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				t.Fatal("admission discarded decoded declarations")
 			}
 			document := Action("action.yml", content)
-			if document.CanAnalyze() || document.Provenance.parsed && document.Provenance.bind("rejected-action").ActionBody().Present() {
+			if document.CanAnalyze() || document.Parsed != nil && document.Parsed.bind("rejected-action").ActionBody().Present() {
 				t.Fatal("rejected action supplied semantic input")
 			}
 			for _, documentFirst := range []bool{false, true} {
@@ -54,7 +54,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				}
 				if body, ok := first.ActionView(); ok {
 					for range body.Steps() {
-						t.Fatal("rejected action constructed frozen semantic provenance")
+						t.Fatal("rejected action constructed semantic steps")
 					}
 				}
 			}
@@ -111,7 +111,7 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 	}
 	source.WriteString("      parallel: *a8\n")
 	document := Action("action.yml", []byte(source.String()))
-	if _, rejected := errors.AsType[*codec.AdmissionError](document.ParseError); !rejected || document.CanAnalyze() || document.Provenance.parsed && document.Provenance.bind("rejected-action").ActionBody().Present() {
+	if _, rejected := errors.AsType[*codec.AdmissionError](document.ParseError); !rejected || document.CanAnalyze() || document.Parsed != nil && document.Parsed.bind("rejected-action").ActionBody().Present() {
 		t.Fatal("parallel expansion bypassed action admission", document.ParseError)
 	}
 	if findings := actionmeta.Validate(document.Metadata).Problems; len(findings) == 0 {

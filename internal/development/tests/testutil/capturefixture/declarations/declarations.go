@@ -46,16 +46,16 @@ func (s *CapturedSnapshots) Document(path string, content []byte, document parsi
 	if err != nil {
 		return parsing.SourceSnapshot{}, err
 	}
-	return s.registry.Document(captured, document)
+	return s.registry.Admit(captured, document.Parsed)
 }
 
 func (s *CapturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (parsing.SourceSnapshot, error) {
 	if path == "" || metadata == nil {
 		return parsing.SourceSnapshot{}, errors.New("fixture action source is unavailable")
 	}
-	text, parsed := metadata.OriginalSource()
+	text, parsed := metadata.Text()
 	if !parsed {
-		return parsing.SourceSnapshot{}, errors.New("fixture action has no parse provenance")
+		return parsing.SourceSnapshot{}, errors.New("fixture action was not parsed")
 	}
 	captured, err := s.sources.Capture(path, []byte(text), sourcetext.YAML)
 	if err != nil {

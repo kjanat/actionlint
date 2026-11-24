@@ -70,7 +70,7 @@ type Composition struct {
 type SourceDocument interface {
 	Capture() capture.CapturedDocument
 	Content() []byte
-	Provenance() parsing.Provenance
+	Parsed() *parsing.ParsedSource
 }
 
 // Workflow runs one workflow composition. Options.Join runs exactly once per call.

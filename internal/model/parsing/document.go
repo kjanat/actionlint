@@ -21,18 +21,17 @@ type Document struct {
 	// Facts is nil when decoding recovered no semantic input, and an action's Facts are never workflow traversal inputs.
 	Facts      *definition.Workflow
 	ParseError error
-	Provenance Provenance
+	Parsed     *ParsedSource
 }
 
-type Provenance struct {
-	parsed   bool
+type ParsedSource struct {
 	text     string
 	workflow *definition.Workflow
 	action   bool
 	using    string
 }
 
-func (p Provenance) bind(identity string) *workflows.BoundDocument {
+func (p *ParsedSource) bind(identity string) *workflows.BoundDocument {
 	return workflows.Bind(identity, p.text, p.workflow, p.action, p.using)
 }
 
@@ -41,18 +40,18 @@ func Workflow(content []byte) Document {
 	w, issues := parser.ParseWorkflow(owned)
 	return Document{
 		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
-		Provenance: Provenance{parsed: true, text: string(owned), workflow: w},
+		Parsed: &ParsedSource{text: string(owned), workflow: w},
 	}
 }
 
 func Action(sourcePath string, content []byte) Document {
-	owned := bytes.Clone(content)
-	metadata, err := actionmeta.ParseActionMetadata(sourcePath, owned)
+	metadata, err := actionmeta.ParseActionMetadata(sourcePath, content)
 	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
-	var provenance *definition.Workflow
+	text, parsed := metadata.Text()
+	var traversal *definition.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)
-	if metadata != nil && !rejected {
-		provenance = actionFacts(metadata)
+	if parsed && !rejected {
+		traversal = actionFacts(metadata, text)
 	}
 	if err != nil {
 		document.SyntaxErrors = parser.HandleYAMLUnmarshalError(err)
@@ -60,10 +59,10 @@ func Action(sourcePath string, content []byte) Document {
 			issue.Position.Line, issue.Position.Column = max(1, issue.Position.Line), max(1, issue.Position.Column)
 		}
 	} else {
-		document.Facts = provenance
+		document.Facts = traversal
 	}
-	if metadata != nil {
-		document.Provenance = Provenance{parsed: true, text: string(owned), workflow: provenance, action: true, using: metadata.Runs.Using}
+	if parsed {
+		document.Parsed = &ParsedSource{text: text, workflow: traversal, action: true, using: metadata.Runs.Using}
 	}
 	return document
 }
@@ -94,8 +93,8 @@ func (d Document) ParseStatus() string {
 
 func (d Document) CanAnalyze() bool { return d.Facts != nil }
 
-func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
-	parser := parser.NewSourceParser(metadata.Source)
+func actionFacts(metadata *actionmeta.Metadata, text string) *definition.Workflow {
+	parser := parser.NewSourceParser([]byte(text))
 	parser.IndexScalarSources(metadata.Root)
 	job := &definition.Job{}
 	for _, step := range metadata.Runs.Steps {

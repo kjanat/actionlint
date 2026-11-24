@@ -40,7 +40,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			var earlierView workflows.BoundStep
 			var earlierReference sourcetext.Reference
 			bind := func(index int) {
-				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
+				snapshots[index], failures[index] = registry.Admit(captures[index], documents[index].Parsed)
 			}
 			if order == "concurrent" {
 				var workers sync.WaitGroup
@@ -79,7 +79,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {
-				if _, err := registry.Document(captured, document); err == nil {
+				if _, err := registry.Admit(captured, document.Parsed); err == nil {
 					t.Fatal("quarantined declaration was readmitted")
 				} else if conflict, ok := errors.AsType[capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
 					t.Fatalf("non-deterministic kind conflict: %v", err)

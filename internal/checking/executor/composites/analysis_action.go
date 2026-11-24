@@ -24,7 +24,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptanalysis.
 	if !available {
 		return errors.New("action declaration is unavailable")
 	}
-	original, hasOriginal := meta.OriginalSource()
+	original, hasOriginal := meta.Text()
 	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
 		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptanalysis.ErrInvalidBatch)
 	}

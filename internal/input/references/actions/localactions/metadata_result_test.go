@@ -1,7 +1,6 @@
 package localactions
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -273,7 +272,8 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 				cache.mu.RLock()
 				raw := cache.sources["./action"]
 				cache.mu.RUnlock()
-				if !exists || raw.path != path || !bytes.Equal(raw.captured.Bytes(), metadata.Source) || raw.captured.Revision() != captured.Revision() {
+				text, _ := metadata.Text()
+				if !exists || raw.path != path || string(raw.captured.Bytes()) != text || raw.captured.Revision() != captured.Revision() {
 					t.Error("observer ran before matching metadata/source publication")
 				}
 				if !broken && published.Metadata() != metadata {

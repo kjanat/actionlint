@@ -21,11 +21,11 @@ import (
 )
 
 type metadataSource struct {
-	path       string
-	address    string
-	captured   capture.CapturedDocument
-	provenance parsing.Provenance
-	files      actionmeta.ReferencedFiles
+	path     string
+	address  string
+	captured capture.CapturedDocument
+	parsed   *parsing.ParsedSource
+	files    actionmeta.ReferencedFiles
 }
 
 // ParseError reports an unparsable action manifest and is immutable once created.
@@ -213,7 +213,7 @@ func (c *ManifestCache) LookupMetadata(spec string) (MetadataResult, bool) {
 	}
 	loadedSource := metadataSource{path: filepath.Join(dir, f), address: filepath.Join(address, f), captured: captured}
 	document := parsing.Action(loadedSource.path, captured.Bytes())
-	loadedSource.provenance = document.Provenance
+	loadedSource.parsed = document.Parsed
 	meta, parseErr := document.Metadata, document.ParseError
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {

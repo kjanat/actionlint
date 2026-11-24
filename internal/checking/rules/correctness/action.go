@@ -171,7 +171,7 @@ func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 	if snapshot.Kind() != parsing.KindAction {
 		return errors.New("standalone metadata has no admitted source snapshot")
 	}
-	if original, parsed := meta.OriginalSource(); !parsed || original != string(snapshot.Content()) {
+	if original, parsed := meta.Text(); !parsed || original != string(snapshot.Content()) {
 		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
 	rule.Report(actioncheck.StandaloneWithAdvisories(meta, files, rule.lifecycle)...)

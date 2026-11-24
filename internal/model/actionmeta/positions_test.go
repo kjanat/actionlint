@@ -17,27 +17,27 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"name":"bundled","inputs":{"token":{"name":"token"}}}`), &metadata); err != nil {
 		t.Fatal(err)
 	}
-	if metadata.Provenance.parsed != nil {
-		t.Fatal("JSON metadata allocated source provenance")
+	if metadata.manifest != nil {
+		t.Fatal("JSON metadata has manifest text")
 	}
 	value := &ExprString{Value: "example", Position: sourcetext.Position{Line: 2, Column: 3}}
 	for range 2 {
-		if got := ExpressionPosition(&metadata, value, 2); *got != (sourcetext.Position{Line: 2, Column: 3}) || metadata.Provenance.parsed != nil {
+		if got := ExpressionPosition(&metadata, value, 2); *got != (sourcetext.Position{Line: 2, Column: 3}) || metadata.manifest != nil {
 			t.Fatal("source-less position lookup allocated a cache or lost its fallback")
 		}
 	}
 	for _, content := range []string{"null\n", "name: source\nruns: {using: composite, steps: []}\n"} {
 		parsed, err := ParseActionMetadata("nested/action.yml", []byte(content))
-		if err != nil || parsed.Provenance.parsed == nil {
+		if err != nil || parsed.manifest == nil {
 			t.Fatalf("source-backed metadata cache: %+v, %v", parsed, err)
 		}
-		if parsed.Path() != filepath.Join("nested", "action.yml") || string(parsed.Source) != content {
+		if parsed.Path() != filepath.Join("nested", "action.yml") || parsed.manifest.text != content {
 			t.Fatal("parser lost source identity")
 		}
 	}
 }
 
-func TestProvenanceSourceOwnsResults(t *testing.T) {
+func TestScriptSourceResultEditsLeaveCacheUnchanged(t *testing.T) {
 	t.Parallel()
 	const input = "name: test\nruns:\n  using: composite\n  steps:\n    - run: echo $HI # source\n      shell: bash\n"
 	for _, warm := range []bool{false, true} {
@@ -47,14 +47,14 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 		}
 		value := meta.Runs.Steps[0].Run
 		if warm {
-			meta.Provenance.source(value)
+			meta.manifest.scriptSource(value)
 		}
-		result := meta.Provenance.source(value)
+		result := meta.manifest.scriptSource(value)
 		pristine, err := ParseActionMetadata("action.yml", []byte(input))
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := pristine.Provenance.source(pristine.Runs.Steps[0].Run)
+		want := pristine.manifest.scriptSource(pristine.Runs.Steps[0].Run)
 		if result == nil || len(result.Lines) == 0 || len(result.Spans) == 0 || len(result.Comments) == 0 {
 			t.Fatal("fixture must expose mutable source data")
 		}
@@ -63,7 +63,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 		result.Lines[0].Start = 99
 		result.Spans[0].Document.Column = 99
 		result.Comments[0].Text = "changed"
-		if got := meta.Provenance.source(value); !reflect.DeepEqual(got, want) {
+		if got := meta.manifest.scriptSource(value); !reflect.DeepEqual(got, want) {
 			t.Fatalf("metadata cache shares mutable source results: got %+v, want %+v", got, want)
 		}
 	}
@@ -91,22 +91,21 @@ func TestMetadataPositionCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Provenance owns its snapshot; edits to the record's fields cannot redirect it.
-	meta.Source, meta.Root = []byte("name: other\n"), nil
+	meta.Root = nil
 	value := &ExprString{Value: "echo ${{ github_repository }}", Position: sourcetext.Position{Line: 6, Column: 12}}
-	if meta.Provenance.parsed == nil {
-		t.Fatal("parsed metadata has no provenance")
+	if meta.manifest == nil {
+		t.Fatal("parsed metadata has no manifest text")
 	}
-	first := meta.Provenance.source(value)
+	first := meta.manifest.scriptSource(value)
 	if first == nil {
 		t.Fatal("plain scalar mapping missing")
 	}
 	view := *meta
-	parser := meta.Provenance.parsed.parser
+	parser := meta.manifest.parser
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
-			if got := view.Provenance.source(value); got == first || !reflect.DeepEqual(got, first) {
+			if got := view.manifest.scriptSource(value); got == first || !reflect.DeepEqual(got, first) {
 				t.Errorf("copied metadata lost mapping values or shares mutable results")
 			}
 			if pos := ExpressionPosition(&view, value, 10); *pos != (sourcetext.Position{Line: 6, Column: 21}) {
@@ -115,21 +114,21 @@ func TestMetadataPositionCache(t *testing.T) {
 		})
 	}
 	workers.Wait()
-	if meta.Provenance.parsed.parser != parser {
+	if meta.manifest.parser != parser {
 		t.Fatal("repeated lookups replaced the scalar mapping owner")
 	}
 	mismatch := *value
 	mismatch.Value = "different value"
-	if got := meta.Provenance.source(&mismatch); got != nil {
+	if got := meta.manifest.scriptSource(&mismatch); got != nil {
 		t.Fatal("mapping reused for a different decoded scalar")
 	}
-	oldIndex := meta.Provenance.parsed
+	oldIndex := meta.manifest
 	parsed, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta = parsed
-	if meta.Provenance.parsed == oldIndex || meta.Provenance.parsed.indexed {
+	if meta.manifest == oldIndex || meta.manifest.indexed {
 		t.Fatal("reparsing metadata left stale source mappings")
 	}
 }
