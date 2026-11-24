@@ -11,7 +11,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/itchyny/gojq v0.12.19
-	github.com/kjanat/go-modules v0.10.0
+	github.com/kjanat/go-modules v0.11.0
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7
 	github.com/kjanat/wacogo v0.3.4
 	github.com/kjanat/wazero v1.12.2

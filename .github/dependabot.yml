@@ -17,7 +17,7 @@ updates:
       - dependency-name: github.com/kjanat/wacogo
       - dependency-name: github.com/kjanat/wazero
       - dependency-name: github.com/kjanat/go-modules
-      - dependency-name: go.bytecodealliance.org/cm
+      - dependency-name: github.com/kjanat/go-modules/cm
       - dependency-name: github.com/invopop/jsonschema
       - dependency-name: github.com/pb33f/ordered-map/v2
       - dependency-name: github.com/pb33f/go-yaml

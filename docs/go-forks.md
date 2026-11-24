@@ -11,13 +11,14 @@ flowchart LR
     %% renovate: depName=github.com/kjanat/wazero
     A --> Z["kjanat/wazero<br/>v1.12.2"]
     %% renovate: depName=github.com/kjanat/go-modules
-    A --> G["kjanat/go-modules<br/>v0.10.0"]
+    A --> G["kjanat/go-modules<br/>v0.11.0"]
     W --> G
     W --> Z
     G --> Z
-    %% renovate: depName=go.bytecodealliance.org/cm
-    G --> CM["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
-    E[Go plugin SDK] --> CM
+    %% renovate: depName=github.com/kjanat/go-modules/cm
+    E[Go plugin SDK] --> CM["kjanat/go-modules/cm<br/>v0.4.0"]
+    G --> U["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
+    CM --> U
     %% renovate: depName=github.com/invopop/jsonschema
     A --> J["invopop/jsonschema<br/>v0.14.0"]
     %% renovate: depName=github.com/pb33f/ordered-map/v2

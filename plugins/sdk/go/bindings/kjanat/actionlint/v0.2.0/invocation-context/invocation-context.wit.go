@@ -7,7 +7,7 @@
 package invocationcontext
 
 import (
-	"go.bytecodealliance.org/cm"
+	"github.com/kjanat/go-modules/cm"
 )
 
 // OccurrenceID represents the string "kjanat:actionlint/invocation-context@0.2.0#occurrence-id".
