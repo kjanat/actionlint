@@ -88,6 +88,7 @@ func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
 		{"metadata version", candidateRecordPath, `"metadata_version":1`, `"metadata_version":2`},
 		{"metadata transport", candidateRecordPath, `"transport":"wasm-component"`, `"transport":"wasm-core-json"`},
 		{"metadata contract", candidateRecordPath, `"interface":"` + component.AnalyzerInterface + `"`, `"interface":"other:plugin/analyzer@0.1.0"`},
+		{"metadata name", candidateRecordPath, `"name":"Test plugin"`, `"name":"Other plugin"`},
 		{"unknown record field", candidateRecordPath, `"source":"candidate"`, `"source":"candidate","owner_id":42`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

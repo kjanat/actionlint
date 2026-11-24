@@ -293,6 +293,22 @@ func TestListVersionsReportsRecordFailures(t *testing.T) {
 	}
 }
 
+func TestListVersionsReadsCandidateMetadata(t *testing.T) {
+	t.Parallel()
+	client := candidateRegistry(t, fmt.Sprintf(`[{"version":"v1.0.0","record":"versions/v1.json","imports":[],"exports":[%q]},{"version":"v2.0.0","record":"versions/v2.json","imports":[],"exports":[%q]}]`, component.AnalyzerInterface, component.Runner03Interface))
+	versions, err := client.ListVersions(t.Context(), fixtureregistry.FixturePluginName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []pluginregistry.HostSupport{
+		{Status: pluginregistry.SupportCompatible},
+		{Status: pluginregistry.SupportIncompatible, Reason: "plugin metadata declares " + component.AnalyzerInterface + "; the component exports " + component.Runner03Interface},
+	}
+	if got := hostSupport(versions); !slices.Equal(got, want) {
+		t.Fatalf("host support=%+v, want %+v", got, want)
+	}
+}
+
 func hostSupport(versions []pluginregistry.ListedVersion) []pluginregistry.HostSupport {
 	support := make([]pluginregistry.HostSupport, len(versions))
 	for i, v := range versions {

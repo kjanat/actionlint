@@ -145,7 +145,7 @@ func (c *Client) candidatePin(ctx context.Context, p CatalogPlugin, v Version, s
 	if r.Source != "candidate" || d.PluginID != p.PluginID || !pluginreference.ValidRepository(repository) || (!strings.EqualFold(p.Name, repository) && (p.Name != strings.ToLower(p.PluginID) || !strings.HasPrefix(p.Name, repository+"/"))) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("candidate declaration disagrees with catalogue")
 	}
-	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract}
+	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract, Metadata: string(d.Metadata)}
 	if pluginreference.IsOCI(r.URL) {
 		pin.Asset = ""
 	}

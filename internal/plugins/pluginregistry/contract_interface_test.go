@@ -36,7 +36,8 @@ func TestReleaseIdentityComparesContractInterface(t *testing.T) {
 		t.Fatal("release identity compares more or less than the contract interface")
 	}
 	release.Origin, rehashed.Origin, other.Origin = "candidate", "candidate", "candidate"
-	if !sameCandidate(release, rehashed) || sameCandidate(release, other) {
-		t.Fatal("candidate identity compares more or less than the contract interface")
+	rehashed.Metadata = `{"metadata_version":1}`
+	if !sameRelease(release, rehashed) || sameRelease(release, other) {
+		t.Fatal("candidate identity compares more or less than the contract interface and recorded metadata")
 	}
 }

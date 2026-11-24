@@ -3,6 +3,7 @@ package pluginregistry_test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -53,6 +54,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	record = bytes.ReplaceAll(record, []byte("Test plugin"), []byte("Next plugin"))
 	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(first.SHA256), []byte(secondDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +135,27 @@ func TestImmutableCachesOmitSelectedRoles(t *testing.T) {
 	}
 	if seen["releases"] == "" || seen["candidates"] == "" || seen["selections"] == "" {
 		t.Fatalf("cache kinds=%v", seen)
+	}
+	data, err := os.ReadFile(seen["candidates"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cached map[string]any
+	if err := json.Unmarshal(data, &cached); err != nil || cached["metadata"] == nil {
+		t.Fatalf("cached candidate=%s error=%v", data, err)
+	}
+	delete(cached, "metadata")
+	if data, err = json.Marshal(cached); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(seen["candidates"]); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(seen["candidates"], data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := candidates.RememberCandidate(t.Context(), pin, options); err != nil {
+		t.Fatalf("candidate cached without metadata: %v", err)
 	}
 }
 

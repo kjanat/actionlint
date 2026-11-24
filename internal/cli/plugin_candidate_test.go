@@ -250,6 +250,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	record = bytes.ReplaceAll(record, []byte(digest), []byte(next))
+	record = bytes.ReplaceAll(record, []byte("Test plugin"), []byte("Next plugin"))
 	if err := os.WriteFile(recordPath, record, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -302,6 +303,7 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	record = bytes.ReplaceAll(record, []byte("Test plugin"), []byte("Next plugin"))
 	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(firstDigest), []byte(secondDigest)), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -380,6 +382,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	}
 	pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	next := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
+	record = bytes.ReplaceAll(record, []byte("Test plugin"), []byte("Next plugin"))
 	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(next)), 0o600); err != nil {
 		t.Fatal(err)
 	}

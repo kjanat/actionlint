@@ -196,7 +196,7 @@ func (c *Client) RememberCandidate(ctx context.Context, pin Pin, options artifac
 		if readErr != nil {
 			return readErr
 		}
-		if !exists || !sameCandidate(previous, pin) {
+		if !exists || !sameRelease(previous, pin) {
 			return errors.New("concurrent immutable candidate cache conflict")
 		}
 	}
@@ -231,12 +231,6 @@ func (c *Client) candidateCachePath(name, version, digest string) (string, error
 		return "", err
 	}
 	return filepath.Join(directory, "candidates", sha256hex.Digest([]byte(name+"\n"+version+"\n"+digest))+".json"), nil
-}
-
-func sameCandidate(left, right Pin) bool {
-	left.Selector, right.Selector = left.Version, right.Version
-	left.Contract, right.Contract = contractInterface(left.Contract), contractInterface(right.Contract)
-	return left == right && SameRegistry(left.Registry, right.Registry)
 }
 
 func sameRelease(left, right Pin) bool {
