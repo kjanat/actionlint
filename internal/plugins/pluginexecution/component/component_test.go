@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -184,6 +185,28 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("%s: err=%v", name, err)
 		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		interfaces, err := component.ReadInterfaces(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := component.CheckInterfaces(interfaces); err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("%s: selection verdict %v, want %q", name, err, want)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join("testdata", "plugins", "no-sudo.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	interfaces, err := component.ReadInterfaces(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := component.CheckInterfaces(interfaces); err != nil || !slices.Contains(interfaces.Exports, component.AnalyzerInterface) || !slices.Contains(interfaces.Imports, component.InvocationContextInterface) {
+		t.Fatalf("loadable plugin interfaces=%+v verdict=%v", interfaces, err)
 	}
 	if _, err := component.LoadComponentPlugin(t.Context(), filepath.Join("testdata", "missing.wasm"), component.Options{}); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing: err=%v", err)

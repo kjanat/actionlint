@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	"github.com/kjanat/wacogo"
 )
 
 const runnerSupportFixture = "testdata/plugins/runner-support-0.3.0.wasm"
@@ -146,11 +145,7 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 		t.Fatal("changed nested support contract accepted")
 	}
 	for _, names := range [][]string{{RunnerInterface}, {Runner03Interface}, {RunnerInterface, Runner03Interface}, {"kjanat:actionlint/runner-provider@0.4.0"}} {
-		exports := make([]wacogo.ExportDesc, len(names))
-		for i, name := range names {
-			exports[i] = wacogo.ExportDesc{Name: name, Kind: wacogo.SortInstance}
-		}
-		roles, err := extensionRoles(exports)
+		roles, err := extensionRoles(names)
 		switch {
 		case len(names) > 1:
 			if err == nil || !strings.Contains(err.Error(), "export one runner-provider version") {

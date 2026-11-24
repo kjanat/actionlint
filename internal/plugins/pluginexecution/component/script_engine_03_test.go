@@ -23,7 +23,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/kjanat/wacogo"
 )
 
 const scriptFixture03 = "testdata/plugins/script-engine-0.3.0.wasm"
@@ -74,16 +73,10 @@ func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 
 func TestScriptEngineVersionMismatch(t *testing.T) {
 	t.Parallel()
-	instance := func(names ...string) []wacogo.ExportDesc {
-		exports := make([]wacogo.ExportDesc, len(names))
-		for i, name := range names {
-			exports[i] = wacogo.ExportDesc{Name: name, Kind: wacogo.SortInstance}
-		}
-		return exports
-	}
+	instance := func(names ...string) []string { return names }
 	for _, tc := range []struct {
 		name    string
-		exports []wacogo.ExportDesc
+		exports []string
 		want    string
 	}{
 		{"unsupported version", instance("kjanat:actionlint/script-engine@0.4.0"), "this host supports " + ScriptEngineInterface + " and " + ScriptEngine03Interface},

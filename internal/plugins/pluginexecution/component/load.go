@@ -66,18 +66,15 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
-	roles, err := extensionRoles(component.Exports())
+	interfaces, componentType, err := parseInterfaces(data)
 	if err != nil {
 		return err
 	}
-	required, err := validateImports(component.Imports())
+	roles, required, err := negotiate(interfaces)
 	if err != nil {
 		return err
 	}
-	if required.repositoryObjects && !roles.referenceResolver {
-		return errors.New("repository objects require the reference-resolver role")
-	}
-	if err := validatePluginInterfaces(data, roles); err != nil {
+	if err := checkRoleTypes(componentType, roles); err != nil {
 		return err
 	}
 	p.component = component
