@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"slices"
 	"strings"
 
@@ -44,42 +45,48 @@ func ReadInterfaces(data []byte) (Interfaces, error) {
 
 func parseInterfaces(data []byte) (Interfaces, *wasmparser.ComponentType, error) {
 	parser := wasmparser.NewValidatingParser(bytes.NewReader(data), wasmparser.DefaultFeatures())
-	interfaces := Interfaces{Imports: []string{}, Exports: []string{}}
+	var imports []wasmparser.ValidatedComponentImport
+	var exports []wasmparser.ValidatedComponentExport
 	for {
 		payload, err := parser.Next()
 		if errors.Is(err, io.EOF) {
 			break
 		}
+		if err == nil {
+			switch section := payload.(type) {
+			case *wasmparser.ValidatedComponentImportSectionPayload:
+				imports, err = appendItems(imports, section.Items())
+			case *wasmparser.ValidatedComponentExportSectionPayload:
+				exports, err = appendItems(exports, section.Items())
+			}
+		}
 		if err != nil {
 			return Interfaces{}, nil, fmt.Errorf("validate component contract: %w", err)
 		}
-		switch section := payload.(type) {
-		case *wasmparser.ValidatedComponentImportSectionPayload:
-			for item, err := range section.Items() {
-				if err != nil {
-					return Interfaces{}, nil, fmt.Errorf("validate component contract: %w", err)
-				}
-				interfaces.Imports = append(interfaces.Imports, item.Import.Name.Name)
-			}
-		case *wasmparser.ValidatedComponentExportSectionPayload:
-			for item, err := range section.Items() {
-				if err != nil {
-					return Interfaces{}, nil, fmt.Errorf("validate component contract: %w", err)
-				}
-				name := item.Export.Name.Name
-				if item.Export.Kind == wasmparser.ExternalKindInstance {
-					interfaces.Exports = append(interfaces.Exports, name)
-				} else if slices.ContainsFunc(acceptedExports(), func(accepted string) bool { return sameFamily(name, accepted) }) {
-					return Interfaces{}, nil, fmt.Errorf("plugin export %s must be an interface instance", name)
-				}
-			}
+	}
+	interfaces := Interfaces{Imports: []string{}, Exports: []string{}}
+	for _, item := range imports {
+		interfaces.Imports = append(interfaces.Imports, item.Import.Name.Name)
+	}
+	for _, item := range exports {
+		name := item.Export.Name.Name
+		if item.Export.Kind == wasmparser.ExternalKindInstance {
+			interfaces.Exports = append(interfaces.Exports, name)
+		} else if slices.ContainsFunc(acceptedExports(), func(accepted string) bool { return sameFamily(name, accepted) }) {
+			return Interfaces{}, nil, fmt.Errorf("plugin export %s must be an interface instance", name)
 		}
 	}
-	component := parser.TopLevelComponentType()
-	if component == nil {
-		return Interfaces{}, nil, errors.New("missing component type")
+	return interfaces, parser.TopLevelComponentType(), nil
+}
+
+func appendItems[T any](items []T, section iter.Seq2[T, error]) ([]T, error) {
+	for item, err := range section {
+		if err != nil {
+			return items, err
+		}
+		items = append(items, item)
 	}
-	return interfaces, component, nil
+	return items, nil
 }
 
 func acceptedExports() []string {

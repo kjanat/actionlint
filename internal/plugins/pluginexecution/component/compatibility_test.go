@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -52,5 +53,18 @@ func TestAcceptedInterfacesDigest(t *testing.T) {
 	}
 	if !slices.IsSorted(lines) || AcceptedInterfacesDigest() != sha256hex.Digest([]byte(strings.Join(lines, "\n"))) {
 		t.Fatalf("digest %s does not cover sorted %v", AcceptedInterfacesDigest(), lines)
+	}
+}
+
+func TestAppendItemsReportsSectionErrors(t *testing.T) {
+	t.Parallel()
+	broken := errors.New("broken item")
+	items, err := appendItems([]string{"kept"}, func(yield func(string, error) bool) {
+		if yield("read", nil) {
+			yield("", broken)
+		}
+	})
+	if !errors.Is(err, broken) || !slices.Equal(items, []string{"kept", "read"}) {
+		t.Fatalf("items=%v error=%v", items, err)
 	}
 }
