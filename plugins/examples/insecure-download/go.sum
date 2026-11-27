@@ -1,4 +1,4 @@
-github.com/kjanat/go-modules/cm v0.4.0 h1:URAt+fhjOT2WDOUBy+/+XXbRHb1YyqRIYDPEEbLexww=
-github.com/kjanat/go-modules/cm v0.4.0/go.mod h1:BbbdR67MN6VZ/LsxR2pTqUbaVz6+GzhHR1j0Z8Nb4hE=
+github.com/kjanat/go-modules/cm v0.5.0 h1:pOgznln1SokDLjMM1oyd304AFTVtH2XLZ41F5C5iibw=
+github.com/kjanat/go-modules/cm v0.5.0/go.mod h1:BbbdR67MN6VZ/LsxR2pTqUbaVz6+GzhHR1j0Z8Nb4hE=
 go.bytecodealliance.org/cm v0.3.0 h1:VhV+4vjZPUGCozCg9+up+FNL3YU6XR+XKghk7kQ0vFc=
 go.bytecodealliance.org/cm v0.3.0/go.mod h1:JD5vtVNZv7sBoQQkvBvAAVKJPhR/bqBH7yYXTItMfZI=
