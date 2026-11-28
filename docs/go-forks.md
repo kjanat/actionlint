@@ -16,7 +16,7 @@ flowchart LR
     W --> Z
     G --> Z
     %% renovate: depName=github.com/kjanat/go-modules/cm
-    E[Go plugin SDK] --> CM["kjanat/go-modules/cm<br/>v0.4.0"]
+    E[Go plugin SDK] --> CM["kjanat/go-modules/cm<br/>v0.5.0"]
     %% renovate: depName=go.bytecodealliance.org/cm
     G --> U["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
     CM --> U
