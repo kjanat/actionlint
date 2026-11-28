@@ -1,7 +1,7 @@
 {
   description = "GitHub Actions workflow linter";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/b6fb615abd65b7c8269ef969e6796c540f9bce34";
   # Go 1.27.4 as Hydra built it on staging-next, so Linux fetches it from cache.nixos.org.
   inputs.nixpkgs-go = {
     url = "github:NixOS/nixpkgs/294345d17e2f91dcfaa12cd7025dbd459a2eaea2";
